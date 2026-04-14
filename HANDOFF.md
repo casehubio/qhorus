@@ -1,60 +1,60 @@
 # Quarkus Qhorus — Session Handover
-**Date:** 2026-04-14
+**Date:** 2026-04-14 (third session)
 
 ## What Was Done This Session
 
-A very long session covering implementation (Phases 2–4), multiple code review rounds, architecture design, and documentation.
+**Phase 6 — Addressing** (issues #27–#31)
+- `target` field on `send_message` (Flyway V2, schema, validation, DTO)
+- `reader_instance_id` filter on all read tools — `instance:*`, `capability:*`, `role:*` dispatch
+- EVENT bypass (telemetry always broadcast); BARRIER+role semantics documented and tested
+- 41 tests
 
-**Implementation completed:**
-- Phase 2 (MCP tools) — 14 `@Tool` methods, 8 return-type records
-- Phase 3 (channel semantics) — LAST_WRITE, EPHEMERAL, COLLECT, BARRIER enforced
-- Phase 4 (wait_for_reply) — PendingReply polling, timeout, cleanup job, PendingReplyCleanupJob
-- Code reviews across all phases — 129 → 193 tests; 2 critical production bugs fixed:
-  - `DataService.claim()` idempotency (double-claim premature GC bug)
-  - `wait_for_reply` instance_id — now accepts human-readable agent name, not UUID
+**Phase 9 — A2A compatibility** (issues #32–#35)
+- `POST /a2a/message:send` → `send_message`; `GET /a2a/tasks/{id}` → task status
+- Guarded by `quarkus.qhorus.a2a.enabled` (default false)
+- Gotcha: RestAssured encodes `:` to `%3A` — use `urlEncodingEnabled(false)` for `message:send` tests
+- 29 tests
 
-**Architecture decisions:**
-- Phase 10 `request_approval` moved out of Qhorus → `quarkus-tarkus-qhorus` (new project)
-- Phases 10–12 added to roadmap (human-in-the-loop, governance, structured observability)
-- Phase 10 narrowed to channel controls only: `pause_channel`, `resume_channel`, force-close, external wait cancel
-
-**New project created:** `~/claude/quarkus-tarkus` — Quarkiverse extension for human-scale WorkItem lifecycle management. Fully scaffolded with CLAUDE.md, design spec, HANDOFF.md. Phase 1 not yet started.
-
-**Documentation added:**
-- `docs/qhorus-vs-cross-claude-mcp.md` — why Qhorus over the original
-- `docs/agent-protocol-comparison.md` — A2A vs ACP vs Qhorus
-- `docs/multi-agent-framework-comparison.md` — 10-framework comparison table (cross-claude-mcp, Qhorus, A2A, ACP, AutoGen, Swarm, LangGraph, Letta, CrewAI, MCP)
+**Phase 10 — Human-in-the-loop controls** (issues #36–#44)
+- `pause_channel`, `resume_channel` (Flyway V3)
+- `request_approval`, `respond_to_approval`, `list_pending_approvals`
+- `cancel_wait`, `list_pending_waits` + wait_for_reply cancellation detection
+- `force_release_channel` (BARRIER/COLLECT only)
+- `revoke_artefact` (deletes SharedData + claims)
+- `delete_message`, `clear_channel`, `deregister_instance`
+- `channel_digest` — structured summary for human dashboards
+- Watchdog alerting: `register_watchdog`, `list_watchdogs`, `delete_watchdog` + `WatchdogEvaluationService` + `WatchdogScheduler` (Flyway V4; guarded by `quarkus.qhorus.watchdog.enabled`)
+- 103 tests
 
 ## Current State
 
-- **Tests:** 193 passing, 0 failing
-- **Last commit:** `dc01262` docs: multi-agent framework comparison table
-- **All work committed** — `.claude/settings.local.json` only dirty file (never committed)
-- **Open GitHub issues:** none (all closed)
+- **Tests:** 439 passing, 0 failing
+- **Last commit:** `c0b880b` docs: update DESIGN.md (phases 10 done)
+- **Uncommitted:** CLAUDE.md (testing conventions added), blog/ (first entry), HANDOFF.md
+- **Open issues:** none
 
-## Immediate Next Steps
+## Critical Testing Conventions (new this session)
 
-**Option A (recommended):** Phase 5 — wire `artefact_refs` on messages into the MCP tool flow
-- `Message.artefactRefs` column exists (comma-separated UUID strings) but not used in tools yet
-- `send_message` should accept `artefact_refs` param; `MessageSummary` should return them
-- Run `issue-workflow` Phase 1 first to create issues
+- **`@TestTransaction` + RestAssured HTTP don't share a transaction** — injected writes are uncommitted when HTTP handler fires. No `@TestTransaction` on tests that mix injected tool calls with RestAssured.
+- **Raw `ExecutorService` loses Quarkus CDI context** — `@Transactional` silently broken on raw threads. Use `@Inject ManagedExecutor` instead for concurrent tests.
+- **Optional modules** (`a2a`, `watchdog`) need `@TestProfile` that sets `quarkus.qhorus.<module>.enabled=true`.
+- **Cancellation is concurrent, not pre-emptive** — `cancel_wait` must fire WHILE `wait_for_reply` is in its poll loop, not before. Use `ManagedExecutor` to start the wait first.
 
-**Option B:** Phase 6 — capability/role addressing in `send_message`
-**Option C:** Phase 7 — Agent Card `/.well-known/agent-card.json` (smallest phase)
-**Option D:** Phase 10 channel controls — `pause_channel`, `resume_channel`, force-close (independent of Tarkus)
+## Immediate Next Step
 
-**Also needed:** Update DESIGN.md to mark Phase 4 as Done (still shows pending).
+**Phase 11 — Access control and governance**
+
+Run `issue-workflow` Phase 1 first. Key scope from the design spec:
+- Per-channel write permissions (allowed `instance_id`s or `capability:tag`s)
+- Admin role (designated instance can pause/resume/close channels on behalf of others)
+- Rate limiting per channel or per instance
+- Read-only observer mode (subscribe to events without appearing in instance registry)
 
 ## References
 
 | What | Path |
 |---|---|
 | Design spec | `docs/specs/2026-04-13-qhorus-design.md` |
-| Implementation tracker | `docs/DESIGN.md` |
-| Roadmap (phases 1–12) | `docs/DESIGN.md` § Build Roadmap |
-| Protocol comparison | `docs/agent-protocol-comparison.md` |
-| Framework comparison | `docs/multi-agent-framework-comparison.md` |
-| Qhorus vs cross-claude-mcp | `docs/qhorus-vs-cross-claude-mcp.md` |
-| Quarkus Tarkus (new project) | `~/claude/quarkus-tarkus/HANDOFF.md` |
-| Tarkus plan file | `~/.claude/plans/mellow-puzzling-seal.md` |
-| Garden submissions this session | PRs #21–#29, #34–#35 (Hortora/garden) |
+| Implementation tracker | `docs/DESIGN.md` (phases 1–7, 9–10 ✅; 8 is Claudony work; 11–12 pending) |
+| Blog entry this session | `blog/2026-04-14-mdp01-addressing-a2a-hitl.md` |
+| Garden PRs this session | Hortora/garden#46 (8 Quarkus entries) |
