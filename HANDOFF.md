@@ -1,73 +1,60 @@
 # Quarkus Qhorus — Session Handover
-**Date:** 2026-04-13
+**Date:** 2026-04-14
 
-## What Was Done
+## What Was Done This Session
 
-Project scaffolded and restructured to full Quarkiverse compliance:
-- Renamed: `qhorus` → `quarkus-qhorus` (GitHub repo + local directory)
-- groupId: `dev.qhorus` → `io.quarkiverse.qhorus`
-- Structure: single module → **parent + runtime + deployment** (required Quarkiverse layout)
-- Packages: `dev.qhorus` → `io.quarkiverse.qhorus.runtime` / `.deployment`
-- Config prefix: `qhorus.` → `quarkus.qhorus.`
-- Parent: now inherits from `io.quarkiverse:quarkiverse-parent:21`
-- Added: `quarkus-extension-maven-plugin`, `quarkus-extension-processor` in runtime/deployment
-- Added: `QhorusProcessor.java` (FeatureBuildItem), `META-INF/quarkus-extension.yaml`
-- Added: `.github/project.yml`, `CODEOWNERS`, `build.yml` (Quarkiverse CI scaffold)
-- No Java source yet — all scaffold, spec, and structure
+A very long session covering implementation (Phases 2–4), multiple code review rounds, architecture design, and documentation.
 
-GitHub: https://github.com/mdproctor/quarkus-qhorus
+**Implementation completed:**
+- Phase 2 (MCP tools) — 14 `@Tool` methods, 8 return-type records
+- Phase 3 (channel semantics) — LAST_WRITE, EPHEMERAL, COLLECT, BARRIER enforced
+- Phase 4 (wait_for_reply) — PendingReply polling, timeout, cleanup job, PendingReplyCleanupJob
+- Code reviews across all phases — 129 → 193 tests; 2 critical production bugs fixed:
+  - `DataService.claim()` idempotency (double-claim premature GC bug)
+  - `wait_for_reply` instance_id — now accepts human-readable agent name, not UUID
 
-## What Qhorus Is
+**Architecture decisions:**
+- Phase 10 `request_approval` moved out of Qhorus → `quarkus-tarkus-qhorus` (new project)
+- Phases 10–12 added to roadmap (human-in-the-loop, governance, structured observability)
+- Phase 10 narrowed to channel controls only: `pause_channel`, `resume_channel`, force-close, external wait cancel
 
-Quarkus extension providing a peer-to-peer agent communication mesh. Port of `~/claude/cross-claude-mcp`, redesigned after research into A2A, AutoGen, LangGraph, Swarm, Letta, CrewAI. Part of a three-project ecosystem — no dependency on CaseHub or Claudony.
+**New project created:** `~/claude/quarkus-tarkus` — Quarkiverse extension for human-scale WorkItem lifecycle management. Fully scaffolded with CLAUDE.md, design spec, HANDOFF.md. Phase 1 not yet started.
 
-## Key Design Decisions
+**Documentation added:**
+- `docs/qhorus-vs-cross-claude-mcp.md` — why Qhorus over the original
+- `docs/agent-protocol-comparison.md` — A2A vs ACP vs Qhorus
+- `docs/multi-agent-framework-comparison.md` — 10-framework comparison table (cross-claude-mcp, Qhorus, A2A, ACP, AutoGen, Swarm, LangGraph, Letta, CrewAI, MCP)
 
-- **Transport:** Streamable HTTP (MCP spec 2025-06-18). `quarkus-mcp-server-http` v1.11.1.
-- **Channel semantics:** APPEND (default) · COLLECT · BARRIER · EPHEMERAL · LAST_WRITE
-- **Message types:** `request · response · status · handoff · done · event` (`event` = observer-only)
-- **`wait_for_reply`:** UUID correlation IDs, `PendingReply` table, SSE keepalives every 30s
-- **Artefacts:** UUID refs on messages, not inline. `claim/release` lifecycle for GC.
-- **Addressing:** by `instance_id` · by `capability:tag` · by `role:name`
-- **HandoffMessage is terminal** — in-flight results discarded on handoff
+## Current State
 
-> **Native gotcha:** `quarkus-mcp-server` ≥ 1.11.1 required — earlier versions silently broke sampling/elicitation in native image.
+- **Tests:** 193 passing, 0 failing
+- **Last commit:** `dc01262` docs: multi-agent framework comparison table
+- **All work committed** — `.claude/settings.local.json` only dirty file (never committed)
+- **Open GitHub issues:** none (all closed)
 
-## Immediate Next Step — Phase 1: Data Model + Services
+## Immediate Next Steps
 
-All source under `runtime/src/main/java/io/quarkiverse/qhorus/runtime/`.
+**Option A (recommended):** Phase 5 — wire `artefact_refs` on messages into the MCP tool flow
+- `Message.artefactRefs` column exists (comma-separated UUID strings) but not used in tools yet
+- `send_message` should accept `artefact_refs` param; `MessageSummary` should return them
+- Run `issue-workflow` Phase 1 first to create issues
 
-1. **Config** — `config/QhorusConfig.java` with `@ConfigMapping(prefix = "quarkus.qhorus")`
+**Option B:** Phase 6 — capability/role addressing in `send_message`
+**Option C:** Phase 7 — Agent Card `/.well-known/agent-card.json` (smallest phase)
+**Option D:** Phase 10 channel controls — `pause_channel`, `resume_channel`, force-close (independent of Tarkus)
 
-2. **Entities** (all PanacheEntity, UUID PKs):
-   - `channel/Channel.java` — name (unique), description, semantic (enum), barrierContributors, timestamps
-   - `message/Message.java` — channelId, sender, messageType (enum), content, correlationId, inReplyTo, replyCount (denormalized), createdAt
-   - `message/PendingReply.java` — correlationId (unique), instanceId, channelId, expiresAt
-   - `instance/Instance.java` + `instance/Capability.java`
-   - `data/SharedData.java` + `data/ArtefactClaim.java`
-
-3. **Services** — ChannelService, MessageService, InstanceService, DataService. Panache only, no raw SQL.
-
-4. **Flyway migration** — `runtime/src/main/resources/db/migration/V1__initial_schema.sql`
-
-5. **Smoke test** — `runtime/src/test/java/io/quarkiverse/qhorus/SmokeTest.java`
-
-Full data model ER diagram: `docs/specs/2026-04-13-qhorus-design.md` § Data Model
-
-## Quarkiverse Rules (critical)
-
-- `@BuildStep` only in `deployment/` — never in `runtime/`
-- Config: `@ConfigMapping(prefix = "quarkus.qhorus")` not `@ConfigProperty`
-- Datasource config set by consuming app — NOT in extension's `application.properties`
-- `quarkus-extension-processor` must be in annotationProcessorPaths of BOTH runtime and deployment compiler
+**Also needed:** Update DESIGN.md to mark Phase 4 as Done (still shows pending).
 
 ## References
 
 | What | Path |
 |---|---|
 | Design spec | `docs/specs/2026-04-13-qhorus-design.md` |
-| Ecosystem design | `~/claude/claudony/docs/superpowers/specs/2026-04-13-quarkus-ai-ecosystem-design.md` |
-| Source project (Node.js) | `~/claude/cross-claude-mcp` — read `tools.mjs` for MCP tool semantics |
-| Claudony (embedding target) | `~/claude/claudony` |
-| CaseHub (SPI context) | `~/claude/casehub` |
-| Reference extension | `github.com/quarkiverse/quarkus-mcp-server` — same structure, similar domain |
+| Implementation tracker | `docs/DESIGN.md` |
+| Roadmap (phases 1–12) | `docs/DESIGN.md` § Build Roadmap |
+| Protocol comparison | `docs/agent-protocol-comparison.md` |
+| Framework comparison | `docs/multi-agent-framework-comparison.md` |
+| Qhorus vs cross-claude-mcp | `docs/qhorus-vs-cross-claude-mcp.md` |
+| Quarkus Tarkus (new project) | `~/claude/quarkus-tarkus/HANDOFF.md` |
+| Tarkus plan file | `~/.claude/plans/mellow-puzzling-seal.md` |
+| Garden submissions this session | PRs #21–#29, #34–#35 (Hortora/garden) |
