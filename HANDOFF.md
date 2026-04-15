@@ -1,54 +1,53 @@
 # Quarkus Qhorus — Session Handover
-**Date:** 2026-04-14 (fourth session)
+**Date:** 2026-04-15 (fifth session)
 
 ## What Was Done This Session
 
-**Phase 11 — Access control and governance** (epic #45, issues #46–#49)
-- Per-channel write permissions: `allowed_writers` ACL (Flyway V5), `set_channel_writers`, 23 tests
-- Admin role: `admin_instances` (Flyway V6), `set_channel_admins`, `caller_instance_id` on
-  pause/resume/force_release/clear_channel, 23 tests
-- Rate limiting: `RateLimiter` @ApplicationScoped bean, sliding 60s window (Flyway V7),
-  `set_channel_rate_limits`, 21 tests
-- Observer mode: `ObserverRegistry` @ApplicationScoped bean, `register_observer`,
-  `read_observer_events`, `deregister_observer`, 15 tests
-- Epic #45 closed; all issues #46–#49 closed
+**New repo: `quarkus-ledger`** (`~/claude/quarkus-ledger`, https://github.com/mdproctor/quarkus-ledger)
+- Extracted from quarkus-tarkus-ledger and generalised: `LedgerEntry` abstract base (JPA JOINED,
+  `subjectId` aggregate key), `LedgerAttestation`, `ActorTrustScore`, `LedgerHashChain`,
+  `TrustScoreComputer`, `TrustScoreJob`, SPI interfaces, `LedgerConfig` (prefix `quarkus.ledger`)
+- Flyway V1000/V1001 base schema; jandex plugin; `JpaLedgerEntryRepository` marked `@Alternative`
+- `LedgerHashChain.verify()` accepts `List<? extends LedgerEntry>`
+- 33 unit tests; README + integration guide + examples.md
+- `examples/order-processing/` — runnable Quarkus app, 8 IT tests (`mvn test`)
+- `@ConfigRoot` fix: `quarkus.ledger.*` keys now recognised in consuming extensions
+- Flyway ordering warning added to integration guide (subclass migration must be V1002+)
+- Garden entry GE-20260415-d7a439 submitted (Hortora/garden#57) — Flyway ordering gotcha
 
-**Tests:** 521 passing (up from 439)
+**quarkus-tarkus** — migrated to `quarkus-ledger`:
+- `WorkItemLedgerEntry extends LedgerEntry`, `WorkItemLedgerEntryRepository`
+- 14 classes deleted; 69 tests passing; config prefix `quarkus.tarkus.ledger.*` → `quarkus.ledger.*`
 
-## Critical Testing Conventions (new this session)
-
-*Prior conventions unchanged — `git show HEAD~1:HANDOFF.md` § Critical Testing Conventions*
-
-- `RateLimiter` and `ObserverRegistry` are `@ApplicationScoped` in-memory beans — state does NOT
-  roll back with `@TestTransaction`. Use unique channel names and observer IDs per test.
-- `check_messages` excludes `EVENT` messages by design — use `read_observer_events` (with a
-  registered observer) to assert EVENT delivery in tests.
+**Phase 12 — Structured observability** (epic #50, issues #51–#54, all closed):
+- `AgentMessageLedgerEntry` (V1002), `LedgerWriteService`, `list_events`, `get_channel_timeline`
+- 36 new tests; 557 total passing
+- DESIGN.md updated: Phase 12 ✅
 
 ## Current State
 
-- **Tests:** 521 passing, 0 failing
-- **Last commit:** `ba25197` feat(instance): observer mode
-- **Uncommitted:** CLAUDE.md, blog/INDEX.md, blog/mdp02 entry, HANDOFF.md
+- **Tests:** 557 passing (quarkus-qhorus), 69 passing (quarkus-tarkus-ledger), 33 (quarkus-ledger)
 - **Open issues:** none
-- **Flyway:** V7 (latest)
+- **Flyway:** V8 (Qhorus), V1002 (quarkus-ledger examples), V1000/V1001 (quarkus-ledger base)
+- **Design phases:** 1–7 ✅, 9–12 ✅; Phase 8 (Claudony) pending
+
+## Waiting On
+
+Another Claude session is actively writing code in `~/claude/claudony`. **Do not start
+Phase 8 integration until that session finishes.** Check `git log` in claudony before touching it.
 
 ## Immediate Next Step
 
-**Phase 12 — Structured observability**
-
-Run issue-workflow Phase 1 first. Scope from the design spec:
-- Mandatory `event` payload schema (`agent_id`, `tool_name`, `timestamp`, `duration_ms`,
-  optional `correlation_id`, optional `token_count`)
-- `list_events(channel_name, after_id, limit)` query tool
-- `get_channel_timeline` — ordered view of all message types for a channel
-- Structured audit trail queryable by time range and agent
+Once the Claudony session completes: begin **Phase 8 — Embed in Claudony** (unified MCP endpoint).
+Run issue-workflow Phase 1 in `quarkus-qhorus` before writing any code.
 
 ## References
 
 | What | Path |
 |---|---|
 | Design spec | `docs/specs/2026-04-13-qhorus-design.md` |
-| Implementation tracker | `docs/DESIGN.md` (phases 1–7, 9–11 ✅; 8 Claudony; 12 pending) |
-| Blog entry this session | `blog/2026-04-14-mdp02-access-control-governance.md` |
-| Garden PRs this session | Hortora/garden#51–#54 (4 entries) |
+| Implementation tracker | `docs/DESIGN.md` (phases 1–7, 9–12 ✅; 8 pending) |
+| quarkus-ledger | `~/claude/quarkus-ledger/` |
+| quarkus-ledger integration guide | `~/claude/quarkus-ledger/docs/integration-guide.md` |
+| quarkus-ledger example | `~/claude/quarkus-ledger/examples/order-processing/` |
 | Previous handover | `git show HEAD~1:HANDOFF.md` |
