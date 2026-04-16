@@ -1,0 +1,332 @@
+package io.quarkiverse.mcp.server.runtime.config;
+
+import java.net.URL;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+
+import io.quarkiverse.mcp.server.McpLog.LogLevel;
+import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
+
+public interface McpServerRuntimeConfig {
+
+    /**
+     * The server info is included in the response to an `initialize` request.
+     *
+     * @asciidoclet
+     */
+    ServerInfo serverInfo();
+
+    /**
+     * Traffic logging config.
+     */
+    TrafficLogging trafficLogging();
+
+    /**
+     * Client logging config.
+     */
+    ClientLogging clientLogging();
+
+    /**
+     * The interval after which, when set, the server sends a ping message to the connected client automatically.
+     * <p>
+     * Ping messages are not sent automatically by default.
+     */
+    Optional<Duration> autoPingInterval();
+
+    /**
+     * Resources config.
+     */
+    Resources resources();
+
+    /**
+     * Resource templates config.
+     */
+    ResourceTemplates resourceTemplates();
+
+    /**
+     * Tools config.
+     */
+    Tools tools();
+
+    /**
+     * Prompts config.
+     */
+    Prompts prompts();
+
+    /**
+     * Sampling config.
+     */
+    Sampling sampling();
+
+    /**
+     * Roots config.
+     */
+    Roots roots();
+
+    /**
+     * Elicitation config.
+     */
+    Elicitation elicitation();
+
+    /**
+     * Dev mode config.
+     */
+    DevMode devMode();
+
+    /**
+     * The amount of time that a connection can be inactive. The connection might be automatically closed when the timeout
+     * expires. Negative and zero durations imply no timeout.
+     * <p>
+     * The {@code stdio} transport disables this timeout by default.
+     */
+    @WithDefault("30m")
+    Duration connectionIdleTimeout();
+
+    /**
+     * If collection of metrics is enabled when the Micrometer extension is present.
+     */
+    @WithName("metrics.enabled")
+    @WithDefault("false")
+    boolean metricsEnabled();
+
+    public interface TrafficLogging {
+
+        /**
+         * If set to `true` then JSON messages received/sent are logged.
+         *
+         * @asciidoclet
+         */
+        @WithDefault("false")
+        public boolean enabled();
+
+        /**
+         * The number of characters of a text message which will be logged if traffic logging is enabled.
+         *
+         * @asciidoclet
+         */
+        @WithDefault("200")
+        public int textLimit();
+    }
+
+    interface ServerInfo {
+
+        /**
+         * The name of the server is included in the response to an `initialize` request.
+         *
+         * By default, the value of the `quarkus.application.name` config property is used.
+         *
+         * @asciidoclet
+         */
+        Optional<String> name();
+
+        /**
+         * The version of the server is included in the response to an `initialize` request.
+         *
+         * By default, the value of the `quarkus.application.version` config property is used.
+         *
+         * @asciidoclet
+         */
+        Optional<String> version();
+
+        /**
+         * The human-readable name of the server is included in the response to an `initialize` request.
+         */
+        Optional<String> title();
+
+        /**
+         * The set of icons.
+         */
+        List<Icon> icons();
+
+        /**
+         * The human-readable description of the server.
+         */
+        Optional<String> description();
+
+        /**
+         * The URL of the website for this implementation.
+         */
+        Optional<URL> websiteUrl();
+
+        /**
+         * The instructions describing how to use the server and its features. These are hints for the clients.
+         */
+        Optional<String> instructions();
+
+    }
+
+    /**
+     * An icon.
+     */
+    interface Icon {
+
+        /**
+         * The URI pointing to an icon resource.
+         */
+        String src();
+
+        /**
+         * The mime type.
+         */
+        Optional<String> mimeType();
+
+        /**
+         * The list of sizes in WxH format.
+         */
+        List<String> sizes();
+
+        /**
+         * The theme.
+         */
+        Optional<io.quarkiverse.mcp.server.Icon.Theme> theme();
+
+    }
+
+    public interface ClientLogging {
+
+        /**
+         * The default log level.
+         *
+         * @asciidoclet
+         */
+        @WithDefault("INFO")
+        public LogLevel defaultLevel();
+
+    }
+
+    public interface DevMode {
+
+        /**
+         * If set to `true` then the server performs an automatic initialization in dev mode when the first message from the
+         * client is not `initialize`; capability negotiation and protocol version agreement is skipped.
+         *
+         * The behavior depends on the transport. For SSE, this is useful when an MCP client attempts to reconnect but does not
+         * reinitialize properly. For Streamable HTTP, this enables the auto-init mode, i.e. the same behavior as
+         * `quarkus.mcp.server.http.streamable.auto-init`.
+         *
+         * @asciidoclet
+         */
+        @WithDefault("true")
+        public boolean dummyInit();
+
+    }
+
+    public interface Resources {
+
+        /**
+         * If the number of resources exceeds the page size then pagination is enabled and the given page size is used. The
+         * pagination is disabled if set to a value less or equal to zero.
+         */
+        @WithDefault("50")
+        int pageSize();
+
+    }
+
+    public interface ResourceTemplates {
+
+        /**
+         * If the number of resource templates exceeds the page size then pagination is enabled and the given page size is used.
+         * The
+         * pagination is disabled if set to a value less or equal to zero.
+         */
+        @WithDefault("50")
+        int pageSize();
+
+    }
+
+    public interface Prompts {
+
+        /**
+         * If the number of prompts exceeds the page size then pagination is enabled and the given page size is used. The
+         * pagination is disabled if set to a value less or equal to zero.
+         */
+        @WithDefault("50")
+        int pageSize();
+
+    }
+
+    public interface Tools {
+
+        /**
+         * If the number of tools exceeds the page size then pagination is enabled and the given page size is used. The
+         * pagination is disabled if set to a value less or equal to zero.
+         */
+        @WithDefault("50")
+        int pageSize();
+
+        /**
+         * Structured content config.
+         */
+        StructuredContent structuredContent();
+
+        /**
+         * The strategy used for input validation errors.
+         */
+        @WithDefault("tool")
+        InputValidationError inputValidationError();
+
+        enum InputValidationError {
+
+            /**
+             * An input validation error results in a protocol error with JSON-RPC error code `-32602` (invalid params).
+             *
+             * @asciidoclet
+             */
+            PROTOCOL,
+
+            /**
+             * An input validation error is reported in a tool response with `isError: true`.
+             *
+             * This behavior is compliant with the specification.
+             *
+             * @asciidoclet
+             */
+            TOOL,
+        }
+
+    }
+
+    public interface StructuredContent {
+
+        /**
+         * If set to `true` and a tool returns a structured content but no other content then the serialized JSON is
+         * also automatically set as a `TextContent` for backwards compatibility.
+         *
+         * @asciidoclet
+         */
+        @WithDefault("false")
+        boolean compatibilityMode();
+
+    }
+
+    public interface Sampling {
+
+        /**
+         * The default timeout for a sampling request. Negative and zero durations imply no timeout.
+         */
+        @WithDefault("60s")
+        Duration defaultTimeout();
+
+    }
+
+    public interface Roots {
+
+        /**
+         * The default timeout to list roots. Negative and zero durations imply no timeout.
+         */
+        @WithDefault("60s")
+        Duration defaultTimeout();
+    }
+
+    public interface Elicitation {
+
+        /**
+         * The default timeout for an elicitation request. Negative and zero durations imply no timeout.
+         */
+        @WithDefault("60s")
+        Duration defaultTimeout();
+    }
+
+}

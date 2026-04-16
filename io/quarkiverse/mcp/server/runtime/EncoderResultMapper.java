@@ -1,0 +1,80 @@
+package io.quarkiverse.mcp.server.runtime;
+
+import java.util.List;
+import java.util.function.Function;
+
+import org.jboss.logging.Logger;
+
+import io.quarkiverse.mcp.server.Encoder;
+import io.quarkiverse.mcp.server.JsonRpcErrorCodes;
+import io.quarkiverse.mcp.server.McpException;
+import io.quarkiverse.mcp.server.runtime.ResultMappers.Result;
+import io.quarkus.arc.All;
+import io.smallrye.mutiny.Uni;
+
+/**
+ * Result mapper based on {@link Encoder}.
+ *
+ * @param <ENCODED> The type of the value encoded by the encoder
+ * @param <ENCODER> The type of the injected encoder
+ * @param <RESPONSE> The type of the serialized response
+ */
+abstract class EncoderResultMapper<ENCODED, ENCODER extends Encoder<?, ENCODED>, RESPONSE>
+        implements EncoderMapper<Object, RESPONSE> {
+
+    private static final Logger LOG = Logger.getLogger(EncoderResultMapper.class);
+
+    @All
+    List<ENCODER> encoders;
+
+    final Function<Result<Uni<Object>>, Uni<RESPONSE>> uni;
+
+    protected EncoderResultMapper() {
+        this.uni = new EncoderMapper<Uni<Object>, RESPONSE>() {
+
+            @Override
+            public Uni<RESPONSE> apply(Result<Uni<Object>> r) {
+                return r.value().map(o -> toResponse(EncoderResultMapper.this.convert(o)));
+            }
+        };
+    }
+
+    @Override
+    public Uni<RESPONSE> apply(Result<Object> r) {
+        return Uni.createFrom().item(toResponse(convert(r.value())));
+    }
+
+    public Function<Result<Uni<Object>>, Uni<RESPONSE>> uni() {
+        return uni;
+    }
+
+    protected abstract RESPONSE toResponse(ENCODED encoded);
+
+    protected ENCODED convert(Object obj) {
+        Class<?> type = obj.getClass();
+        for (ENCODER encoder : encoders) {
+            if (encoder.supports(type)) {
+                ENCODED encoded;
+                try {
+                    encoded = encoder.encode(cast(obj));
+                } catch (Exception e) {
+                    String msg = "Unable to encode object of type " + type + " with " + encoder.getClass().getName();
+                    LOG.error(msg, e);
+                    throw new McpException(msg, e, JsonRpcErrorCodes.INTERNAL_ERROR);
+                }
+                return encoded;
+            }
+        }
+        return encoderNotFound(obj);
+    }
+
+    protected ENCODED encoderNotFound(Object obj) {
+        throw new McpException("No encoder found for " + obj.getClass(), JsonRpcErrorCodes.INTERNAL_ERROR);
+    }
+
+    @SuppressWarnings("unchecked")
+    static <T> T cast(Object obj) {
+        return (T) obj;
+    }
+
+}
