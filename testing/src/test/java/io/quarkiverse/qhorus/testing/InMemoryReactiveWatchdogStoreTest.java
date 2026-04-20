@@ -56,6 +56,8 @@ class InMemoryReactiveWatchdogStoreTest {
     private Watchdog watchdog(String conditionType) {
         Watchdog w = new Watchdog();
         w.conditionType = conditionType;
+        w.targetName = "test-target";
+        w.notificationChannel = "test-alerts";
         return w;
     }
 }
