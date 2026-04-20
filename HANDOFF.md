@@ -1,71 +1,51 @@
 # Quarkus Qhorus — Session Handover
-**Date:** 2026-04-20 (eighth session)
+**Date:** 2026-04-20 (ninth session — Reactive Adaptation and Dual Stack)
 
 ## What Was Done This Session
 
-**Phase 13 — Persistence abstraction (Store + scan(Query) pattern):**
-- 5 store interfaces + query value objects with `matches()` predicates
-- 5 JPA implementations; all 5 services migrated to inject stores
-- New `testing/` module: `InMemory*Store` (`@Alternative @Priority(1)`)
-- New `examples/` module: `StoreUsageExample` with 4 happy-path tests
-- 717 tests total (646 runtime + 67 testing + 4 examples)
-- ADR-0002, DESIGN.md Phase 13, cross-project comparison doc committed
-- Spec: `docs/superpowers/specs/2026-04-18-persistence-abstraction-design.md`
+**quarkus-ledger reactive SPI adaptation (#68, closed):**
+- `AgentMessageLedgerEntryRepository` rewritten with `EntityManager` (LedgerEntry is now plain `@Entity`)
+- `ReactiveAgentMessageLedgerEntryRepository` added (`@Alternative`) — implements `ReactiveLedgerEntryRepository`
+- `AgentMessageReactivePanacheRepo` — package-private Panache helper
+- `quarkus.datasource.reactive=false` in test `application.properties` — prevents Hibernate Reactive boot without reactive pool (gotcha: `@Alternative` does NOT suppress the build step)
+- 717 tests still green
 
-**quarkus-ledger reconciliation:**
-- `ObservabilitySupplement` removed → `correlationId` now direct field on `LedgerEntry`
-- `LedgerHashChain` removed → hash chain block deleted from `LedgerWriteService`
-- 4 new abstract methods added to `LedgerEntryRepository` — all implemented
-- 3 hash chain tests removed (API gone)
-- `quarkus.http.test-port=0` added — avoids conflict with Claudony on 8081
+**Issue tracker retrospective corrected:**
+- Epics #32, #36 renamed (dropped "Phase N —" prefix)
+- Issues #69–#72 created and closed (uncovered commit clusters)
+- `docs/retro-issues.md` committed as audit trail
 
-**LedgerWriteService isolation fix (previous handover):**
-- Committed `7d0aa6d`, Issue #57 closed
-
-**Reactive migration — brainstormed, deferred:**
-- Decision: full reactive (Uni<T>, Hibernate Reactive, Panache.withTransaction())
-- Blocker: `AgentMessageLedgerEntry extends LedgerEntry (blocking PanacheEntityBase)`
-- Resolution: quarkus-ledger must add dual blocking/reactive support first
-
-**Ideas logged:** `IDEAS.md` — hierarchical WorkItems as HTN + channel intent
-markers for unified human view of Claude collaboration.
+**Dual-stack reactive architecture designed:**
+- Decision: full dual stack (blocking default + reactive `@Alternative`) — mirrors quarkus-ledger pattern
+- `QhorusMcpToolsBase` abstract base extracts all shared code (response records, validators, mappers)
+- `QhorusMcpTools` + `ReactiveQhorusMcpTools` extend it with `@Tool` methods
+- `InMemoryReactive*Store` delegates to `InMemory*Store` — zero duplication
+- Activated via `quarkus.qhorus.reactive.enabled=true` build property
+- Design spec: `docs/superpowers/specs/2026-04-20-reactive-dual-stack-design.md`
+- Epic #73, child issues #74–#81 created and open
 
 ## Current State
 
 - **Tests:** 717 passing, 0 failing
-- **Open issues:** none
-- **Branch:** main, pushed to origin
+- **Open issues:** #73 (epic) + #74–#81 (child issues)
+- **Branch:** main, uncommitted changes: CLAUDE.md, blog entry, settings
 
-## Immediate Next Steps
+## Immediate Next Step
 
-1. **quarkus-ledger reactive support** — pass briefing below to quarkus-ledger Claude
-2. **Qhorus reactive migration** — once quarkus-ledger ships:
-   - Store interfaces: `T` → `Uni<T>`
-   - JPA implementations: Reactive Panache + `Panache.withTransaction()`
-   - Services: `@Transactional` → `Panache.withTransaction()` lambda chains
-   - `@Tool` methods: return `Uni<T>` (supported by quarkus-mcp-server 1.11.1)
-   - Tests: `@TestTransaction` → `@TestReactiveTransaction`
-   - REST resources: `Response` → `Uni<Response>`
-3. **Phase 8 closeout** — mark Claudony embedding ✅ in DESIGN.md Build Roadmap
+**Start epic #73 — Reactive dual stack.** Begin with issue #74:
+`Reactive*Store interfaces + ReactiveJpa*Store implementations (5 domains)`.
 
-## quarkus-ledger Briefing (pass to quarkus-ledger Claude)
+Implementation order per spec: #74 stores → #75 InMemoryReactive stores → #76 base class refactor → #77 reactive services → #78 reactive tools → #79 activation + REST → #80 contract tests → #81 docs.
 
-Make `LedgerEntry` a plain `@Entity` POJO (remove `extends PanacheEntityBase`).
-Keep `LedgerEntryRepository` (blocking — rewrite as `PanacheRepository<LedgerEntry, UUID>`).
-Add `ReactiveLedgerEntryRepository` (identical signatures returning `Uni<T>`,
-implemented as `ReactivePanacheRepository<LedgerEntry, UUID>`).
-Same entity, two repository strategies. No bridges. Full briefing was written
-in this session — retrieve from conversation context or see
-`docs/specs/2026-04-17-persistence-abstraction-strategy.md` for the pattern rationale.
+Read design spec before coding: `docs/superpowers/specs/2026-04-20-reactive-dual-stack-design.md`
 
 ## References
 
 | What | Path |
 |---|---|
-| Design spec | `docs/specs/2026-04-13-qhorus-design.md` |
+| Dual-stack design spec | `docs/superpowers/specs/2026-04-20-reactive-dual-stack-design.md` |
+| Retro-issues audit | `docs/retro-issues.md` |
 | Implementation tracker | `docs/DESIGN.md` |
-| Persistence abstraction spec | `docs/superpowers/specs/2026-04-18-persistence-abstraction-design.md` |
-| Cross-project comparison | `docs/specs/2026-04-17-persistence-abstraction-strategy.md` |
-| ADR-0002 | `adr/0002-persistence-abstraction-store-pattern.md` |
-| Ideas log | `IDEAS.md` |
+| ADR-0002 (store pattern) | `adr/0002-persistence-abstraction-store-pattern.md` |
+| Latest blog | `blog/2026-04-20-mdp02-ledger-reactive-dual-stack.md` |
 | Previous handover | `git show HEAD~1:HANDOFF.md` |

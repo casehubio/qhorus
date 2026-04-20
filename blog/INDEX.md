@@ -10,3 +10,4 @@
 | [2026-04-16-mdp01-error-handling-claudony-blocker.md](2026-04-16-mdp01-error-handling-claudony-blocker.md) | 2026-04-16 | Error handling ADR-0001, @WrapBusinessError, Jandex CDI fix, Phase 8 Claudony embedding; 557→561 tests |
 | [2026-04-17-mdp01-ledger-reconciliation.md](2026-04-17-mdp01-ledger-reconciliation.md) | 2026-04-17 | quarkus-ledger reconciliation (ObservabilitySupplement, Flyway→Hibernate schema), LedgerWriteService isolation design |
 | [2026-04-20-mdp01-db-independence-reactive.md](2026-04-20-mdp01-db-independence-reactive.md) | 2026-04-20 | Phase 13: Store + scan(Query) persistence abstraction, quarkus-ledger reconciliation, reactive migration paused; 558→717 tests |
+| [2026-04-20-mdp02-ledger-reactive-dual-stack.md](2026-04-20-mdp02-ledger-reactive-dual-stack.md) | 2026-04-20 | quarkus-ledger reactive SPI adaptation, reactive boot trap fix, issue audit, dual-stack architecture decision (epic #73) |
