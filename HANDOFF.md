@@ -1,46 +1,62 @@
 # Quarkus Qhorus — Session Handover
-**Date:** 2026-04-17 (seventh session)
+**Date:** 2026-04-20 (eighth session)
 
 ## What Was Done This Session
 
-**quarkus-ledger supplement reconciliation (Qhorus side):**
-- `LedgerWriteService`: `entry.correlationId` removed from `LedgerEntry` base — now set via
-  `ObservabilitySupplement.attach()` when `message.correlationId` is non-null
-- `QhorusMcpTools.toEventMap()`: reads `correlationId` via
-  `entry.observability().map(obs -> obs.correlationId).orElse(null)`
-- Flyway V1002 → V1003 for `agent_message_ledger_entry` (V1002 now reserved by
-  quarkus-ledger supplement migration)
-- Tests updated: `AgentLedgerCaptureTest` verifies correlationId via
-  `entry.observability().get().correlationId`; `AgentMessageLedgerEntryTest` drops
-  removed field assertion
+**Phase 13 — Persistence abstraction (Store + scan(Query) pattern):**
+- 5 store interfaces + query value objects with `matches()` predicates
+- 5 JPA implementations; all 5 services migrated to inject stores
+- New `testing/` module: `InMemory*Store` (`@Alternative @Priority(1)`)
+- New `examples/` module: `StoreUsageExample` with 4 happy-path tests
+- 717 tests total (646 runtime + 67 testing + 4 examples)
+- ADR-0002, DESIGN.md Phase 13, cross-project comparison doc committed
+- Spec: `docs/superpowers/specs/2026-04-18-persistence-abstraction-design.md`
 
-**Schema management:**
-- quarkus-ledger deleted all SQL migration scripts (deferred decision)
-- Qhorus tests switched from Flyway → `hibernate-orm.database.generation=drop-and-create`
-- Flyway config removed from `runtime/src/test/resources/application.properties`
+**quarkus-ledger reconciliation:**
+- `ObservabilitySupplement` removed → `correlationId` now direct field on `LedgerEntry`
+- `LedgerHashChain` removed → hash chain block deleted from `LedgerWriteService`
+- 4 new abstract methods added to `LedgerEntryRepository` — all implemented
+- 3 hash chain tests removed (API gone)
+- `quarkus.http.test-port=0` added — avoids conflict with Claudony on 8081
 
-**Phase 8 — Qhorus embedded in Claudony:**
-- Added `quarkus-qhorus` + `quarkus-jdbc-h2` to Claudony pom (our commit `a99d2a8`)
-- **Claudony is currently broken** — Claudony Claude subsequently removed the datasource
-  config. Full fix briefing sent in-session (restores H2 dep + datasource properties +
-  `hibernate-orm.database.generation`). Also at `docs/phase8-claudony-integration.md`.
+**LedgerWriteService isolation fix (previous handover):**
+- Committed `7d0aa6d`, Issue #57 closed
 
-**Error handling — completed:**
-- `@WrapBusinessError({IAE, ISE})` on `QhorusMcpTools` → all 37 structured-return `@Tool`
-  methods produce `isError:true` instead of JSON-RPC errors
-- ADR-0001 and DESIGN.md §MCP Tool Design updated to reflect resolution
+**Reactive migration — brainstormed, deferred:**
+- Decision: full reactive (Uni<T>, Hibernate Reactive, Panache.withTransaction())
+- Blocker: `AgentMessageLedgerEntry extends LedgerEntry (blocking PanacheEntityBase)`
+- Resolution: quarkus-ledger must add dual blocking/reactive support first
+
+**Ideas logged:** `IDEAS.md` — hierarchical WorkItems as HTN + channel intent
+markers for unified human view of Claude collaboration.
 
 ## Current State
 
-- **Tests:** 561 passing, 0 failing
+- **Tests:** 717 passing, 0 failing
 - **Open issues:** none
-- **Claudony:** broken — waiting on Claudony Claude to apply datasource fix
+- **Branch:** main, pushed to origin
 
-## Immediate Next Step
+## Immediate Next Steps
 
-Once Claudony Claude confirms 231 tests green: make `LedgerWriteService` defensive —
-a failed ledger write should not roll back `send_message` (currently it does, because
-both run in the same `@Transactional` boundary).
+1. **quarkus-ledger reactive support** — pass briefing below to quarkus-ledger Claude
+2. **Qhorus reactive migration** — once quarkus-ledger ships:
+   - Store interfaces: `T` → `Uni<T>`
+   - JPA implementations: Reactive Panache + `Panache.withTransaction()`
+   - Services: `@Transactional` → `Panache.withTransaction()` lambda chains
+   - `@Tool` methods: return `Uni<T>` (supported by quarkus-mcp-server 1.11.1)
+   - Tests: `@TestTransaction` → `@TestReactiveTransaction`
+   - REST resources: `Response` → `Uni<Response>`
+3. **Phase 8 closeout** — mark Claudony embedding ✅ in DESIGN.md Build Roadmap
+
+## quarkus-ledger Briefing (pass to quarkus-ledger Claude)
+
+Make `LedgerEntry` a plain `@Entity` POJO (remove `extends PanacheEntityBase`).
+Keep `LedgerEntryRepository` (blocking — rewrite as `PanacheRepository<LedgerEntry, UUID>`).
+Add `ReactiveLedgerEntryRepository` (identical signatures returning `Uni<T>`,
+implemented as `ReactivePanacheRepository<LedgerEntry, UUID>`).
+Same entity, two repository strategies. No bridges. Full briefing was written
+in this session — retrieve from conversation context or see
+`docs/specs/2026-04-17-persistence-abstraction-strategy.md` for the pattern rationale.
 
 ## References
 
@@ -48,7 +64,8 @@ both run in the same `@Transactional` boundary).
 |---|---|
 | Design spec | `docs/specs/2026-04-13-qhorus-design.md` |
 | Implementation tracker | `docs/DESIGN.md` |
-| MCP tool strategy ADR | `adr/0001-mcp-tool-return-type-strategy.md` |
-| Phase 8 Claudony briefing | `docs/phase8-claudony-integration.md` |
+| Persistence abstraction spec | `docs/superpowers/specs/2026-04-18-persistence-abstraction-design.md` |
+| Cross-project comparison | `docs/specs/2026-04-17-persistence-abstraction-strategy.md` |
+| ADR-0002 | `adr/0002-persistence-abstraction-store-pattern.md` |
+| Ideas log | `IDEAS.md` |
 | Previous handover | `git show HEAD~1:HANDOFF.md` |
-| Garden batch PR | Hortora/garden#69 (5 entries: jar xf, @WrapBusinessError×3, GE-0133 revision) |
