@@ -31,7 +31,7 @@ This project follows Quarkiverse naming conventions throughout:
 
 | Element | Value |
 |---|---|
-| GitHub repo | `mdproctor/quarkus-qhorus` (→ `quarkiverse/quarkus-qhorus` when submitted) |
+| GitHub repo | `casehubio/quarkus-qhorus` (→ `quarkiverse/quarkus-qhorus` when submitted) |
 | groupId | `io.quarkiverse.qhorus` |
 | Parent artifactId | `quarkus-qhorus-parent` |
 | Runtime artifactId | `quarkus-qhorus` |
@@ -176,7 +176,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home
 ## Work Tracking
 
 **Issue tracking:** enabled
-**GitHub repo:** mdproctor/quarkus-qhorus
+**GitHub repo:** casehubio/quarkus-qhorus
 
 **Automatic behaviours (Claude follows these at all times in this project):**
 - **Before implementation begins** — check if an active issue exists. If not, run issue-workflow Phase 1 before writing any code.
