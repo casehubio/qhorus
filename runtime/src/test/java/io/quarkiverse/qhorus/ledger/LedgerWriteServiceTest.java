@@ -351,14 +351,14 @@ class LedgerWriteServiceTest {
         UUID channelId = UUID.randomUUID();
         Channel ch = channel(channelId);
         UUID commitmentId = UUID.randomUUID();
-        Message msg = message("COMMAND", "Run audit", "agent-a", "corr-x", commitmentId);
+        Message msg = message("COMMAND", "Run audit", "agent:agent-a", "corr-x", commitmentId);
         service.record(ch, msg);
 
         MessageLedgerEntry e = repo.saved.get(0);
         assertEquals(channelId, e.channelId);
         assertEquals(channelId, e.subjectId);
         assertEquals(msg.id, e.messageId);
-        assertEquals("agent-a", e.actorId);
+        assertEquals("agent:agent-a", e.actorId);
         assertEquals(ActorType.AGENT, e.actorType);
         assertEquals("corr-x", e.correlationId);
         assertEquals(commitmentId, e.commitmentId);
