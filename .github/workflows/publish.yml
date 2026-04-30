@@ -1,6 +1,8 @@
 name: Build and Publish
 
 on:
+  repository_dispatch:
+    types: [upstream-published]
   push:
     branches: [main]
   pull_request:
