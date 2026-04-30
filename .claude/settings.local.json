@@ -290,7 +290,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" -H \"Authorization: Bearer $\\(gh auth token\\)\" \"https://maven.pkg.github.com/casehubio/ledger/io/quarkiverse/ledger/quarkus-ledger-parent/0.2-SNAPSHOT/maven-metadata.xml\")",
       "Read(//Users/mdproctor/**)",
       "Bash(env)",
-      "Bash(gh run *)"
+      "Bash(gh run *)",
+      "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 26\\) mvn validate -q)"
     ]
   }
 }
