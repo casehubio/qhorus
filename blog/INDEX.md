@@ -23,3 +23,4 @@
 | [2026-04-30-mdp01-platform-wide-breaking-window.md](2026-04-30-mdp01-platform-wide-breaking-window.md) | 2026-04-30 | Platform-wide breaking change push across 5 repos: MCP surface (#121), module splits (ledger-api, qhorus-api), CI timing race, naming sweep |
 | [2026-05-01-mdp01-two-bugs-that-looked-wrong.md](2026-05-01-mdp01-two-bugs-that-looked-wrong.md) | 2026-05-01 | Two test fixes: WatchdogScheduler thread isolation via @TestTransaction; Panache statics bypass CDI InMemory stores |
 | [2026-05-01-mdp02-docs-that-build-themselves.md](2026-05-01-mdp02-docs-that-build-themselves.md) | 2026-05-01 | Writing the agent mesh developer guide revealed a missing cross-channel ledger tool — and two non-obvious ledger behaviours |
+| [2026-05-01-mdp03-scoped-trust.md](2026-05-01-mdp03-scoped-trust.md) | 2026-05-01 | capabilityTag on LedgerAttestation; SNAPSHOT interface contract break; javap to read named queries from JARs |
