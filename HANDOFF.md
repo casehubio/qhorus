@@ -12,7 +12,7 @@
 
 ## Current State
 
-- **Branch:** `main` — pushed, clean (`.claude/settings.local.json` modified; `docs/work-and-workitems.md` untracked — unknown origin, don't delete without checking)
+- **Branch:** `main` — pushed, clean (`.claude/settings.local.json` modified; `docs/work-and-workitems.md` untracked — intentional work product complementing the normative docs, not yet committed)
 - **968 tests, 0 failures**
 - **Open issues:** #131 (channel backend abstraction), #132 (delivery guarantees), #124 (InstanceActorIdProvider), #98 (accuracy baseline)
 
