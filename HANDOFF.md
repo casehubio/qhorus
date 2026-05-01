@@ -1,24 +1,28 @@
 # CaseHub Qhorus — Session Handover
-**Date:** 2026-05-01 — capabilityTag on LedgerAttestation, #133 and #134 closed
+**Date:** 2026-05-01 — Normative doc review, cross-channel correlation documented, platform conventions
 
 ---
 
 ## What Was Done This Session
 
-- **#133 done** — `LedgerWriteService.writeAttestation` now extracts `"capability"` from the COMMAND's content JSON and sets `attestation.capabilityTag`; falls back to `CapabilityTag.GLOBAL`. Also required implementing three new abstract methods added to the `casehub-ledger` runtime interface in SNAPSHOT (`findAttestationsByEntryIdAndCapabilityTag`, `findAttestationsByEntryIdGlobal`, `findAttestationsByAttestorIdAndCapabilityTag`). Two new integration tests in `LedgerAttestationIntegrationTest`.
-- **#134 closed** — `get_obligation_activity` was already complete (both stacks, repo method, tests). Closed as stale open issue.
-- **Garden** — 2 entries submitted: SNAPSHOT interface contract gotcha (`GE-20260501-a9ea1a`), javap named query technique (`GE-20260501-93f9a8`).
-- **Blog** — `blog/2026-05-01-mdp03-scoped-trust.md`
+- **normative-summary.md** — new `docs/normative-summary.md`: reading guide, layering analysis, and critique of five gaps across the three normative documents
+- **Cross-channel causal correlation documented as implemented** — `agent-mesh-framework.md` updated: `causedByEntryId` documented as spanning channels; `get_obligation_activity` documented as walking the causal DAG (not just correlationId join); `get_causal_chain` no longer takes `channel_name`. Implementation must match this before the docs go public.
+- **Platform conventions** — two new files in `casehubio/parent/docs/conventions/`: `qhorus-event-content-null.md` (EVENT content always null, render telemetry fields) and `qhorus-human-governance-channel-types.md` (oversight channel must have `allowedTypes=QUERY,COMMAND`). Both indexed.
+- **Build confirmed** — 970 tests, 0 failures
 
 ## Current State
 
-- **Branch:** `main` — pushed, clean (`.claude/settings.local.json` modified; `docs/work-and-workitems.md` untracked — intentional work product complementing the normative docs, not yet committed)
-- **968 tests, 0 failures**
+- **Branch:** `main` — clean, pushed (qhorus); parent conventions committed locally
 - **Open issues:** #131 (channel backend abstraction), #132 (delivery guarantees), #124 (InstanceActorIdProvider), #98 (accuracy baseline)
 
 ## Immediate Next Step
 
-**#124** — `InstanceActorIdProvider` SPI design. Claudony needs this to map Qhorus `instanceId` → ledger `actorId` (persona format). The `DefaultInstanceActorIdProvider` is a no-op identity; Claudony replaces it with a `@Alternative` that resolves session → persona.
+**Implement cross-channel causal correlation** — the docs describe it as working. Key changes needed:
+1. `causedByEntryId` resolution must query across all channels (currently scoped to one channel)
+2. `get_obligation_activity` must walk `causedByEntryId` links across channel boundaries
+3. `get_causal_chain` signature drops `channel_name` parameter
+
+Then **#124** — `InstanceActorIdProvider` SPI for Claudony.
 
 ## Key Architecture Facts
 
@@ -28,7 +32,8 @@
 
 | What | Path |
 |---|---|
-| Blog entries | `blog/2026-05-01-mdp03-scoped-trust.md` |
-| Agent mesh guide | `docs/agent-mesh-framework.md` |
-| Normative layer | `docs/normative-layer.md` |
-| Previous handover (full context) | `git show HEAD~1:HANDOFF.md` |
+| Normative summary + critique | `docs/normative-summary.md` |
+| Cross-channel correlation docs | `docs/agent-mesh-framework.md` Part 6 |
+| Platform conventions | `casehubio/parent/docs/conventions/qhorus-event-content-null.md` |
+| Blog entries | `blog/2026-05-01-mdp04-the-body-of-work.md` |
+| Previous handover | `git show HEAD~1:HANDOFF.md` |
