@@ -1,32 +1,38 @@
 # CaseHub Qhorus — Session Handover
-**Date:** 2026-05-01 — Test bug fixes and channel design
+**Date:** 2026-05-01 — Agent mesh docs, cross-channel correlation, @Tool overload fix
 
 ---
 
 ## What Was Done This Session
 
-- **`WatchdogEnabledTest` flaky fixed** — `@TestTransaction` added to all 6 condition evaluation tests + UUID suffix on e2e channel names. Root cause: `WatchdogScheduler` runs in a separate thread/transaction and can see committed test watchdogs. Commit `b22742a`.
-- **`LedgerCaptureExampleTest` always-broken fixed** — `Channel.<Channel>find()` Panache static bypasses CDI `@Alternative` InMemory stores, queries empty JPA table. Replaced with `tools.listChannels()`. Commit `c1f0032`.
-- **CLAUDE.md** — two new testing conventions added: scheduler isolation via `@TestTransaction`; Panache statics bypass CDI alternatives.
-- **Channel architecture discussion** — qhorus #131 enriched with design decisions: Qhorus is participant-blind (gateway in Qhorus, ClaudonyChannelBackend in Claudony, Slack/WhatsApp in connectors). Issues logged: claudony#98, connectors#2.
+- **#129 fixed** — non-`@Tool` public overloads sharing a name with `@Tool` methods cause quarkus-mcp-server to silently drop the tool. Made all conflicting overloads package-private. 53 test files updated to full @Tool signatures. `ToolOverloadDiscoverabilityTest` guards regressions (pure reflection). Examples module also required fixing — only caught by `mvn install` from root, not `mvn test` in runtime.
+- **#122 done** — `docs/agent-mesh-framework.md` — comprehensive developer guide: message vocabulary, channel model, NormativeChannelLayout, agent lifecycle, CommitmentStore, ledger (8 query tools), human-in-the-loop, Layer 1 Secure Code Review example, anti-patterns, quick-start template.
+- **#134 done** — `get_obligation_activity(correlationId, limit?)` — cross-channel ledger query returning all entries sharing a correlationId, ordered by `messageId ASC` (global), with `channel` field on each entry. Key discoveries: `MessageLedgerEntry.content` is null for EVENT entries (telemetry extracted to dedicated fields); `sequenceNumber` is per-channel not global. Agents must pass `correlationId` on EVENT messages to link them.
+- **Platform conventions** — 3 new files + 1 extended in `casehubio/parent/docs/conventions/`. Parent Claude also ran a broader scan — `PENDING-MODULE-UPDATES.md` in parent tracks which module CLAUDE.md files need duplicate content removed.
+- **CLAUDE.md** — 2 new conventions: @Tool overload visibility rule; `mvn install` from root required after API visibility changes.
 
 ## Current State
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+- **Branch:** `main` — all committed and clean (`fix_tool_calls.py` leftover at root, can be deleted)
+- **968 tests, 0 failures**
+- **Open issues:** #131 (channel backend abstraction), #132 (delivery guarantees), #124 (InstanceActorIdProvider), #98 (accuracy baseline)
 
 ## Immediate Next Step
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+Delete `fix_tool_calls.py` from repo root (untracked leftover from bulk test fix). Then pick:
+- **#124** — InstanceActorIdProvider SPI design (Claudony needs this for session→persona mapping in the ledger)
+- **#98** — accuracy baseline with `-Pwith-llm-examples` (Jlama + model in `~/.jlama/`)
+- **Module CLAUDE.md cleanup** — `casehubio/parent/docs/conventions/PENDING-MODULE-UPDATES.md` has the work list
 
 ## Key Architecture Facts
 
-*Unchanged — `git show HEAD~1:HANDOFF.md`*
+*Unchanged — `git show HEAD~2:HANDOFF.md`*
 
 ## References
 
 | What | Path |
 |---|---|
-| Blog entry | `blog/2026-05-01-mdp01-two-bugs-that-looked-wrong.md` |
-| Channel design decisions | `casehubio/qhorus#131` (comment 2026-05-01) |
-| ClaudonyChannelBackend issue | `casehubio/claudony#98` |
+| Blog entries | `blog/2026-05-01-mdp01-*.md`, `blog/2026-05-01-mdp02-docs-that-build-themselves.md` |
+| Agent mesh guide | `docs/agent-mesh-framework.md` |
+| Parent conventions pending | `casehubio/parent/docs/conventions/PENDING-MODULE-UPDATES.md` |
 | Previous handover (full context) | `git show HEAD~1:HANDOFF.md` |
