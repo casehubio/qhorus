@@ -28,6 +28,7 @@ import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.channel.RateLimiter;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.runtime.gateway.Senders;
 import io.casehub.qhorus.runtime.instance.Capability;
 import io.casehub.qhorus.runtime.instance.Instance;
 import io.casehub.qhorus.runtime.instance.InstanceService;
@@ -980,7 +981,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "correlation_id", description = "Correlation ID of the approval request (from list_pending_commitments)") String correlationId,
             @ToolArg(name = "response_text", description = "The approval decision or message to send back") String responseText,
             @ToolArg(name = "channel_name", description = "Channel the approval request was posted on") String channelName) {
-        return sendMessage(channelName, "human", "response", responseText, correlationId, null, null, null, null);
+        return sendMessage(channelName, Senders.HUMAN, "response", responseText, correlationId, null, null, null, null);
     }
 
     // ---------------------------------------------------------------------------

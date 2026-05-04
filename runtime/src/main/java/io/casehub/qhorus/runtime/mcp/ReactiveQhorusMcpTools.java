@@ -27,6 +27,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ReactiveChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.runtime.gateway.Senders;
 import io.casehub.qhorus.runtime.data.ReactiveDataService;
 import io.casehub.qhorus.runtime.instance.Capability;
 import io.casehub.qhorus.runtime.instance.Instance;
@@ -1066,7 +1067,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
     }
 
     private MessageResult blockingRespondToApproval(String correlationId, String responseText, String channelName) {
-        return blockingSendMessage(channelName, "human", "response", responseText, correlationId, null, null, null, null);
+        return blockingSendMessage(channelName, Senders.HUMAN, "response", responseText, correlationId, null, null, null, null);
     }
 
     // 10. cancel_wait
