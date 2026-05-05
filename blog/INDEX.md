@@ -25,3 +25,4 @@
 | [2026-05-01-mdp02-docs-that-build-themselves.md](2026-05-01-mdp02-docs-that-build-themselves.md) | 2026-05-01 | Writing the agent mesh developer guide revealed a missing cross-channel ledger tool — and two non-obvious ledger behaviours |
 | [2026-05-01-mdp03-scoped-trust.md](2026-05-01-mdp03-scoped-trust.md) | 2026-05-01 | capabilityTag on LedgerAttestation; SNAPSHOT interface contract break; javap to read named queries from JARs |
 | [2026-05-01-mdp04-the-body-of-work.md](2026-05-01-mdp04-the-body-of-work.md) | 2026-05-01 | Reading the three normative docs together; normative-summary.md; cross-channel causal correlation documented; platform conventions |
+| [2026-05-05-mdp01-the-coherence-invariant.md](2026-05-05-mdp01-the-coherence-invariant.md) | 2026-05-05 | Channel backend abstraction: split-conversation invariant, ActorType alignment, A2A actor classification bug, TOCTOU race caught in review |
