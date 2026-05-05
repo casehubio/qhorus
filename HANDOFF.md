@@ -1,41 +1,50 @@
 # CaseHub Qhorus — Session Handover
-**Date:** 2026-05-02 — Obligation-continuity framing corrected, all commits pushed
+**Date:** 2026-05-05 — Channel gateway shipped (#131 core done), #140 closed, garden swept
 
 ---
 
 ## What Was Done This Session
 
-- **normative-summary.md** — new `docs/normative-summary.md`: reading guide, layering analysis, and critique of five gaps across the three normative documents
-- **Cross-channel causal correlation documented as implemented** — `agent-mesh-framework.md` updated: `causedByEntryId` documented as spanning channels; `get_obligation_activity` walks the causal DAG (not just correlationId join); `get_causal_chain` drops `channel_name`. Implementation must match this before docs go public.
-- **Platform conventions** — two new files in `casehubio/parent/docs/conventions/`: `qhorus-event-content-null.md` and `qhorus-human-governance-channel-types.md`. Pushed to GitHub.
-- **Obligation-continuity framing corrected** — `work-and-workitems.md` and `normative-summary.md` updated: the machine/human distinction is continuity, not duration. Added explicit treatment of prerequisite-blocking and priority-deferral: machine agents use DECLINE+reissue, not silent parking. Silent parking = stalled obligation anti-pattern.
-- **All commits pushed** — qhorus and parent both current on GitHub.
-- **Build confirmed** — 970 tests, 0 failures
+- **Channel backend abstraction (#131) — full design + implementation + docs + tests**
+  - Brainstorm: coherence invariant (at most one `HumanParticipatingChannelBackend`), `ActorType` alignment, A2A as protocol bridge, `InboundNormaliser` SPI
+  - `ChannelGateway`, `QhorusChannelBackend`, `DefaultInboundNormaliser`, `Senders` (moved to api module)
+  - SPI hierarchy in `casehub-qhorus-api`: `AgentChannelBackend`, `HumanParticipatingChannelBackend`, `HumanObserverChannelBackend`, `InboundNormaliser`
+  - MCP tools: `send_message` fans out via `channelGateway.fanOut()`; `create_channel` auto-registers; `delete_channel` closes backends; `list_backends`, `deregister_backend`, `register_backend`
+  - Code review caught: TOCTOU race (synchronized), `closeChannel` ordering (after persistence), `Senders` moved to api, dead `post()` (package-private)
+  - 1011 tests, 0 failures. ADR-0006, full doc sweep, CLAUDE.md, parent repo docs + actor-type convention
+- **#124 (InstanceActorIdProvider) — closed** both sides (Qhorus SPI + Claudony#107 implementation)
+- **#140 (register_backend MCP tool) — implemented and closed** — CDI `Instance<ChannelBackend>` lookup by `backendId()`
+- **Created:** #135 (A2A bridge), casehubio/ledger#75 (ActorTypeResolver fix), Claudony#107 (closed)
+- **All pushed to main**
 
 ## Current State
 
-- **Branch:** `main` — clean, fully pushed
-- **Open issues:** #131 (channel backend abstraction), #132 (delivery guarantees), #124 (InstanceActorIdProvider), #98 (accuracy baseline)
+- **Branch:** `main` — clean, fully pushed (`.claude/settings.local.json` untracked, ignore)
+- **Open issues:** #135 (A2A bridge — blocked on ledger#75), #132 (delivery guarantees — now unblocked), #131 (epic tracker), #98 (LLM baseline, machine-intensive)
+- **Test count:** 1011 passing, 44 skipped (reactive JPA, need Docker)
 
 ## Immediate Next Step
 
-**Implement cross-channel causal correlation** — docs describe it as working, implementation must catch up:
-1. `causedByEntryId` resolution must query across all channels (currently scoped to one channel)
-2. `get_obligation_activity` must walk `causedByEntryId` links across channel boundaries
-3. `get_causal_chain` signature drops `channel_name` parameter
+**Check ledger#75** — `ActorTypeResolver` explicit A2A rules (`"user"` → `HUMAN`, `"agent"` → `AGENT`). Ledger Claude was working on other issues (#56–#59) this session — may or may not have landed. If done, proceed to **#135** (`A2AChannelBackend` protocol bridge). If not, either do it in qhorus session or wait for ledger Claude.
 
-Then **#124** — `InstanceActorIdProvider` SPI for Claudony.
+Then **#132** — delivery guarantees (retry + dead-letter for registered backends). Now unblocked since #131 gateway is shipped.
 
-## Key Architecture Facts
+## Key Architecture Facts (new this session)
 
-*Unchanged — `git show HEAD~2:HANDOFF.md`*
+- `ChannelGateway.fanOut()` dispatches to external backends only (not `QhorusChannelBackend`). `post()` is package-private, test-only — calling it in production double-persists.
+- `Senders.HUMAN = "human"` is in `io.casehub.qhorus.api.gateway.Senders` (not runtime).
+- `registerBackend()` human_participating check-then-add is synchronized on the channel's backend list.
+- `@WrapBusinessError` tests must catch `ToolCallException`, not `IllegalArgumentException` — the interceptor wraps at CDI proxy boundary.
+- Backend registrations are in-memory — lost on restart (tracked in #132).
+- A2A `role: "user"` is not always a human — may be an AI orchestrator. Requires actor identity resolution chain (6 steps) in `A2AChannelBackend`. Tracked in #135.
 
 ## References
 
 | What | Path |
 |---|---|
-| Normative summary + critique | `docs/normative-summary.md` |
-| Human-layer framing | `docs/work-and-workitems.md` §The Distinction That Matters |
-| Cross-channel correlation docs | `docs/agent-mesh-framework.md` Part 6 |
-| Platform conventions | `casehubio/parent/docs/conventions/` |
+| Design spec | `docs/superpowers/specs/2026-05-04-channel-backend-abstraction-design.md` |
+| ADR | `docs/adr/ADR-0006-channel-backend-abstraction.md` |
+| A2A bridge issue | casehubio/qhorus#135 |
+| ActorTypeResolver fix | casehubio/ledger#75 |
+| Latest blog | `blog/2026-05-05-mdp01-the-coherence-invariant.md` |
 | Previous handover | `git show HEAD~1:HANDOFF.md` |
