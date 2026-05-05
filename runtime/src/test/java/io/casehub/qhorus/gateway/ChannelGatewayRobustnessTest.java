@@ -20,6 +20,7 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DuplicateParticipatingBackendException;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.TestTransaction;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -54,7 +55,7 @@ class ChannelGatewayRobustnessTest {
     @Inject ChannelGateway gateway;
 
     @Test
-    @Transactional
+    @TestTransaction
     void duplicateParticipatingBackend_isRejected() {
         tools.createChannel("rob-dup-1", "test", "append", null, null, null, null, null, null);
         var ch = tools.listChannels().stream()
@@ -87,7 +88,7 @@ class ChannelGatewayRobustnessTest {
     }
 
     @Test
-    @Transactional
+    @TestTransaction
     void twoChannels_backendRegistrationsAreIsolated() {
         tools.createChannel("rob-iso-1", "test1", "append", null, null, null, null, null, null);
         tools.createChannel("rob-iso-2", "test2", "append", null, null, null, null, null, null);
@@ -103,7 +104,7 @@ class ChannelGatewayRobustnessTest {
     }
 
     @Test
-    @Transactional
+    @TestTransaction
     void receiveHumanMessage_createsMessageWithHumanSender() {
         tools.createChannel("rob-human-msg", "test", "append", null, null, null, null, null, null);
         var ch = tools.listChannels().stream()
@@ -120,7 +121,7 @@ class ChannelGatewayRobustnessTest {
     }
 
     @Test
-    @Transactional
+    @TestTransaction
     void receiveObserverSignal_forcesEventType() {
         tools.createChannel("rob-obs-sig", "test", "append", null, null, null, null, null, null);
         var ch = tools.listChannels().stream()
