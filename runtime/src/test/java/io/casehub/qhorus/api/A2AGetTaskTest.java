@@ -270,7 +270,9 @@ class A2AGetTaskTest {
         // QUERY via A2A creates an OPEN commitment
         sendA2A("a2a-gt-del-1", "user", "please delegate this", taskId);
 
-        // Agent sends HANDOFF — commitment transitions to DELEGATED
+        // Agent sends HANDOFF — parent commitment becomes DELEGATED (terminal),
+        // child OPEN commitment created for delegate. findByCorrelationId returns
+        // child OPEN → OPEN-guard routes to fromMessageHistory → HANDOFF → "working".
         tools.sendMessage("a2a-gt-del-1", "agent", "handoff", "delegating to specialist", taskId,
                 null, null, "role:specialist", null);
 

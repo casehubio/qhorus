@@ -16,8 +16,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import jakarta.ws.rs.core.Response;
+import io.quarkus.arc.properties.UnlessBuildProperty;
 
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.CommitmentState;

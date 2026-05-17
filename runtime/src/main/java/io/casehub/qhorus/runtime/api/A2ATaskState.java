@@ -11,7 +11,7 @@ class A2ATaskState {
     static String fromCommitmentState(CommitmentState state) {
         return switch (state) {
             case FULFILLED -> "completed";
-            case DELEGATED, ACKNOWLEDGED -> "working";
+            case DELEGATED, ACKNOWLEDGED -> "working"; // DELEGATED: retained for correctness if store behaviour changes
             case FAILED, DECLINED, EXPIRED -> "failed";
             case OPEN -> "submitted";
         };
