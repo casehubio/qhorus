@@ -160,7 +160,7 @@ casehub-qhorus/
 │           ├── ChannelBackend.java, AgentChannelBackend.java
 │           ├── HumanParticipatingChannelBackend.java, HumanObserverChannelBackend.java
 │           ├── InboundNormaliser.java, Senders.java (HUMAN = "human")
-│           └── ChannelRef.java, OutboundMessage.java, InboundHumanMessage.java, ObserverSignal.java, NormalisedMessage.java
+│           └── ChannelRef.java, OutboundMessage.java, InboundHumanMessage.java (externalSenderId, content, receivedAt, metadata, correlationId — nullable), ObserverSignal.java, NormalisedMessage.java (type, content, senderInstanceId, correlationId, inReplyTo, artefactRefs, target — last 4 nullable)
 ├── runtime/                             — Extension runtime module
 │   └── src/main/java/io/casehub/qhorus/runtime/
 │       ├── config/QhorusConfig.java     — @ConfigMapping(prefix = "casehub.qhorus")
@@ -205,7 +205,7 @@ casehub-qhorus/
 │       ├── gateway/
 │       │   ├── ChannelGateway.java              — registration, fanOut(), inbound normalisation
 │       │   ├── QhorusChannelBackend.java        — default AgentChannelBackend, wraps MessageService
-│       │   ├── DefaultInboundNormaliser.java    — @DefaultBean, always QUERY, human: sender prefix
+│       │   ├── DefaultInboundNormaliser.java    — @DefaultBean, always QUERY, human: sender prefix; passes correlationId through; nulls inReplyTo/artefactRefs/target
 │       │   └── DuplicateParticipatingBackendException.java
 │       └── api/
 │           ├── AgentCardResource.java   — GET /.well-known/agent-card.json (@UnlessBuildProperty)
