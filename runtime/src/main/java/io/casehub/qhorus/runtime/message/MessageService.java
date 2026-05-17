@@ -8,8 +8,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import jakarta.enterprise.inject.Instance;
+
 import io.casehub.ledger.api.model.ActorType;
+import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
@@ -29,12 +33,15 @@ public class MessageService {
     @Inject
     MessageTypePolicy messageTypePolicy;
 
+    @Inject
+    Instance<MessageObserver> observers;
+
     @Transactional
     public Message send(UUID channelId, String sender, MessageType type, String content,
             String correlationId, Long inReplyTo, String artefactRefs, String target,
             ActorType actorType) {
-        channelService.findById(channelId)
-                .ifPresent(ch -> messageTypePolicy.validate(ch, type));
+        final Channel ch = channelService.findById(channelId).orElse(null);
+        if (ch != null) messageTypePolicy.validate(ch, type);
         Message message = new Message();
         message.channelId = channelId;
         message.sender = sender;
@@ -46,6 +53,7 @@ public class MessageService {
         message.artefactRefs = artefactRefs;
         message.target = target;
         messageStore.put(message);
+        MessageObserverDispatcher.dispatch(ch != null ? ch.name : null, channelId, message, observers);
 
         // Trigger commitment state machine for obligation tracking
         if (message.correlationId != null) {
