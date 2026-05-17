@@ -157,12 +157,24 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_callsMessageServiceWithHumanSender() {
         InboundHumanMessage raw = new InboundHumanMessage(
-                "user-42", "Can you stop?", Instant.now(), Map.of());
+                "user-42", "Can you stop?", Instant.now(), Map.of(), null);
 
         gateway.receiveHumanMessage(channelRef, raw);
 
         verify(messageService).send(eq(channelId), eq("human:user-42"),
                 eq(MessageType.QUERY), eq("Can you stop?"), isNull(), isNull(),
+                isNull(), isNull(), eq(ActorType.HUMAN));
+    }
+
+    @Test
+    void receiveHumanMessage_withCorrelationId_passesCorrelationIdToMessageService() {
+        InboundHumanMessage raw = new InboundHumanMessage(
+                "user-42", "approved", Instant.now(), Map.of(), "corr-abc");
+
+        gateway.receiveHumanMessage(channelRef, raw);
+
+        verify(messageService).send(eq(channelId), eq("human:user-42"),
+                eq(MessageType.QUERY), eq("approved"), eq("corr-abc"), isNull(),
                 isNull(), isNull(), eq(ActorType.HUMAN));
     }
 
