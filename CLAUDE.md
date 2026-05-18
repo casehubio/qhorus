@@ -160,7 +160,9 @@ casehub-qhorus/
 │           ├── ChannelBackend.java, AgentChannelBackend.java
 │           ├── HumanParticipatingChannelBackend.java, HumanObserverChannelBackend.java
 │           ├── InboundNormaliser.java, Senders.java (HUMAN = "human")
-│           └── ChannelRef.java, OutboundMessage.java, InboundHumanMessage.java (externalSenderId, content, receivedAt, metadata, correlationId — nullable), ObserverSignal.java, NormalisedMessage.java (type, content, senderInstanceId, correlationId, inReplyTo, artefactRefs, target — last 4 nullable)
+│           ├── ChannelRef.java, OutboundMessage.java, InboundHumanMessage.java (externalSenderId, content, receivedAt, metadata, correlationId — nullable), ObserverSignal.java, NormalisedMessage.java (type, content, senderInstanceId, correlationId, inReplyTo, artefactRefs, target — last 4 nullable)
+│           ├── MessageObserver.java — @FunctionalInterface SPI: onMessage(MessageReceivedEvent); scope() default=LOCAL; Scope{LOCAL,CLUSTER}; impls must be @ApplicationScoped
+│           └── MessageReceivedEvent.java — record: channelName, channelId, messageType, senderId, correlationId (nullable), content (null for EVENT per PP-20260508-90428f)
 ├── runtime/                             — Extension runtime module
 │   └── src/main/java/io/casehub/qhorus/runtime/
 │       ├── config/QhorusConfig.java     — @ConfigMapping(prefix = "casehub.qhorus")
@@ -174,7 +176,8 @@ casehub-qhorus/
 │       │   ├── Commitment.java          — PanacheEntity (full obligation lifecycle: OPEN→FULFILLED/DECLINED/FAILED/DELEGATED/EXPIRED)
 │       │   ├── CommitmentState.java     — enum: 7 states, isTerminal()
 │       │   ├── CommitmentService.java   — state machine: open/acknowledge/fulfill/decline/fail/delegate/expireOverdue
-│       │   └── MessageService.java
+│       │   ├── MessageService.java      — dispatches to Instance<MessageObserver> after messageStore.put(); always fetches channel for observer channelName
+│       │   └── MessageObserverDispatcher.java — package-private static utility: iterates observers, nulls EVENT content, non-fatal per-observer try-catch; shared by MessageService + ReactiveMessageService
 │       ├── instance/
 │       │   ├── Instance.java            — PanacheEntity
 │       │   ├── Capability.java          — PanacheEntity (capability tags)
@@ -206,6 +209,7 @@ casehub-qhorus/
 │       │   ├── ChannelGateway.java              — registration, fanOut(), inbound normalisation
 │       │   ├── QhorusChannelBackend.java        — default AgentChannelBackend, wraps MessageService
 │       │   ├── DefaultInboundNormaliser.java    — @DefaultBean, always QUERY, human: sender prefix; passes correlationId through; nulls inReplyTo/artefactRefs/target
+│       │   ├── InProcessMessageBus.java         — @DefaultBean MessageObserver: fires CDI Event<MessageReceivedEvent> async; LOCAL scope; fast path for embedded harnesses
 │       │   └── DuplicateParticipatingBackendException.java
 │       └── api/
 │           ├── AgentCardResource.java   — GET /.well-known/agent-card.json (@UnlessBuildProperty)
