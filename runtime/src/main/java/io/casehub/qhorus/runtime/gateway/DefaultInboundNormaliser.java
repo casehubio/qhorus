@@ -18,6 +18,7 @@ public class DefaultInboundNormaliser implements InboundNormaliser {
         return new NormalisedMessage(
                 MessageType.QUERY,
                 raw.content(),
-                "human:" + raw.externalSenderId());
+                "human:" + raw.externalSenderId(),
+                raw.correlationId(), null, null, null);
     }
 }
