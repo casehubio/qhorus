@@ -288,6 +288,9 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 - `tools.sendMessage()` with type `"handoff"` requires a non-null `target` argument (e.g. `"role:specialist"`). Passing `null` throws `IllegalArgumentException`. All other message types accept null target. Tests using HANDOFF must supply a valid target string.
 - After a HANDOFF message, `CommitmentService.findByCorrelationId` returns the newly-created child OPEN commitment (for the delegate), not the parent DELEGATED commitment. `A2AResource.getTask()` accounts for this with a `commitment.state != CommitmentState.OPEN` guard, falling through to `A2ATaskState.fromMessageHistory()` for OPEN commitments. Integration tests for the DELEGATED/HANDOFF path exercise `fromMessageHistory(HANDOFF → "working")`, not `fromCommitmentState(DELEGATED)`.
 
+- `MessageObserver` implementations registered as CDI beans for testing must be `@ApplicationScoped`. `MessageObserverDispatcher` iterates `Instance<MessageObserver>` without calling `Instance.destroy()`, so `@Dependent` beans are never destroyed — one leaked instance per persisted message. This constraint applies to test-local observer beans as well as production ones. See PP-20260518-837246 and qhorus#167.
+- Flyway migrations are in `db/migration/qhorus/` (scoped subdirectory, not the shared `db/migration/` root). `quarkus.flyway.qhorus.locations=classpath:db/migration/qhorus` is set in `application.properties`. This isolation prevents V-number collisions when qhorus and casehub-work co-exist on the same classpath. Tests using `drop-and-create` are unaffected; this only matters for migration file placement and Flyway config.
+
 **Format check:** CI runs `mvn -Dno-format` to skip the enforced code formatting. Run `mvn` locally to apply formatting (via the formatter plugin in the Maven parent).
 
 ---
