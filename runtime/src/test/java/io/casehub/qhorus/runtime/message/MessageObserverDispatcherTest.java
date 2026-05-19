@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.MessageType;
+import io.quarkus.arc.InstanceHandle;
 
 class MessageObserverDispatcherTest {
 
@@ -27,6 +28,14 @@ class MessageObserverDispatcherTest {
         return m;
     }
 
+    /** Wraps an observer in a no-op handle for tests that don't verify lifecycle. */
+    private static <T> InstanceHandle<T> handle(final T instance) {
+        return new InstanceHandle<>() {
+            @Override public T get() { return instance; }
+            @Override public void close() { /* no-op: no Arc container in plain-Java tests */ }
+        };
+    }
+
     // ── Dispatch coverage ─────────────────────────────────────────────────
 
     @Test
@@ -36,7 +45,7 @@ class MessageObserverDispatcherTest {
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
                 message(MessageType.COMMAND, "analyse this", "corr-1"),
-                List.of(observer));
+                List.of(handle(observer)));
 
         assertEquals(1, captured.size());
         final MessageReceivedEvent e = captured.get(0);
@@ -55,7 +64,7 @@ class MessageObserverDispatcherTest {
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
                 message(MessageType.RESPONSE, "done", null),
-                List.of(first::add, second::add));
+                List.of(handle(first::add), handle(second::add)));
 
         assertEquals(1, first.size());
         assertEquals(1, second.size());
@@ -69,7 +78,7 @@ class MessageObserverDispatcherTest {
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
                 message(MessageType.EVENT, "{\"tool\":\"search\",\"duration_ms\":42}", null),
-                List.of(captured::add));
+                List.of(handle(captured::add)));
 
         assertNull(captured.get(0).content(),
                 "EVENT content must be null per PP-20260508-90428f");
@@ -82,7 +91,7 @@ class MessageObserverDispatcherTest {
             final List<MessageReceivedEvent> captured = new ArrayList<>();
             MessageObserverDispatcher.dispatch(channelName, channelId,
                     message(type, "payload-" + type, null),
-                    List.of(captured::add));
+                    List.of(handle(captured::add)));
             assertEquals("payload-" + type, captured.get(0).content(),
                     "content must be preserved for type " + type);
         }
@@ -98,7 +107,7 @@ class MessageObserverDispatcherTest {
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
                     message(MessageType.DONE, "finished", "corr-2"),
-                    List.of(boom, captured::add)));
+                    List.of(handle(boom), handle(captured::add))));
 
         assertEquals(1, captured.size());
     }
@@ -111,7 +120,60 @@ class MessageObserverDispatcherTest {
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
                     message(MessageType.FAILURE, "error", null),
-                    List.of(boom1, boom2)));
+                    List.of(handle(boom1), handle(boom2))));
+    }
+
+    // ── Handle lifecycle ──────────────────────────────────────────────────
+
+    @Test
+    void dispatch_closesHandleAfterEachObserver() {
+        final List<Boolean> closed = new ArrayList<>();
+        final InstanceHandle<MessageObserver> handle = new InstanceHandle<>() {
+            @Override public MessageObserver get() { return e -> {}; }
+            @Override public void close() { closed.add(true); }
+        };
+
+        MessageObserverDispatcher.dispatch(channelName, channelId,
+                message(MessageType.COMMAND, "test", null),
+                List.of(handle));
+
+        assertEquals(1, closed.size(), "handle.close() must be called once per observer");
+    }
+
+    @Test
+    void dispatch_closesHandleEvenIfObserverThrows() {
+        final List<Boolean> closed = new ArrayList<>();
+        final InstanceHandle<MessageObserver> handle = new InstanceHandle<>() {
+            @Override public MessageObserver get() { return e -> { throw new RuntimeException("boom"); }; }
+            @Override public void close() { closed.add(true); }
+        };
+
+        assertDoesNotThrow(() ->
+            MessageObserverDispatcher.dispatch(channelName, channelId,
+                    message(MessageType.COMMAND, "test", null),
+                    List.of(handle)));
+
+        assertEquals(1, closed.size(), "handle.close() must be called even when observer throws");
+    }
+
+    @Test
+    void dispatch_closesAllHandlesEvenWhenFirstObserverThrows() {
+        final List<Integer> closed = new ArrayList<>();
+        final InstanceHandle<MessageObserver> h1 = new InstanceHandle<>() {
+            @Override public MessageObserver get() { return e -> { throw new RuntimeException("boom"); }; }
+            @Override public void close() { closed.add(1); }
+        };
+        final InstanceHandle<MessageObserver> h2 = new InstanceHandle<>() {
+            @Override public MessageObserver get() { return e -> {}; }
+            @Override public void close() { closed.add(2); }
+        };
+
+        assertDoesNotThrow(() ->
+            MessageObserverDispatcher.dispatch(channelName, channelId,
+                    message(MessageType.COMMAND, "test", null),
+                    List.of(h1, h2)));
+
+        assertEquals(List.of(1, 2), closed, "both handles must be closed even when first observer throws");
     }
 
     // ── Nullable fields ───────────────────────────────────────────────────
@@ -122,7 +184,7 @@ class MessageObserverDispatcherTest {
 
         MessageObserverDispatcher.dispatch(null, channelId,
                 message(MessageType.QUERY, "hello", null),
-                List.of(captured::add));
+                List.of(handle(captured::add)));
 
         assertNull(captured.get(0).channelName());
     }
@@ -133,7 +195,7 @@ class MessageObserverDispatcherTest {
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
                 message(MessageType.STATUS, "working", null),
-                List.of(captured::add));
+                List.of(handle(captured::add)));
 
         assertNull(captured.get(0).correlationId());
     }

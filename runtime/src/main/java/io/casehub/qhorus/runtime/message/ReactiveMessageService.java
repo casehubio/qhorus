@@ -58,7 +58,7 @@ public class ReactiveMessageService {
                         final String channelName = chOpt.map(ch -> ch.name).orElse(null);
                         return messageStore.put(message)
                                 .invoke(m -> MessageObserverDispatcher.dispatch(
-                                        channelName, channelId, m, observers))
+                                        channelName, channelId, m, observers.handles()))
                                 .invoke(m -> {
                                     // Trigger commitment state machine for obligation tracking
                                     if (m.correlationId != null) {
