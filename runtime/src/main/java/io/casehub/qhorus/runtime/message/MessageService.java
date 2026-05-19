@@ -53,7 +53,7 @@ public class MessageService {
         message.artefactRefs = artefactRefs;
         message.target = target;
         messageStore.put(message);
-        MessageObserverDispatcher.dispatch(ch != null ? ch.name : null, channelId, message, observers);
+        MessageObserverDispatcher.dispatch(ch != null ? ch.name : null, channelId, message, observers.handles());
 
         // Trigger commitment state machine for obligation tracking
         if (message.correlationId != null) {

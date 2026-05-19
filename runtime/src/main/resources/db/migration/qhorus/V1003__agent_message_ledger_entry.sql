@@ -1,6 +1,11 @@
 -- AgentMessageLedgerEntry subclass table (JPA JOINED inheritance from ledger_entry)
 -- Stores Qhorus-specific telemetry fields for EVENT-type messages.
 -- Compatible with H2 (dev/test) and PostgreSQL (production).
+--
+-- Version gap explained: V1–V10 are qhorus domain tables (named 'qhorus' datasource).
+-- V1000–V1003 are reserved for casehub-ledger base schema (not in this repo).
+-- V1003 is the first ledger subclass join migration owned by qhorus.
+-- V1004+ = future ledger subclass joins. Next qhorus domain migration: V11.
 
 CREATE TABLE agent_message_ledger_entry (
     id            UUID         NOT NULL,

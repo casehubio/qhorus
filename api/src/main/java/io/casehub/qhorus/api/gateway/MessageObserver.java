@@ -9,10 +9,10 @@ package io.casehub.qhorus.api.gateway;
  * all of them. {@link Scope#LOCAL} is the fast path (in-JVM, CDI); declare
  * {@link Scope#CLUSTER} for network-crossing transports (Kafka, WebSocket, etc.).
  *
- * <p><strong>Scope requirement:</strong> implementations must be {@code @ApplicationScoped}.
- * {@code @Dependent} beans obtained from {@code Instance<MessageObserver>} are not
- * destroyed by the dispatcher and will leak. Explicit lifecycle management via
- * {@code Instance.handles()} is tracked in qhorus#167.
+ * <p><strong>Scope:</strong> any normal CDI scope is valid ({@code @ApplicationScoped},
+ * {@code @RequestScoped}, etc.). The dispatcher closes each
+ * {@link jakarta.enterprise.inject.Instance.Handle} in a {@code finally} block,
+ * correctly destroying {@code @Dependent}-scoped implementations after each dispatch.
  *
  * <p><strong>Do not query qhorus message state</strong> in observer implementations.
  * The dispatcher fires before the enclosing transaction commits; querying the message
