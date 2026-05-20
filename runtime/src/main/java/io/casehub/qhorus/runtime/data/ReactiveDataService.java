@@ -5,17 +5,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.store.ReactiveDataStore;
 import io.casehub.qhorus.runtime.store.query.DataQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
-import io.quarkus.arc.properties.IfBuildProperty;
 
-@Alternative
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveDataService {
 

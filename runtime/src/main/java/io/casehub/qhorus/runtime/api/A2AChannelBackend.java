@@ -32,8 +32,8 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
  *
  * Refs #135
  */
+@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
-@UnlessBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true", enableIfMissing = true)
 public class A2AChannelBackend implements ChannelBackend {
 
     private static final Logger LOG = Logger.getLogger(A2AChannelBackend.class);

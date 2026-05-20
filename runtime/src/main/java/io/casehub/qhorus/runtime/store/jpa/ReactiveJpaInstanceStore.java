@@ -6,19 +6,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.instance.Capability;
 import io.casehub.qhorus.runtime.instance.Instance;
 import io.casehub.qhorus.runtime.store.ReactiveInstanceStore;
 import io.casehub.qhorus.runtime.store.query.InstanceQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
-import io.quarkus.arc.properties.IfBuildProperty;
 
-@Alternative
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveJpaInstanceStore implements ReactiveInstanceStore {
 

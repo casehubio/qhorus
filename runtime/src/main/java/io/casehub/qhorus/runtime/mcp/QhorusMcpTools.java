@@ -18,7 +18,6 @@ import org.jboss.logging.Logger;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.ActorTypeResolver;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
@@ -45,6 +44,7 @@ import io.casehub.qhorus.runtime.message.MessageTypePolicy;
 import io.casehub.qhorus.runtime.store.CommitmentStore;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
+import io.quarkus.arc.properties.UnlessBuildProperty;
 /**
  * All business logic exceptions ({@link IllegalArgumentException} and
  * {@link IllegalStateException}) thrown from any {@code @Tool} method are
@@ -54,8 +54,8 @@ import io.casehub.qhorus.runtime.store.query.MessageQuery;
  * readable errors without changing the happy-path return types of the 37
  * structured-return tools. See ADR-0001.
  */
+@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
-@UnlessBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
 public class QhorusMcpTools extends QhorusMcpToolsBase {
 

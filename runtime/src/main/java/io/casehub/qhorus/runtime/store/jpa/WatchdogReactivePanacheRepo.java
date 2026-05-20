@@ -3,20 +3,18 @@ package io.casehub.qhorus.runtime.store.jpa;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.qhorus.runtime.watchdog.Watchdog;
-import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 import io.quarkus.arc.properties.IfBuildProperty;
+import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 
 /**
  * Minimal reactive Panache repository for {@link Watchdog}.
  *
  * <p>
- * Marked {@code @Alternative} so it is not active by default — consumers must select it
- * explicitly via {@code quarkus.arc.selected-alternatives} when they configure a reactive
- * datasource. This prevents Hibernate Reactive from booting in applications that only use
- * the blocking {@link JpaWatchdogStore}.
+ * Active when {@code casehub.qhorus.reactive.enabled=true}; excluded from CDI by
+ * {@code QhorusProcessor} otherwise. This prevents Hibernate Reactive from booting in
+ * applications that only use the blocking {@link JpaWatchdogStore}.
  *
  * <p>
  * Kept package-private and injected into {@link ReactiveJpaWatchdogStore}.
@@ -24,8 +22,7 @@ import io.quarkus.arc.properties.IfBuildProperty;
  * <p>
  * Refs #74.
  */
-@Alternative
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 class WatchdogReactivePanacheRepo implements PanacheRepositoryBase<Watchdog, UUID> {
 }

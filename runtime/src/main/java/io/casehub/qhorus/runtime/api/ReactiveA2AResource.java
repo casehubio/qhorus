@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import io.casehub.qhorus.api.message.CommitmentState;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
@@ -27,7 +28,6 @@ import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.smallrye.common.annotation.Blocking;
 import io.smallrye.mutiny.Uni;
-import io.quarkus.arc.properties.IfBuildProperty;
 
 /**
  * Reactive mirror of {@link A2AResource} — active only when
@@ -44,10 +44,10 @@ import io.quarkus.arc.properties.IfBuildProperty;
  *
  * @see A2AResource
  */
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @Path("/a2a")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
 public class ReactiveA2AResource {
 
     private static final Response A2A_DISABLED = Response

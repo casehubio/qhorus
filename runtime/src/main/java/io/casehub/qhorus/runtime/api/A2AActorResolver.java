@@ -17,8 +17,8 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
  * explicit header, instance registry, agent card URL,
  * ActorTypeResolver on agentId (covers persona + system), default HUMAN.
  */
+@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
-@UnlessBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true", enableIfMissing = true)
 public class A2AActorResolver {
 
     @Inject

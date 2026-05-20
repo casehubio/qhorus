@@ -19,25 +19,23 @@ import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.message.Message;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
-import io.quarkus.arc.properties.IfBuildProperty;
 
 /**
  * Reactive mirror of {@link LedgerWriteService}.
  *
  * <p>
- * {@code @Alternative} — inactive by default. Writes immutable audit ledger entries for
- * every message type using the reactive ledger repository. Called from
- * {@code ReactiveQhorusMcpTools.sendMessage} (via the blocking bridge in the current
- * {@code @Blocking} implementation). Failures are caught and swallowed at the call site
- * — the message pipeline must not be affected by ledger issues.
+ * Writes immutable audit ledger entries for every message type using the reactive ledger
+ * repository. Called from {@code ReactiveQhorusMcpTools.sendMessage} (via the blocking bridge
+ * in the current {@code @Blocking} implementation). Failures are caught and swallowed at the
+ * call site — the message pipeline must not be affected by ledger issues.
  *
  * <p>
  * Refs #105, Epic #99.
  */
-@Alternative
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveLedgerWriteService {
 

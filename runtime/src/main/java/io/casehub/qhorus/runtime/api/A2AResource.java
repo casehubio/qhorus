@@ -17,7 +17,6 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.CommitmentState;
@@ -28,6 +27,7 @@ import io.casehub.qhorus.runtime.message.Commitment;
 import io.casehub.qhorus.runtime.message.CommitmentService;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
+import io.quarkus.arc.properties.UnlessBuildProperty;
 
 /**
  * Optional A2A-compatible REST endpoint layer.
@@ -47,9 +47,9 @@ import io.casehub.qhorus.runtime.message.MessageService;
  *
  * @see <a href="https://google.github.io/A2A/">Google A2A Protocol</a>
  */
+@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @Path("/a2a")
 @ApplicationScoped
-@UnlessBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true", enableIfMissing = true)
 @Produces(MediaType.APPLICATION_JSON)
 public class A2AResource {
 

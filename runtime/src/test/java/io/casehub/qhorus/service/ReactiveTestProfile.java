@@ -17,14 +17,15 @@ public class ReactiveTestProfile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of(
-                "quarkus.arc.selected-alternatives",
+        return Map.ofEntries(
+                Map.entry("casehub.qhorus.reactive.enabled", "true"),
+                Map.entry("quarkus.arc.selected-alternatives",
                 String.join(",",
                         "io.casehub.qhorus.runtime.channel.ReactiveChannelService",
                         "io.casehub.qhorus.runtime.instance.ReactiveInstanceService",
                         "io.casehub.qhorus.runtime.message.ReactiveMessageService",
                         "io.casehub.qhorus.runtime.data.ReactiveDataService",
                         "io.casehub.qhorus.runtime.watchdog.ReactiveWatchdogService",
-                        "io.casehub.qhorus.runtime.ledger.ReactiveLedgerWriteService"));
+                        "io.casehub.qhorus.runtime.ledger.ReactiveLedgerWriteService")));
     }
 }

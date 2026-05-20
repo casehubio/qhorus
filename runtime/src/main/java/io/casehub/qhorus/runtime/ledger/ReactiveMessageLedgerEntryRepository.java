@@ -8,23 +8,22 @@ import java.util.Set;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
-import io.smallrye.mutiny.Uni;
 import io.quarkus.arc.properties.IfBuildProperty;
+import io.smallrye.mutiny.Uni;
 
 /**
  * Reactive mirror of {@link MessageLedgerEntryRepository}.
  *
  * <p>
- * {@code @Alternative} — inactive by default. Activate via
- * {@code quarkus.arc.selected-alternatives} when a reactive datasource is configured.
- * Tests are {@code @Disabled} in CI (requires PostgreSQL reactive driver, not H2).
+ * Active when {@code casehub.qhorus.reactive.enabled=true}; excluded from CDI by
+ * {@code QhorusProcessor} otherwise. Tests are {@code @Disabled} in CI (requires
+ * PostgreSQL reactive driver, not H2).
  *
  * <p>
  * {@link LedgerAttestation} methods throw {@link UnsupportedOperationException} —
@@ -33,8 +32,7 @@ import io.quarkus.arc.properties.IfBuildProperty;
  * <p>
  * Refs #105, Epic #99.
  */
-@Alternative
-@IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveMessageLedgerEntryRepository implements ReactiveLedgerEntryRepository {
 
