@@ -30,7 +30,7 @@ import io.casehub.qhorus.runtime.store.ReactiveMessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+
 @IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
 @ApplicationScoped
 public class QhorusDashboardService {
