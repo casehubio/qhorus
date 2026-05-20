@@ -17,15 +17,11 @@ public class ReactiveTestProfile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.ofEntries(
-                Map.entry("casehub.qhorus.reactive.enabled", "true"),
-                Map.entry("quarkus.arc.selected-alternatives",
-                String.join(",",
-                        "io.casehub.qhorus.runtime.channel.ReactiveChannelService",
-                        "io.casehub.qhorus.runtime.instance.ReactiveInstanceService",
-                        "io.casehub.qhorus.runtime.message.ReactiveMessageService",
-                        "io.casehub.qhorus.runtime.data.ReactiveDataService",
-                        "io.casehub.qhorus.runtime.watchdog.ReactiveWatchdogService",
-                        "io.casehub.qhorus.runtime.ledger.ReactiveLedgerWriteService")));
+        // casehub.qhorus.reactive.enabled=true activates reactive beans via @IfBuildProperty
+        // at augmentation time for the restarted Quarkus context.
+        // quarkus.arc.selected-alternatives was removed — reactive service beans no longer
+        // carry @Alternative (that was part of the old gating pattern, now superseded by
+        // @IfBuildProperty with casehub.qhorus.reactive.enabled).
+        return Map.of("casehub.qhorus.reactive.enabled", "true");
     }
 }

@@ -21,8 +21,10 @@ import static org.junit.jupiter.api.Assertions.*;
  * excluded from the CDI container and blocking beans are active.
  *
  * This test runs in the runtime module itself where quarkus-hibernate-reactive-panache
- * is still on the classpath (needed for compilation). The build-time property quarkus.datasource.qhorus.reactive is
- * set to false in test application.properties, so @IfBuildProperty on reactive beans
+ * is still on the classpath (needed for compilation). The build-time property
+ * {@code casehub.qhorus.reactive.enabled} defaults to {@code false} (via
+ * {@code @WithDefault} in {@code QhorusBuildTimeConfig}), so
+ * {@code @IfBuildProperty(casehub.qhorus.reactive.enabled=true)} on reactive beans
  * evaluates to false and they are excluded from the CDI container at augmentation time.
  */
 @QuarkusTest

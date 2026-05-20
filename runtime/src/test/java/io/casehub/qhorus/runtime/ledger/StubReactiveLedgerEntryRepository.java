@@ -16,11 +16,11 @@ import io.quarkus.arc.DefaultBean;
 import io.smallrye.mutiny.Uni;
 
 /**
- * Test stub satisfying the ReactiveLedgerEntryRepository CDI dependency when
- * quarkus.datasource.qhorus.reactive=false (i.e., all non-reactive @QuarkusTest runs).
+ * Test stub satisfying the ReactiveLedgerEntryRepository CDI dependency in H2/JDBC
+ * non-reactive @QuarkusTest runs (casehub.qhorus.reactive.enabled absent or false).
  *
  * The real implementation (ReactiveMessageLedgerEntryRepository) is gated by
- * @IfBuildProperty(reactive=true) and is absent in H2/non-reactive test contexts.
+ * @IfBuildProperty(casehub.qhorus.reactive.enabled=true) and is absent in H2 test contexts.
  * Without this stub, casehub-ledger beans that inject ReactiveLedgerEntryRepository
  * (LedgerVerificationService, KeyRotationService) fail CDI validation at build time.
  *
