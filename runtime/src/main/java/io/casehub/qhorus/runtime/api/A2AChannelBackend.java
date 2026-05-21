@@ -70,10 +70,8 @@ public class A2AChannelBackend implements ChannelBackend {
      */
     @Override
     public void post(ChannelRef channel, OutboundMessage message) {
-        if (message.correlationId() != null) {
-            LOG.debugf("A2A backend notified: channel=%s correlationId=%s type=%s",
-                    channel.name(), message.correlationId(), message.senderActorType());
-        }
+        LOG.debugf("A2A backend notified: channel=%s correlationId=%s type=%s",
+                channel.name(), message.correlationId(), message.senderActorType());
     }
 
     @Override
