@@ -21,27 +21,48 @@ class DefaultInboundNormaliserTest {
 
     @Test
     void normalise_alwaysReturnsQuery() {
-        var raw = new InboundHumanMessage("user-42", "Please analyse this", Instant.now(), Map.of());
+        var raw = new InboundHumanMessage("user-42", "Please analyse this", Instant.now(), Map.of(), null);
         assertEquals(MessageType.QUERY, normaliser.normalise(channel, raw).type());
     }
 
     @Test
     void normalise_preservesContent() {
-        var raw = new InboundHumanMessage("user-42", "Hello agent!", Instant.now(), Map.of());
+        var raw = new InboundHumanMessage("user-42", "Hello agent!", Instant.now(), Map.of(), null);
         assertEquals("Hello agent!", normaliser.normalise(channel, raw).content());
     }
 
     @Test
     void normalise_senderIdPrefixedWithHuman() {
-        var raw = new InboundHumanMessage("+447911123456", "stop", Instant.now(), Map.of());
+        var raw = new InboundHumanMessage("+447911123456", "stop", Instant.now(), Map.of(), null);
         assertEquals("human:+447911123456", normaliser.normalise(channel, raw).senderInstanceId());
     }
 
     @Test
     void normalise_emptyContent_stillReturnsQuery() {
-        var raw = new InboundHumanMessage("user-1", "", Instant.now(), Map.of());
+        var raw = new InboundHumanMessage("user-1", "", Instant.now(), Map.of(), null);
         NormalisedMessage result = normaliser.normalise(channel, raw);
         assertEquals(MessageType.QUERY, result.type());
         assertEquals("human:user-1", result.senderInstanceId());
+    }
+
+    @Test
+    void normalise_withCorrelationId_passesThrough() {
+        var raw = new InboundHumanMessage("user-42", "approved", Instant.now(), Map.of(), "corr-99");
+        assertEquals("corr-99", normaliser.normalise(channel, raw).correlationId());
+    }
+
+    @Test
+    void normalise_nullCorrelationId_propagatesNull() {
+        var raw = new InboundHumanMessage("user-42", "hello", Instant.now(), Map.of(), null);
+        assertNull(normaliser.normalise(channel, raw).correlationId());
+    }
+
+    @Test
+    void normalise_remainingNullableFields_areNull() {
+        var raw = new InboundHumanMessage("user-42", "hello", Instant.now(), Map.of(), null);
+        NormalisedMessage result = normaliser.normalise(channel, raw);
+        assertNull(result.inReplyTo());
+        assertNull(result.artefactRefs());
+        assertNull(result.target());
     }
 }

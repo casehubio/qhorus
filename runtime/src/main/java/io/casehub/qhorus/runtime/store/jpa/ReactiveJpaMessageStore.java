@@ -8,17 +8,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.store.ReactiveMessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveJpaMessageStore implements ReactiveMessageStore {
 

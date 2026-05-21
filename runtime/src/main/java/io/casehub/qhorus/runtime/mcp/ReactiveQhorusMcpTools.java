@@ -18,8 +18,13 @@ import org.jboss.logging.Logger;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
+import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.ActorTypeResolver;
+import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.MessageResult;
+import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.CommitmentState;
@@ -45,7 +50,9 @@ import io.casehub.qhorus.runtime.message.Commitment;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.MessageTypePolicy;
 import io.casehub.qhorus.runtime.store.CommitmentStore;
+import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.ReactiveMessageStore;
+import io.casehub.qhorus.runtime.store.query.MessageQuery;
 import io.casehub.qhorus.runtime.watchdog.ReactiveWatchdogService;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.smallrye.common.annotation.Blocking;
@@ -63,8 +70,8 @@ import io.smallrye.mutiny.Uni;
  * {@link IllegalStateException}) are automatically wrapped in
  * {@link io.quarkiverse.mcp.server.ToolCallException} by the quarkus-mcp-server interceptor.
  */
-@WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
+@WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @ApplicationScoped
 public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
@@ -110,6 +117,9 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
     io.casehub.qhorus.runtime.ledger.LedgerWriteService blockingLedgerWriteService;
 
     @Inject
+    MessageStore blockingMessageStore;
+
+    @Inject
     MessageLedgerEntryRepository ledgerRepo;
 
     @Inject
@@ -123,6 +133,9 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.gateway.ChannelBackend> availableBackends;
+
+    @Inject
+    InstanceActorIdProvider instanceActorIdProvider;
 
     // ---------------------------------------------------------------------------
     // Category A: Instance tools
@@ -309,6 +322,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                 .map(opt -> opt.orElseThrow(
                         () -> new IllegalArgumentException("Channel not found: " + channelName)))
                 .invoke(ch -> checkAdminAccess(ch, callerInstanceId, "delete_channel"))
+                .invoke(ch -> commitmentStore.deleteAll(ch.id))
                 .flatMap(ch -> channelService.delete(channelName, Boolean.TRUE.equals(force))
                         .invoke(ignored -> channelGateway.closeChannel(ch.id, new ChannelRef(ch.id, ch.name))))
                 .map(deleted -> new DeleteChannelResult(channelName, deleted, "deleted"));
@@ -584,7 +598,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
         // Post audit event
         String auditContent = "force_release" + (reason != null && !reason.isBlank() ? ": " + reason : "");
-        blockingMessageService.send(ch.id, "system", MessageType.EVENT, auditContent, null, null, null, null);
+        blockingMessageService.send(ch.id, "system", MessageType.EVENT, auditContent, null, null, null, null,
+                ActorType.SYSTEM);
 
         blockingChannelService.updateLastActivity(ch.id);
 
@@ -716,6 +731,9 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             }
         }
 
+        ActorType resolvedActorType =
+                ActorTypeResolver.resolve(instanceActorIdProvider.resolve(sender));
+
         // LAST_WRITE enforcement: one authoritative writer per channel
         if (ch.semantic == ChannelSemantic.LAST_WRITE) {
             List<Message> existing = Message.<Message> find(
@@ -730,6 +748,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                     last.inReplyTo = inReplyTo;
                     last.artefactRefs = refsStr;
                     last.target = normalisedTarget;
+                    last.actorType = resolvedActorType;
                     last.createdAt = Instant.now();
                     blockingChannelService.updateLastActivity(ch.id);
                     rateLimiter.recordSend(ch.id, sender, ch.rateLimitPerChannel, ch.rateLimitPerInstance);
@@ -744,9 +763,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                 }
             }
         }
-
         Message msg = blockingMessageService.send(ch.id, sender, msgType, content, corrId, inReplyTo, refsStr,
-                normalisedTarget);
+                normalisedTarget, resolvedActorType);
 
         if (deadline != null && !deadline.isBlank() && msgType.requiresCorrelationId()) {
             msg.deadline = java.time.Instant.now().plus(java.time.Duration.parse(deadline));
@@ -765,7 +783,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             UUID corrUuid = (corrId != null) ? UUID.fromString(corrId) : null;
             channelGateway.fanOut(ch.id, new OutboundMessage(
                     UUID.randomUUID(), sender, msgType, content, corrUuid,
-                    ActorTypeResolver.resolve(sender)));
+                    msg.actorType));
         } catch (Exception e) {
             LOG.warnf("Gateway fanOut failed for message %d in channel '%s': %s",
                     msg.id, ch.name, e.getMessage());
@@ -1198,7 +1216,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         Message.update("inReplyTo = null WHERE inReplyTo = ?1", messageId);
         // Post audit event to the channel
         blockingMessageService.send(msg.channelId, "system", MessageType.EVENT,
-                "delete_message: id=" + messageId + " sender=" + sender, null, null, null, null);
+                "delete_message: id=" + messageId + " sender=" + sender, null, null, null, null,
+                ActorType.SYSTEM);
         msg.delete();
         return new DeleteMessageResult(messageId, true, sender, type, preview,
                 "Message " + messageId + " deleted");
@@ -1224,7 +1243,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                 ch.id, MessageType.EVENT);
         // Post audit event (survives the clear)
         blockingMessageService.send(ch.id, "system", MessageType.EVENT,
-                "clear_channel: " + deleted + " message(s) deleted", null, null, null, null);
+                "clear_channel: " + deleted + " message(s) deleted", null, null, null, null,
+                ActorType.SYSTEM);
         blockingChannelService.updateLastActivity(ch.id);
         return new ClearChannelResult(channelName, (int) deleted, true);
     }
@@ -1349,20 +1369,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
         int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 200) : 50;
 
-        List<Message> messages;
-        if (afterId != null) {
-            messages = Message.<Message> find(
-                    "channelId = ?1 AND id > ?2 ORDER BY id ASC",
-                    ch.id, afterId)
-                    .page(0, effectiveLimit)
-                    .list();
-        } else {
-            messages = Message.<Message> find(
-                    "channelId = ?1 ORDER BY id ASC",
-                    ch.id)
-                    .page(0, effectiveLimit)
-                    .list();
-        }
+        List<Message> messages = blockingMessageStore.scan(
+                MessageQuery.poll(ch.id, afterId, effectiveLimit));
 
         return messages.stream().map(this::toTimelineEntry).toList();
     }

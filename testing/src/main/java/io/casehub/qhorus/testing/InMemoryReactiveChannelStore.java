@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.store.ReactiveChannelStore;
@@ -18,34 +19,36 @@ import io.smallrye.mutiny.Uni;
 @ApplicationScoped
 public class InMemoryReactiveChannelStore implements ReactiveChannelStore {
 
-    private final InMemoryChannelStore delegate = new InMemoryChannelStore();
+    /** Injected by CDI in @QuarkusTest; may be set directly in plain unit tests. */
+    @Inject
+    InMemoryChannelStore blocking = new InMemoryChannelStore();
 
     @Override
     public Uni<Channel> put(Channel channel) {
-        return Uni.createFrom().item(() -> delegate.put(channel));
+        return Uni.createFrom().item(() -> blocking.put(channel));
     }
 
     @Override
     public Uni<Optional<Channel>> find(UUID id) {
-        return Uni.createFrom().item(() -> delegate.find(id));
+        return Uni.createFrom().item(() -> blocking.find(id));
     }
 
     @Override
     public Uni<Optional<Channel>> findByName(String name) {
-        return Uni.createFrom().item(() -> delegate.findByName(name));
+        return Uni.createFrom().item(() -> blocking.findByName(name));
     }
 
     @Override
     public Uni<List<Channel>> scan(ChannelQuery query) {
-        return Uni.createFrom().item(() -> delegate.scan(query));
+        return Uni.createFrom().item(() -> blocking.scan(query));
     }
 
     @Override
     public Uni<Void> delete(UUID id) {
-        return Uni.createFrom().voidItem().invoke(() -> delegate.delete(id));
+        return Uni.createFrom().voidItem().invoke(() -> blocking.delete(id));
     }
 
     public void clear() {
-        delegate.clear();
+        blocking.clear();
     }
 }

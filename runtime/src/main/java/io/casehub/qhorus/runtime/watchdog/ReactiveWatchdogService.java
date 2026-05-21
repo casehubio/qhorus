@@ -5,15 +5,15 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.store.ReactiveWatchdogStore;
 import io.casehub.qhorus.runtime.store.query.WatchdogQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveWatchdogService {
 
@@ -22,7 +22,7 @@ public class ReactiveWatchdogService {
 
     public Uni<Watchdog> register(String conditionType, String targetName, Integer thresholdSeconds,
             Integer thresholdCount, String notificationChannel, String createdBy) {
-        return Panache.withTransaction(() -> {
+        return Panache.withTransaction("qhorus", () -> {
             Watchdog w = new Watchdog();
             w.conditionType = conditionType;
             w.targetName = targetName;
@@ -43,7 +43,7 @@ public class ReactiveWatchdogService {
     }
 
     public Uni<Boolean> delete(UUID id) {
-        return Panache.withTransaction(() -> watchdogStore.find(id).flatMap(opt -> {
+        return Panache.withTransaction("qhorus", () -> watchdogStore.find(id).flatMap(opt -> {
             if (opt.isEmpty()) {
                 return Uni.createFrom().item(false);
             }

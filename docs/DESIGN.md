@@ -27,6 +27,32 @@ Maven multi-module layout:
 | Runtime | `casehub-qhorus` | Extension runtime — entities, services, MCP tools, REST |
 | Deployment | `casehub-qhorus-deployment` | Build-time processor — feature registration, native config |
 
+### Gateway SPI (api module)
+
+`InboundNormaliser` is the complete, single translation point from backend format to
+domain format. `NormalisedMessage` carries all 7 fields needed by `messageService.send()`:
+`type`, `content`, `senderInstanceId`, `correlationId`, `inReplyTo`, `artefactRefs`,
+`target` — all nullable. `ChannelGateway.receiveHumanMessage()` is a clean 1:1 mapping;
+future additions to `messageService.send()` extend `NormalisedMessage` without gateway changes.
+
+`InboundHumanMessage` (backend-facing SPI record) carries `correlationId` (nullable) —
+the one field with a concrete backend use case. Other domain fields (`inReplyTo`,
+`artefactRefs`, `target`) are deferred to targeted changes when a backend needs them.
+
+### Notification SPI (api module)
+
+`MessageObserver` (`@FunctionalInterface`) and `MessageReceivedEvent` (plain record)
+form the transport-agnostic notification SPI. `Scope { LOCAL, CLUSTER }` makes topology
+intent explicit: `Scope.LOCAL` is the in-JVM fast path (zero serialisation, zero network);
+`Scope.CLUSTER` signals a network-crossing transport. Multiple implementations coexist via
+`Instance<MessageObserver>` — CDI today, Kafka or WebSocket tomorrow, without changing
+harness code or the api contract.
+
+`InProcessMessageBus` (`@DefaultBean @ApplicationScoped`) is the CDI fast path for
+embedded harnesses: `fireAsync(MessageReceivedEvent)`. `MessageObserverDispatcher`
+(package-private static utility) is shared by both blocking and reactive services,
+enforces EVENT content null (PP-20260508-90428f), and isolates observer failures.
+
 ---
 
 ## Technology Stack
@@ -109,6 +135,8 @@ All services are `@ApplicationScoped`. Mutating methods are `@Transactional`.
 
 **Key invariants:**
 - `MessageService.send()` always calls `ChannelService.updateLastActivity()` — channel `lastActivityAt` is always current.
+- `MessageService.send()` auto-fulfills, auto-declines, or auto-acknowledges the commitment state machine when `correlationId` is non-null. Human responses via `HumanParticipatingChannelBackend` now thread correlationId through `InboundHumanMessage` → `NormalisedMessage` → `ChannelGateway` → `MessageService`, enabling automatic commitment resolution without polling or bypass endpoints.
+- `MessageService.send()` dispatches to all registered `MessageObserver` beans after persistence. Dispatch fires before transaction commit — event payload is intentionally self-contained so observers never need to query qhorus message state synchronously.
 - `MessageService.pollAfter()` filters out `EVENT` messages — agent context is never polluted with telemetry.
 - `DataService.isGcEligible()` requires `complete = true AND claimCount = 0` — incomplete artefacts never GC-eligible.
 - `InstanceService.register()` replaces capability tags on every upsert — no stale tags accumulate.
@@ -132,6 +160,9 @@ Five domain store interfaces under `runtime/store/`, JPA implementations under
 | `InstanceStore` | `InstanceQuery(capability, status, staleOlderThan)` | `putCapabilities` (replace-all), `findCapabilities` |
 | `DataStore` | `DataQuery(createdBy, complete)` | `putClaim`, `deleteClaim`, `countClaims`, `hasClaim` |
 | `WatchdogStore` | `WatchdogQuery(conditionType)` | — |
+| `CommitmentStore` | — | `findByCorrelationId`, `findOpenByObligor`, `findOpenByRequester`, `findByState`, `deleteAll(channelId)` |
+
+`delete_channel` teardown order: `commitmentStore.deleteAll(channelId)` → `messageStore.deleteAll(channelId)` → `channelStore.delete(channelName)` — required because neither FK has `ON DELETE CASCADE`.
 
 ### Reactive stores (`quarkus.qhorus.reactive.enabled=true`)
 
@@ -151,6 +182,15 @@ Consumers add `casehub-qhorus-testing` at test scope to activate in-memory
 stores automatically — no database required for unit tests. See
 [ADR-0002](../adr/0002-persistence-abstraction-store-pattern.md) and
 [ADR-0003](../adr/0003-reactive-dual-stack.md).
+
+### Schema management
+
+Flyway manages the `qhorus` datasource schema via migrations in
+`classpath:db/migration/qhorus` — a scoped subdirectory that isolates qhorus
+migrations from other extensions on the same classpath. Version numbers are
+module-local (V1–V9 for domain tables, V1003 for the ledger subclass join).
+The named-datasource isolation of the migration directory mirrors the
+named-datasource isolation of the runtime connection pool.
 
 ---
 
@@ -184,6 +224,7 @@ All tools exposed via `QhorusMcpTools` (`@ApplicationScoped`, active by default)
 | `set_channel_writers` | `ChannelDetail` | Update write ACL; null = open to all |
 | `set_channel_admins` | `ChannelDetail` | Update management ACL; null = open to any caller |
 | `set_channel_rate_limits` | `ChannelDetail` | Update per-channel and per-instance rate limits (messages/min); null = unlimited |
+| `delete_channel` | `DeleteChannelResult` | `force=true` deletes commitments then messages then channel row (FK teardown order); rejects if messages exist unless force |
 
 ### Observers
 | Tool | Returns | Notes |

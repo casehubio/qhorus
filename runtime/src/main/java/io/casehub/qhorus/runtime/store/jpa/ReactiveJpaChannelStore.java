@@ -6,16 +6,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.store.ReactiveChannelStore;
 import io.casehub.qhorus.runtime.store.query.ChannelQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveJpaChannelStore implements ReactiveChannelStore {
 

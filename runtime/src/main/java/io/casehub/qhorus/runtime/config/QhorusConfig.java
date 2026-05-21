@@ -26,19 +26,6 @@ public interface QhorusConfig {
     /** Attestation confidence values written on terminal commitment outcomes. */
     Attestation attestation();
 
-    /** Reactive dual-stack settings (build-time fixed — read QhorusBuildConfig at build time). */
-    Reactive reactive();
-
-    interface Reactive {
-        /**
-         * When true, the reactive dual-stack is active (set at build time via
-         * casehub.qhorus.reactive.enabled). Runtime reads of this value reflect
-         * what was set when the application was compiled.
-         */
-        @WithDefault("false")
-        boolean enabled();
-    }
-
     interface Watchdog {
         /**
          * When true, enables the watchdog MCP tools and condition evaluation scheduler.

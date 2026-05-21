@@ -6,17 +6,17 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.ReactiveChannelStore;
 import io.casehub.qhorus.runtime.store.query.ChannelQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveChannelService {
 
@@ -36,7 +36,7 @@ public class ReactiveChannelService {
     public Uni<Channel> create(String name, String description, ChannelSemantic semantic,
             String barrierContributors, String allowedWriters, String adminInstances,
             Integer rateLimitPerChannel, Integer rateLimitPerInstance, String allowedTypes) {
-        return Panache.withTransaction(() -> {
+        return Panache.withTransaction("qhorus", () -> {
             Channel channel = new Channel();
             channel.name = name;
             channel.description = description;
@@ -67,7 +67,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Channel> setRateLimits(String name, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
                     ch.rateLimitPerChannel = rateLimitPerChannel;
@@ -77,7 +77,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Channel> setAllowedWriters(String name, String allowedWriters) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
                     ch.allowedWriters = (allowedWriters == null || allowedWriters.isBlank()) ? null
@@ -87,7 +87,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Channel> setAdminInstances(String name, String adminInstances) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
                     ch.adminInstances = (adminInstances == null || adminInstances.isBlank()) ? null
@@ -105,7 +105,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Channel> pause(String name) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
                     ch.paused = true;
@@ -114,7 +114,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Channel> resume(String name) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
                     ch.paused = false;
@@ -135,7 +135,7 @@ public class ReactiveChannelService {
      * @return number of messages deleted
      */
     public Uni<Long> delete(final String name, final boolean force) {
-        return Panache.withTransaction(() -> channelStore.findByName(name)
+        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
                 .map(opt -> opt.orElseThrow(
                         () -> new IllegalArgumentException("Channel not found: " + name)))
                 .map(ch -> {
@@ -154,7 +154,7 @@ public class ReactiveChannelService {
     }
 
     public Uni<Void> updateLastActivity(UUID channelId) {
-        return Panache.withTransaction(() -> channelStore.find(channelId)
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .invoke(opt -> opt.ifPresent(ch -> ch.lastActivityAt = Instant.now()))
                 .replaceWithVoid());
     }

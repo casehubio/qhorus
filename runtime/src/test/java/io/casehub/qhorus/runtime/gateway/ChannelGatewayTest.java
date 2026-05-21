@@ -120,7 +120,8 @@ class ChannelGatewayTest {
         gateway.post(channelId, msg);
 
         verify(messageService).send(eq(channelId), eq("agent-a"), eq(MessageType.COMMAND),
-                eq("do it"), eq(corrId.toString()), isNull());
+                eq("do it"), eq(corrId.toString()), isNull(),
+                isNull(), isNull(), eq(ActorType.AGENT));
     }
 
     @Test
@@ -156,12 +157,25 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_callsMessageServiceWithHumanSender() {
         InboundHumanMessage raw = new InboundHumanMessage(
-                "user-42", "Can you stop?", Instant.now(), Map.of());
+                "user-42", "Can you stop?", Instant.now(), Map.of(), null);
 
         gateway.receiveHumanMessage(channelRef, raw);
 
         verify(messageService).send(eq(channelId), eq("human:user-42"),
-                eq(MessageType.QUERY), eq("Can you stop?"), isNull(), isNull());
+                eq(MessageType.QUERY), eq("Can you stop?"), isNull(), isNull(),
+                isNull(), isNull(), eq(ActorType.HUMAN));
+    }
+
+    @Test
+    void receiveHumanMessage_withCorrelationId_passesCorrelationIdToMessageService() {
+        InboundHumanMessage raw = new InboundHumanMessage(
+                "user-42", "approved", Instant.now(), Map.of(), "corr-abc");
+
+        gateway.receiveHumanMessage(channelRef, raw);
+
+        verify(messageService).send(eq(channelId), eq("human:user-42"),
+                eq(MessageType.QUERY), eq("approved"), eq("corr-abc"), isNull(),
+                isNull(), isNull(), eq(ActorType.HUMAN));
     }
 
     @Test
@@ -172,6 +186,7 @@ class ChannelGatewayTest {
         gateway.receiveObserverSignal(channelRef, signal);
 
         verify(messageService).send(eq(channelId), eq("human:panel-user"),
-                eq(MessageType.EVENT), eq("thumbs up"), isNull(), isNull());
+                eq(MessageType.EVENT), eq("thumbs up"), isNull(), isNull(),
+                isNull(), isNull(), eq(ActorType.HUMAN));
     }
 }

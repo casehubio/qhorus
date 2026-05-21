@@ -18,8 +18,13 @@ import org.jboss.logging.Logger;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
+import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.ActorTypeResolver;
+import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
+import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.MessageResult;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.CommitmentState;
@@ -43,7 +48,6 @@ import io.casehub.qhorus.runtime.store.CommitmentStore;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
 import io.quarkus.arc.properties.UnlessBuildProperty;
-
 /**
  * All business logic exceptions ({@link IllegalArgumentException} and
  * {@link IllegalStateException}) thrown from any {@code @Tool} method are
@@ -98,6 +102,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.gateway.ChannelBackend> availableBackends;
+
+    @Inject
+    InstanceActorIdProvider instanceActorIdProvider;
 
     // ---------------------------------------------------------------------------
     // Instance management tools
@@ -363,6 +370,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         Channel ch = channelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
         checkAdminAccess(ch, callerInstanceId, "delete_channel");
+        commitmentStore.deleteAll(ch.id);
         long deleted = channelService.delete(channelName, Boolean.TRUE.equals(force));
         channelGateway.closeChannel(ch.id, new ChannelRef(ch.id, ch.name));
         return new DeleteChannelResult(channelName, deleted, "deleted");
@@ -455,7 +463,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
         // Post audit event
         String auditContent = "force_release" + (reason != null && !reason.isBlank() ? ": " + reason : "");
-        messageService.send(ch.id, "system", MessageType.EVENT, auditContent, null, null, null, null);
+        messageService.send(ch.id, "system", MessageType.EVENT, auditContent, null, null, null, null,
+                ActorType.SYSTEM);
 
         channelService.updateLastActivity(ch.id);
 
@@ -607,6 +616,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             }
         }
 
+        ActorType resolvedActorType =
+                ActorTypeResolver.resolve(instanceActorIdProvider.resolve(sender));
+
         // LAST_WRITE enforcement: one authoritative writer per channel
         if (ch.semantic == ChannelSemantic.LAST_WRITE) {
             List<Message> existing = Message.<Message> find(
@@ -622,6 +634,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     last.inReplyTo = inReplyTo;
                     last.artefactRefs = refsStr;
                     last.target = normalisedTarget;
+                    last.actorType = resolvedActorType;
                     last.createdAt = Instant.now();
                     channelService.updateLastActivity(ch.id);
                     rateLimiter.recordSend(ch.id, sender, ch.rateLimitPerChannel, ch.rateLimitPerInstance);
@@ -636,9 +649,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 }
             }
         }
-
         Message msg = messageService.send(ch.id, sender, msgType, content, corrId, inReplyTo, refsStr,
-                normalisedTarget);
+                normalisedTarget, resolvedActorType);
 
         if (deadline != null && !deadline.isBlank() && msgType.requiresCorrelationId()) {
             msg.deadline = java.time.Instant.now().plus(java.time.Duration.parse(deadline));
@@ -657,7 +669,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             UUID corrUuid = (corrId != null) ? UUID.fromString(corrId) : null;
             channelGateway.fanOut(ch.id, new OutboundMessage(
                     UUID.randomUUID(), sender, msgType, content, corrUuid,
-                    ActorTypeResolver.resolve(sender)));
+                    msg.actorType));
         } catch (Exception e) {
             LOG.warnf("Gateway fanOut failed for message %d in channel '%s': %s",
                     msg.id, ch.name, e.getMessage());
@@ -1276,7 +1288,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         Message.update("inReplyTo = null WHERE inReplyTo = ?1", messageId);
         // Post audit event to the channel
         messageService.send(msg.channelId, "system", MessageType.EVENT,
-                "delete_message: id=" + messageId + " sender=" + sender, null, null, null, null);
+                "delete_message: id=" + messageId + " sender=" + sender, null, null, null, null,
+                ActorType.SYSTEM);
         msg.delete();
         return new DeleteMessageResult(messageId, true, sender, type, preview,
                 "Message " + messageId + " deleted");
@@ -1301,7 +1314,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 ch.id, MessageType.EVENT);
         // Post audit event (survives the clear)
         messageService.send(ch.id, "system", MessageType.EVENT,
-                "clear_channel: " + deleted + " message(s) deleted", null, null, null, null);
+                "clear_channel: " + deleted + " message(s) deleted", null, null, null, null,
+                ActorType.SYSTEM);
         channelService.updateLastActivity(ch.id);
         return new ClearChannelResult(channelName, (int) deleted, true);
     }

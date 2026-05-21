@@ -16,7 +16,9 @@ import io.smallrye.mutiny.Uni;
 
 /**
  * Reactive mirror of {@link AgentCardResource} — active only when
- * {@code casehub.qhorus.reactive.enabled=true}.
+ * a reactive datasource is configured (build-time).
+ * In blocking-only deployments, this resource and its endpoints are
+ * excluded from REST registration, preventing duplicates with {@link AgentCardResource}.
  * Returns {@code Uni<Response>} so the Vert.x event loop is not blocked.
  */
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")

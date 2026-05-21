@@ -137,15 +137,18 @@ public class ChannelGateway {
 
     /** Inbound from HumanParticipatingChannelBackend. */
     public void receiveHumanMessage(ChannelRef channel, InboundHumanMessage raw) {
-        NormalisedMessage normalised = normaliser.normalise(channel, raw);
-        messageService.send(channel.id(), normalised.senderInstanceId(),
-                normalised.type(), normalised.content(), null, null);
+        NormalisedMessage n = normaliser.normalise(channel, raw);
+        messageService.send(channel.id(), n.senderInstanceId(),
+                n.type(), n.content(),
+                n.correlationId(), n.inReplyTo(),
+                n.artefactRefs(), n.target(), ActorType.HUMAN);
     }
 
     /** Inbound from HumanObserverChannelBackend — always EVENT regardless of content. */
     public void receiveObserverSignal(ChannelRef channel, ObserverSignal signal) {
         messageService.send(channel.id(), "human:" + signal.externalSenderId(),
-                MessageType.EVENT, signal.content(), null, null);
+                MessageType.EVENT, signal.content(), null, null,
+                null, null, ActorType.HUMAN);
     }
 
     record BackendEntry(ChannelBackend backend, String backendType) {}

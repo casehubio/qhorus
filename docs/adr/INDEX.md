@@ -8,3 +8,4 @@
 | 0004 | [Named Datasource Isolation: quarkus.datasource.qhorus](0004-named-datasource-isolation.md) | Accepted | 2026-04-22 |
 | 0005 | [MessageType Taxonomy: Theoretical Foundation](0005-message-type-taxonomy-theoretical-foundation.md) | Accepted | 2026-04-23 |
 | 0006 | [Channel Backend Abstraction](0006-channel-backend-abstraction.md) | Accepted | 2026-05-04 |
+| 0007 | [Reactive Stack Activation: @IfBuildProperty + quarkus.datasource.qhorus.reactive](0007-reactive-stack-activation.md) | Accepted | 2026-05-15 |

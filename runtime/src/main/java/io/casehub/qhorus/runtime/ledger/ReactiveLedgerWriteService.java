@@ -12,7 +12,6 @@ import org.jboss.logging.Logger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import io.casehub.ledger.api.model.ActorType;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.qhorus.api.message.MessageType;
@@ -20,6 +19,7 @@ import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.message.Message;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 
@@ -27,16 +27,15 @@ import io.smallrye.mutiny.Uni;
  * Reactive mirror of {@link LedgerWriteService}.
  *
  * <p>
- * {@code @Alternative} — inactive by default. Writes immutable audit ledger entries for
- * every message type using the reactive ledger repository. Called from
- * {@code ReactiveQhorusMcpTools.sendMessage} (via the blocking bridge in the current
- * {@code @Blocking} implementation). Failures are caught and swallowed at the call site
- * — the message pipeline must not be affected by ledger issues.
+ * Writes immutable audit ledger entries for every message type using the reactive ledger
+ * repository. Called from {@code ReactiveQhorusMcpTools.sendMessage} (via the blocking bridge
+ * in the current {@code @Blocking} implementation). Failures are caught and swallowed at the
+ * call site — the message pipeline must not be affected by ledger issues.
  *
  * <p>
  * Refs #105, Epic #99.
  */
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveLedgerWriteService {
 
@@ -71,7 +70,7 @@ public class ReactiveLedgerWriteService {
             return Uni.createFrom().voidItem();
         }
 
-        return Panache.withTransaction(() -> reactiveRepo.findLatestBySubjectId(ch.id).flatMap(latestOpt -> {
+        return Panache.withTransaction("qhorus", () -> reactiveRepo.findLatestBySubjectId(ch.id).flatMap(latestOpt -> {
             final int sequenceNumber = latestOpt.map(e -> e.sequenceNumber + 1).orElse(1);
 
             final MessageLedgerEntry entry = new MessageLedgerEntry();
@@ -84,7 +83,7 @@ public class ReactiveLedgerWriteService {
             entry.commitmentId = message.commitmentId;
             final String resolvedActorId = actorIdProvider.resolve(message.sender);
             entry.actorId = resolvedActorId;
-            entry.actorType = ActorType.AGENT;
+            entry.actorType = message.actorType;
             entry.occurredAt = message.createdAt.truncatedTo(ChronoUnit.MILLIS);
             entry.sequenceNumber = sequenceNumber;
             entry.entryType = switch (message.messageType) {

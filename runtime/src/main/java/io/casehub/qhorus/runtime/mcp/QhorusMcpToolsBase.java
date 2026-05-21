@@ -5,7 +5,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
 
+import jakarta.inject.Inject;
+
+import io.casehub.qhorus.api.channel.ChannelDetail;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.MessageResult;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.QhorusEntityMapper;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.data.SharedData;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
@@ -14,6 +20,9 @@ import io.casehub.qhorus.runtime.watchdog.Watchdog;
 
 public abstract class QhorusMcpToolsBase {
 
+    @Inject
+    QhorusEntityMapper entityMapper;
+
     public record RegisterResponse(
             String instanceId,
             List<ChannelSummary> activeChannels,
@@ -21,49 +30,6 @@ public abstract class QhorusMcpToolsBase {
     }
 
     public record ChannelSummary(String name, String description, String semantic) {
-    }
-
-    public record InstanceInfo(
-            String instanceId,
-            String description,
-            String status,
-            List<String> capabilities,
-            String lastSeen,
-            boolean readOnly) {
-    }
-
-    public record ChannelDetail(
-            UUID channelId,
-            String name,
-            String description,
-            String semantic,
-            String barrierContributors,
-            long messageCount,
-            String lastActivityAt,
-            boolean paused,
-            /** Comma-separated allowed-writer entries, or null if the channel is open to all writers. */
-            String allowedWriters,
-            /** Comma-separated admin instance IDs, or null if management is open to any caller. */
-            String adminInstances,
-            /** Max messages per minute across all senders. Null = unlimited. */
-            Integer rateLimitPerChannel,
-            /** Max messages per minute from a single sender. Null = unlimited. */
-            Integer rateLimitPerInstance,
-            /** Comma-separated permitted MessageType names, or null if open to all types. */
-            String allowedTypes) {
-    }
-
-    public record MessageResult(
-            Long messageId,
-            String channelName,
-            String sender,
-            String messageType,
-            String correlationId,
-            Long inReplyTo,
-            int parentReplyCount,
-            List<String> artefactRefs,
-            /** Addressing target: null (broadcast), instance:<id>, capability:<tag>, or role:<name>. */
-            String target) {
     }
 
     public record MessageSummary(
@@ -401,20 +367,7 @@ public abstract class QhorusMcpToolsBase {
     }
 
     protected ChannelDetail toChannelDetail(Channel ch, long messageCount) {
-        return new ChannelDetail(
-                ch.id,
-                ch.name,
-                ch.description,
-                ch.semantic.name(),
-                ch.barrierContributors,
-                messageCount,
-                ch.lastActivityAt.toString(),
-                ch.paused,
-                ch.allowedWriters,
-                ch.adminInstances,
-                ch.rateLimitPerChannel,
-                ch.rateLimitPerInstance,
-                ch.allowedTypes);
+        return entityMapper.toChannelDetail(ch, messageCount);
     }
 
     protected WatchdogSummary toWatchdogSummary(Watchdog w) {
@@ -473,48 +426,6 @@ public abstract class QhorusMcpToolsBase {
     }
 
     protected Map<String, Object> toTimelineEntry(Message m) {
-        Map<String, Object> entry = new java.util.LinkedHashMap<>();
-        entry.put("id", m.id);
-        if (m.messageType == MessageType.EVENT) {
-            entry.put("type", "EVENT");
-            entry.put("created_at", m.createdAt != null ? m.createdAt.toString() : null);
-            entry.put("occurred_at", m.createdAt != null ? m.createdAt.toString() : null);
-            entry.put("agent_id", m.sender);
-            entry.put("message_type", null);
-            String toolName = null;
-            Long durationMs = null;
-            Long tokenCount = null;
-            if (m.content != null) {
-                try {
-                    com.fasterxml.jackson.databind.JsonNode node = new com.fasterxml.jackson.databind.ObjectMapper()
-                            .readTree(m.content);
-                    com.fasterxml.jackson.databind.JsonNode tn = node.get("tool_name");
-                    if (tn != null && tn.isTextual()) {
-                        toolName = tn.asText();
-                    }
-                    com.fasterxml.jackson.databind.JsonNode dm = node.get("duration_ms");
-                    if (dm != null && dm.isNumber()) {
-                        durationMs = dm.asLong();
-                    }
-                    com.fasterxml.jackson.databind.JsonNode tc = node.get("token_count");
-                    if (tc != null && tc.isNumber()) {
-                        tokenCount = tc.asLong();
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-            entry.put("tool_name", toolName);
-            entry.put("duration_ms", durationMs);
-            entry.put("token_count", tokenCount);
-        } else {
-            entry.put("type", "MESSAGE");
-            entry.put("created_at", m.createdAt != null ? m.createdAt.toString() : null);
-            entry.put("sender", m.sender);
-            entry.put("message_type", m.messageType != null ? m.messageType.name().toLowerCase() : null);
-            entry.put("content", m.content);
-            entry.put("correlation_id", m.correlationId);
-            entry.put("tool_name", null);
-        }
-        return entry;
+        return entityMapper.toTimelineEntry(m);
     }
 }

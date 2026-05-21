@@ -9,6 +9,7 @@ import java.util.UUID;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.message.Message;
@@ -21,7 +22,9 @@ import io.smallrye.mutiny.Uni;
 @ApplicationScoped
 public class InMemoryReactiveMessageStore implements ReactiveMessageStore {
 
-    private final InMemoryMessageStore delegate = new InMemoryMessageStore();
+    /** Injected by CDI in @QuarkusTest; may be set directly in plain unit tests. */
+    @Inject
+    InMemoryMessageStore blocking = new InMemoryMessageStore();
 
     @Override
     public Uni<Message> put(Message message) {
@@ -29,46 +32,46 @@ public class InMemoryReactiveMessageStore implements ReactiveMessageStore {
             if (message.createdAt == null) {
                 message.createdAt = Instant.now();
             }
-            return delegate.put(message);
+            return blocking.put(message);
         });
     }
 
     @Override
     public Uni<Optional<Message>> find(Long id) {
-        return Uni.createFrom().item(() -> delegate.find(id));
+        return Uni.createFrom().item(() -> blocking.find(id));
     }
 
     @Override
     public Uni<List<Message>> scan(MessageQuery query) {
-        return Uni.createFrom().item(() -> delegate.scan(query));
+        return Uni.createFrom().item(() -> blocking.scan(query));
     }
 
     @Override
     public Uni<Void> deleteAll(UUID channelId) {
-        return Uni.createFrom().voidItem().invoke(() -> delegate.deleteAll(channelId));
+        return Uni.createFrom().voidItem().invoke(() -> blocking.deleteAll(channelId));
     }
 
     @Override
     public Uni<Void> delete(Long id) {
-        return Uni.createFrom().voidItem().invoke(() -> delegate.delete(id));
+        return Uni.createFrom().voidItem().invoke(() -> blocking.delete(id));
     }
 
     @Override
     public Uni<Integer> countByChannel(UUID channelId) {
-        return Uni.createFrom().item(() -> delegate.countByChannel(channelId));
+        return Uni.createFrom().item(() -> blocking.countByChannel(channelId));
     }
 
     @Override
     public Uni<Map<UUID, Long>> countAllByChannel() {
-        return Uni.createFrom().item(() -> delegate.countAllByChannel());
+        return Uni.createFrom().item(() -> blocking.countAllByChannel());
     }
 
     @Override
     public Uni<List<String>> distinctSendersByChannel(UUID channelId, MessageType excludedType) {
-        return Uni.createFrom().item(() -> delegate.distinctSendersByChannel(channelId, excludedType));
+        return Uni.createFrom().item(() -> blocking.distinctSendersByChannel(channelId, excludedType));
     }
 
     public void clear() {
-        delegate.clear();
+        blocking.clear();
     }
 }

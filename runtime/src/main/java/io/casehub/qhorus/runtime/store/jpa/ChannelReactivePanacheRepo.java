@@ -3,19 +3,18 @@ package io.casehub.qhorus.runtime.store.jpa;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 
 /**
  * Minimal reactive Panache repository for {@link Channel}.
  *
  * <p>
- * Marked {@code @Alternative} so it is not active by default — consumers must select it
- * explicitly via {@code quarkus.arc.selected-alternatives} when they configure a reactive
- * datasource. This prevents Hibernate Reactive from booting in applications that only use
- * the blocking {@link JpaChannelStore}.
+ * Active when {@code casehub.qhorus.reactive.enabled=true}; excluded from CDI by
+ * {@code QhorusProcessor} otherwise. This prevents Hibernate Reactive from booting in
+ * applications that only use the blocking {@link JpaChannelStore}.
  *
  * <p>
  * Kept package-private and injected into {@link ReactiveJpaChannelStore}.
@@ -23,7 +22,7 @@ import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
  * <p>
  * Refs #74.
  */
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 class ChannelReactivePanacheRepo implements PanacheRepositoryBase<Channel, UUID> {
 }

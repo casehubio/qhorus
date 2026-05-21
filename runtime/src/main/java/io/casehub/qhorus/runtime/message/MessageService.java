@@ -8,7 +8,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import jakarta.enterprise.inject.Instance;
+
+import io.casehub.ledger.api.model.ActorType;
+import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
@@ -28,39 +33,33 @@ public class MessageService {
     @Inject
     MessageTypePolicy messageTypePolicy;
 
-    @Transactional
-    public Message send(UUID channelId, String sender, MessageType type, String content,
-            String correlationId, Long inReplyTo) {
-        return send(channelId, sender, type, content, correlationId, inReplyTo, null, null);
-    }
+    @Inject
+    Instance<MessageObserver> observers;
 
     @Transactional
     public Message send(UUID channelId, String sender, MessageType type, String content,
-            String correlationId, Long inReplyTo, String artefactRefs) {
-        return send(channelId, sender, type, content, correlationId, inReplyTo, artefactRefs, null);
-    }
-
-    @Transactional
-    public Message send(UUID channelId, String sender, MessageType type, String content,
-            String correlationId, Long inReplyTo, String artefactRefs, String target) {
-        channelService.findById(channelId)
-                .ifPresent(ch -> messageTypePolicy.validate(ch, type));
+            String correlationId, Long inReplyTo, String artefactRefs, String target,
+            ActorType actorType) {
+        final Channel ch = channelService.findById(channelId).orElse(null);
+        if (ch != null) messageTypePolicy.validate(ch, type);
         Message message = new Message();
         message.channelId = channelId;
         message.sender = sender;
         message.messageType = type;
+        message.actorType = actorType;
         message.content = content;
         message.correlationId = correlationId;
         message.inReplyTo = inReplyTo;
         message.artefactRefs = artefactRefs;
         message.target = target;
         messageStore.put(message);
+        MessageObserverDispatcher.dispatch(ch != null ? ch.name : null, channelId, message, observers.handles());
 
         // Trigger commitment state machine for obligation tracking
         if (message.correlationId != null) {
             switch (message.messageType) {
                 case QUERY, COMMAND -> commitmentService.open(
-                        message.commitmentId != null ? message.commitmentId : java.util.UUID.randomUUID(),
+                        message.commitmentId != null ? message.commitmentId : UUID.randomUUID(),
                         message.correlationId, message.channelId, message.messageType,
                         message.sender, message.target, message.deadline);
                 case STATUS -> commitmentService.acknowledge(message.correlationId);

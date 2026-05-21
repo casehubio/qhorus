@@ -5,15 +5,15 @@ import java.util.List;
 import java.util.Optional;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.store.ReactiveInstanceStore;
 import io.casehub.qhorus.runtime.store.query.InstanceQuery;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveInstanceService {
 
@@ -38,7 +38,7 @@ public class ReactiveInstanceService {
      */
     public Uni<Instance> register(String instanceId, String description, List<String> capabilityTags,
             String claudonySessionId, boolean readOnly) {
-        return Panache.withTransaction(() -> instanceStore.findByInstanceId(instanceId).flatMap(opt -> {
+        return Panache.withTransaction("qhorus", () -> instanceStore.findByInstanceId(instanceId).flatMap(opt -> {
             Instance instance = opt.orElse(null);
             if (instance == null) {
                 instance = new Instance();
@@ -58,7 +58,7 @@ public class ReactiveInstanceService {
     }
 
     public Uni<Void> heartbeat(String instanceId) {
-        return Panache.withTransaction(() -> instanceStore.findByInstanceId(instanceId)
+        return Panache.withTransaction("qhorus", () -> instanceStore.findByInstanceId(instanceId)
                 .invoke(opt -> opt.ifPresent(i -> {
                     i.lastSeen = Instant.now();
                     i.status = "online";

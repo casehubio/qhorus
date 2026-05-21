@@ -1,7 +1,7 @@
 # 0003 — Reactive Dual Stack: Blocking + Reactive across all layers
 
 Date: 2026-04-21
-Status: Accepted
+Status: Accepted (activation mechanism superseded by [ADR-0007](0007-reactive-stack-activation.md))
 
 ## Context and Problem Statement
 

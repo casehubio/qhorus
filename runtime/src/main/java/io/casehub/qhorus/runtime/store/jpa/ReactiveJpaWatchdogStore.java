@@ -6,16 +6,16 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.runtime.store.ReactiveWatchdogStore;
 import io.casehub.qhorus.runtime.store.query.WatchdogQuery;
 import io.casehub.qhorus.runtime.watchdog.Watchdog;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
 import io.smallrye.mutiny.Uni;
 
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveJpaWatchdogStore implements ReactiveWatchdogStore {
 

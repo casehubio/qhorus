@@ -3,23 +3,22 @@ package io.casehub.qhorus.runtime.ledger;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 
 /**
  * Minimal reactive Panache repository for {@link MessageLedgerEntry}.
  *
  * <p>
- * Marked {@code @Alternative} — inactive by default. Activate alongside
- * {@link ReactiveMessageLedgerEntryRepository} via {@code quarkus.arc.selected-alternatives}
- * when configuring a reactive datasource. This prevents Hibernate Reactive from booting in
+ * Active when {@code casehub.qhorus.reactive.enabled=true}; excluded from CDI by
+ * {@code QhorusProcessor} otherwise. This prevents Hibernate Reactive from booting in
  * applications that only use the blocking {@link MessageLedgerEntryRepository}.
  *
  * <p>
  * Refs #105, Epic #99.
  */
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 class MessageReactivePanacheRepo implements PanacheRepositoryBase<MessageLedgerEntry, UUID> {
 }

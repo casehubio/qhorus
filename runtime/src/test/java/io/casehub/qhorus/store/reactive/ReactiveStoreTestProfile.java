@@ -8,11 +8,12 @@ public class ReactiveStoreTestProfile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of(
-                "quarkus.datasource.reactive", "true",
-                "quarkus.datasource.reactive.url", "h2:mem:qhorus-reactive-test",
-                "quarkus.hibernate-reactive.database.generation", "drop-and-create",
-                "quarkus.arc.selected-alternatives",
+        return Map.ofEntries(
+                Map.entry("casehub.qhorus.reactive.enabled", "true"),
+                Map.entry("quarkus.datasource.reactive", "true"),
+                Map.entry("quarkus.datasource.reactive.url", "h2:mem:qhorus-reactive-test"),
+                Map.entry("quarkus.hibernate-reactive.database.generation", "drop-and-create"),
+                Map.entry("quarkus.arc.selected-alternatives",
                 String.join(",",
                         "io.casehub.qhorus.runtime.store.jpa.ChannelReactivePanacheRepo",
                         "io.casehub.qhorus.runtime.store.jpa.ReactiveJpaChannelStore",
@@ -25,6 +26,6 @@ public class ReactiveStoreTestProfile implements QuarkusTestProfile {
                         "io.casehub.qhorus.runtime.store.jpa.ArtefactClaimReactivePanacheRepo",
                         "io.casehub.qhorus.runtime.store.jpa.ReactiveJpaDataStore",
                         "io.casehub.qhorus.runtime.store.jpa.WatchdogReactivePanacheRepo",
-                        "io.casehub.qhorus.runtime.store.jpa.ReactiveJpaWatchdogStore"));
+                        "io.casehub.qhorus.runtime.store.jpa.ReactiveJpaWatchdogStore")));
     }
 }

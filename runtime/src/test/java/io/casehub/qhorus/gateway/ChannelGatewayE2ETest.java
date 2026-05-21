@@ -77,7 +77,7 @@ class ChannelGatewayE2ETest {
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), channelName);
         InboundHumanMessage reply = new InboundHumanMessage(
-                "whatsapp-99", "Please stop and summarise", Instant.now(), Map.of());
+                "whatsapp-99", "Please stop and summarise", Instant.now(), Map.of(), null);
 
         gateway.receiveHumanMessage(ref, reply);
 

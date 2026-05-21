@@ -1,19 +1,18 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 
 import io.casehub.qhorus.runtime.message.Message;
+import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
 
 /**
  * Minimal reactive Panache repository for {@link Message}.
  *
  * <p>
- * Marked {@code @Alternative} so it is not active by default — consumers must select it
- * explicitly via {@code quarkus.arc.selected-alternatives} when they configure a reactive
- * datasource. This prevents Hibernate Reactive from booting in applications that only use
- * the blocking {@link JpaMessageStore}.
+ * Active when {@code casehub.qhorus.reactive.enabled=true}; excluded from CDI by
+ * {@code QhorusProcessor} otherwise. This prevents Hibernate Reactive from booting in
+ * applications that only use the blocking {@link JpaMessageStore}.
  *
  * <p>
  * Kept package-private and injected into {@link ReactiveJpaMessageStore}.
@@ -24,7 +23,7 @@ import io.quarkus.hibernate.reactive.panache.PanacheRepositoryBase;
  * <p>
  * Refs #74.
  */
-@Alternative
+@IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 class MessageReactivePanacheRepo implements PanacheRepositoryBase<Message, Long> {
 }

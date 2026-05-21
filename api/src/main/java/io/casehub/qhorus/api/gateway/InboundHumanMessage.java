@@ -7,4 +7,5 @@ public record InboundHumanMessage(
         String externalSenderId,
         String content,
         Instant receivedAt,
-        Map<String, String> metadata) {}
+        Map<String, String> metadata,
+        String correlationId) {}
