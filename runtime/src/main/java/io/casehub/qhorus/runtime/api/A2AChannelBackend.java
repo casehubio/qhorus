@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
@@ -15,15 +16,22 @@ import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.api.gateway.ChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.runtime.message.Message;
+import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.arc.properties.UnlessBuildProperty;
 /**
  * Protocol bridge backend that registers A2A as a first-class gateway participant.
  *
  * <p>Handles inbound A2A messages by resolving the sender's actor type and
- * routing through {@link QhorusMcpTools#sendMessage} to get the full pipeline
- * (ledger, fanOut, commitment tracking). {@link #post} is the outbound hook
+ * calling {@link io.casehub.qhorus.runtime.message.MessageService#dispatch} directly.
+ * Note: rate limiting, allowed_writers ACL, and artefact lifecycle are currently
+ * bypassed for A2A-sourced messages — tracked in casehubio/qhorus#188.
+ * {@link #post} is the outbound hook
  * called by {@link ChannelGateway#fanOut} — currently a logging no-op, the
  * correct hook for future SSE streaming (casehubio/qhorus#147).
  *
@@ -41,13 +49,16 @@ public class A2AChannelBackend implements ChannelBackend {
     private final Set<UUID> registeredChannels = ConcurrentHashMap.newKeySet();
 
     @Inject
-    QhorusMcpTools tools;
-
-    @Inject
     ChannelGateway gateway;
 
     @Inject
     A2AActorResolver actorResolver;
+
+    @Inject
+    ChannelService channelService;
+
+    @Inject
+    MessageService messageService;
 
     @Override
     public String backendId() {
@@ -95,8 +106,9 @@ public class A2AChannelBackend implements ChannelBackend {
 
     /**
      * Processes an inbound A2A message: resolves actor type, builds structured sender,
-     * and routes via {@link QhorusMcpTools#sendMessage} for the full pipeline
-     * (type validation, rate limiting, ledger, fanOut, commitment tracking).
+     * and calls {@link io.casehub.qhorus.runtime.message.MessageService#dispatch} directly.
+     * Type validation (MessageTypePolicy) runs; rate limiting, allowed_writers ACL, and
+     * artefact lifecycle do not — see casehubio/qhorus#188.
      *
      * <p>Message type mapping: {@code role:"agent"} → {@code "response"};
      * all other roles → {@code "query"}. SYSTEM-typed actors via A2A also receive
@@ -111,6 +123,7 @@ public class A2AChannelBackend implements ChannelBackend {
      * @param actorTypeHeader value of x-qhorus-actor-type HTTP header (may be null)
      * @return the correlationId used for this message
      */
+    @Transactional
     public String receive(String channelName, String role, String textContent,
             String taskId, Map<String, String> metadata, String actorTypeHeader) {
         ActorType resolved = actorResolver.resolve(role, actorTypeHeader, metadata);
@@ -121,8 +134,31 @@ public class A2AChannelBackend implements ChannelBackend {
                 ? taskId
                 : UUID.randomUUID().toString();
 
-        tools.sendMessage(channelName, sender, type, textContent,
-                correlationId, null, null, null, null);
+        Channel ch = channelService.findByName(channelName)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        // For RESPONSE type, find the prior QUERY/COMMAND by correlationId to satisfy inReplyTo.
+        Long inReplyTo = null;
+        if ("response".equals(type)) {
+            inReplyTo = Message.<Message> find(
+                    "channelId = ?1 AND correlationId = ?2 ORDER BY id ASC", ch.id, correlationId)
+                    .firstResultOptional()
+                    .map(m -> m.id)
+                    .orElse(null);
+            // If no prior message exists for this correlationId, the agent is initiating
+            // a new interaction — treat it as a QUERY rather than an orphaned RESPONSE.
+            if (inReplyTo == null) {
+                type = "query";
+            }
+        }
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(ch.id)
+                .sender(sender)
+                .type(MessageType.valueOf(type.toUpperCase()))
+                .content(textContent)
+                .correlationId(correlationId)
+                .inReplyTo(inReplyTo)
+                .actorType(resolved)
+                .build());
         return correlationId;
     }
 

@@ -24,7 +24,8 @@ import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.instance.InstanceInfo;
-import io.casehub.qhorus.api.message.MessageResult;
+import io.casehub.qhorus.api.message.DispatchResult;
+import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.CommitmentState;
@@ -37,7 +38,6 @@ import io.casehub.qhorus.api.gateway.Senders;
 import io.casehub.qhorus.runtime.instance.Capability;
 import io.casehub.qhorus.runtime.instance.Instance;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.message.Commitment;
@@ -81,9 +81,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     RateLimiter rateLimiter;
-
-    @Inject
-    LedgerWriteService ledgerWriteService;
 
     @Inject
     MessageLedgerEntryRepository ledgerRepo;
@@ -463,8 +460,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
         // Post audit event
         String auditContent = "force_release" + (reason != null && !reason.isBlank() ? ": " + reason : "");
-        messageService.send(ch.id, "system", MessageType.EVENT, auditContent, null, null, null, null,
-                ActorType.SYSTEM);
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(ch.id).sender("system").type(MessageType.EVENT)
+                .content(auditContent).actorType(ActorType.SYSTEM).build());
 
         channelService.updateLastActivity(ch.id);
 
@@ -476,35 +474,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Messaging tools
     // ---------------------------------------------------------------------------
 
-    /** Convenience overload — no artefact refs, target, or deadline. Used by tests and internal callers. */
-    MessageResult sendMessage(String channelName, String sender, String type,
-            String content, String correlationId, Long inReplyTo) {
-        return sendMessage(channelName, sender, type, content, correlationId, inReplyTo, null, null, null);
-    }
-
-    /**
-     * Convenience overload — artefact refs but no target or deadline. Maintains backward compatibility
-     * for test callers that pre-date the target and deadline fields. The non-{@code @Tool} annotation here
-     * is intentional — only the full method is exposed to MCP.
-     */
-    MessageResult sendMessage(String channelName, String sender, String type,
-            String content, String correlationId, Long inReplyTo, List<String> artefactRefs) {
-        return sendMessage(channelName, sender, type, content, correlationId, inReplyTo, artefactRefs, null, null);
-    }
-
-    /**
-     * Convenience overload — artefact refs and target but no deadline. Maintains backward compatibility
-     * for test callers that supply artefact refs and/or target without a deadline.
-     */
-    MessageResult sendMessage(String channelName, String sender, String type,
-            String content, String correlationId, Long inReplyTo, List<String> artefactRefs, String target) {
-        return sendMessage(channelName, sender, type, content, correlationId, inReplyTo, artefactRefs, target, null);
-    }
 
     @Tool(name = "send_message", description = "Post a typed message to a channel. "
             + "For QUERY and COMMAND types, correlation_id is auto-generated if not supplied.")
     @Transactional
-    public MessageResult sendMessage(
+    public DispatchResult sendMessage(
             @ToolArg(name = "channel_name", description = "Target channel name") String channelName,
             @ToolArg(name = "sender", description = "Sender identifier") String sender,
             @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), EVENT (telemetry only, not delivered to agents)") String type,
@@ -513,7 +487,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "in_reply_to", description = "ID of the message being replied to", required = false) Long inReplyTo,
             @ToolArg(name = "artefact_refs", description = "UUIDs of shared artefacts to attach. Auto-claims each artefact for the sender; auto-released on commitment resolution (RESPONSE/DONE/DECLINE/FAILURE).", required = false) List<String> artefactRefs,
             @ToolArg(name = "target", description = "Addressing target: instance:<id>, capability:<tag>, or role:<name>. Null/omitted = broadcast to all.", required = false) String target,
-            @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY and COMMAND. Defaults to channel config when not provided.", required = false) String deadline) {
+            @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY and COMMAND. Defaults to channel config when not provided.", required = false) String deadline,
+            @ToolArg(name = "subject_id", description = "Optional UUID of the domain aggregate this message concerns (for ledger indexing).", required = false) String subjectId,
+            @ToolArg(name = "caused_by_entry_id", description = "Optional UUID of the ledger entry that triggered this dispatch (for causal chain tracing).", required = false) String causedByEntryId) {
         Channel ch = channelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
 
@@ -563,6 +539,22 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         String corrId = correlationId;
         if (corrId == null && msgType.requiresCorrelationId()) {
             corrId = java.util.UUID.randomUUID().toString();
+        }
+
+        // Parse optional UUID params — fail early if malformed
+        UUID subjectIdUuid = null;
+        if (subjectId != null && !subjectId.isBlank()) {
+            try { subjectIdUuid = UUID.fromString(subjectId); }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("subject_id is not a valid UUID: " + subjectId);
+            }
+        }
+        UUID causedByEntryIdUuid = null;
+        if (causedByEntryId != null && !causedByEntryId.isBlank()) {
+            try { causedByEntryIdUuid = UUID.fromString(causedByEntryId); }
+            catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("caused_by_entry_id is not a valid UUID: " + causedByEntryId);
+            }
         }
 
         // Validate artefact refs — batch query to avoid N+1
@@ -638,10 +630,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     last.createdAt = Instant.now();
                     channelService.updateLastActivity(ch.id);
                     rateLimiter.recordSend(ch.id, sender, ch.rateLimitPerChannel, ch.rateLimitPerInstance);
-                    List<String> storedRefs = refsStr != null ? List.of(refsStr.split(",")) : List.of();
-                    return new MessageResult(last.id, ch.name, last.sender,
-                            last.messageType.name(), last.correlationId, last.inReplyTo, 0, storedRefs,
-                            last.target);
+                    return new DispatchResult(last.id, ch.id, last.sender,
+                            last.messageType, last.correlationId, last.inReplyTo,
+                            DispatchResult.parseArtefactRefs(last.artefactRefs),
+                            last.target,
+                            null, null, null, 0); // ledger fields null, parentReplyCount hardcoded 0 — no ledger write for LAST_WRITE overwrite
                 } else {
                     throw new IllegalStateException(
                             "LAST_WRITE channel '" + ch.name + "' already has a message from '"
@@ -649,24 +642,34 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 }
             }
         }
-        Message msg = messageService.send(ch.id, sender, msgType, content, corrId, inReplyTo, refsStr,
-                normalisedTarget, resolvedActorType);
+        DispatchResult dispatchResult = messageService.dispatch(
+                MessageDispatch.builder()
+                        .channelId(ch.id)
+                        .sender(sender)
+                        .type(msgType)
+                        .content(content)
+                        .correlationId(corrId)
+                        .inReplyTo(inReplyTo)
+                        .artefactRefs(refsStr)
+                        .target(normalisedTarget)
+                        .subjectId(subjectIdUuid)
+                        .causedByEntryId(causedByEntryIdUuid)
+                        .actorType(resolvedActorType)
+                        .build());
+
+        // Fetch the persisted entity to (a) write deadline as a dirty-entity update in the
+        // same transaction, and (b) read actorType for fanOut. Both require the JPA entity.
+        // Tracked for elimination in casehubio/qhorus#187 (add deadline to MessageDispatch).
+        Message msg = messageService.findById(dispatchResult.messageId()).orElseThrow();
 
         if (deadline != null && !deadline.isBlank() && msgType.requiresCorrelationId()) {
             msg.deadline = java.time.Instant.now().plus(java.time.Duration.parse(deadline));
         }
 
-        // Record every message as an immutable ledger entry
-        try {
-            ledgerWriteService.record(ch, msg);
-        } catch (Exception e) {
-            LOG.warnf("Ledger write failed for message %d in channel '%s': %s",
-                    msg.id, ch.name, e.getMessage());
-        }
-
         // Fan-out to external backends after persistence (agent backend already handled by messageService)
         try {
-            UUID corrUuid = (corrId != null) ? UUID.fromString(corrId) : null;
+            UUID corrUuid = (dispatchResult.correlationId() != null)
+                    ? UUID.fromString(dispatchResult.correlationId()) : null;
             channelGateway.fanOut(ch.id, new OutboundMessage(
                     UUID.randomUUID(), sender, msgType, content, corrUuid,
                     msg.actorType));
@@ -678,10 +681,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         // Auto-release artefact claims when a commitment resolves (RESPONSE/DONE/DECLINE/FAILURE).
         // Find the original QUERY/COMMAND message by correlationId and release the requester's claims.
         // HANDOFF delegates obligation — claims stay until the delegate resolves.
-        if (corrId != null && (msgType == MessageType.RESPONSE || msgType == MessageType.DONE
+        if (dispatchResult.correlationId() != null && (msgType == MessageType.RESPONSE || msgType == MessageType.DONE
                 || msgType == MessageType.DECLINE || msgType == MessageType.FAILURE)) {
             try {
-                messageService.findByCorrelationId(corrId).ifPresent(original -> {
+                messageService.findByCorrelationId(dispatchResult.correlationId()).ifPresent(original -> {
                     if (original.artefactRefs != null && !original.artefactRefs.isBlank()) {
                         instanceService.findByInstanceId(original.sender).ifPresent(inst -> {
                             for (String ref : original.artefactRefs.split(",")) {
@@ -692,7 +695,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 });
             } catch (Exception e) {
                 LOG.warnf("Auto-release artefact claims failed for correlationId '%s': %s",
-                        corrId, e.getMessage());
+                        dispatchResult.correlationId(), e.getMessage());
             }
         }
 
@@ -701,17 +704,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             rateLimiter.recordSend(ch.id, sender, ch.rateLimitPerChannel, ch.rateLimitPerInstance);
         }
 
-        int parentReplyCount = 0;
-        if (inReplyTo != null) {
-            parentReplyCount = messageService.findById(inReplyTo)
-                    .map(m -> m.replyCount).orElse(0);
-        }
-
-        List<String> storedRefs = (msg.artefactRefs != null && !msg.artefactRefs.isBlank())
-                ? List.of(msg.artefactRefs.split(","))
-                : List.of();
-        return new MessageResult(msg.id, ch.name, msg.sender, msg.messageType.name(),
-                msg.correlationId, msg.inReplyTo, parentReplyCount, storedRefs, msg.target);
+        return dispatchResult;
     }
 
     /** Backward-compat overload — no reader_instance_id filter, no include_events. */
@@ -1015,18 +1008,32 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public WaitResult requestApprovalWithCorrelationId(String channelName, String content, String correlationId,
                                                        Integer timeoutS) {
         int timeout = timeoutS != null ? timeoutS : 300;
-        sendMessage(channelName, "agent", "query", content, correlationId, null, null, null, null);
+        sendMessage(channelName, "agent", "query", content, correlationId, null, (List<String>) null, null, null, null, null);
         return waitForReply(channelName, correlationId, timeout, null);
     }
 
     @Tool(name = "respond_to_approval", description = "Human-callable: send a response to a pending approval request. "
             + "Use correlation_id from list_pending_commitments to identify which request to answer.")
     @Transactional
-    public MessageResult respondToApproval(
+    public DispatchResult respondToApproval(
             @ToolArg(name = "correlation_id", description = "Correlation ID of the approval request (from list_pending_commitments)") String correlationId,
             @ToolArg(name = "response_text", description = "The approval decision or message to send back") String responseText,
             @ToolArg(name = "channel_name", description = "Channel the approval request was posted on") String channelName) {
-        return sendMessage(channelName, Senders.HUMAN, "response", responseText, correlationId, null, null, null, null);
+        Channel ch = channelService.findByName(channelName)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        // Look up the original request message to supply inReplyTo (required by RESPONSE type).
+        // Use canonical MessageDispatch constructor to bypass builder validation when no prior message exists
+        // (e.g., when commitment was opened directly without a corresponding channel message).
+        Long inReplyTo = messageService.findByCorrelationId(correlationId)
+                .map(m -> m.id)
+                .orElse(null);
+        // Use canonical constructor to bypass builder validation when inReplyTo is null —
+        // respondToApproval is a human tool and must not fail even on unusual commitment states.
+        io.casehub.qhorus.api.message.MessageDispatch dispatch = new io.casehub.qhorus.api.message.MessageDispatch(
+                ch.id, Senders.HUMAN, io.casehub.qhorus.api.message.MessageType.RESPONSE,
+                responseText, correlationId, inReplyTo, null, null, null, null,
+                io.casehub.platform.api.identity.ActorType.HUMAN);
+        return messageService.dispatch(dispatch);
     }
 
     // ---------------------------------------------------------------------------
@@ -1287,9 +1294,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         // Orphan replies (null out in_reply_to) before deleting — replies survive, FK satisfied
         Message.update("inReplyTo = null WHERE inReplyTo = ?1", messageId);
         // Post audit event to the channel
-        messageService.send(msg.channelId, "system", MessageType.EVENT,
-                "delete_message: id=" + messageId + " sender=" + sender, null, null, null, null,
-                ActorType.SYSTEM);
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(msg.channelId).sender("system").type(MessageType.EVENT)
+                .content("delete_message: id=" + messageId + " sender=" + sender)
+                .actorType(ActorType.SYSTEM).build());
         msg.delete();
         return new DeleteMessageResult(messageId, true, sender, type, preview,
                 "Message " + messageId + " deleted");
@@ -1313,9 +1321,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         long deleted = Message.delete("channelId = ?1 AND messageType != ?2",
                 ch.id, MessageType.EVENT);
         // Post audit event (survives the clear)
-        messageService.send(ch.id, "system", MessageType.EVENT,
-                "clear_channel: " + deleted + " message(s) deleted", null, null, null, null,
-                ActorType.SYSTEM);
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(ch.id).sender("system").type(MessageType.EVENT)
+                .content("clear_channel: " + deleted + " message(s) deleted")
+                .actorType(ActorType.SYSTEM).build());
         channelService.updateLastActivity(ch.id);
         return new ClearChannelResult(channelName, (int) deleted, true);
     }
