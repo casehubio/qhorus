@@ -293,35 +293,18 @@ public abstract class QhorusMcpToolsBase {
     }
 
     /**
-     * Returns true if {@code sender} is permitted to write to a channel with the given
-     * {@code allowedWriters} ACL string. Null or blank ACL = open to all.
-     * {@code senderTagsSupplier} is invoked lazily — only if a capability/role entry is present.
+     * Parses a nullable/blank UUID tool parameter. Returns null if the value is null or blank;
+     * throws {@link IllegalArgumentException} with a descriptive message if malformed.
      */
-    protected static boolean isAllowedWriter(String sender, String allowedWriters,
-            Supplier<List<String>> senderTagsSupplier) {
-        if (allowedWriters == null || allowedWriters.isBlank()) {
-            return true;
+    protected static UUID parseOptionalUuid(final String paramName, final String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
-        List<String> senderTags = null;
-        for (String raw : allowedWriters.split(",")) {
-            String entry = raw.strip();
-            if (entry.isEmpty()) {
-                continue;
-            }
-            if (entry.startsWith("capability:") || entry.startsWith("role:")) {
-                if (senderTags == null) {
-                    senderTags = senderTagsSupplier.get();
-                }
-                if (senderTags.contains(entry)) {
-                    return true;
-                }
-            } else {
-                if (entry.equals(sender)) {
-                    return true;
-                }
-            }
+        try {
+            return UUID.fromString(value);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(paramName + " is not a valid UUID: " + value);
         }
-        return false;
     }
 
     /**
