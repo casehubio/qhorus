@@ -116,6 +116,13 @@ public class QhorusDashboardService {
      * <p>Throws {@link IllegalArgumentException} if the channel is not found.
      * Paused check is enforced inside {@link ReactiveMessageService#dispatch} —
      * it throws {@link IllegalStateException} when the channel is paused.
+     *
+     * <p><b>Design note (Refs #198):</b> This method fetches the channel by name to obtain
+     * {@code ch.id}, and {@code dispatch()} fetches it a second time for the paused check.
+     * This double-read is the known cost of the enforcement-gate pattern — the channel fetch
+     * cannot be eliminated from either side without exposing implementation details across the
+     * boundary. The cost is negligible at current scale. Full enforcement consolidation is
+     * deferred to #193 (ReactiveMessageService enforcement parity).
      */
     public Uni<HumanMessageResult> sendHumanMessage(
             String channelName, String sender, MessageType type, String content) {
