@@ -1,8 +1,11 @@
 package io.casehub.qhorus.runtime.gateway;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,6 +23,9 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.*;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.gateway.HumanParticipatingChannelBackend;
+import io.casehub.qhorus.api.gateway.InboundNormaliser;
+import io.casehub.qhorus.api.gateway.NormalisedMessage;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
 
@@ -226,6 +232,57 @@ class ChannelGatewayTest {
                 "human:user-42".equals(d.sender())
                         && "corr-abc".equals(d.correlationId())
         ));
+    }
+
+    @Test
+    void receiveHumanMessage_uses_backend_normaliser_when_provided() {
+        InboundNormaliser customNormaliser = (ch, raw) -> new NormalisedMessage(
+                MessageType.RESPONSE, raw.content(),
+                "human:" + raw.externalSenderId(),
+                raw.correlationId(), raw.inReplyTo(), null, null);
+
+        HumanParticipatingChannelBackend customBackend = new HumanParticipatingChannelBackend() {
+            @Override public String backendId()    { return "custom-backend"; }
+            @Override public ActorType actorType() { return ActorType.HUMAN; }
+            @Override public void open(ChannelRef ch, Map<String, String> m) {}
+            @Override public void post(ChannelRef ch, OutboundMessage msg)   {}
+            @Override public void close(ChannelRef ch) {}
+            @Override public InboundNormaliser normaliser() { return customNormaliser; }
+        };
+        gateway.registerBackend(channelId, customBackend, "human_participating");
+
+        InboundHumanMessage raw = new InboundHumanMessage(
+                "user-1", "task complete", Instant.now(), Map.of(), "corr-42", 99L);
+        gateway.receiveHumanMessage(channelRef, raw);
+
+        ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
+        verify(messageService).dispatch(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo(MessageType.RESPONSE);
+        assertThat(captor.getValue().inReplyTo()).isEqualTo(99L);
+    }
+
+    @Test
+    void receiveHumanMessage_falls_back_to_system_default_when_backend_normaliser_is_null() {
+        HumanParticipatingChannelBackend nullNormaliserBackend = new HumanParticipatingChannelBackend() {
+            @Override public String backendId()    { return "null-normaliser-backend"; }
+            @Override public ActorType actorType() { return ActorType.HUMAN; }
+            @Override public void open(ChannelRef ch, Map<String, String> m) {}
+            @Override public void post(ChannelRef ch, OutboundMessage msg)   {}
+            @Override public void close(ChannelRef ch) {}
+            // normaliser() returns null (default) — system DefaultInboundNormaliser should be used
+        };
+        gateway.registerBackend(channelId, nullNormaliserBackend, "human_participating");
+
+        // Pass message-type metadata so we can prove the system normaliser processed it
+        // (only DefaultInboundNormaliser reads this key; a custom normaliser would ignore it)
+        InboundHumanMessage raw = new InboundHumanMessage(
+                "user-1", "progress update", Instant.now(), Map.of("message-type", "STATUS"), null, null);
+        gateway.receiveHumanMessage(channelRef, raw);
+
+        ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
+        verify(messageService).dispatch(captor.capture());
+        // DefaultInboundNormaliser reads message-type metadata → STATUS
+        assertThat(captor.getValue().type()).isEqualTo(MessageType.STATUS);
     }
 
     @Test
