@@ -201,7 +201,7 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_callsMessageServiceDispatchWithHumanSender() {
         InboundHumanMessage raw = new InboundHumanMessage(
-                "user-42", "Can you stop?", Instant.now(), Map.of(), null);
+                "user-42", "Can you stop?", Instant.now(), Map.of(), null, null);
 
         gateway.receiveHumanMessage(channelRef, raw);
 
@@ -218,7 +218,7 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_withCorrelationId_passesCorrelationIdToMessageService() {
         InboundHumanMessage raw = new InboundHumanMessage(
-                "user-42", "approved", Instant.now(), Map.of(), "corr-abc");
+                "user-42", "approved", Instant.now(), Map.of(), "corr-abc", null);
 
         gateway.receiveHumanMessage(channelRef, raw);
 

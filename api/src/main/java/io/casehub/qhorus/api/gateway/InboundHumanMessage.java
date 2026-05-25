@@ -8,4 +8,5 @@ public record InboundHumanMessage(
         String content,
         Instant receivedAt,
         Map<String, String> metadata,
-        String correlationId) {}
+        String correlationId,
+        Long inReplyTo) {}

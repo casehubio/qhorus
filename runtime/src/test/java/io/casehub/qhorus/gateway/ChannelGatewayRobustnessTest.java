@@ -111,7 +111,7 @@ class ChannelGatewayRobustnessTest {
                 .filter(c -> "rob-human-msg".equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), "rob-human-msg");
         InboundHumanMessage raw = new InboundHumanMessage(
-                "user-42", "Can you stop the analysis?", Instant.now(), Map.of(), null);
+                "user-42", "Can you stop the analysis?", Instant.now(), Map.of(), null, null);
 
         gateway.receiveHumanMessage(ref, raw);
 

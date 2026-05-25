@@ -120,7 +120,7 @@ class ChannelGatewayCommitmentE2ETest {
         final ChannelRef ref = new ChannelRef(channel.channelId(), ch);
 
         gateway.receiveHumanMessage(ref, new InboundHumanMessage(
-                "user-1", "Approved", Instant.now(), Map.of(), "corr-fulfill-1"));
+                "user-1", "Approved", Instant.now(), Map.of(), "corr-fulfill-1", null));
 
         final var after = commitmentStore.findByCorrelationId("corr-fulfill-1");
         assertTrue(after.isPresent(), "Commitment must still exist");
@@ -143,7 +143,7 @@ class ChannelGatewayCommitmentE2ETest {
 
         // null correlationId → normaliser returns QUERY → opens a new commitment, doesn't fulfill
         gateway.receiveHumanMessage(ref, new InboundHumanMessage(
-                "user-1", "Some query", Instant.now(), Map.of(), null));
+                "user-1", "Some query", Instant.now(), Map.of(), null, null));
 
         final var commitment = commitmentStore.findByCorrelationId("corr-open-1");
         assertTrue(commitment.isPresent(), "Original COMMAND commitment must still exist");
