@@ -120,6 +120,13 @@
       <artifactId>quarkus-test-vertx</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- E2E tests — ConnectorAlertBridge on classpath to verify full event → connector path -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-connectors</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
 
   </dependencies>
 
