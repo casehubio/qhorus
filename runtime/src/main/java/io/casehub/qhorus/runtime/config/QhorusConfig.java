@@ -1,11 +1,13 @@
 package io.casehub.qhorus.runtime.config;
 
+import java.util.List;
 import java.util.Optional;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
 import io.quarkus.runtime.annotations.ConfigRoot;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithName;
 
 @ConfigMapping(prefix = "casehub.qhorus")
 @ConfigRoot(phase = ConfigPhase.RUN_TIME)
@@ -37,6 +39,23 @@ public interface QhorusConfig {
         /** Interval in seconds between watchdog evaluation runs. Default: 60. */
         @WithDefault("60")
         int checkIntervalSeconds();
+
+        /** Alert dispatch configuration — connectors and destinations for watchdog notifications. */
+        Alert alert();
+
+        interface Alert {
+            /** Alert endpoint destinations. Empty by default — no external alerts dispatched. */
+            @WithDefault("")
+            List<AlertEndpoint> endpoints();
+
+            interface AlertEndpoint {
+                /** The connector bean ID to use for dispatching this alert. */
+                @WithName("connector-id")
+                String connectorId();
+                /** The destination address or topic on the connector (e.g. channel name, webhook URL). */
+                String destination();
+            }
+        }
     }
 
     interface A2a {
