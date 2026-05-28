@@ -11,3 +11,5 @@
 | 0007 | [Reactive Stack Activation: @IfBuildProperty + quarkus.datasource.qhorus.reactive](0007-reactive-stack-activation.md) | Accepted | 2026-05-15 |
 | 0008 | [Channel Backend Registration via CDI Lifecycle Event](0008-channel-backend-registration-via-cdi-lifecycle-event.md) | Accepted | 2026-05-22 |
 | 0009 | [Replace MessageService.send() with MessageDispatch builder for ledger audit chain completeness](0009-message-dispatch-builder-audit-chain.md) | Accepted | 2026-05-22 |
+| 0010 | [Watchdog alert event payload: sealed hierarchy over open map](0010-watchdog-alert-context-sealed-hierarchy.md) | Accepted | 2026-05-27 |
+| 0011 | [WatchdogAlertRouter: SPI with config-backed @DefaultBean](0011-watchdog-alert-router-spi.md) | Accepted | 2026-05-27 |
