@@ -146,7 +146,7 @@ public class ReactiveA2AResource {
             List<Message> messages = messageService.findAllByCorrelationId(taskId);
             if (messages.isEmpty()) {
                 return Response.status(Response.Status.NOT_FOUND)
-                        .entity("{\"error\":\"Task not found: " + taskId + "\"}")
+                        .entity(new ErrorResponse("Task not found: " + taskId))
                         .type(MediaType.APPLICATION_JSON)
                         .build();
             }
@@ -185,7 +185,7 @@ public class ReactiveA2AResource {
 
     private static Response error400(String message) {
         return Response.status(Response.Status.BAD_REQUEST)
-                .entity("{\"error\":\"" + message + "\"}")
+                .entity(new ErrorResponse(message))
                 .type(MediaType.APPLICATION_JSON)
                 .build();
     }
