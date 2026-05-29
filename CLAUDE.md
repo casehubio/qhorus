@@ -43,6 +43,7 @@ Before any git operation, run `git rev-parse --show-toplevel` to confirm which r
 - Source code commits → project repo
 - Methodology artifacts → workspace
 
+**Pre-push hook:** `.githooks/` (registered via `core.hooksPath .githooks`) contains a pre-push hook that unconditionally blocks every push — it is not pattern-based and does not have squash-candidate detection. Correct workflow: run `/git-squash`, get user approval on the plan, then `git push --no-verify --force-with-lease`. The `--no-verify` is required post-squash; without it the hook blocks the push again regardless of commit quality.
 
 ## Rules
 
