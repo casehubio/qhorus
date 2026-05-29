@@ -13,6 +13,17 @@ import io.smallrye.config.WithName;
 @ConfigRoot(phase = ConfigPhase.RUN_TIME)
 public interface QhorusConfig {
 
+    /**
+     * Reactive service tier settings.
+     *
+     * <p>The {@code enabled} flag is a BUILD_TIME property (see {@code QhorusBuildTimeConfig}).
+     * This runtime mapping exists solely to prevent SmallRye Config {@code SRCFG00050} when
+     * the property is present in a system property source (e.g. set via a
+     * {@code QuarkusTestProfile.getConfigOverrides()} call). The runtime value is unused —
+     * CDI bean selection is governed by the build-time augmentation result.
+     */
+    Reactive reactive();
+
     /** Cleanup and data retention settings. */
     Cleanup cleanup();
 
@@ -97,6 +108,26 @@ public interface QhorusConfig {
         /** Version of this Qhorus deployment. */
         @WithDefault("1.0.0")
         String version();
+    }
+
+    /**
+     * Runtime shadow of the build-time reactive.enabled flag.
+     *
+     * <p>Exists only to satisfy SmallRye Config's runtime property validation — prevents
+     * {@code SRCFG00050} when {@code casehub.qhorus.reactive.enabled=true} is passed via
+     * a test profile's {@code getConfigOverrides()} (which populates SysPropConfigSource).
+     * The actual CDI bean selection is determined at augmentation time by
+     * {@code QhorusBuildTimeConfig.reactive().enabled()}.
+     */
+    interface Reactive {
+        /**
+         * Whether the reactive service tier is active.
+         *
+         * <p>This runtime value is informational only — bean selection is fixed at build time.
+         * Default: {@code false}.
+         */
+        @WithDefault("false")
+        boolean enabled();
     }
 
     interface Cleanup {

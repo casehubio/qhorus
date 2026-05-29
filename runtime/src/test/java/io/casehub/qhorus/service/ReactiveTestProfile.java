@@ -5,23 +5,25 @@ import java.util.Map;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 /**
- * Activates reactive service alternatives for integration testing.
+ * Activates the reactive service stack with PostgreSQL DevServices.
  *
- * <p>
- * NOTE: Reactive services call {@code Panache.withTransaction()} which requires a
- * native reactive datasource driver. H2 has no reactive driver — tests using this
- * profile must be {@code @Disabled} until a PostgreSQL Dev Services or Docker
- * environment is available.
+ * <p>Requires Podman ≥ 4 GB (or Docker). Quarkus DevServices starts
+ * {@code postgres:17-alpine} automatically.
+ *
+ * <p>{@code casehub.qhorus.reactive.enabled=true} activates reactive beans via
+ * {@code @IfBuildProperty} at augmentation time for the restarted context.
+ * This property must NOT appear in {@code application.properties} — it is BUILD_TIME
+ * only and would cause {@code SRCFG00050} at runtime validation.
  */
 public class ReactiveTestProfile implements QuarkusTestProfile {
 
     @Override
+    public String getConfigProfile() {
+        return "reactive-pg";
+    }
+
+    @Override
     public Map<String, String> getConfigOverrides() {
-        // casehub.qhorus.reactive.enabled=true activates reactive beans via @IfBuildProperty
-        // at augmentation time for the restarted Quarkus context.
-        // quarkus.arc.selected-alternatives was removed — reactive service beans no longer
-        // carry @Alternative (that was part of the old gating pattern, now superseded by
-        // @IfBuildProperty with casehub.qhorus.reactive.enabled).
         return Map.of("casehub.qhorus.reactive.enabled", "true");
     }
 }
