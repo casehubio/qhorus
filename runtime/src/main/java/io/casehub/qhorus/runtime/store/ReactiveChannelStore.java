@@ -20,10 +20,13 @@ public interface ReactiveChannelStore {
     Uni<Void> delete(UUID id);
 
     /**
-     * Issues a targeted UPDATE setting {@code lastActivityAt = now()} for {@code channelId}.
+     * Sets {@code lastActivityAt = now()} for the given channel. The JPA implementation loads
+     * the entity via {@code findById()} and relies on Hibernate Reactive's dirty checking to
+     * flush the mutation; no raw UPDATE query is issued. This approach works within a reactive
+     * session/transaction context where the named "qhorus" {@code SessionFactory} is available.
+     *
+     * <p>
      * Must be called within an active Hibernate Reactive session/transaction context.
-     * Does NOT load or re-attach the channel entity — avoids detached-entity issues when
-     * the channel was loaded pre-transaction.
      */
     Uni<Void> updateLastActivity(UUID channelId);
 }

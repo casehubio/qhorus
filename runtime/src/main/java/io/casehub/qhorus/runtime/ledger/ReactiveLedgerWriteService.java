@@ -97,6 +97,13 @@ public class ReactiveLedgerWriteService {
             return Uni.createFrom().item(LedgerWriteOutcome.DISABLED);
         }
 
+        // Note: when called from ReactiveMessageService.dispatch(), this withTransaction joins
+        // the enclosing message-insert transaction rather than creating REQUIRES_NEW semantics
+        // (Hibernate Reactive has no equivalent to JTA's REQUIRES_NEW). This means the ledger
+        // entry is always atomic with the message insert — either both commit or neither does.
+        // This differs intentionally from the blocking LedgerWriteService which uses REQUIRES_NEW
+        // so ledger entries survive outer transaction failures. The reactive behaviour (strict
+        // atomicity) is the chosen tradeoff for simpler semantics in reactive contexts.
         return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
                         .flatMap(resolvedCausedByEntryId -> reactiveRepo.findLatestBySubjectId(resolvedSubjectId)

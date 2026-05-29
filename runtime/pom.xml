@@ -120,6 +120,15 @@
       <artifactId>quarkus-test-vertx</artifactId>
       <scope>test</scope>
     </dependency>
+    <!-- Reactive PostgreSQL client — required for reactive @QuarkusTest with PostgreSQL DevServices.
+         Provides the Vert.x reactive pool that FastBootHibernateReactivePersistenceProvider needs
+         when casehub.qhorus.reactive.enabled=true in the reactive-pg test profile. -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-pg-client</artifactId>
+      <scope>test</scope>
+    </dependency>
+
     <!-- E2E tests — ConnectorAlertBridge on classpath to verify full event → connector path -->
     <dependency>
       <groupId>io.casehub</groupId>
