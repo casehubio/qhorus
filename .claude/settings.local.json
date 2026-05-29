@@ -397,7 +397,14 @@
       "Bash(gh repo *)",
       "Skill(write-content)",
       "Skill(git-squash)",
-      "Skill(writing-plans)"
+      "Skill(writing-plans)",
+      "Skill(project-init)",
+      "mcp__intellij__search_regex",
+      "Bash(mvn clean *)",
+      "Bash(mvn test *)",
+      "Bash(mvn -DskipTests=true clean compile)",
+      "Bash(mvn -q test -Dtest=WatchdogEvaluationServiceTest)",
+      "Bash(mvn -q test -Dtest=WatchdogEvaluationServiceTest -pl runtime)"
     ]
   }
 }
