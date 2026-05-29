@@ -12,6 +12,7 @@ import jakarta.transaction.Transactional;
 
 import jakarta.enterprise.inject.Instance;
 
+import io.casehub.ledger.runtime.service.TrustGateService;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -22,6 +23,7 @@ import io.casehub.qhorus.runtime.channel.AllowedWritersPolicy;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.channel.RateLimiter;
+import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome;
@@ -69,6 +71,12 @@ public class MessageService {
     @Inject
     RateLimiter rateLimiter;
 
+    @Inject
+    QhorusConfig config;
+
+    @Inject
+    TrustGateService trustGateService;
+
     // Deliberate CDI cycle: MessageService → ChannelGateway → MessageService (via receiveHumanMessage/receiveObserverSignal).
     // Both are @ApplicationScoped (normal scope). Arc resolves via client proxies — verified by full build and @QuarkusTest.
     @Inject
@@ -85,6 +93,7 @@ public class MessageService {
      *   <li>Channel paused check</li>
      *   <li>Writer ACL (skipped for EVENT)</li>
      *   <li>Rate limit check (skipped for EVENT)</li>
+     *   <li>Trust gate — COMMAND to named obligor below minObligorTrust threshold (skipped when disabled)</li>
      *   <li>Message type policy</li>
      *   <li>LAST_WRITE update-in-place (if applicable)</li>
      *   <li>Normal insert</li>
@@ -126,6 +135,22 @@ public class MessageService {
                     ch.id, ch.name, dispatch.sender(), ch.rateLimitPerChannel, ch.rateLimitPerInstance);
             if (rateLimitError != null) {
                 throw new IllegalStateException(rateLimitError);
+            }
+        }
+
+        // ── Trust gate (COMMAND + specific obligor only) ──────────────────────────
+        // Applies only when: COMMAND, named non-role target, gate enabled via config.
+        // Role/capability-prefixed targets (containing ':') are broadcast intents with
+        // no specific obligor to gate. TrustGateService returns false for unknown actors
+        // — new agents are rejected if gate is on (see config Javadoc for bootstrap note).
+        if (ch != null && dispatch.type() == MessageType.COMMAND
+                && dispatch.target() != null
+                && !dispatch.target().contains(":")
+                && config.commitment().minObligorTrust() > 0.0) {
+            if (!trustGateService.meetsThreshold(dispatch.target(), config.commitment().minObligorTrust())) {
+                throw new IllegalStateException(
+                        "COMMAND rejected: obligor '" + dispatch.target()
+                        + "' trust score below threshold " + config.commitment().minObligorTrust());
             }
         }
 
