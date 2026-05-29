@@ -28,6 +28,21 @@ public interface QhorusConfig {
     /** Attestation confidence values written on terminal commitment outcomes. */
     Attestation attestation();
 
+    /** Trust gate and obligation settings. */
+    Commitment commitment();
+
+    interface Commitment {
+        /**
+         * Minimum trust score (0.0–1.0) an obligor must have for a COMMAND to be accepted.
+         * 0.0 (default) disables the gate — all existing behaviour is preserved.
+         *
+         * <p>WARNING: agents with no trust history in ActorTrustScore are rejected when this
+         * is > 0.0. Pre-seed trust scores for all agents before enabling this gate.
+         */
+        @WithDefault("0.0")
+        double minObligorTrust();
+    }
+
     interface Watchdog {
         /**
          * When true, enables the watchdog MCP tools and condition evaluation scheduler.
