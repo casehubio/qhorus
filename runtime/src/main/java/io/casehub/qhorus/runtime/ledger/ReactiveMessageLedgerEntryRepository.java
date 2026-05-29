@@ -65,6 +65,32 @@ public class ReactiveMessageLedgerEntryRepository implements ReactiveLedgerEntry
                 .map(Optional::ofNullable);
     }
 
+    /**
+     * Returns the earliest entry in a correlation thread with a non-null {@code subjectId}.
+     * Cross-channel by design — scoped only to {@code correlationId}. Used at write time to
+     * propagate the domain subject from the originating COMMAND to all subsequent messages.
+     *
+     * <p>Ordered by {@code occurredAt ASC, id ASC} — wall-clock order with UUID tiebreaker.
+     */
+    public Uni<Optional<MessageLedgerEntry>> findEarliestWithSubjectByCorrelationId(
+            final String correlationId) {
+        return repo.find(
+                "correlationId = ?1 AND subjectId IS NOT NULL ORDER BY occurredAt ASC, id ASC",
+                correlationId)
+                .firstResult()
+                .map(Optional::ofNullable);
+    }
+
+    /**
+     * Returns the ledger entry whose {@code messageId} matches the given surrogate PK.
+     * Used at write time to resolve {@code causedByEntryId} from {@code inReplyTo}.
+     */
+    public Uni<Optional<MessageLedgerEntry>> findByMessageId(final Long messageId) {
+        return repo.find("messageId = ?1", messageId)
+                .firstResult()
+                .map(Optional::ofNullable);
+    }
+
     @Override
     public Uni<Optional<LedgerEntry>> findLatestBySubjectId(final UUID subjectId) {
         return repo.find("subjectId = ?1 ORDER BY sequenceNumber DESC", subjectId)

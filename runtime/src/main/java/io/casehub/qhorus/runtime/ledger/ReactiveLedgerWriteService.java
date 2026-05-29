@@ -1,10 +1,12 @@
 package io.casehub.qhorus.runtime.ledger;
 
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Set;
+import java.util.UUID;
 
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import org.jboss.logging.Logger;
@@ -14,11 +16,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
-import io.casehub.qhorus.runtime.channel.Channel;
-import io.casehub.qhorus.runtime.message.Message;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
@@ -28,19 +29,38 @@ import io.smallrye.mutiny.Uni;
  *
  * <p>
  * Writes immutable audit ledger entries for every message type using the reactive ledger
- * repository. Called from {@code ReactiveQhorusMcpTools.sendMessage} (via the blocking bridge
- * in the current {@code @Blocking} implementation). Failures are caught and swallowed at the
- * call site — the message pipeline must not be affected by ledger issues.
+ * repository. Signature-aligned with the blocking {@link LedgerWriteService#record} — accepts
+ * {@link MessageDispatch} (not Channel+Message entities) and returns {@link LedgerWriteOutcome}.
  *
  * <p>
- * Refs #105, Epic #99.
+ * {@code subjectId} resolution follows the same 3-priority chain as the blocking service:
+ * <ol>
+ * <li>Explicit — {@code dispatch.subjectId()} when non-null</li>
+ * <li>Correlation root — earliest entry in the {@code correlationId} thread with a non-null
+ *     {@code subjectId} (cross-channel by design)</li>
+ * <li>Fallback — {@code dispatch.channelId()} (always non-null)</li>
+ * </ol>
+ *
+ * <p>
+ * {@code causedByEntryId} resolution follows the same 2-priority chain:
+ * <ol>
+ * <li>Explicit — {@code dispatch.causedByEntryId()} when non-null</li>
+ * <li>inReplyTo lookup — ledger entry whose {@code messageId = dispatch.inReplyTo()}</li>
+ * </ol>
+ *
+ * <p>
+ * Attestation for DONE/FAILURE/DECLINE is deferred — reactive attestation persistence
+ * ({@code saveAttestation}) is not yet implemented in casehub-ledger. The deferral is
+ * logged at INFO so it is trackable in production.
+ *
+ * <p>
+ * Refs #105, #193, Epic #99.
  */
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveLedgerWriteService {
 
     private static final Logger LOG = Logger.getLogger(ReactiveLedgerWriteService.class);
-    private static final Set<String> CAUSAL_TYPES = Set.of("DONE", "FAILURE", "DECLINE", "HANDOFF");
     private static final Set<MessageType> ATTESTATION_TYPES = Set.of(
             MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE);
 
@@ -60,66 +80,92 @@ public class ReactiveLedgerWriteService {
     ObjectMapper objectMapper;
 
     /**
-     * Record the given message as an immutable ledger entry via the reactive stack.
+     * Record the given dispatch as an immutable ledger entry via the reactive stack.
      *
-     * @param ch the channel the message was sent to
-     * @param message the persisted message to record
+     * @param dispatch     the plain-record dispatch carrying all message fields (no JPA entities)
+     * @param messageId    the surrogate Long PK of the persisted {@code Message} entity
+     * @param commitmentId the UUID of the associated commitment, or null if none
+     * @param occurredAt   the wall-clock time the message was dispatched
+     * @return {@link LedgerWriteOutcome} with resolved values; or {@link LedgerWriteOutcome#DISABLED}
+     *         when ledger writes are suppressed via config.
      */
-    public Uni<Void> record(final Channel ch, final Message message) {
+    public Uni<LedgerWriteOutcome> record(final MessageDispatch dispatch,
+            final Long messageId,
+            @Nullable final UUID commitmentId,
+            final Instant occurredAt) {
         if (!config.enabled()) {
-            return Uni.createFrom().voidItem();
+            return Uni.createFrom().item(LedgerWriteOutcome.DISABLED);
         }
 
-        return Panache.withTransaction("qhorus", () -> reactiveRepo.findLatestBySubjectId(ch.id).flatMap(latestOpt -> {
-            final int sequenceNumber = latestOpt.map(e -> e.sequenceNumber + 1).orElse(1);
+        return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
+                .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
+                        .flatMap(resolvedCausedByEntryId -> reactiveRepo.findLatestBySubjectId(resolvedSubjectId)
+                                .flatMap(latestOpt -> {
+                                    final int sequenceNumber = latestOpt.map(e -> ((MessageLedgerEntry) e).sequenceNumber + 1)
+                                            .orElse(1);
 
-            final MessageLedgerEntry entry = new MessageLedgerEntry();
-            entry.subjectId = ch.id;
-            entry.channelId = ch.id;
-            entry.messageId = message.id;
-            entry.messageType = message.messageType.name();
-            entry.target = message.target;
-            entry.correlationId = message.correlationId;
-            entry.commitmentId = message.commitmentId;
-            final String resolvedActorId = actorIdProvider.resolve(message.sender);
-            entry.actorId = resolvedActorId;
-            entry.actorType = message.actorType;
-            entry.occurredAt = message.createdAt.truncatedTo(ChronoUnit.MILLIS);
-            entry.sequenceNumber = sequenceNumber;
-            entry.entryType = switch (message.messageType) {
-                case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
-                default -> LedgerEntryType.EVENT;
-            };
+                                    final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
-            if (message.messageType == MessageType.EVENT) {
-                populateTelemetry(entry, message.content);
-            } else {
-                entry.content = message.content;
-            }
+                                    final MessageLedgerEntry entry = new MessageLedgerEntry();
+                                    entry.subjectId = resolvedSubjectId;
+                                    entry.channelId = dispatch.channelId();
+                                    entry.messageId = messageId;
+                                    entry.commitmentId = commitmentId;
+                                    entry.causedByEntryId = resolvedCausedByEntryId;
+                                    entry.messageType = dispatch.type().name();
+                                    entry.target = dispatch.target();
+                                    entry.correlationId = dispatch.correlationId();
+                                    entry.actorId = resolvedActorId;
+                                    entry.actorType = dispatch.actorType();
+                                    entry.occurredAt = occurredAt.truncatedTo(ChronoUnit.MILLIS);
+                                    entry.sequenceNumber = sequenceNumber;
+                                    entry.entryType = switch (dispatch.type()) {
+                                        case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
+                                        default -> LedgerEntryType.EVENT;
+                                    };
 
-            if (CAUSAL_TYPES.contains(message.messageType.name()) && message.correlationId != null) {
-                return reactiveRepo.findLatestByCorrelationId(ch.id, message.correlationId)
-                        .flatMap(priorOpt -> {
-                            priorOpt.ifPresent(prior -> {
-                                entry.causedByEntryId = prior.id;
-                                if (ATTESTATION_TYPES.contains(message.messageType)) {
-                                    logSkippedAttestation(prior, message.messageType);
-                                }
-                            });
-                            return reactiveRepo.save(entry).replaceWithVoid();
-                        });
-            }
-            return reactiveRepo.save(entry).replaceWithVoid();
-        }));
+                                    if (dispatch.type() == MessageType.EVENT) {
+                                        populateTelemetry(entry, dispatch.content());
+                                    } else {
+                                        entry.content = dispatch.content();
+                                    }
+
+                                    if (ATTESTATION_TYPES.contains(dispatch.type()) && resolvedCausedByEntryId != null) {
+                                        LOG.infof(
+                                                "Reactive attestation deferred for %s on entry %s — casehub-ledger issue pending",
+                                                dispatch.type(), resolvedCausedByEntryId);
+                                    }
+
+                                    return reactiveRepo.save(entry)
+                                            .map(saved -> new LedgerWriteOutcome(
+                                                    saved.id, resolvedSubjectId, resolvedCausedByEntryId));
+                                }))));
     }
 
-    private void logSkippedAttestation(final MessageLedgerEntry commandEntry,
-            final MessageType terminalType) {
-        // Reactive attestation writes not yet supported — ReactiveMessageLedgerEntryRepository
-        // throws UnsupportedOperationException on saveAttestation(). The blocking LedgerWriteService
-        // is the authoritative attestation path. Log at DEBUG so it's trackable.
-        LOG.debugf("Reactive path: attestation for %s on COMMAND entry %s deferred to blocking path",
-                terminalType, commandEntry.id);
+    // ── Priority 1/2/3 subjectId resolution ──────────────────────────────────
+
+    private Uni<UUID> resolveSubjectId(final MessageDispatch dispatch) {
+        if (dispatch.subjectId() != null) {
+            return Uni.createFrom().item(dispatch.subjectId());
+        }
+        if (dispatch.correlationId() != null) {
+            return reactiveRepo.findEarliestWithSubjectByCorrelationId(dispatch.correlationId())
+                    .map(opt -> opt.map(e -> e.subjectId).orElse(dispatch.channelId()));
+        }
+        return Uni.createFrom().item(dispatch.channelId());
+    }
+
+    // ── Priority 1/2 causedByEntryId resolution ──────────────────────────────
+
+    private Uni<UUID> resolveCausedByEntryId(final MessageDispatch dispatch) {
+        if (dispatch.causedByEntryId() != null) {
+            return Uni.createFrom().item(dispatch.causedByEntryId());
+        }
+        if (dispatch.inReplyTo() != null) {
+            return reactiveRepo.findByMessageId(dispatch.inReplyTo())
+                    .map(opt -> opt.map(e -> e.id).orElse(null));
+        }
+        return Uni.createFrom().nullItem();
     }
 
     private void populateTelemetry(final MessageLedgerEntry entry, final String content) {
