@@ -22,6 +22,7 @@ import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.ProjectionService;
 import io.casehub.qhorus.runtime.store.ChannelBindingStore;
+import io.casehub.qhorus.runtime.store.query.MessageQuery;
 import io.casehub.qhorus.runtime.watchdog.Watchdog;
 
 public abstract class QhorusMcpToolsBase {
@@ -324,6 +325,23 @@ public abstract class QhorusMcpToolsBase {
     <S> String projectAndRender(final UUID channelId, final RenderableProjection<S> projection) {
         final ProjectionResult<S> result = projectionService.project(channelId, projection);
         return projection.render(result);
+    }
+
+    /**
+     * Projection with an optional message limit. When {@code maxMessages} is positive, folds
+     * only the first {@code maxMessages} messages in insertion order. Null or non-positive
+     * folds the full history.
+     *
+     * <p>Package-private — never {@code public} or {@code @Tool}.
+     */
+    <S> String projectAndRender(final UUID channelId, final RenderableProjection<S> projection,
+                                 final Integer maxMessages) {
+        if (maxMessages != null && maxMessages > 0) {
+            final ProjectionResult<S> result = projectionService.project(channelId,
+                    MessageQuery.builder().limit(maxMessages).build(), projection);
+            return projection.render(result);
+        }
+        return projectAndRender(channelId, projection);
     }
 
     /**

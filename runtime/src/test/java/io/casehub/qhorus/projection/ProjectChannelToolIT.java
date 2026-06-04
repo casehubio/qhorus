@@ -90,7 +90,7 @@ class ProjectChannelToolIT {
         put(channelId, MessageType.COMMAND);
 
         Channel ch = Channel.findById(channelId);
-        String result = tools.projectChannel(ch.name, "it-summary");
+        String result = tools.projectChannel(ch.name, "it-summary", null);
         assertThat(result).isEqualTo("2 command(s)");
     }
 
@@ -99,7 +99,7 @@ class ProjectChannelToolIT {
         UUID channelId = createChannel();
         put(channelId, MessageType.COMMAND);
 
-        String result = tools.projectChannel(channelId.toString(), "it-summary");
+        String result = tools.projectChannel(channelId.toString(), "it-summary", null);
         assertThat(result).isEqualTo("1 command(s)");
     }
 
@@ -108,7 +108,7 @@ class ProjectChannelToolIT {
         UUID channelId = createChannel();
 
         Channel ch = Channel.findById(channelId);
-        String result = tools.projectChannel(ch.name, "it-summary");
+        String result = tools.projectChannel(ch.name, "it-summary", null);
         assertThat(result).isEqualTo("empty");
     }
 
@@ -120,13 +120,13 @@ class ProjectChannelToolIT {
         Channel ch = Channel.findById(channelId);
 
         assertThrows(ToolCallException.class,
-                () -> tools.projectChannel(ch.name, "no-such-projection"));
+                () -> tools.projectChannel(ch.name, "no-such-projection", null));
     }
 
     @Test
     void projectChannel_unknownChannelName_throwsToolCallException() {
         assertThrows(ToolCallException.class,
-                () -> tools.projectChannel("channel-that-does-not-exist", "it-summary"));
+                () -> tools.projectChannel("channel-that-does-not-exist", "it-summary", null));
     }
 
     @Test
@@ -134,7 +134,7 @@ class ProjectChannelToolIT {
         String fakeUuid = UUID.randomUUID().toString();
 
         assertThrows(ToolCallException.class,
-                () -> tools.projectChannel(fakeUuid, "it-summary"));
+                () -> tools.projectChannel(fakeUuid, "it-summary", null));
     }
 
     // ── Tests: LAST_WRITE channel ─────────────────────────────────────────────
@@ -152,7 +152,7 @@ class ProjectChannelToolIT {
 
         put(channelId, MessageType.COMMAND);
 
-        String result = tools.projectChannel(ch.name, "it-summary");
+        String result = tools.projectChannel(ch.name, "it-summary", null);
         assertThat(result).isEqualTo("1 command(s)");
     }
 
@@ -167,7 +167,7 @@ class ProjectChannelToolIT {
         ch.persist();
 
         // Projection is a read — must succeed even on paused channels
-        String result = tools.projectChannel(ch.name, "it-summary");
+        String result = tools.projectChannel(ch.name, "it-summary", null);
         assertThat(result).isEqualTo("1 command(s)");
     }
 }

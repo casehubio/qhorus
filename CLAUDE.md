@@ -187,9 +187,10 @@ casehub-qhorus/
 │       ├── channel/
 │       │   ├── Channel.java             — PanacheEntity; `allowedTypes` TEXT nullable — null = open; `deniedTypes` TEXT nullable — null = no denial; comma-separated MessageType names enforced by MessageTypePolicy SPI; denial wins over allowedTypes when both are set
 │       │   ├── ChannelSemantic.java     — enum: APPEND|COLLECT|BARRIER|EPHEMERAL|LAST_WRITE
+│       │   ├── FindOrCreateResult.java  — record(Channel channel, boolean wasCreated); returned by ChannelService.findOrCreateWithBinding() to distinguish create-new (wasCreated=true) from find-existing (wasCreated=false); callers must not increment creation metrics when wasCreated=false. Refs #248.
 │       │   ├── AllowedWritersPolicy.java — @ApplicationScoped ACL check for channel write access; used by MessageService.dispatch(); unified supplier returns instance capability tags + synthetic role:actorType tag
 │       │   ├── RateLimiter.java         — @ApplicationScoped in-memory sliding-window rate limiter; used by MessageService.dispatch()
-│       │   └── ChannelService.java      — includes findByNamePrefix(prefix) → List<Channel> (delegates to ChannelStore.scan(ChannelQuery.byNamePrefix(prefix))); reactive parity via ReactiveChannelService.findByNamePrefix(prefix) → Uni<List<Channel>>
+│       │   └── ChannelService.java      — includes findByNamePrefix(prefix) → List<Channel>; findOrCreateWithBinding(ChannelCreateRequest) → FindOrCreateResult (REQUIRES_NEW); setTypeConstraints(UUID, allowedTypes, deniedTypes) — full-replacement, validates overlap, prospective only; reactive parity via ReactiveChannelService
 │       ├── message/
 │       │   ├── Message.java             — PanacheEntity
 │       │   ├── MessageType.java         — enum: QUERY|COMMAND|RESPONSE|STATUS|DECLINE|HANDOFF|DONE|FAILURE|EVENT (speech-act taxonomy, see ADR-0005)
@@ -218,9 +219,9 @@ casehub-qhorus/
 │       │   └── ReactiveLedgerWriteService.java      — @Alternative reactive mirror of LedgerWriteService
 │       ├── QhorusEntityMapper.java      — @ApplicationScoped CDI bean: toChannelDetail(Channel, long), toTimelineEntry(Message); injects ObjectMapper — shared by QhorusMcpToolsBase and QhorusDashboardService
 │       ├── mcp/
-│       │   ├── QhorusMcpToolsBase.java  — abstract base: mappers (toLedgerEntryMap, toMessageSummary, etc.), validators; ledger query response records (ObligationChainSummary, CausalChainEntry, StalledObligation, ObligationStats, TelemetrySummary, ToolTelemetry); delegates toChannelDetail/toTimelineEntry to QhorusEntityMapper
-│       │   ├── QhorusMcpTools.java      — blocking @Tool methods (~50); @UnlessBuildProperty(casehub.qhorus.reactive.enabled); create_channel now accepts allowed_types as 9th optional param and denied_types as 10th optional param
-│       │   └── ReactiveQhorusMcpTools.java — reactive @Tool methods returning Uni<T>; @IfBuildProperty(casehub.qhorus.reactive.enabled); create_channel mirrors allowed_types and denied_types params; delete_channel (reactive Uni<DeleteChannelResult>), get_instance and get_message (@Blocking)
+│       │   ├── QhorusMcpToolsBase.java  — abstract base: mappers (toLedgerEntryMap, toMessageSummary, etc.), validators; ledger query response records; resolveChannel(String) accepts UUID or name (dual-identity); projectAndRender(UUID, RenderableProjection<S>) and projectAndRender(UUID, RenderableProjection<S>, Integer maxMessages) — package-private, never @Tool
+│       │   ├── QhorusMcpTools.java      — blocking @Tool methods (~53); @UnlessBuildProperty(casehub.qhorus.reactive.enabled); create_channel (allowed_types + denied_types); set_channel_type_constraints(channel, allowed_types?, denied_types?) — full-replacement, UUID-or-name; list_projections() — sorted names from ProjectionRegistry; project_channel(channel, projection_name, max_messages?) — max_messages bounds fold depth (null = unlimited)
+│       │   └── ReactiveQhorusMcpTools.java — reactive @Tool methods returning Uni<T>; @IfBuildProperty(casehub.qhorus.reactive.enabled); set_channel_type_constraints (@Blocking — calls resolveChannel); list_projections; project_channel(max_messages?) (@Blocking); delete_channel (reactive Uni<DeleteChannelResult>), get_instance and get_message (@Blocking)
 │       ├── watchdog/
 │       │   ├── Watchdog.java            — PanacheEntity (condition-based alert registrations)
 │       │   ├── WatchdogEvaluationService.java — condition evaluation logic
