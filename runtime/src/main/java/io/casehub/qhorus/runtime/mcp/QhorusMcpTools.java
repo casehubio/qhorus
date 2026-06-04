@@ -1784,6 +1784,13 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Projection tools
     // ---------------------------------------------------------------------------
 
+    @Tool(name = "list_projections",
+            description = "List all projection names registered with ProjectionRegistry. "
+                    + "Pass a name from this list as the projection_name argument to project_channel.")
+    public List<String> listProjections() {
+        return projectionRegistry.registeredNames().stream().sorted().toList();
+    }
+
     @Tool(name = "project_channel",
             description = "Project a channel's message history through a named RenderableProjection "
                     + "and return the rendered result as a String. "
