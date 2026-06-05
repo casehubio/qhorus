@@ -22,7 +22,7 @@ public class Channel extends PanacheEntityBase {
     @Id
     public UUID id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false) /* immutable after creation — PP-20260604-dualid */
     public String name;
 
     public String description;

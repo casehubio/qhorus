@@ -12,6 +12,7 @@ import io.casehub.qhorus.api.message.MessageType;
  *
  * <p>The compact constructor validates:
  * <ul>
+ *   <li>Channel name is a well-formed slug path — lowercase, hyphen-separated segments, optionally separated by {@code /} (see {@link ChannelSlugValidator#validateSlugPath})</li>
  *   <li>Connector binding completeness (all four fields present or all null)</li>
  *   <li>Type names in {@code allowedTypes} and {@code deniedTypes} are valid {@link MessageType} values</li>
  *   <li>{@code allowedTypes} and {@code deniedTypes} do not intersect (denial wins by construction)</li>
@@ -35,6 +36,7 @@ public record ChannelCreateRequest(
         String outboundDestination
 ) {
     public ChannelCreateRequest {
+        ChannelSlugValidator.validateSlugPath(name);
         boolean anySet = inboundConnectorId != null || externalKey != null
                 || outboundConnectorId != null || outboundDestination != null;
         boolean allSet = inboundConnectorId != null && externalKey != null

@@ -1,0 +1,65 @@
+package io.casehub.qhorus.runtime.channel;
+
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.*;
+
+/** Pure-Java tests — no CDI, no Quarkus. Tests the compact constructor slug gate. */
+class ChannelCreateRequestSlugTest {
+
+    @Test
+    void simple_acceptsValidSlug() {
+        assertThatNoException().isThrownBy(() ->
+            ChannelCreateRequest.simple("billing-output", ChannelSemantic.APPEND));
+    }
+
+    @Test
+    void simple_acceptsHierarchical() {
+        assertThatNoException().isThrownBy(() ->
+            ChannelCreateRequest.simple("case-abc/work", ChannelSemantic.APPEND));
+    }
+
+    @Test
+    void compactConstructor_rejectsNameWithSpacesAndUppercase() {
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> new ChannelCreateRequest(
+                "Billing Output", null, ChannelSemantic.APPEND,
+                null, null, null, null, null, null, null, null, null, null, null))
+            .withMessageContaining("Billing Output");
+    }
+
+    @Test
+    void compactConstructor_rejectsUuidShapedName() {
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> new ChannelCreateRequest(
+                "a81b4c6d-1234-5678-abcd-ef0123456789", null, ChannelSemantic.APPEND,
+                null, null, null, null, null, null, null, null, null, null, null))
+            .withMessageContaining("UUID-shaped");
+    }
+
+    @Test
+    void compactConstructor_rejectsRawPhoneNumberInSegment() {
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> new ChannelCreateRequest(
+                "connector/twilio-sms-inbound/+14155552671", null, ChannelSemantic.APPEND,
+                null, null, null, null, null, null, null, null, null, null, null))
+            .withMessageContaining("+14155552671");
+    }
+
+    @Test
+    void compactConstructor_acceptsValidHierarchicalSlug() {
+        assertThatNoException().isThrownBy(() -> new ChannelCreateRequest(
+            "connector/twilio-sms-inbound/id-14155552671-3fa2b100", null, ChannelSemantic.APPEND,
+            null, null, null, null, null, null, null, null, null, null, null));
+    }
+
+    @Test
+    void compactConstructor_slugValidationFiresBeforeTypeValidation() {
+        // Invalid slug AND invalid type — slug error should come first
+        assertThatIllegalArgumentException()
+            .isThrownBy(() -> new ChannelCreateRequest(
+                "Invalid Name", null, ChannelSemantic.APPEND,
+                null, null, null, null, null, "NOT_A_TYPE", null, null, null, null, null))
+            .withMessageContaining("Invalid Name");
+    }
+}
