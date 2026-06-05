@@ -17,6 +17,7 @@ import io.casehub.qhorus.runtime.QhorusEntityMapper;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.channel.ChannelSlugValidator;
 import io.casehub.qhorus.runtime.data.SharedData;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.message.Message;
@@ -289,29 +290,29 @@ public abstract class QhorusMcpToolsBase {
     /**
      * Resolves a channel identifier (name or UUID string) to a {@link UUID}.
      *
+     * <p>Non-UUID-shaped input is resolved by name only. UUID-shaped input is resolved by
+     * ID only — the slug invariant enforced by {@link io.casehub.qhorus.runtime.channel.ChannelSlugValidator}
+     * blocks UUID-named channels, so UUID-shaped strings are unambiguously channel IDs.
+     *
      * <p>For the UUID path, existence is validated: a valid-format UUID for a non-existent
      * channel would otherwise silently project as if the channel were empty.
      *
      * @throws IllegalArgumentException if the channel is not found
      */
     UUID resolveChannel(final String channel) {
-        final UUID uuid = tryParseUuid(channel);
-        if (uuid != null) {
-            channelService.findById(uuid)
-                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel));
-            return uuid;
+        final UUID parsedUuid = ChannelSlugValidator.tryParseUuid(channel);
+        if (parsedUuid == null) {
+            // Not UUID-shaped — look up by name.
+            return channelService.findByName(channel)
+                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel))
+                    .id;
         }
-        return channelService.findByName(channel)
+        // UUID-shaped input — look up by ID directly.
+        // The slug invariant blocks UUID-named channels, so UUID-shaped inputs
+        // are always channel IDs, never channel names.
+        return channelService.findById(parsedUuid)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel))
                 .id;
-    }
-
-    private static UUID tryParseUuid(final String s) {
-        try {
-            return UUID.fromString(s);
-        } catch (final IllegalArgumentException e) {
-            return null;
-        }
     }
 
     /**

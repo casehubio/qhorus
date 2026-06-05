@@ -192,7 +192,11 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             + "Example: denied_types=\"EVENT\" for an oversight channel open to all agent messages but not telemetry. "
             + "Optionally attach a connector binding by supplying all four connector fields together.")
     public Uni<ChannelDetail> createChannel(
-            @ToolArg(name = "name", description = "Unique channel name") String name,
+            @ToolArg(name = "name", description = "Unique channel name. Each /-delimited segment must match " +
+                    "[a-z][a-z0-9]*(-[a-z0-9]+)* — lowercase letters and digits, hyphens only between " +
+                    "alphanumeric groups. No leading, trailing, or consecutive hyphens. Max 80 chars per " +
+                    "segment, 200 chars total. UUID-shaped names are rejected. " +
+                    "Examples: \"billing-output\", \"case-abc/work\".") String name,
             @ToolArg(name = "description", description = "Channel purpose description") String description,
             @ToolArg(name = "semantic", description = "Channel semantic: APPEND (default), COLLECT, BARRIER, EPHEMERAL, LAST_WRITE", required = false) String semantic,
             @ToolArg(name = "barrier_contributors", description = "Comma-separated contributor names (BARRIER channels only)", required = false) String barrierContributors,
