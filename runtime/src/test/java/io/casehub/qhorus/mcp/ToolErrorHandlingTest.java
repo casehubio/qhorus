@@ -97,7 +97,7 @@ class ToolErrorHandlingTest {
                 .body("""
                         {"jsonrpc":"2.0","id":1,"method":"tools/call",
                          "params":{"name":"pause_channel",
-                                   "arguments":{"channel_name":"http-test-nonexistent-1234",
+                                   "arguments":{"channel":"http-test-nonexistent-1234",
                                                 "caller_instance_id":"any"}}}
                         """)
                 .when().post("/mcp")
@@ -118,7 +118,7 @@ class ToolErrorHandlingTest {
                 .body("""
                         {"jsonrpc":"2.0","id":2,"method":"tools/call",
                          "params":{"name":"send_message",
-                                   "arguments":{"channel_name":"http-test-nonexistent-5678",
+                                   "arguments":{"channel":"http-test-nonexistent-5678",
                                                 "sender":"agent-1",
                                                 "type":"status",
                                                 "content":"hello"}}}
@@ -129,5 +129,12 @@ class ToolErrorHandlingTest {
                 .body("error", nullValue())
                 .body("result.isError", equalTo(true))
                 .body("result.content[0].text", containsString("http-test-nonexistent-5678"));
+    }
+
+    @Test
+    @TestTransaction
+    void pauseChannel_nonExistentUuid_throwsToolCallException() {
+        String nonExistentUuid = java.util.UUID.randomUUID().toString();
+        org.junit.jupiter.api.Assertions.assertThrows(ToolCallException.class, () -> tools.pauseChannel(nonExistentUuid, null));
     }
 }

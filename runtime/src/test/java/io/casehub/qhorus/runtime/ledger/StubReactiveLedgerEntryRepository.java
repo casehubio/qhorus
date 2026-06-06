@@ -67,6 +67,11 @@ class StubReactiveLedgerEntryRepository implements ReactiveLedgerEntryRepository
     }
 
     @Override
+    public Uni<List<LedgerEntry>> findEventsByActorId(final String actorId) {
+        throw new UnsupportedOperationException("reactive ledger not available in non-reactive tests");
+    }
+
+    @Override
     public Uni<List<LedgerEntry>> findByActorId(final String actorId, final Instant from, final Instant to) {
         throw new UnsupportedOperationException("reactive ledger not available in non-reactive tests");
     }

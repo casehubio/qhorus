@@ -260,4 +260,15 @@ class MessagingToolTest {
         assertEquals(Long.MAX_VALUE - 1, result.lastId(),
                 "empty poll should return the input cursor as lastId for stable re-polling");
     }
+
+    @Test
+    @TestTransaction
+    void sendMessage_acceptsChannelUuid() {
+        io.casehub.qhorus.api.channel.ChannelDetail created = tools.createChannel("uuid-msg-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null);
+        String uuid = created.channelId().toString();
+
+        DispatchResult result = tools.sendMessage(uuid, "alice", "query", "hello via uuid", null, null, null, null, null, null, null);
+
+        assertNotNull(result);
+    }
 }

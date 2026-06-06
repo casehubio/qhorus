@@ -271,11 +271,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "without a service restart. Fires ChannelInitialisedEvent to refresh in-memory caches.")
     @Transactional
     public ChannelDetail updateChannelBinding(
-            @ToolArg(name = "channel_name", description = "Name of the channel whose binding to update") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "outbound_connector_id", description = "New outbound connector identifier") String outboundConnectorId,
             @ToolArg(name = "outbound_destination", description = "New outbound destination (e.g. webhook URL, phone number)") String outboundDestination) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         channelService.updateConnectorBinding(ch.id, outboundConnectorId, outboundDestination);
         return toChannelDetail(ch, Message.<Message>count("channelId", ch.id));
     }
@@ -285,10 +284,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Limits are enforced via an in-memory sliding 60-second window that resets on restart.")
     @Transactional
     public ChannelDetail setChannelRateLimits(
-            @ToolArg(name = "channel_name", description = "Name of the channel to update") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "rate_limit_per_channel", description = "Max messages per minute across all senders. Null = unlimited.", required = false) Integer rateLimitPerChannel,
             @ToolArg(name = "rate_limit_per_instance", description = "Max messages per minute from a single sender. Null = unlimited.", required = false) Integer rateLimitPerInstance) {
-        Channel ch = channelService.setRateLimits(channelName, rateLimitPerChannel, rateLimitPerInstance);
+        Channel resolved = resolveChannel(channel);
+        Channel ch = channelService.setRateLimits(resolved.name, rateLimitPerChannel, rateLimitPerInstance);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -296,9 +296,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Pass null or blank to open the channel to all writers.")
     @Transactional
     public ChannelDetail setChannelWriters(
-            @ToolArg(name = "channel_name", description = "Name of the channel to update") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers (instance IDs and/or capability:tag / role:name). Null = open to all.", required = false) String allowedWriters) {
-        Channel ch = channelService.setAllowedWriters(channelName, allowedWriters);
+        Channel resolved = resolveChannel(channel);
+        Channel ch = channelService.setAllowedWriters(resolved.name, allowedWriters);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -307,9 +308,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Pass null or blank to open management to any caller.")
     @Transactional
     public ChannelDetail setChannelAdmins(
-            @ToolArg(name = "channel_name", description = "Name of the channel to update") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel. Null = open to any caller.", required = false) String adminInstances) {
-        Channel ch = channelService.setAdminInstances(channelName, adminInstances);
+        Channel resolved = resolveChannel(channel);
+        Channel ch = channelService.setAdminInstances(resolved.name, adminInstances);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -333,8 +335,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                              + "Null = clear denied_types. "
                              + "Example: \"EVENT\" for an oversight channel open to all agent messages but not telemetry.",
                      required = false) String deniedTypes) {
-        UUID channelId = resolveChannel(channel);
-        Channel ch = channelService.setTypeConstraints(channelId, allowedTypes, deniedTypes);
+        Channel resolved = resolveChannel(channel);
+        Channel ch = channelService.setTypeConstraints(resolved.id, allowedTypes, deniedTypes);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -367,44 +369,42 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // ---------------------------------------------------------------------------
 
     /** Convenience overload — no caller identity (open governance assumed). */
-    ChannelDetail pauseChannel(String channelName) {
-        return pauseChannel(channelName, null);
+    ChannelDetail pauseChannel(String channel) {
+        return pauseChannel(channel, null);
     }
 
     @Tool(name = "pause_channel", description = "Pause a channel — blocks send_message and returns empty on check_messages. "
             + "Idempotent. Use to stop agent work flowing through a channel for human review.")
     @Transactional
     public ChannelDetail pauseChannel(
-            @ToolArg(name = "channel_name", description = "Name of the channel to pause") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "pause_channel");
-        ch = channelService.pause(channelName);
+        ch = channelService.pause(ch.name);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
     /** Convenience overload — no caller identity (open governance assumed). */
-    ChannelDetail resumeChannel(String channelName) {
-        return resumeChannel(channelName, null);
+    ChannelDetail resumeChannel(String channel) {
+        return resumeChannel(channel, null);
     }
 
     @Tool(name = "resume_channel", description = "Resume a paused channel — re-enables send_message and check_messages. "
             + "Idempotent.")
     @Transactional
     public ChannelDetail resumeChannel(
-            @ToolArg(name = "channel_name", description = "Name of the channel to resume") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "resume_channel");
-        ch = channelService.resume(channelName);
+        ch = channelService.resume(ch.name);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
     /** Convenience overload — no caller identity (open governance assumed). */
-    DeleteChannelResult deleteChannel(String channelName, Boolean force) {
-        return deleteChannel(channelName, force, null);
+    DeleteChannelResult deleteChannel(String channel, Boolean force) {
+        return deleteChannel(channel, force, null);
     }
 
     @Tool(name = "delete_channel", description = "Delete a named channel. "
@@ -413,27 +413,25 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Subject to admin_instances check if the channel has an admin list.")
     @Transactional
     public DeleteChannelResult deleteChannel(
-            @ToolArg(name = "channel_name", description = "Name of the channel to delete") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "force", description = "When true, deletes all messages in the channel then "
                     + "deletes the channel. When false (default), rejects if messages exist.", required = false) Boolean force,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "delete_channel");
         commitmentStore.deleteAll(ch.id);
-        long deleted = channelService.delete(channelName, Boolean.TRUE.equals(force));
+        long deleted = channelService.delete(ch.name, Boolean.TRUE.equals(force));
         channelGateway.closeChannel(ch.id, new ChannelRef(ch.id, ch.name));
-        return new DeleteChannelResult(channelName, deleted, "deleted");
+        return new DeleteChannelResult(ch.name, deleted, "deleted");
     }
 
     @Tool(name = "list_backends", description = "List all registered channel backends for a channel. "
             + "Always includes 'qhorus-internal' (the Qhorus agent backend). "
             + "External backends (human-participating, human-observer) appear after registration.")
     public List<BackendInfo> listBackends(
-            @ToolArg(name = "channel_name", description = "Name of the channel") String channelName) {
-        Channel channel = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
-        return channelGateway.listBackends(channel.id).stream()
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        Channel ch = resolveChannel(channel);
+        return channelGateway.listBackends(ch.id).stream()
                 .map(r -> new BackendInfo(r.backendId(), r.backendType(),
                         r.actorType().name().toLowerCase()))
                 .toList();
@@ -442,13 +440,12 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     @Tool(name = "deregister_backend", description = "Remove a registered backend from a channel. "
             + "Cannot remove 'qhorus-internal'.")
     public DeregisterBackendResult deregisterBackend(
-            @ToolArg(name = "channel_name", description = "Name of the channel") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "backend_id", description = "ID of the backend to remove") String backendId) {
-        Channel channel = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
-        channelGateway.deregisterBackend(channel.id, backendId);
-        return new DeregisterBackendResult(channelName, backendId, true,
-                "Backend " + backendId + " deregistered from " + channelName);
+        Channel ch = resolveChannel(channel);
+        channelGateway.deregisterBackend(ch.id, backendId);
+        return new DeregisterBackendResult(ch.name, backendId, true,
+                "Backend " + backendId + " deregistered from " + ch.name);
     }
 
     @Tool(name = "register_backend", description = "Associate a CDI-registered channel backend with a channel. "
@@ -456,7 +453,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "backend_type: 'human_participating' (at most one per channel) or 'human_observer' (unlimited). "
             + "Cannot register 'qhorus-internal' as a human backend — it is always the agent backend.")
     public RegisterBackendResult registerBackend(
-            @ToolArg(name = "channel_name", description = "Name of the channel") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "backend_id", description = "backendId() of the CDI backend to register") String backendId,
             @ToolArg(name = "backend_type", description = "human_participating or human_observer") String backendType) {
         if (!"human_participating".equals(backendType) && !"human_observer".equals(backendType)) {
@@ -467,8 +464,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             throw new IllegalArgumentException(
                     "Cannot register 'qhorus-internal' as a human backend — it is always the agent backend.");
         }
-        Channel channel = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         io.casehub.qhorus.api.gateway.ChannelBackend backend =
                 java.util.stream.StreamSupport.stream(availableBackends.spliterator(), false)
                         .filter(b -> backendId.equals(b.backendId()))
@@ -476,14 +472,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                         .orElseThrow(() -> new IllegalArgumentException(
                                 "No CDI backend registered with backendId: " + backendId
                                 + ". Ensure the backend bean is deployed and its backendId() returns '" + backendId + "'."));
-        channelGateway.registerBackend(channel.id, backend, backendType);
-        return new RegisterBackendResult(channelName, backendId, backendType,
-                "Backend " + backendId + " registered as " + backendType + " on channel " + channelName);
+        channelGateway.registerBackend(ch.id, backend, backendType);
+        return new RegisterBackendResult(ch.name, backendId, backendType,
+                "Backend " + backendId + " registered as " + backendType + " on channel " + ch.name);
     }
 
     /** Convenience overload — no caller identity (open governance assumed). */
-    ForceReleaseResult forceReleaseChannel(String channelName, String reason) {
-        return forceReleaseChannel(channelName, reason, null);
+    ForceReleaseResult forceReleaseChannel(String channel, String reason) {
+        return forceReleaseChannel(channel, reason, null);
     }
 
     @Tool(name = "force_release_channel", description = "Force-deliver all accumulated messages and clear a BARRIER or COLLECT channel, "
@@ -492,11 +488,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Only valid for BARRIER and COLLECT semantics.")
     @Transactional
     public ForceReleaseResult forceReleaseChannel(
-            @ToolArg(name = "channel_name", description = "Name of the BARRIER or COLLECT channel to force-release") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "reason", description = "Reason for the force-release (recorded in audit event)", required = false) String reason,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "force_release_channel");
 
         if (ch.semantic != ChannelSemantic.BARRIER && ch.semantic != ChannelSemantic.COLLECT) {
@@ -532,7 +527,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "For QUERY and COMMAND types, correlation_id is auto-generated if not supplied.")
     @Transactional
     public DispatchResult sendMessage(
-            @ToolArg(name = "channel_name", description = "Target channel name") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "sender", description = "Sender identifier") String sender,
             @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), EVENT (telemetry only, not delivered to agents)") String type,
             @ToolArg(name = "content", description = "Message content") String content,
@@ -543,8 +538,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY and COMMAND. Defaults to channel config when not provided.", required = false) String deadline,
             @ToolArg(name = "subject_id", description = "Optional UUID of the domain aggregate this message concerns (for ledger indexing).", required = false) String subjectId,
             @ToolArg(name = "caused_by_entry_id", description = "Optional UUID of the ledger entry that triggered this dispatch (for causal chain tracing).", required = false) String causedByEntryId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
 
         // Read-only instance check — read_only instances cannot send any messages (MCP-specific)
         instanceService.findByInstanceId(sender).ifPresent(inst -> {
@@ -703,7 +697,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "COLLECT delivers all and clears, BARRIER blocks until all contributors have written.")
     @Transactional
     public CheckResult checkMessages(
-            @ToolArg(name = "channel_name", description = "Channel to poll") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "after_id", description = "Return messages with ID > after_id (use 0 for all)", required = false) Long afterId,
             @ToolArg(name = "limit", description = "Maximum messages to return (default 20)", required = false) Integer limit,
             @ToolArg(name = "sender", description = "Filter by sender (optional)", required = false) String sender,
@@ -711,8 +705,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     + "When provided, only broadcast (null target) and instance:<reader> messages are returned.", required = false) String readerInstanceId,
             @ToolArg(name = "include_events", description = "If true, include EVENT messages in results (default false). "
                     + "Used by read_only instances to receive telemetry events.", required = false) Boolean includeEvents) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
 
         if (ch.paused) {
             return new CheckResult(List.of(), afterId != null ? afterId : 0L, "Channel is paused");
@@ -845,26 +838,30 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
     /** Backward-compat overload — no reader_instance_id filter. */
-    List<MessageSummary> searchMessages(String query, String channelName, Integer limit) {
-        return searchMessages(query, channelName, limit, null);
+    List<MessageSummary> searchMessages(String query, String channel, Integer limit) {
+        return searchMessages(query, channel, limit, null);
     }
 
     @Tool(name = "search_messages", description = "Full-text keyword search across messages. Excludes EVENT type.")
     public List<MessageSummary> searchMessages(
             @ToolArg(name = "query", description = "Keyword to search for (case-insensitive)") String query,
-            @ToolArg(name = "channel_name", description = "Restrict search to a specific channel (optional)", required = false) String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID", required = false) String channel,
             @ToolArg(name = "limit", description = "Maximum results (default 20)", required = false) Integer limit,
             @ToolArg(name = "reader_instance_id", description = "Calling agent's instance ID for target filtering (optional)", required = false) String readerInstanceId) {
         String pattern = "%" + query.toLowerCase() + "%";
         int pageSize = limit != null ? limit : 20;
 
+        Channel ch = null;
+        if (channel != null && !channel.isBlank()) {
+            ch = resolveChannel(channel);
+        }
+        UUID channelId = ch != null ? ch.id : null;
+
         List<Message> results;
-        if (channelName != null && !channelName.isBlank()) {
-            Channel ch = channelService.findByName(channelName)
-                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        if (channelId != null) {
             results = Message.<Message> find(
                     "channelId = ?1 AND LOWER(content) LIKE ?2 AND messageType != ?3 ORDER BY id ASC",
-                    ch.id, pattern, MessageType.EVENT).page(0, pageSize).list();
+                    channelId, pattern, MessageType.EVENT).page(0, pageSize).list();
         } else {
             results = Message.<Message> find(
                     "LOWER(content) LIKE ?1 AND messageType != ?2 ORDER BY id ASC",
@@ -896,12 +893,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "arrives on the channel, or until timeout_seconds seconds elapse. "
             + "Returns immediately if a matching response already exists.")
     public WaitResult waitForReply(
-            @ToolArg(name = "channel_name", description = "Channel to watch for the response") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "correlation_id", description = "UUID matching the correlation_id on the expected RESPONSE") String correlationId,
             @ToolArg(name = "timeout_seconds", description = "Seconds to wait before timing out (default 90)", required = false) Integer timeoutS,
             @ToolArg(name = "instance_id", description = "Waiting agent's instance ID for tracking (optional)", required = false) String instanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
 
         int timeout = timeoutS != null ? timeoutS : 90;
         java.time.Instant expiresAt = java.time.Instant.now().plusSeconds(timeout);
@@ -971,11 +967,12 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Returns the human's response or a timeout result. "
             + "Pair with list_pending_commitments (for human to discover) and respond_to_approval (for human to answer).")
     public WaitResult requestApproval(
-            @ToolArg(name = "channel_name", description = "Channel to post the approval request on") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "content", description = "The approval request content shown to the human") String content,
             @ToolArg(name = "timeout_seconds", description = "Seconds to wait for human response (default 300)", required = false) Integer timeoutS) {
+        Channel ch = resolveChannel(channel);
         String correlationId = UUID.randomUUID().toString();
-        return requestApprovalWithCorrelationId(channelName, content, correlationId, timeoutS);
+        return requestApprovalWithCorrelationId(ch.name, content, correlationId, timeoutS);
     }
 
     /**
@@ -995,9 +992,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public DispatchResult respondToApproval(
             @ToolArg(name = "correlation_id", description = "Correlation ID of the approval request (from list_pending_commitments)") String correlationId,
             @ToolArg(name = "response_text", description = "The approval decision or message to send back") String responseText,
-            @ToolArg(name = "channel_name", description = "Channel the approval request was posted on") String channelName) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        Channel ch = resolveChannel(channel);
         // Look up the original request message to supply inReplyTo (required by RESPONSE type).
         // Use canonical MessageDispatch constructor to bypass builder validation when no prior message exists
         // (e.g., when commitment was opened directly without a corresponding channel message).
@@ -1054,11 +1050,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "role=both (default): all non-terminal commitments involving you.")
     @Transactional
     public List<CommitmentDetail> listMyCommitments(
-            @ToolArg(name = "channel_name", description = "Channel to query") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "sender", description = "Your agent identity") String sender,
             @ToolArg(name = "role", description = "Filter: 'obligor', 'requester', or 'both' (default: both)", required = false) String role) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         String r = role == null ? "both" : role.toLowerCase();
         List<io.casehub.qhorus.runtime.message.Commitment> results = switch (r) {
             case "obligor" -> commitmentStore.findOpenByObligor(sender, ch.id);
@@ -1281,8 +1276,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
     /** Convenience overload — no caller identity (open governance assumed). */
-    ClearChannelResult clearChannel(String channelName) {
-        return clearChannel(channelName, null);
+    ClearChannelResult clearChannel(String channel) {
+        return clearChannel(channel, null);
     }
 
     @Tool(name = "clear_channel", description = "Delete ALL non-event messages from a channel. "
@@ -1290,10 +1285,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Returns count of messages deleted.")
     @Transactional
     public ClearChannelResult clearChannel(
-            @ToolArg(name = "channel_name", description = "Name of the channel to clear") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "clear_channel");
         long deleted = Message.delete("channelId = ?1 AND messageType != ?2",
                 ch.id, MessageType.EVENT);
@@ -1303,7 +1297,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .content("clear_channel: " + deleted + " message(s) deleted")
                 .actorType(ActorType.SYSTEM).build());
         channelService.updateLastActivity(ch.id);
-        return new ClearChannelResult(channelName, (int) deleted, true);
+        return new ClearChannelResult(ch.name, (int) deleted, true);
     }
 
     @Tool(name = "deregister_instance", description = "Force-remove an agent instance and its capability tags from the registry. "
@@ -1330,10 +1324,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Includes message count, sender/type breakdowns, artefact refs, recent messages (truncated), and timestamps.")
     @Transactional
     public ChannelDigest channelDigest(
-            @ToolArg(name = "channel_name", description = "Name of the channel to summarise") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "limit", description = "Max recent messages to include (default 10)", required = false) Integer limit) {
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
 
         int pageSize = limit != null ? limit : 10;
         List<Message> allMessages = Message.<Message> find(
@@ -1399,9 +1392,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // ---------------------------------------------------------------------------
 
     /** Backward-compat overload — no correlation_id or sort. Used by existing tests. */
-    List<Map<String, Object>> listLedgerEntries(String channelName, String typeFilter,
+    List<Map<String, Object>> listLedgerEntries(String channel, String typeFilter,
             String agentId, String since, Long afterId, int limit) {
-        return listLedgerEntries(channelName, typeFilter, agentId, since, afterId,
+        return listLedgerEntries(channel, typeFilter, agentId, since, afterId,
                 null, null, limit);
     }
 
@@ -1413,7 +1406,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "and cursor-based pagination via after_id.")
     @Transactional
     public List<Map<String, Object>> listLedgerEntries(
-            @ToolArg(name = "channel_name", description = "Name of the channel to query") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "type_filter", description = "Comma-separated MessageType names to include "
                     + "(e.g. 'COMMAND,DONE,FAILURE'). Omit to return all types.", required = false) String typeFilter,
             @ToolArg(name = "sender", description = "Filter by sender — returns only entries from this agent", required = false) String agentId,
@@ -1423,8 +1416,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "sort", description = "Sort order: 'asc' (default, oldest first) or 'desc' (newest first)", required = false) String sort,
             @ToolArg(name = "limit", description = "Maximum entries to return (default 20, max 100)", required = false) Integer limit) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         java.util.Set<String> types = null;
         if (typeFilter != null && !typeFilter.isBlank()) {
@@ -1468,11 +1460,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Returns null fields (not an error) for unknown correlation IDs.")
     @Transactional
     public ObligationChainSummary getObligationChain(
-            @ToolArg(name = "channel_name", description = "Name of the channel") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to inspect") String correlationId) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         final List<MessageLedgerEntry> chain = ledgerRepo.findAllByCorrelationId(ch.id, correlationId);
 
@@ -1525,11 +1516,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Returns empty list for unknown entry IDs (never throws on missing chain).")
     @Transactional
     public List<CausalChainEntry> getCausalChain(
-            @ToolArg(name = "channel_name", description = "Name of the channel") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "ledger_entry_id", description = "UUID of the ledger entry (from list_ledger_entries entry_id field)") String ledgerEntryId) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         final UUID entryUuid;
         try {
@@ -1556,11 +1546,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Useful for detecting obligations that an obligor has not responded to.")
     @Transactional
     public List<StalledObligation> listStalledObligations(
-            @ToolArg(name = "channel_name", description = "Name of the channel to query") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "older_than_seconds", description = "Minimum age in seconds to consider stalled (default 30)", required = false) Integer olderThanSeconds) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         final int threshold = olderThanSeconds != null ? olderThanSeconds : 30;
         final java.time.Instant cutoff = java.time.Instant.now().minusSeconds(threshold);
@@ -1587,10 +1576,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "'Stalled' = subset of still-open whose timestamp is older than 30 seconds.")
     @Transactional
     public ObligationStats getObligationStats(
-            @ToolArg(name = "channel_name", description = "Name of the channel to query") String channelName) {
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         final Map<String, Long> counts = ledgerRepo.countByOutcome(ch.id);
         final long total = counts.getOrDefault("COMMAND", 0L);
@@ -1614,11 +1602,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Optional since parameter (ISO-8601) to restrict the time window.")
     @Transactional
     public TelemetrySummary getTelemetrySummary(
-            @ToolArg(name = "channel_name", description = "Name of the channel to query") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "since", description = "ISO-8601 timestamp — include only events at or after this time", required = false) String since) {
 
-        final Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        final Channel ch = resolveChannel(channel);
 
         java.time.Instant sinceInstant = null;
         if (since != null && !since.isBlank()) {
@@ -1666,12 +1653,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             + "Supports cursor-based pagination via after_id (message.id cursor).")
     @Transactional
     public List<Map<String, Object>> getChannelTimeline(
-            @ToolArg(name = "channel_name", description = "Name of the channel to query") String channelName,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "after_id", description = "Return messages with id > after_id (cursor pagination)", required = false) Long afterId,
             @ToolArg(name = "limit", description = "Maximum messages to return (default 50, max 200)", required = false) Integer limit) {
 
-        Channel ch = channelService.findByName(channelName)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        Channel ch = resolveChannel(channel);
 
         int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 200) : 50;
 
@@ -1815,7 +1801,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                      description = "Maximum number of messages to fold, in insertion order (oldest first). "
                              + "Null or non-positive = fold full history. Default: null (unlimited).",
                      required = false) Integer maxMessages) {
-        return projectAndRender(resolveChannel(channel), projectionRegistry.get(projectionName), maxMessages);
+        return projectAndRender(resolveChannel(channel).id, projectionRegistry.get(projectionName), maxMessages);
     }
 
 }

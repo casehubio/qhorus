@@ -381,6 +381,16 @@ public class MessageLedgerEntryRepository implements LedgerEntryRepository {
     }
 
     @Override
+    public List<LedgerEntry> findEventsByActorId(final String actorId) {
+        return em.createQuery(
+                "SELECT e FROM MessageLedgerEntry e WHERE e.entryType = :type AND e.actorId = :actorId ORDER BY e.sequenceNumber ASC",
+                LedgerEntry.class)
+                .setParameter("type", LedgerEntryType.EVENT)
+                .setParameter("actorId", actorId)
+                .getResultList();
+    }
+
+    @Override
     public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId) {
         return em.createNamedQuery("LedgerAttestation.findByEntryId", LedgerAttestation.class)
                 .setParameter("entryId", ledgerEntryId)

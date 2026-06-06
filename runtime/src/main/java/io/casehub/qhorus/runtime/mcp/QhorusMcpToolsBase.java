@@ -288,7 +288,7 @@ public abstract class QhorusMcpToolsBase {
     }
 
     /**
-     * Resolves a channel identifier (name or UUID string) to a {@link UUID}.
+     * Resolves a channel identifier (name or UUID string) to a {@link Channel}.
      *
      * <p>Non-UUID-shaped input is resolved by name only. UUID-shaped input is resolved by
      * ID only — the slug invariant enforced by {@link io.casehub.qhorus.runtime.channel.ChannelSlugValidator}
@@ -299,20 +299,18 @@ public abstract class QhorusMcpToolsBase {
      *
      * @throws IllegalArgumentException if the channel is not found
      */
-    UUID resolveChannel(final String channel) {
+    Channel resolveChannel(final String channel) {
         final UUID parsedUuid = ChannelSlugValidator.tryParseUuid(channel);
         if (parsedUuid == null) {
             // Not UUID-shaped — look up by name.
             return channelService.findByName(channel)
-                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel))
-                    .id;
+                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel));
         }
         // UUID-shaped input — look up by ID directly.
         // The slug invariant blocks UUID-named channels, so UUID-shaped inputs
         // are always channel IDs, never channel names.
         return channelService.findById(parsedUuid)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel))
-                .id;
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel));
     }
 
     /**

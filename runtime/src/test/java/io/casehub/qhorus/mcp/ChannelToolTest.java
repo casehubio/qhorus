@@ -152,4 +152,27 @@ class ChannelToolTest {
 
         assertTrue(found.isEmpty());
     }
+
+    @Test
+    @TestTransaction
+    void pauseChannel_acceptsChannelUuid() {
+        ChannelDetail created = tools.createChannel("uuid-pause-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null);
+        String uuid = created.channelId().toString();
+
+        ChannelDetail result = tools.pauseChannel(uuid, null);
+
+        assertEquals("uuid-pause-test", result.name());
+    }
+
+    @Test
+    @TestTransaction
+    void resumeChannel_acceptsChannelUuid() {
+        ChannelDetail created = tools.createChannel("uuid-resume-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null);
+        String uuid = created.channelId().toString();
+        tools.pauseChannel(uuid, null);
+
+        ChannelDetail result = tools.resumeChannel(uuid, null);
+
+        assertEquals("uuid-resume-test", result.name());
+    }
 }

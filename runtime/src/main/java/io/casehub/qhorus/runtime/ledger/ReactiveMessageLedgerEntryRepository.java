@@ -136,6 +136,14 @@ public class ReactiveMessageLedgerEntryRepository implements ReactiveLedgerEntry
 
     @Override
     @SuppressWarnings("unchecked")
+    public Uni<List<LedgerEntry>> findEventsByActorId(final String actorId) {
+        return repo.list("entryType = ?1 AND actorId = ?2 ORDER BY sequenceNumber ASC",
+                LedgerEntryType.EVENT, actorId)
+                .map(l -> (List<LedgerEntry>) (List<?>) l);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
     public Uni<List<LedgerEntry>> findByActorId(final String actorId, final Instant from, final Instant to) {
         return repo.list(
                 "actorId = ?1 AND occurredAt >= ?2 AND occurredAt <= ?3 ORDER BY occurredAt ASC",

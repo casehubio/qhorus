@@ -535,6 +535,17 @@ class LedgerQueryToolsTest {
     // Fixture
     // =========================================================================
 
+    @Test
+    void listLedgerEntries_acceptsChannelUuid() {
+        io.casehub.qhorus.api.channel.ChannelDetail created = tools.createChannel("uuid-ledger-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.sendMessage("uuid-ledger-test", "alice", "query", "hello", null, null, null, null, null, null, null);
+        String uuid = created.channelId().toString();
+
+        List<Map<String, Object>> entries = tools.listLedgerEntries(uuid, null, null, null, null, null, null, 20);
+
+        assertFalse(entries.isEmpty());
+    }
+
     private void setup(final String channel, final String... agents) {
         tools.createChannel(channel, "Test channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null);
         for (final String agent : agents) {

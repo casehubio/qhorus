@@ -307,8 +307,8 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                              + "Null = clear denied_types. "
                              + "Example: \"EVENT\" for an oversight channel open to all agent messages but not telemetry.",
                      required = false) String deniedTypes) {
-        UUID channelId = resolveChannel(channel);
-        return channelService.setTypeConstraints(channelId, allowedTypes, deniedTypes)
+        Channel resolvedChannel = resolveChannel(channel);
+        return channelService.setTypeConstraints(resolvedChannel.id, allowedTypes, deniedTypes)
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -1725,6 +1725,6 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                      description = "Maximum number of messages to fold, in insertion order (oldest first). "
                              + "Null or non-positive = fold full history. Default: null (unlimited).",
                      required = false) Integer maxMessages) {
-        return projectAndRender(resolveChannel(channel), projectionRegistry.get(projectionName), maxMessages);
+        return projectAndRender(resolveChannel(channel).id, projectionRegistry.get(projectionName), maxMessages);
     }
 }
