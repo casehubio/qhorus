@@ -277,7 +277,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "rate_limit_per_channel", description = "Max messages per minute across all senders. Null = unlimited.", required = false) Integer rateLimitPerChannel,
             @ToolArg(name = "rate_limit_per_instance", description = "Max messages per minute from a single sender. Null = unlimited.", required = false) Integer rateLimitPerInstance) {
         return resolveChannelAsync(channel)
-                .flatMap(resolved -> channelService.setRateLimits(resolved.name, rateLimitPerChannel, rateLimitPerInstance))
+                .flatMap(resolved -> channelService.setRateLimits(resolved.id, rateLimitPerChannel, rateLimitPerInstance))
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -288,7 +288,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers (instance IDs and/or capability:tag / role:name). Null = open to all.", required = false) String allowedWriters) {
         return resolveChannelAsync(channel)
-                .flatMap(resolved -> channelService.setAllowedWriters(resolved.name, allowedWriters))
+                .flatMap(resolved -> channelService.setAllowedWriters(resolved.id, allowedWriters))
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -300,7 +300,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel. Null = open to any caller.", required = false) String adminInstances) {
         return resolveChannelAsync(channel)
-                .flatMap(resolved -> channelService.setAdminInstances(resolved.name, adminInstances))
+                .flatMap(resolved -> channelService.setAdminInstances(resolved.id, adminInstances))
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -376,7 +376,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
         return resolveChannelAsync(channel)
                 .invoke(ch -> checkAdminAccess(ch, callerInstanceId, "pause_channel"))
-                .flatMap(ch -> channelService.pause(ch.name))
+                .flatMap(ch -> channelService.pause(ch.id))
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -388,7 +388,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
         return resolveChannelAsync(channel)
                 .invoke(ch -> checkAdminAccess(ch, callerInstanceId, "resume_channel"))
-                .flatMap(ch -> channelService.resume(ch.name))
+                .flatMap(ch -> channelService.resume(ch.id))
                 .flatMap(ch -> messageStore.countByChannel(ch.id)
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -405,7 +405,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         return resolveChannelAsync(channel)
                 .invoke(ch -> checkAdminAccess(ch, callerInstanceId, "delete_channel"))
                 .invoke(ch -> commitmentStore.deleteAll(ch.id))
-                .flatMap(ch -> channelService.delete(ch.name, Boolean.TRUE.equals(force))
+                .flatMap(ch -> channelService.delete(ch.id, Boolean.TRUE.equals(force))
                         .invoke(ignored -> channelGateway.closeChannel(ch.id, new ChannelRef(ch.id, ch.name)))
                         .map(deleted -> new DeleteChannelResult(ch.name, deleted, "deleted")));
     }

@@ -98,9 +98,9 @@ public class ReactiveChannelService {
         return (s == null || s.isBlank()) ? null : s;
     }
 
-    public Uni<Channel> setRateLimits(String name, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
-                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
+    public Uni<Channel> setRateLimits(UUID channelId, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     ch.rateLimitPerChannel = rateLimitPerChannel;
                     ch.rateLimitPerInstance = rateLimitPerInstance;
@@ -108,9 +108,9 @@ public class ReactiveChannelService {
                 }));
     }
 
-    public Uni<Channel> setAllowedWriters(String name, String allowedWriters) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
-                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
+    public Uni<Channel> setAllowedWriters(UUID channelId, String allowedWriters) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     ch.allowedWriters = (allowedWriters == null || allowedWriters.isBlank()) ? null
                             : allowedWriters;
@@ -118,9 +118,9 @@ public class ReactiveChannelService {
                 }));
     }
 
-    public Uni<Channel> setAdminInstances(String name, String adminInstances) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
-                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
+    public Uni<Channel> setAdminInstances(UUID channelId, String adminInstances) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     ch.adminInstances = (adminInstances == null || adminInstances.isBlank()) ? null
                             : adminInstances;
@@ -165,18 +165,18 @@ public class ReactiveChannelService {
         return channelStore.find(id);
     }
 
-    public Uni<Channel> pause(String name) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
-                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
+    public Uni<Channel> pause(UUID channelId) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     ch.paused = true;
                     return ch;
                 }));
     }
 
-    public Uni<Channel> resume(String name) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
-                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name)))
+    public Uni<Channel> resume(UUID channelId) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     ch.paused = false;
                     return ch;
@@ -188,22 +188,22 @@ public class ReactiveChannelService {
     }
 
     /**
-     * Delete a channel by name. Uses blocking {@code MessageStore} for count and purge
+     * Delete a channel by UUID. Uses blocking {@code MessageStore} for count and purge
      * (no reactive equivalents). Infrequent admin operation — blocking is acceptable.
      *
-     * @param name the channel name
+     * @param channelId the channel UUID
      * @param force when false, rejects if the channel has messages
      * @return number of messages deleted
      */
-    public Uni<Long> delete(final String name, final boolean force) {
-        return Panache.withTransaction("qhorus", () -> channelStore.findByName(name)
+    public Uni<Long> delete(final UUID channelId, final boolean force) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(
-                        () -> new IllegalArgumentException("Channel not found: " + name)))
+                        () -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .map(ch -> {
                     int messageCount = messageStore.countByChannel(ch.id);
                     if (messageCount > 0 && !force) {
                         throw new IllegalStateException(
-                                "Channel '" + name + "' has " + messageCount
+                                "Channel '" + channelId + "' has " + messageCount
                                         + " messages. Pass force=true to delete anyway.");
                     }
                     if (messageCount > 0) {

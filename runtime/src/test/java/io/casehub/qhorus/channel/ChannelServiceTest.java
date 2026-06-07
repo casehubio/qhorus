@@ -215,9 +215,11 @@ class ChannelServiceTest {
     void delete_emptyChannel_succeeds() {
         String name = "del-empty-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        UUID[] chId = new UUID[1];
+        QuarkusTransaction.requiringNew().run(() -> chId[0] = channelService.findByName(name).orElseThrow().id);
 
         QuarkusTransaction.requiringNew().run(() -> {
-            long deleted = channelService.delete(name, false);
+            long deleted = channelService.delete(chId[0], false);
             assertEquals(0L, deleted);
         });
 
@@ -227,7 +229,7 @@ class ChannelServiceTest {
     @Test
     void delete_notFound_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () -> QuarkusTransaction.requiringNew()
-                .run(() -> channelService.delete("no-such-channel-" + System.nanoTime(), false)));
+                .run(() -> channelService.delete(UUID.randomUUID(), false)));
     }
 
     @Test
@@ -248,8 +250,26 @@ class ChannelServiceTest {
                         .build()));
 
         QuarkusTransaction.requiringNew().run(() -> {
-            long deleted = channelService.delete(name, true);
+            long deleted = channelService.delete(chId[0], true);
             assertEquals(1L, deleted);
+        });
+
+        QuarkusTransaction.requiringNew().run(() -> assertTrue(channelService.findByName(name).isEmpty()));
+    }
+
+    @Test
+    void delete_byUUID_emptyChannel_succeeds() {
+        // Verifies the UUID-first delete signature introduced in qhorus#252.
+        // Before #252: channelService.delete(UUID, boolean) doesn't exist → compile error (RED).
+        // After #252: compiles and behaves identically to delete(name, false).
+        String name = "del-uuid-" + System.nanoTime();
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        UUID[] chId = new UUID[1];
+        QuarkusTransaction.requiringNew().run(() -> chId[0] = channelService.findByName(name).orElseThrow().id);
+
+        QuarkusTransaction.requiringNew().run(() -> {
+            long deleted = channelService.delete(chId[0], false); // UUID-first API
+            assertEquals(0L, deleted);
         });
 
         QuarkusTransaction.requiringNew().run(() -> assertTrue(channelService.findByName(name).isEmpty()));
@@ -273,7 +293,7 @@ class ChannelServiceTest {
                         .build()));
 
         Exception ex = assertThrows(Exception.class,
-                () -> QuarkusTransaction.requiringNew().run(() -> channelService.delete(name, false)));
+                () -> QuarkusTransaction.requiringNew().run(() -> channelService.delete(chId[0], false)));
         assertTrue(ex.getMessage().contains("1") && ex.getMessage().contains("force=true"),
                 "Error should mention message count and force=true: " + ex.getMessage());
     }

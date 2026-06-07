@@ -39,11 +39,13 @@ class ReactiveChannelServiceTest extends ChannelServiceContractTest {
 
     @Override
     protected Channel pause(String name) {
-        return svc.pause(name).await().indefinitely();
+        return svc.pause(svc.findByName(name).await().indefinitely().orElseThrow().id)
+                .await().indefinitely();
     }
 
     @Override
     protected Channel resume(String name) {
-        return svc.resume(name).await().indefinitely();
+        return svc.resume(svc.findByName(name).await().indefinitely().orElseThrow().id)
+                .await().indefinitely();
     }
 }

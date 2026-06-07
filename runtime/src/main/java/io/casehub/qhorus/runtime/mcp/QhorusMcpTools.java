@@ -288,7 +288,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "rate_limit_per_channel", description = "Max messages per minute across all senders. Null = unlimited.", required = false) Integer rateLimitPerChannel,
             @ToolArg(name = "rate_limit_per_instance", description = "Max messages per minute from a single sender. Null = unlimited.", required = false) Integer rateLimitPerInstance) {
         Channel resolved = resolveChannel(channel);
-        Channel ch = channelService.setRateLimits(resolved.name, rateLimitPerChannel, rateLimitPerInstance);
+        Channel ch = channelService.setRateLimits(resolved.id, rateLimitPerChannel, rateLimitPerInstance);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -299,7 +299,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers (instance IDs and/or capability:tag / role:name). Null = open to all.", required = false) String allowedWriters) {
         Channel resolved = resolveChannel(channel);
-        Channel ch = channelService.setAllowedWriters(resolved.name, allowedWriters);
+        Channel ch = channelService.setAllowedWriters(resolved.id, allowedWriters);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -311,7 +311,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel. Null = open to any caller.", required = false) String adminInstances) {
         Channel resolved = resolveChannel(channel);
-        Channel ch = channelService.setAdminInstances(resolved.name, adminInstances);
+        Channel ch = channelService.setAdminInstances(resolved.id, adminInstances);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -381,7 +381,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "pause_channel");
-        ch = channelService.pause(ch.name);
+        ch = channelService.pause(ch.id);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -398,7 +398,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "resume_channel");
-        ch = channelService.resume(ch.name);
+        ch = channelService.resume(ch.id);
         return toChannelDetail(ch, Message.<Message> count("channelId", ch.id));
     }
 
@@ -420,7 +420,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "delete_channel");
         commitmentStore.deleteAll(ch.id);
-        long deleted = channelService.delete(ch.name, Boolean.TRUE.equals(force));
+        long deleted = channelService.delete(ch.id, Boolean.TRUE.equals(force));
         channelGateway.closeChannel(ch.id, new ChannelRef(ch.id, ch.name));
         return new DeleteChannelResult(ch.name, deleted, "deleted");
     }

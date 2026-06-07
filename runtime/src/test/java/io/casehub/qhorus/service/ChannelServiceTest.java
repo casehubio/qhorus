@@ -35,11 +35,11 @@ class ChannelServiceTest extends ChannelServiceContractTest {
 
     @Override
     protected Channel pause(String name) {
-        return svc.pause(name);
+        return svc.pause(svc.findByName(name).orElseThrow().id);
     }
 
     @Override
     protected Channel resume(String name) {
-        return svc.resume(name);
+        return svc.resume(svc.findByName(name).orElseThrow().id);
     }
 }

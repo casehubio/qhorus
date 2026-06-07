@@ -155,26 +155,26 @@ public class ChannelService {
     }
 
     @Transactional
-    public Channel setRateLimits(String name, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public Channel setRateLimits(UUID channelId, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         ch.rateLimitPerChannel = rateLimitPerChannel;
         ch.rateLimitPerInstance = rateLimitPerInstance;
         return ch;
     }
 
     @Transactional
-    public Channel setAllowedWriters(String name, String allowedWriters) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public Channel setAllowedWriters(UUID channelId, String allowedWriters) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         ch.allowedWriters = (allowedWriters == null || allowedWriters.isBlank()) ? null : allowedWriters;
         return ch;
     }
 
     @Transactional
-    public Channel setAdminInstances(String name, String adminInstances) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public Channel setAdminInstances(UUID channelId, String adminInstances) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         ch.adminInstances = (adminInstances == null || adminInstances.isBlank()) ? null : adminInstances;
         return ch;
     }
@@ -235,17 +235,17 @@ public class ChannelService {
     }
 
     @Transactional
-    public Channel pause(String name) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public Channel pause(UUID channelId) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         ch.paused = true;
         return ch;
     }
 
     @Transactional
-    public Channel resume(String name) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public Channel resume(UUID channelId) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         ch.paused = false;
         return ch;
     }
@@ -255,23 +255,23 @@ public class ChannelService {
     }
 
     /**
-     * Delete a channel by name. When {@code force=true}, purges all messages in the channel
+     * Delete a channel by UUID. When {@code force=true}, purges all messages in the channel
      * before deletion (required — {@code fk_message_channel} has no CASCADE).
      *
-     * @param name the channel name
+     * @param channelId the channel UUID
      * @param force when false, rejects if the channel has messages
      * @return number of messages deleted
      * @throws IllegalArgumentException if the channel does not exist
      * @throws IllegalStateException if force=false and the channel has messages
      */
     @Transactional
-    public long delete(final String name, final boolean force) {
-        Channel ch = findByName(name)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + name));
+    public long delete(final UUID channelId, final boolean force) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         int messageCount = messageStore.countByChannel(ch.id);
         if (messageCount > 0 && !force) {
             throw new IllegalStateException(
-                    "Channel '" + name + "' has " + messageCount
+                    "Channel '" + channelId + "' has " + messageCount
                             + " messages. Pass force=true to delete anyway.");
         }
         if (messageCount > 0) {
