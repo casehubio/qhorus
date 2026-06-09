@@ -692,7 +692,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                 .channelId(ch.id).sender("system").type(MessageType.EVENT)
                 .telemetry(auditTelemetry).actorType(ActorType.SYSTEM).build());
 
-        blockingChannelService.updateLastActivity(ch.id);
+        blockingChannelService.updateLastActivity(ch.id, ch.tenancyId);
 
         List<MessageSummary> summaries = messages.stream().map(this::toMessageSummary).toList();
         return new ForceReleaseResult(ch.name, ch.semantic.name(), messages.size(), summaries);
@@ -1292,7 +1292,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         blockingMessageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id).sender("system").type(MessageType.EVENT)
                 .actorType(ActorType.SYSTEM).build());
-        blockingChannelService.updateLastActivity(ch.id);
+        blockingChannelService.updateLastActivity(ch.id, ch.tenancyId);
         return new ClearChannelResult(channelName, (int) deleted, true);
     }
 

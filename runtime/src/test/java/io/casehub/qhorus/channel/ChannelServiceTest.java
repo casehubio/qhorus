@@ -95,7 +95,7 @@ class ChannelServiceTest {
 
         // ensure at least 1ms passes
         Thread.sleep(5);
-        channelService.updateLastActivity(ch.id);
+        channelService.updateLastActivity(ch.id, ch.tenancyId);
 
         Channel updated = channelService.findByName("active-ch").orElseThrow();
         assertTrue(updated.lastActivityAt.isAfter(original),

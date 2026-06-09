@@ -68,7 +68,8 @@ public class InMemoryChannelStore implements ChannelStore {
     }
 
     @Override
-    public void updateLastActivity(UUID channelId) {
+    public void updateLastActivity(UUID channelId, String tenancyId) {
+        // tenancyId ignored — InMemoryChannelStore is single-tenant (test semantics)
         find(channelId).ifPresent(ch -> ch.lastActivityAt = Instant.now());
     }
 

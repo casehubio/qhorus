@@ -73,8 +73,9 @@ public class ReactiveJpaChannelStore implements ReactiveChannelStore {
     }
 
     @Override
-    public Uni<Void> updateLastActivity(UUID channelId) {
-        return repo.update("lastActivityAt = ?1 WHERE id = ?2", Instant.now(), channelId)
+    public Uni<Void> updateLastActivity(UUID channelId, String tenancyId) {
+        return repo.update("lastActivityAt = ?1 WHERE id = ?2 AND tenancyId = ?3",
+                        Instant.now(), channelId, tenancyId)
                 .replaceWithVoid();
     }
 

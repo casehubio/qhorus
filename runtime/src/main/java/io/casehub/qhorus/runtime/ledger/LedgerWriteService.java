@@ -155,8 +155,12 @@ public class LedgerWriteService {
         }
 
         // ── Sequence number (per resolved subject chain, cross-dtype) ─────────────
-        // Bridge value: use DEFAULT_TENANT_ID until dispatch context carries tenancyId (qhorus#260 Task 13)
-        final String tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
+        // Use the tenancyId from dispatch (set by MessageService.dispatch() as effectiveTenancyId,
+        // or by the original caller). Fall back to DEFAULT_TENANT_ID for system/legacy callers
+        // that do not set it. Refs qhorus#260.
+        final String tenancyId = dispatch.tenancyId() != null
+                ? dispatch.tenancyId()
+                : TenancyConstants.DEFAULT_TENANT_ID;
         final int sequenceNumber = ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
                 .map(e -> e.sequenceNumber + 1).orElse(1);
 

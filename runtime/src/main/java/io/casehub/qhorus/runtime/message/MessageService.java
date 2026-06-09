@@ -13,8 +13,10 @@ import jakarta.transaction.Transactional;
 
 import jakarta.enterprise.inject.Instance;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.qualifier.CrossTenant;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -32,6 +34,7 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
+import io.casehub.qhorus.runtime.store.CrossTenantChannelStore;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
 
@@ -53,6 +56,12 @@ public class MessageService {
 
     @Inject
     ChannelService channelService;
+
+    @Inject @CrossTenant
+    CrossTenantChannelStore crossTenantChannelStore;
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     @Inject
     MessageStore messageStore;
@@ -113,7 +122,23 @@ public class MessageService {
      */
     @Transactional
     public DispatchResult dispatch(final MessageDispatch dispatch) {
-        final Channel ch = channelService.findById(dispatch.channelId()).orElse(null);
+        // ── TenancyId resolution ──────────────────────────────────────────────
+        // Explicit tenancyId on the dispatch (e.g. system actors, cross-tenant writes) takes
+        // precedence. Otherwise, derive from the active principal's identity.
+        final String effectiveTenancyId = dispatch.tenancyId() != null
+                ? dispatch.tenancyId()
+                : currentPrincipal.tenancyId();
+
+        // Use cross-tenant lookup so system actors and human backends (which do not have
+        // a channel-tenant-scoped principal) can always resolve the channel entity.
+        final Channel ch = crossTenantChannelStore.findById(dispatch.channelId()).orElse(null);
+
+        // ── Cross-tenant guard ────────────────────────────────────────────────
+        if (ch != null && !effectiveTenancyId.equals(ch.tenancyId)) {
+            throw new IllegalArgumentException(
+                    "Cross-tenant dispatch rejected: caller tenant=" + effectiveTenancyId
+                    + ", channel tenant=" + ch.tenancyId);
+        }
 
         // ── Paused check ──────────────────────────────────────────────────────
         if (ch != null && ch.paused) {
@@ -189,7 +214,7 @@ public class MessageService {
                     last.target = dispatch.target();
                     last.actorType = dispatch.actorType();
                     last.createdAt = Instant.now();
-                    channelService.updateLastActivity(ch.id);
+                    channelService.updateLastActivity(ch.id, ch.tenancyId);
                     rateLimiter.recordSend(ch.id, dispatch.sender(),
                             ch.rateLimitPerChannel, ch.rateLimitPerInstance);
                     // No ledger write, fanOut, or commitment tracking for LAST_WRITE overwrite.
@@ -228,6 +253,7 @@ public class MessageService {
         message.artefactRefs = dispatch.artefactRefs();
         message.target = dispatch.target();
         message.deadline = dispatch.deadline();
+        message.tenancyId = effectiveTenancyId;
         message.commitmentId = commitmentId;
         messageStore.put(message);
 
@@ -262,11 +288,19 @@ public class MessageService {
             }
         }
 
-        channelService.updateLastActivity(dispatch.channelId());
+        channelService.updateLastActivity(dispatch.channelId(), effectiveTenancyId);
 
         // Ledger write (REQUIRES_NEW — commits independently; failure propagates and rolls back outer tx)
+        // Stamp the resolved tenancyId onto the dispatch before crossing the REQUIRES_NEW boundary;
+        // the original dispatch may have null tenancyId (when resolved from CurrentPrincipal). Refs #260.
+        final MessageDispatch dispatchWithTenancy = dispatch.tenancyId() != null ? dispatch
+                : new MessageDispatch(dispatch.channelId(), dispatch.sender(), dispatch.type(),
+                        dispatch.content(), dispatch.correlationId(), dispatch.inReplyTo(),
+                        dispatch.artefactRefs(), dispatch.target(), dispatch.subjectId(),
+                        dispatch.causedByEntryId(), dispatch.actorType(), dispatch.deadline(),
+                        dispatch.telemetry(), effectiveTenancyId);
         final LedgerWriteOutcome ledgerOutcome =
-                ledgerWriteService.record(dispatch, messageId, storedCommitmentId, occurredAt);
+                ledgerWriteService.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt);
 
         // Observer fan-out (after ledger write for ordering consistency)
         MessageObserverDispatcher.dispatch(

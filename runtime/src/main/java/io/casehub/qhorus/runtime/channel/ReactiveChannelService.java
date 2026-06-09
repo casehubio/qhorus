@@ -1,6 +1,5 @@
 package io.casehub.qhorus.runtime.channel;
 
-import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -219,9 +218,7 @@ public class ReactiveChannelService {
                 }));
     }
 
-    public Uni<Void> updateLastActivity(UUID channelId) {
-        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
-                .invoke(opt -> opt.ifPresent(ch -> ch.lastActivityAt = Instant.now()))
-                .replaceWithVoid());
+    public Uni<Void> updateLastActivity(UUID channelId, String tenancyId) {
+        return channelStore.updateLastActivity(channelId, tenancyId);
     }
 }

@@ -18,7 +18,9 @@ public record MessageDispatch(
         ActorType actorType,
         Instant deadline,
         /** Internal: EVENT-only ledger telemetry payload; parsed by LedgerWriteService; never delivered to observers. */
-        String telemetry) {
+        String telemetry,
+        /** Tenant scope for this dispatch. Null = auto-resolved by MessageService from CurrentPrincipal. */
+        String tenancyId) {
 
     public static Builder builder() { return new Builder(); }
 
@@ -36,6 +38,7 @@ public record MessageDispatch(
         private ActorType actorType;
         private Instant deadline;
         private String telemetry;
+        private String tenancyId;
 
         public Builder channelId(UUID v)       { this.channelId = v;       return this; }
         public Builder sender(String v)         { this.sender = v;           return this; }
@@ -50,6 +53,7 @@ public record MessageDispatch(
         public Builder actorType(ActorType v)   { this.actorType = v;        return this; }
         public Builder deadline(Instant v)      { this.deadline = v;         return this; }
         public Builder telemetry(String v)      { this.telemetry = v;        return this; }
+        public Builder tenancyId(String v)      { this.tenancyId = v;        return this; }
 
         /**
          * Validates and builds the dispatch. Enforcement matrix:
@@ -103,7 +107,8 @@ public record MessageDispatch(
                 default -> { /* COMMAND, QUERY, STATUS — no required reply fields */ }
             }
             return new MessageDispatch(channelId, sender, type, content, correlationId,
-                    inReplyTo, artefactRefs, target, subjectId, causedByEntryId, actorType, deadline, telemetry);
+                    inReplyTo, artefactRefs, target, subjectId, causedByEntryId, actorType, deadline, telemetry,
+                    tenancyId);
         }
     }
 }

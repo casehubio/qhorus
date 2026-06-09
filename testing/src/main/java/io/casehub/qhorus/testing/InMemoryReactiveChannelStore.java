@@ -51,7 +51,8 @@ public class InMemoryReactiveChannelStore implements ReactiveChannelStore {
     }
 
     @Override
-    public Uni<Void> updateLastActivity(UUID channelId) {
+    public Uni<Void> updateLastActivity(UUID channelId, String tenancyId) {
+        // tenancyId ignored — InMemoryReactiveChannelStore is single-tenant (test semantics)
         return Uni.createFrom().voidItem().invoke(() ->
             blocking.find(channelId).ifPresent(ch -> ch.lastActivityAt = Instant.now()));
     }

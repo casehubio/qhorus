@@ -43,8 +43,8 @@ class InMemoryChannelStoreTest extends ChannelStoreContractTest {
     }
 
     @Override
-    protected void updateLastActivity(UUID channelId) {
-        store.updateLastActivity(channelId);
+    protected void updateLastActivity(UUID channelId, String tenancyId) {
+        store.updateLastActivity(channelId, tenancyId);
     }
 
     @Override

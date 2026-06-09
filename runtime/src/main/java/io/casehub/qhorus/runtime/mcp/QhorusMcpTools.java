@@ -518,7 +518,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .channelId(ch.id).sender("system").type(MessageType.EVENT)
                 .telemetry(auditTelemetry).actorType(ActorType.SYSTEM).build());
 
-        channelService.updateLastActivity(ch.id);
+        channelService.updateLastActivity(ch.id, ch.tenancyId);
 
         List<MessageSummary> summaries = messages.stream().map(this::toMessageSummary).toList();
         return new ForceReleaseResult(ch.name, ch.semantic.name(), messages.size(), summaries);
@@ -1011,7 +1011,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         io.casehub.qhorus.api.message.MessageDispatch dispatch = new io.casehub.qhorus.api.message.MessageDispatch(
                 ch.id, Senders.HUMAN, io.casehub.qhorus.api.message.MessageType.RESPONSE,
                 responseText, correlationId, inReplyTo, null, null, null, null,
-                io.casehub.platform.api.identity.ActorType.HUMAN, null, null);
+                io.casehub.platform.api.identity.ActorType.HUMAN, null, null, null);
         return messageService.dispatch(dispatch);
     }
 
@@ -1300,7 +1300,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id).sender("system").type(MessageType.EVENT)
                 .actorType(ActorType.SYSTEM).build());
-        channelService.updateLastActivity(ch.id);
+        channelService.updateLastActivity(ch.id, ch.tenancyId);
         return new ClearChannelResult(ch.name, (int) deleted, true);
     }
 

@@ -20,11 +20,16 @@ public interface ChannelStore {
     void delete(UUID id);
 
     /**
-     * Issues a targeted UPDATE setting {@code lastActivityAt = now()} for {@code channelId}.
+     * Issues a targeted UPDATE setting {@code lastActivityAt = now()} for {@code channelId},
+     * filtered by {@code tenancyId} as defense-in-depth against cross-tenant mutation.
      * Does NOT load or re-attach the channel entity — avoids detached-entity issues when
      * the channel was loaded pre-transaction.
+     *
+     * @param tenancyId the tenant that owns the channel — passed explicitly by the caller
+     *                  so this method is safe to call from scheduler/watchdog threads that
+     *                  have no request-scoped {@code CurrentPrincipal}
      */
-    void updateLastActivity(UUID channelId);
+    void updateLastActivity(UUID channelId, String tenancyId);
 
     /**
      * Batch lookup of channels by ID set. Returns only channels that exist — missing IDs are silently omitted.

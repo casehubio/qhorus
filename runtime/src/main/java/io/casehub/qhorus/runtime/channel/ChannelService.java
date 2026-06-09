@@ -332,10 +332,12 @@ public class ChannelService {
     }
 
     @Transactional
-    public void updateLastActivity(UUID channelId) {
-        Channel channel = channelStore.find(channelId).orElse(null);
-        if (channel != null) {
-            channel.lastActivityAt = Instant.now();
-        }
+    public void updateLastActivity(UUID channelId, String tenancyId) {
+        // Load-and-set via Hibernate dirty checking so that in-session reads (e.g. same-transaction
+        // tests, LAST_WRITE path) see the updated timestamp immediately.
+        // The store.find() uses currentPrincipal.tenancyId() which matches tenancyId for all
+        // request-scoped callers. The tenancyId parameter is threaded through for clarity and
+        // future-proofing (e.g. scheduler threads bypassing CurrentPrincipal).
+        channelStore.find(channelId).ifPresent(ch -> ch.lastActivityAt = Instant.now());
     }
 }

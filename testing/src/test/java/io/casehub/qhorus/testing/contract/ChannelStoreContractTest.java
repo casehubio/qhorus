@@ -12,6 +12,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.store.query.ChannelQuery;
@@ -28,7 +29,7 @@ public abstract class ChannelStoreContractTest {
 
     protected abstract void delete(UUID id);
 
-    protected abstract void updateLastActivity(UUID channelId);
+    protected abstract void updateLastActivity(UUID channelId, String tenancyId);
 
     protected abstract List<Channel> findByIds(Collection<UUID> ids);
 
@@ -157,7 +158,7 @@ public abstract class ChannelStoreContractTest {
     void updateLastActivity_setsTimestamp() {
         Channel ch = channel("act-test-" + UUID.randomUUID(), ChannelSemantic.APPEND);
         put(ch);
-        updateLastActivity(ch.id);
+        updateLastActivity(ch.id, TenancyConstants.DEFAULT_TENANT_ID);
         Optional<Channel> found = find(ch.id);
         assertTrue(found.isPresent());
         assertNotNull(found.get().lastActivityAt);

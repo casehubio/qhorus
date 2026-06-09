@@ -43,8 +43,8 @@ class InMemoryReactiveChannelStoreTest extends ChannelStoreContractTest {
     }
 
     @Override
-    protected void updateLastActivity(UUID channelId) {
-        store.updateLastActivity(channelId).await().indefinitely();
+    protected void updateLastActivity(UUID channelId, String tenancyId) {
+        store.updateLastActivity(channelId, tenancyId).await().indefinitely();
     }
 
     @Override

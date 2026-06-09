@@ -207,7 +207,8 @@ public class ChannelGateway {
                 null, // causedByEntryId
                 ActorType.HUMAN,
                 null,  // deadline
-                null)); // telemetry
+                null,  // telemetry
+                null)); // tenancyId — resolved by MessageService from CurrentPrincipal
 
         // ── Normaliser telemetry EVENT (Refs #202) ────────────────────────────
         // Unconditional: volume bounded by human message rate; EVENTs excluded from check_messages.

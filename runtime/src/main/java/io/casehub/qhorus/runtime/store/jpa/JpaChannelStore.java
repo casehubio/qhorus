@@ -76,8 +76,9 @@ public class JpaChannelStore implements ChannelStore {
 
     @Override
     @Transactional
-    public void updateLastActivity(UUID channelId) {
-        Channel.update("lastActivityAt = ?1 WHERE id = ?2", Instant.now(), channelId);
+    public void updateLastActivity(UUID channelId, String tenancyId) {
+        Channel.update("lastActivityAt = ?1 WHERE id = ?2 AND tenancyId = ?3",
+                Instant.now(), channelId, tenancyId);
     }
 
     @Override

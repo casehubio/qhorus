@@ -238,7 +238,7 @@ public class ReactiveMessageService {
                                                 last.target = dispatch.target();
                                                 last.actorType = dispatch.actorType();
                                                 last.createdAt = Instant.now();
-                                                return reactiveChannelStore.updateLastActivity(ch.id)
+                                                return reactiveChannelStore.updateLastActivity(ch.id, ch.tenancyId)
                                                         .map(ignored -> (TransactResult) new OverwriteResult(
                                                                 new DispatchResult(
                                                                         last.id, ch.id, last.sender,
@@ -406,7 +406,7 @@ public class ReactiveMessageService {
                     .flatMap(ignored -> replyCountUni)
                     .flatMap(replyCount -> {
                         final Uni<Void> activityUpdate = ch != null
-                                ? reactiveChannelStore.updateLastActivity(ch.id)
+                                ? reactiveChannelStore.updateLastActivity(ch.id, ch.tenancyId)
                                 : Uni.createFrom().voidItem();
                         return activityUpdate.map(ignored -> replyCount);
                     })

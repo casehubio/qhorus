@@ -114,8 +114,11 @@ public class ReactiveLedgerWriteService {
         // This differs intentionally from the blocking LedgerWriteService which uses REQUIRES_NEW
         // so ledger entries survive outer transaction failures. The reactive behaviour (strict
         // atomicity) is the chosen tradeoff for simpler semantics in reactive contexts.
-        // Bridge value: use DEFAULT_TENANT_ID until dispatch context carries tenancyId (qhorus#260 Task 13)
-        final String tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
+        // Use the tenancyId from dispatch (set by ReactiveMessageService or by the original caller).
+        // Fall back to DEFAULT_TENANT_ID for system/legacy callers that do not set it. Refs qhorus#260.
+        final String tenancyId = dispatch.tenancyId() != null
+                ? dispatch.tenancyId()
+                : TenancyConstants.DEFAULT_TENANT_ID;
         return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
                         .flatMap(resolvedCausedByEntryId -> ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
