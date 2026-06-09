@@ -137,6 +137,15 @@
       <scope>test</scope>
     </dependency>
 
+    <!-- MockCurrentPrincipal @DefaultBean — required when ledger or other platform beans inject
+         CurrentPrincipal in @QuarkusTest contexts. Test scope per platform-mock-bean-exclusion protocol. -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform</artifactId>
+      <version>0.2-SNAPSHOT</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>

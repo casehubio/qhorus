@@ -1,22 +1,18 @@
 package io.casehub.qhorus.runtime.ledger;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
 
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.hibernate.orm.PersistenceUnit;
 
 /**
@@ -36,7 +32,13 @@ import io.quarkus.hibernate.orm.PersistenceUnit;
  * Sequence assignment stays in {@link LedgerWriteService#record} until it is
  * migrated to {@code LedgerSequenceAllocator} — tracked in qhorus#256.
  *
- * <p>Refs qhorus#253.
+ * <p><strong>Tenancy:</strong> {@code tenancyId} parameters are accepted but not yet applied
+ * to query filters — full tenant isolation wiring is tracked in qhorus#260 Task 14.
+ * Cross-tenant methods (listAll, findAllEvents, findEventsByActorId, findByTimeRange,
+ * findAttestationsForEntries) have been removed from this interface; they now live in
+ * {@code CrossTenantLedgerEntryRepository}.
+ *
+ * <p>Refs qhorus#253, qhorus#260.
  */
 @ApplicationScoped
 public class LedgerEntryJpaRepository implements LedgerEntryRepository {
@@ -46,13 +48,15 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     EntityManager em;
 
     @Override
-    public LedgerEntry save(final LedgerEntry entry) {
+    public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
+        entry.tenancyId = tenancyId != null ? tenancyId : TenancyConstants.DEFAULT_TENANT_ID;
         em.persist(entry);
         return entry;
     }
 
     @Override
-    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId) {
+    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.subjectId = :sid ORDER BY e.sequenceNumber DESC",
                 LedgerEntry.class)
@@ -63,7 +67,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerEntry> findBySubjectId(final UUID subjectId) {
+    public List<LedgerEntry> findBySubjectId(final UUID subjectId, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.subjectId = :sid ORDER BY e.sequenceNumber ASC",
                 LedgerEntry.class)
@@ -73,7 +78,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID subjectId,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.subjectId = :sid " +
                         "AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
@@ -85,42 +91,17 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public Optional<LedgerEntry> findEntryById(final UUID id) {
+    public Optional<LedgerEntry> findEntryById(final UUID id, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         // em.find() on the abstract base class is correct for JOINED inheritance —
         // Hibernate resolves the concrete subtype automatically.
         return Optional.ofNullable(em.find(LedgerEntry.class, id));
     }
 
     @Override
-    public List<LedgerEntry> listAll() {
-        return em.createQuery("SELECT e FROM LedgerEntry e ORDER BY e.sequenceNumber ASC",
-                LedgerEntry.class)
-                .getResultList();
-    }
-
-    @Override
-    public List<LedgerEntry> findAllEvents() {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.entryType = :type ORDER BY e.sequenceNumber ASC",
-                LedgerEntry.class)
-                .setParameter("type", io.casehub.ledger.api.model.LedgerEntryType.EVENT)
-                .getResultList();
-    }
-
-    @Override
-    public List<LedgerEntry> findEventsByActorId(final String actorId) {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.entryType = :type AND e.actorId = :actorId " +
-                        "ORDER BY e.sequenceNumber ASC",
-                LedgerEntry.class)
-                .setParameter("type", io.casehub.ledger.api.model.LedgerEntryType.EVENT)
-                .setParameter("actorId", actorId)
-                .getResultList();
-    }
-
-    @Override
     public List<LedgerEntry> findByActorId(final String actorId,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.actorId = :aid " +
                         "AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
@@ -133,7 +114,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerEntry> findByActorRole(final String actorRole,
-            final Instant from, final Instant to) {
+            final Instant from, final Instant to, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.actorRole = :role " +
                         "AND e.occurredAt >= :from AND e.occurredAt <= :to ORDER BY e.occurredAt ASC",
@@ -145,18 +127,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerEntry> findByTimeRange(final Instant from, final Instant to) {
-        return em.createQuery(
-                "SELECT e FROM LedgerEntry e WHERE e.occurredAt >= :from AND e.occurredAt <= :to " +
-                        "ORDER BY e.occurredAt ASC",
-                LedgerEntry.class)
-                .setParameter("from", from)
-                .setParameter("to", to)
-                .getResultList();
-    }
-
-    @Override
-    public List<LedgerEntry> findCausedBy(final UUID entryId) {
+    public List<LedgerEntry> findCausedBy(final UUID entryId, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createQuery(
                 "SELECT e FROM LedgerEntry e WHERE e.causedByEntryId = :eid ORDER BY e.sequenceNumber ASC",
                 LedgerEntry.class)
@@ -165,33 +137,24 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public LedgerAttestation saveAttestation(final LedgerAttestation attestation) {
+    public LedgerAttestation saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
+        // TODO: apply tenancyId to attestation before persist (qhorus#260 Task 14)
         em.persist(attestation);
         return attestation;
     }
 
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId) {
+    public List<LedgerAttestation> findAttestationsByEntryId(final UUID ledgerEntryId, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createNamedQuery("LedgerAttestation.findByEntryId", LedgerAttestation.class)
                 .setParameter("entryId", ledgerEntryId)
                 .getResultList();
     }
 
     @Override
-    public Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(final Set<UUID> entryIds) {
-        if (entryIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-        return em.createNamedQuery("LedgerAttestation.findByEntryIds", LedgerAttestation.class)
-                .setParameter("entryIds", entryIds)
-                .getResultList()
-                .stream()
-                .collect(Collectors.groupingBy(a -> a.ledgerEntryId));
-    }
-
-    @Override
     public List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(
-            final UUID ledgerEntryId, final String capabilityTag) {
+            final UUID ledgerEntryId, final String capabilityTag, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createNamedQuery("LedgerAttestation.findByEntryIdAndCapabilityTag", LedgerAttestation.class)
                 .setParameter("entryId", ledgerEntryId)
                 .setParameter("capabilityTag", capabilityTag)
@@ -199,7 +162,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID ledgerEntryId) {
+    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID ledgerEntryId, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createNamedQuery("LedgerAttestation.findGlobalByEntryId", LedgerAttestation.class)
                 .setParameter("entryId", ledgerEntryId)
                 .getResultList();
@@ -207,7 +171,8 @@ public class LedgerEntryJpaRepository implements LedgerEntryRepository {
 
     @Override
     public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(
-            final String attestorId, final String capabilityTag) {
+            final String attestorId, final String capabilityTag, final String tenancyId) {
+        // TODO: apply tenancyId filter (qhorus#260 Task 14)
         return em.createNamedQuery("LedgerAttestation.findByAttestorIdAndCapabilityTag", LedgerAttestation.class)
                 .setParameter("attestorId", attestorId)
                 .setParameter("capabilityTag", capabilityTag)

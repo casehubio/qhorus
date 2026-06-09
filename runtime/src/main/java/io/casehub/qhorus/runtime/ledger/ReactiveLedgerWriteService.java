@@ -19,6 +19,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
@@ -113,9 +114,11 @@ public class ReactiveLedgerWriteService {
         // This differs intentionally from the blocking LedgerWriteService which uses REQUIRES_NEW
         // so ledger entries survive outer transaction failures. The reactive behaviour (strict
         // atomicity) is the chosen tradeoff for simpler semantics in reactive contexts.
+        // Bridge value: use DEFAULT_TENANT_ID until dispatch context carries tenancyId (qhorus#260 Task 13)
+        final String tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
         return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
-                        .flatMap(resolvedCausedByEntryId -> ledger.findLatestBySubjectId(resolvedSubjectId)
+                        .flatMap(resolvedCausedByEntryId -> ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
                                 .flatMap(latestOpt -> {
                                     // sequenceNumber is on LedgerEntry (base class) — no cast needed
                                     final int sequenceNumber = latestOpt.map(e -> e.sequenceNumber + 1)
@@ -124,6 +127,7 @@ public class ReactiveLedgerWriteService {
                                     final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
                                     final MessageLedgerEntry entry = new MessageLedgerEntry();
+                                    entry.tenancyId = tenancyId;
                                     entry.subjectId = resolvedSubjectId;
                                     entry.channelId = dispatch.channelId();
                                     entry.messageId = messageId;
@@ -147,7 +151,7 @@ public class ReactiveLedgerWriteService {
                                         entry.content = dispatch.content();
                                     }
 
-                                    return ledger.save(entry)
+                                    return ledger.save(entry, tenancyId)
                                             .flatMap(saved -> {
                                                 final LedgerWriteOutcome outcome = new LedgerWriteOutcome(
                                                         saved.id, resolvedSubjectId, resolvedCausedByEntryId);
@@ -155,7 +159,7 @@ public class ReactiveLedgerWriteService {
                                                         && resolvedCausedByEntryId != null) {
                                                     return writeAttestation(resolvedSubjectId,
                                                             resolvedCausedByEntryId, dispatch.type(),
-                                                            resolvedActorId)
+                                                            resolvedActorId, tenancyId)
                                                             .replaceWith(outcome);
                                                 }
                                                 return Uni.createFrom().item(outcome);
@@ -164,8 +168,8 @@ public class ReactiveLedgerWriteService {
     }
 
     private Uni<Void> writeAttestation(final UUID subjectId, final UUID causedByEntryId,
-            final MessageType type, final String actorId) {
-        return ledger.findEntryById(causedByEntryId)
+            final MessageType type, final String actorId, final String tenancyId) {
+        return ledger.findEntryById(causedByEntryId, tenancyId)
                 .flatMap(priorOpt -> {
                     // instanceof guard: causedByEntryId may reference any LedgerEntry subtype;
                     // attestation only applies to qhorus COMMAND/HANDOFF entries.
@@ -188,7 +192,7 @@ public class ReactiveLedgerWriteService {
                     attestation.verdict = outcome.verdict();
                     attestation.confidence = outcome.confidence();
                     attestation.capabilityTag = extractCapabilityTag(prior.content);
-                    return ledger.saveAttestation(attestation)
+                    return ledger.saveAttestation(attestation, tenancyId)
                             .invoke(a -> LOG.debugf(
                                     "LedgerAttestation %s written for COMMAND entry %s (correlationId='%s', capability='%s')",
                                     a.verdict, prior.id, prior.correlationId, a.capabilityTag))

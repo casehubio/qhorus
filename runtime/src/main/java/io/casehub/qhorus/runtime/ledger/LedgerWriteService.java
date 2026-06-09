@@ -20,6 +20,7 @@ import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
@@ -154,12 +155,15 @@ public class LedgerWriteService {
         }
 
         // ── Sequence number (per resolved subject chain, cross-dtype) ─────────────
-        final int sequenceNumber = ledger.findLatestBySubjectId(resolvedSubjectId)
+        // Bridge value: use DEFAULT_TENANT_ID until dispatch context carries tenancyId (qhorus#260 Task 13)
+        final String tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
+        final int sequenceNumber = ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
                 .map(e -> e.sequenceNumber + 1).orElse(1);
 
         final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
         final MessageLedgerEntry entry = new MessageLedgerEntry();
+        entry.tenancyId = tenancyId;
         entry.subjectId = resolvedSubjectId;
         entry.channelId = dispatch.channelId();
         entry.messageId = messageId;
@@ -188,20 +192,20 @@ public class LedgerWriteService {
         // instanceof check is intentional: causedByEntryId may reference any LedgerEntry
         // subtype; attestation only makes sense for qhorus COMMAND/HANDOFF entries.
         if (ATTESTATION_TYPES.contains(dispatch.type()) && resolvedCausedByEntryId != null) {
-            ledger.findEntryById(resolvedCausedByEntryId).ifPresent(prior -> {
+            ledger.findEntryById(resolvedCausedByEntryId, tenancyId).ifPresent(prior -> {
                 if (prior instanceof MessageLedgerEntry priorMsg
                         && ("COMMAND".equals(priorMsg.messageType) || "HANDOFF".equals(priorMsg.messageType))) {
-                    writeAttestation(resolvedSubjectId, priorMsg, dispatch.type(), resolvedActorId);
+                    writeAttestation(resolvedSubjectId, priorMsg, dispatch.type(), resolvedActorId, tenancyId);
                 }
             });
         }
 
-        ledger.save(entry);
+        ledger.save(entry, tenancyId);
         return new LedgerWriteOutcome(entry.id, resolvedSubjectId, resolvedCausedByEntryId);
     }
 
     private void writeAttestation(final UUID subjectId, final MessageLedgerEntry commandEntry,
-            final MessageType terminalType, final String resolvedActorId) {
+            final MessageType terminalType, final String resolvedActorId, final String tenancyId) {
         attestationPolicy.attestationFor(terminalType, resolvedActorId).ifPresent(outcome -> {
             try {
                 final LedgerAttestation attestation = new LedgerAttestation();
@@ -212,7 +216,7 @@ public class LedgerWriteService {
                 attestation.verdict = outcome.verdict();
                 attestation.confidence = outcome.confidence();
                 attestation.capabilityTag = extractCapabilityTag(commandEntry.content);
-                ledger.saveAttestation(attestation);
+                ledger.saveAttestation(attestation, tenancyId);
                 LOG.debugf("LedgerAttestation %s written for COMMAND entry %s (correlationId='%s', capability='%s')",
                         attestation.verdict, commandEntry.id, commandEntry.correlationId, attestation.capabilityTag);
             } catch (final Exception e) {

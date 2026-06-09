@@ -4,9 +4,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import io.casehub.ledger.runtime.model.LedgerAttestation;
@@ -35,7 +33,7 @@ public class StubLedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public LedgerEntry save(final LedgerEntry entry) {
+    public LedgerEntry save(final LedgerEntry entry, final String tenancyId) {
         if (entry.id == null) {
             entry.id = UUID.randomUUID(); // simulate @PrePersist id assignment
         }
@@ -44,21 +42,21 @@ public class StubLedgerEntryJpaRepository implements LedgerEntryRepository {
     }
 
     @Override
-    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId) {
+    public Optional<LedgerEntry> findLatestBySubjectId(final UUID subjectId, final String tenancyId) {
         return entries.stream()
                 .filter(e -> subjectId.equals(e.subjectId))
                 .max(Comparator.comparingInt(e -> e.sequenceNumber));
     }
 
     @Override
-    public Optional<LedgerEntry> findEntryById(final UUID id) {
+    public Optional<LedgerEntry> findEntryById(final UUID id, final String tenancyId) {
         return entries.stream()
                 .filter(e -> id.equals(e.id))
                 .findFirst();
     }
 
     @Override
-    public LedgerAttestation saveAttestation(final LedgerAttestation attestation) {
+    public LedgerAttestation saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
         savedAttestations.add(attestation);
         return attestation;
     }
@@ -66,74 +64,49 @@ public class StubLedgerEntryJpaRepository implements LedgerEntryRepository {
     // ── Remaining interface methods — no-op stubs (not exercised by LedgerWriteService unit tests) ──
 
     @Override
-    public List<LedgerEntry> findBySubjectId(final UUID subjectId) {
+    public List<LedgerEntry> findBySubjectId(final UUID subjectId, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID s, final Instant f, final Instant t) {
+    public List<LedgerEntry> findBySubjectIdAndTimeRange(final UUID s, final Instant f, final Instant t, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerEntry> listAll() {
+    public List<LedgerEntry> findByActorId(final String a, final Instant f, final Instant t, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerEntry> findAllEvents() {
+    public List<LedgerEntry> findByActorRole(final String r, final Instant f, final Instant t, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerEntry> findEventsByActorId(final String a) {
+    public List<LedgerEntry> findCausedBy(final UUID id, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerEntry> findByActorId(final String a, final Instant f, final Instant t) {
+    public List<LedgerAttestation> findAttestationsByEntryId(final UUID id, final String tenancyId) {
         return List.of();
-    }
-
-    @Override
-    public List<LedgerEntry> findByActorRole(final String r, final Instant f, final Instant t) {
-        return List.of();
-    }
-
-    @Override
-    public List<LedgerEntry> findByTimeRange(final Instant f, final Instant t) {
-        return List.of();
-    }
-
-    @Override
-    public List<LedgerEntry> findCausedBy(final UUID id) {
-        return List.of();
-    }
-
-    @Override
-    public List<LedgerAttestation> findAttestationsByEntryId(final UUID id) {
-        return List.of();
-    }
-
-    @Override
-    public Map<UUID, List<LedgerAttestation>> findAttestationsForEntries(final Set<UUID> ids) {
-        return Map.of();
     }
 
     @Override
     public List<LedgerAttestation> findAttestationsByEntryIdAndCapabilityTag(
-            final UUID id, final String tag) {
+            final UUID id, final String tag, final String tenancyId) {
         return List.of();
     }
 
     @Override
-    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID id) {
+    public List<LedgerAttestation> findAttestationsByEntryIdGlobal(final UUID id, final String tenancyId) {
         return List.of();
     }
 
     @Override
     public List<LedgerAttestation> findAttestationsByAttestorIdAndCapabilityTag(
-            final String a, final String t) {
+            final String a, final String t, final String tenancyId) {
         return List.of();
     }
 }

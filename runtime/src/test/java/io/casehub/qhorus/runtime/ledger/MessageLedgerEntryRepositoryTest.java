@@ -29,7 +29,7 @@ class MessageLedgerEntryRepositoryTest {
         MessageLedgerEntry e = MessageLedgerEntryTestFactory.entry(
                 channelId, 99L, "COMMAND", channelId, "corr-1");
         e.sequenceNumber = 1;
-        ledger.save(e);
+        ledger.save(e, null);
 
         Optional<MessageLedgerEntry> found = repository.findByMessageId(99L);
         assertThat(found).isPresent();
@@ -55,13 +55,13 @@ class MessageLedgerEntryRepositoryTest {
         MessageLedgerEntry first = MessageLedgerEntryTestFactory.entry(
                 subjectId, 1L, "COMMAND", channelId, corrId);
         first.sequenceNumber = 1;
-        ledger.save(first);
+        ledger.save(first, null);
 
         // seq 2 — later entry, same correlation, same subject
         MessageLedgerEntry second = MessageLedgerEntryTestFactory.entry(
                 subjectId, 2L, "STATUS", channelId, corrId);
         second.sequenceNumber = 2;
-        ledger.save(second);
+        ledger.save(second, null);
 
         Optional<MessageLedgerEntry> found =
                 repository.findEarliestWithSubjectByCorrelationId(corrId);

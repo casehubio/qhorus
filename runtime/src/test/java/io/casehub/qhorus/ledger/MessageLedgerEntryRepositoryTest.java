@@ -37,7 +37,7 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void save_andFindByChannelId_returnsSavedEntry() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
         List<MessageLedgerEntry> found = repo.findByChannelId(channelId);
         assertEquals(1, found.size());
         assertEquals("COMMAND", found.get(0).messageType);
@@ -52,9 +52,9 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void findByChannelId_orderedBySequenceNumber() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 3L, "DONE", 3));
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
-        ledger.save(entry(channelId, 2L, "STATUS", 2));
+        ledger.save(entry(channelId, 3L, "DONE", 3), null);
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
+        ledger.save(entry(channelId, 2L, "STATUS", 2), null);
         List<MessageLedgerEntry> found = repo.findByChannelId(channelId);
         assertEquals(3, found.size());
         assertEquals(1, found.get(0).sequenceNumber);
@@ -65,25 +65,25 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void findLatestBySubjectId_returnsHighestSequenceEntry() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
-        ledger.save(entry(channelId, 2L, "DONE", 2));
-        var latest = ledger.findLatestBySubjectId(channelId);
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
+        ledger.save(entry(channelId, 2L, "DONE", 2), null);
+        var latest = ledger.findLatestBySubjectId(channelId, null);
         assertTrue(latest.isPresent());
         assertEquals(2, latest.get().sequenceNumber);
     }
 
     @Test
     void findLatestBySubjectId_emptyChannel_returnsEmpty() {
-        assertTrue(ledger.findLatestBySubjectId(UUID.randomUUID()).isEmpty());
+        assertTrue(ledger.findLatestBySubjectId(UUID.randomUUID(), null).isEmpty());
     }
 
     @Test
     void listEntries_noFilter_returnsAllTypes() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
-        ledger.save(entry(channelId, 2L, "STATUS", 2));
-        ledger.save(entry(channelId, 3L, "DONE", 3));
-        ledger.save(entry(channelId, 4L, "EVENT", 4));
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
+        ledger.save(entry(channelId, 2L, "STATUS", 2), null);
+        ledger.save(entry(channelId, 3L, "DONE", 3), null);
+        ledger.save(entry(channelId, 4L, "EVENT", 4), null);
         List<MessageLedgerEntry> entries = repo.listEntries(channelId, null, null, null, null, 20);
         assertEquals(4, entries.size());
     }
@@ -91,10 +91,10 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void listEntries_typeFilter_returnsOnlyMatchingTypes() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
-        ledger.save(entry(channelId, 2L, "DONE", 2));
-        ledger.save(entry(channelId, 3L, "EVENT", 3));
-        ledger.save(entry(channelId, 4L, "DECLINE", 4));
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
+        ledger.save(entry(channelId, 2L, "DONE", 2), null);
+        ledger.save(entry(channelId, 3L, "EVENT", 3), null);
+        ledger.save(entry(channelId, 4L, "DECLINE", 4), null);
         List<MessageLedgerEntry> entries = repo.listEntries(
                 channelId, Set.of("COMMAND", "DONE"), null, null, null, 20);
         assertEquals(2, entries.size());
@@ -104,7 +104,7 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void listEntries_typeFilter_noMatch_returnsEmpty() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
         List<MessageLedgerEntry> entries = repo.listEntries(
                 channelId, Set.of("DONE"), null, null, null, 20);
         assertTrue(entries.isEmpty());
@@ -113,9 +113,9 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     void listEntries_afterSequence_returnsOnlyLaterEntries() {
         UUID channelId = UUID.randomUUID();
-        ledger.save(entry(channelId, 1L, "COMMAND", 1));
-        ledger.save(entry(channelId, 2L, "STATUS", 2));
-        ledger.save(entry(channelId, 3L, "DONE", 3));
+        ledger.save(entry(channelId, 1L, "COMMAND", 1), null);
+        ledger.save(entry(channelId, 2L, "STATUS", 2), null);
+        ledger.save(entry(channelId, 3L, "DONE", 3), null);
         List<MessageLedgerEntry> entries = repo.listEntries(channelId, null, 1L, null, null, 20);
         assertEquals(2, entries.size());
         assertTrue(entries.stream().allMatch(e -> e.sequenceNumber > 1));
@@ -128,8 +128,8 @@ class MessageLedgerEntryRepositoryTest {
         e1.actorId = "agent-a";
         MessageLedgerEntry e2 = entry(channelId, 2L, "DONE", 2);
         e2.actorId = "agent-b";
-        ledger.save(e1);
-        ledger.save(e2);
+        ledger.save(e1, null);
+        ledger.save(e2, null);
         List<MessageLedgerEntry> entries = repo.listEntries(channelId, null, null, "agent-a", null, 20);
         assertEquals(1, entries.size());
         assertEquals("agent-a", entries.get(0).actorId);
@@ -140,10 +140,10 @@ class MessageLedgerEntryRepositoryTest {
         UUID channelId = UUID.randomUUID();
         MessageLedgerEntry old = entry(channelId, 1L, "COMMAND", 1);
         old.occurredAt = Instant.parse("2026-01-01T00:00:00Z");
-        ledger.save(old);
+        ledger.save(old, null);
         MessageLedgerEntry recent = entry(channelId, 2L, "DONE", 2);
         recent.occurredAt = Instant.parse("2026-06-01T00:00:00Z");
-        ledger.save(recent);
+        ledger.save(recent, null);
         List<MessageLedgerEntry> entries = repo.listEntries(
                 channelId, null, null, null, Instant.parse("2026-03-01T00:00:00Z"), 20);
         assertEquals(1, entries.size());
@@ -154,7 +154,7 @@ class MessageLedgerEntryRepositoryTest {
     void listEntries_limit_capsResults() {
         UUID channelId = UUID.randomUUID();
         for (int i = 1; i <= 5; i++) {
-            ledger.save(entry(channelId, (long) i, "EVENT", i));
+            ledger.save(entry(channelId, (long) i, "EVENT", i), null);
         }
         List<MessageLedgerEntry> entries = repo.listEntries(channelId, null, null, null, null, 3);
         assertEquals(3, entries.size());
@@ -165,7 +165,7 @@ class MessageLedgerEntryRepositoryTest {
         UUID channelId = UUID.randomUUID();
         MessageLedgerEntry cmd = entry(channelId, 1L, "COMMAND", 1);
         cmd.correlationId = "corr-1";
-        ledger.save(cmd);
+        ledger.save(cmd, null);
         Optional<MessageLedgerEntry> found = repo.findLatestByCorrelationId(channelId, "corr-1");
         assertTrue(found.isPresent());
         assertEquals("COMMAND", found.get().messageType);
@@ -176,10 +176,10 @@ class MessageLedgerEntryRepositoryTest {
         UUID channelId = UUID.randomUUID();
         MessageLedgerEntry cmd = entry(channelId, 1L, "COMMAND", 1);
         cmd.correlationId = "corr-2";
-        ledger.save(cmd);
+        ledger.save(cmd, null);
         MessageLedgerEntry handoff = entry(channelId, 2L, "HANDOFF", 2);
         handoff.correlationId = "corr-2";
-        ledger.save(handoff);
+        ledger.save(handoff, null);
         Optional<MessageLedgerEntry> found = repo.findLatestByCorrelationId(channelId, "corr-2");
         assertTrue(found.isPresent());
         assertEquals("HANDOFF", found.get().messageType);
@@ -190,7 +190,7 @@ class MessageLedgerEntryRepositoryTest {
         UUID channelId = UUID.randomUUID();
         MessageLedgerEntry done = entry(channelId, 1L, "DONE", 1);
         done.correlationId = "corr-3";
-        ledger.save(done);
+        ledger.save(done, null);
         Optional<MessageLedgerEntry> found = repo.findLatestByCorrelationId(channelId, "corr-3");
         assertTrue(found.isEmpty());
     }

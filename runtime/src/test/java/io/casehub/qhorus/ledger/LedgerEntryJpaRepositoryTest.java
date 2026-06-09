@@ -51,10 +51,10 @@ class LedgerEntryJpaRepositoryTest {
     void findBySubjectId_returns_plain_dtype_entries() {
         final UUID subjectId = UUID.randomUUID();
 
-        repository.save(makePlain(subjectId, 1));
-        repository.save(makePlain(subjectId, 2));
+        repository.save(makePlain(subjectId, 1), null);
+        repository.save(makePlain(subjectId, 2), null);
 
-        final List<LedgerEntry> found = repository.findBySubjectId(subjectId);
+        final List<LedgerEntry> found = repository.findBySubjectId(subjectId, null);
 
         // Before fix: FROM MessageLedgerEntry returns 0 — fails here
         assertThat(found).hasSize(2);
@@ -67,12 +67,12 @@ class LedgerEntryJpaRepositoryTest {
     void findEntryById_finds_non_message_entry() {
         final UUID subjectId = UUID.randomUUID();
         final PlainLedgerEntry plain = makePlain(subjectId, 1);
-        repository.save(plain);
+        repository.save(plain, null);
 
         // plain.id is assigned by @PrePersist — must be non-null after save
         assertThat(plain.id).isNotNull();
 
-        final Optional<LedgerEntry> found = repository.findEntryById(plain.id);
+        final Optional<LedgerEntry> found = repository.findEntryById(plain.id, null);
 
         // Before fix: em.find(MessageLedgerEntry.class, id) returns null — fails here
         assertThat(found).isPresent();
@@ -84,10 +84,10 @@ class LedgerEntryJpaRepositoryTest {
     void findLatestBySubjectId_returns_plain_entry_with_highest_seq() {
         final UUID subjectId = UUID.randomUUID();
 
-        repository.save(makePlain(subjectId, 1));
-        repository.save(makePlain(subjectId, 2));
+        repository.save(makePlain(subjectId, 1), null);
+        repository.save(makePlain(subjectId, 2), null);
 
-        final Optional<LedgerEntry> latest = repository.findLatestBySubjectId(subjectId);
+        final Optional<LedgerEntry> latest = repository.findLatestBySubjectId(subjectId, null);
 
         // Before fix: FROM MessageLedgerEntry returns empty — fails here
         assertThat(latest).isPresent();

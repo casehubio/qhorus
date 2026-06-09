@@ -75,7 +75,7 @@ class CrossDtypeSequenceTest {
             plain.entryType = LedgerEntryType.EVENT;
             plain.occurredAt = Instant.now();
             plain.actorType = ActorType.SYSTEM;
-            ledgerRepository.save(plain);
+            ledgerRepository.save(plain, null);
         });
 
         // 3. Dispatch a qhorus COMMAND with explicit subjectId=X.
@@ -99,7 +99,7 @@ class CrossDtypeSequenceTest {
 
         // 4. Assert: both entries visible for subjectId, with sequence numbers 1 and 2
         final List<LedgerEntry> entries = QuarkusTransaction.requiringNew().call(() ->
-                ledgerRepository.findBySubjectId(subjectId));
+                ledgerRepository.findBySubjectId(subjectId, null));
 
         assertThat(entries).hasSize(2);
         assertThat(entries.stream().map(e -> e.sequenceNumber).sorted().toList())

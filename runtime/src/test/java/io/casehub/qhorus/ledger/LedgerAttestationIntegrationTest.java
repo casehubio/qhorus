@@ -67,7 +67,7 @@ class LedgerAttestationIntegrationTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("COMMAND entry not found"));
 
-        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id);
+        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id, null);
         assertEquals(1, attestations.size(), "Expected exactly one attestation on the COMMAND entry");
 
         LedgerAttestation att = attestations.get(0);
@@ -91,7 +91,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry commandEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "COMMAND".equals(e.messageType)).findFirst().orElseThrow();
-        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id);
+        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id, null);
         assertEquals(1, attestations.size());
         assertEquals(AttestationVerdict.FLAGGED, attestations.get(0).verdict);
         assertEquals(0.6, attestations.get(0).confidence, 0.001);
@@ -112,7 +112,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry commandEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "COMMAND".equals(e.messageType)).findFirst().orElseThrow();
-        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id);
+        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id, null);
         assertEquals(1, attestations.size());
         assertEquals(AttestationVerdict.FLAGGED, attestations.get(0).verdict);
         assertEquals(0.4, attestations.get(0).confidence, 0.001);
@@ -130,7 +130,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry commandEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "COMMAND".equals(e.messageType)).findFirst().orElseThrow();
-        assertTrue(ledger.findAttestationsByEntryId(commandEntry.id).isEmpty(),
+        assertTrue(ledger.findAttestationsByEntryId(commandEntry.id, null).isEmpty(),
                 "STATUS should not trigger attestation");
     }
 
@@ -154,7 +154,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry doneEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "DONE".equals(e.messageType)).findFirst().orElseThrow();
-        assertTrue(ledger.findAttestationsByEntryId(doneEntry.id).isEmpty());
+        assertTrue(ledger.findAttestationsByEntryId(doneEntry.id, null).isEmpty());
     }
 
     @Test
@@ -172,7 +172,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry commandEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "COMMAND".equals(e.messageType)).findFirst().orElseThrow();
-        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id);
+        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id, null);
         assertEquals(1, attestations.size());
         assertEquals("code-review", attestations.get(0).capabilityTag);
     }
@@ -191,7 +191,7 @@ class LedgerAttestationIntegrationTest {
         UUID channelId = channelId(channelName);
         MessageLedgerEntry commandEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId).stream()
                 .filter(e -> "COMMAND".equals(e.messageType)).findFirst().orElseThrow();
-        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id);
+        List<LedgerAttestation> attestations = ledger.findAttestationsByEntryId(commandEntry.id, null);
         assertEquals(1, attestations.size());
         assertEquals(CapabilityTag.GLOBAL, attestations.get(0).capabilityTag);
     }
