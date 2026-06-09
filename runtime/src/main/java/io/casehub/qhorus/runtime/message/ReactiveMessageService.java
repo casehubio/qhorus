@@ -301,6 +301,7 @@ public class ReactiveMessageService {
                                     // reactive (Panache.withTransaction has no JTA TSR).
                                     MessageObserverDispatcher.dispatch(
                                             ctx.channelName(), dispatch.channelId(),
+                                            syntheticMsg.tenancyId,
                                             syntheticMsg, observers.handles(), null);
 
                                     // Rate limit recording (skip EVENT)

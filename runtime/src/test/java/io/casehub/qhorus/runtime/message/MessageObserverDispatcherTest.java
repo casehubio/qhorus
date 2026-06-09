@@ -23,6 +23,8 @@ import io.quarkus.arc.InstanceHandle;
 
 class MessageObserverDispatcherTest {
 
+    private static final String TEST_TENANCY_ID = "278776f9-e1b0-46fb-9032-8bddebdcf9ce";
+
     private final UUID channelId = UUID.randomUUID();
     private final String channelName = "test-channel";
 
@@ -52,6 +54,7 @@ class MessageObserverDispatcherTest {
         final MessageObserver observer = captured::add;
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.COMMAND, "analyse this", "corr-1"),
                 List.of(handle(observer)));
 
@@ -71,6 +74,7 @@ class MessageObserverDispatcherTest {
         final List<MessageReceivedEvent> second = new ArrayList<>();
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.RESPONSE, "done", null),
                 List.of(handle(first::add), handle(second::add)));
 
@@ -85,6 +89,7 @@ class MessageObserverDispatcherTest {
         final List<MessageReceivedEvent> captured = new ArrayList<>();
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.EVENT, "{\"tool\":\"search\",\"duration_ms\":42}", null),
                 List.of(handle(captured::add)));
 
@@ -98,6 +103,7 @@ class MessageObserverDispatcherTest {
             if (type == MessageType.EVENT) continue;
             final List<MessageReceivedEvent> captured = new ArrayList<>();
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(type, "payload-" + type, null),
                     List.of(handle(captured::add)));
             assertEquals("payload-" + type, captured.get(0).content(),
@@ -114,6 +120,7 @@ class MessageObserverDispatcherTest {
 
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(MessageType.DONE, "finished", "corr-2"),
                     List.of(handle(boom), handle(captured::add))));
 
@@ -127,6 +134,7 @@ class MessageObserverDispatcherTest {
 
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(MessageType.FAILURE, "error", null),
                     List.of(handle(boom1), handle(boom2))));
     }
@@ -142,6 +150,7 @@ class MessageObserverDispatcherTest {
         };
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.COMMAND, "test", null),
                 List.of(handle));
 
@@ -158,6 +167,7 @@ class MessageObserverDispatcherTest {
 
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(MessageType.COMMAND, "test", null),
                     List.of(handle)));
 
@@ -178,6 +188,7 @@ class MessageObserverDispatcherTest {
 
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(MessageType.COMMAND, "test", null),
                     List.of(h1, h2)));
 
@@ -191,6 +202,7 @@ class MessageObserverDispatcherTest {
         final List<MessageReceivedEvent> captured = new ArrayList<>();
 
         MessageObserverDispatcher.dispatch(null, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.QUERY, "hello", null),
                 List.of(handle(captured::add)));
 
@@ -202,6 +214,7 @@ class MessageObserverDispatcherTest {
         final List<MessageReceivedEvent> captured = new ArrayList<>();
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.STATUS, "working", null),
                 List.of(handle(captured::add)));
 
@@ -218,6 +231,7 @@ class MessageObserverDispatcherTest {
         final ArgumentCaptor<Synchronization> captor = ArgumentCaptor.forClass(Synchronization.class);
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.COMMAND, "test", null),
                 List.of(handle(observer)), tsr);
 
@@ -237,6 +251,7 @@ class MessageObserverDispatcherTest {
         final ArgumentCaptor<Synchronization> captor = ArgumentCaptor.forClass(Synchronization.class);
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.COMMAND, "test", null),
                 List.of(handle(observer)), tsr);
 
@@ -252,6 +267,7 @@ class MessageObserverDispatcherTest {
         final List<MessageReceivedEvent> captured = new ArrayList<>();
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.QUERY, "hello", null),
                 List.of(handle(captured::add)), null);
 
@@ -268,6 +284,7 @@ class MessageObserverDispatcherTest {
         final TransactionSynchronizationRegistry tsr = mock(TransactionSynchronizationRegistry.class);
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.QUERY, "hello", null),
                 List.of(handle(filtered)), tsr);
 
@@ -286,6 +303,7 @@ class MessageObserverDispatcherTest {
         };
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.QUERY, "hello", null),
                 List.of(handle(filtered)));
 
@@ -301,6 +319,7 @@ class MessageObserverDispatcherTest {
         };
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.QUERY, "hello", null),
                 List.of(handle(filtered)));
 
@@ -314,6 +333,7 @@ class MessageObserverDispatcherTest {
         final MessageObserver globalObserver = captured::add; // lambda uses default channels()
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.COMMAND, "analyse", null),
                 List.of(handle(globalObserver)));
 
@@ -329,6 +349,7 @@ class MessageObserverDispatcherTest {
         };
 
         MessageObserverDispatcher.dispatch(channelName, channelId,
+                TEST_TENANCY_ID,
                 message(MessageType.STATUS, "working", null),
                 List.of(handle(filtered)));
 
@@ -339,6 +360,7 @@ class MessageObserverDispatcherTest {
     void dispatch_noObservers_noException() {
         assertDoesNotThrow(() ->
             MessageObserverDispatcher.dispatch(channelName, channelId,
+                    TEST_TENANCY_ID,
                     message(MessageType.HANDOFF, "over to you", "corr-3"),
                     List.of()));
     }
@@ -349,13 +371,13 @@ class MessageObserverDispatcherTest {
     void messageReceivedEvent_eventWithContent_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () ->
             new io.casehub.qhorus.api.gateway.MessageReceivedEvent(
-                channelName, channelId, MessageType.EVENT, "agent-a", null, "non-null content"));
+                channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, "non-null content"));
     }
 
     @Test
     void messageReceivedEvent_eventWithNullContent_isValid() {
         assertDoesNotThrow(() ->
             new io.casehub.qhorus.api.gateway.MessageReceivedEvent(
-                channelName, channelId, MessageType.EVENT, "agent-a", null, null));
+                channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, null));
     }
 }

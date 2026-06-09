@@ -41,9 +41,10 @@ final class MessageObserverDispatcher {
 
     /** Synchronous dispatch — used by tests and contexts with no active transaction. */
     static void dispatch(final String channelName, final UUID channelId,
+            final String tenancyId,
             final Message message,
             final Iterable<? extends Instance.Handle<MessageObserver>> handles) {
-        dispatch(channelName, channelId, message, handles, null);
+        dispatch(channelName, channelId, tenancyId, message, handles, null);
     }
 
     /**
@@ -58,6 +59,7 @@ final class MessageObserverDispatcher {
      * observers are called synchronously in the current thread (original behaviour).
      */
     static void dispatch(final String channelName, final UUID channelId,
+            final String tenancyId,
             final Message message,
             final Iterable<? extends Instance.Handle<MessageObserver>> handles,
             final TransactionSynchronizationRegistry tsr) {
@@ -67,7 +69,7 @@ final class MessageObserverDispatcher {
         final String content = message.messageType == MessageType.EVENT
                 ? null : message.content;
         final MessageReceivedEvent event = new MessageReceivedEvent(
-                channelName, channelId,
+                channelName, channelId, tenancyId,
                 message.messageType, message.sender,
                 message.correlationId, content);
 

@@ -18,6 +18,7 @@ import io.casehub.qhorus.api.message.MessageType;
 public record MessageReceivedEvent(
         String channelName,
         UUID channelId,
+        String tenancyId,
         MessageType messageType,
         String senderId,
         String correlationId,

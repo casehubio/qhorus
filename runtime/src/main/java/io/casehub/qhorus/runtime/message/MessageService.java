@@ -270,7 +270,9 @@ public class MessageService {
 
         // Observer fan-out (after ledger write for ordering consistency)
         MessageObserverDispatcher.dispatch(
-                ch != null ? ch.name : null, dispatch.channelId(), message, observers.handles(), tsr);
+                ch != null ? ch.name : null, dispatch.channelId(),
+                message.tenancyId,
+                message, observers.handles(), tsr);
 
         // ── Rate limit recording ──────────────────────────────────────────────
         if (ch != null && dispatch.type() != MessageType.EVENT) {
