@@ -51,6 +51,11 @@ public class InMemoryWatchdogStore implements WatchdogStore {
         store.remove(id);
     }
 
+    /** All watchdogs with no tenant filter — for cross-tenant delegation. */
+    List<Watchdog> scanAll() {
+        return List.copyOf(store.values());
+    }
+
     /** Call in @BeforeEach for test isolation. */
     public void clear() {
         store.clear();

@@ -12,6 +12,7 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.store.ChannelStore;
 import io.casehub.qhorus.runtime.store.query.ChannelQuery;
@@ -36,6 +37,9 @@ public class InMemoryChannelStore implements ChannelStore {
             channel.lastActivityAt = now;
         }
         store.put(channel.id, channel);
+        if (channel.tenancyId == null) {
+            channel.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
+        }
         return channel;
     }
 
@@ -76,6 +80,16 @@ public class InMemoryChannelStore implements ChannelStore {
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .toList();
+    }
+
+    /** All channels with no tenant filter — for cross-tenant delegation. */
+    List<Channel> scanAll() {
+        return List.copyOf(store.values());
+    }
+
+    /** Find a channel by UUID with no tenant filter — for cross-tenant delegation. */
+    Optional<Channel> findCrossTenant(UUID id) {
+        return Optional.ofNullable(store.get(id));
     }
 
     /** Call in @BeforeEach for test isolation. */
