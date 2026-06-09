@@ -24,6 +24,12 @@
       <artifactId>casehub-ledger-api</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
+    <!-- CDI Qualifier annotation — needed for @CrossTenant (api/qualifier/).
+         jakarta.inject-api is annotation-only; no runtime machinery. Managed by quarkus-bom. -->
+    <dependency>
+      <groupId>jakarta.inject</groupId>
+      <artifactId>jakarta.inject-api</artifactId>
+    </dependency>
     <!-- Jackson annotations only — for @JsonInclude on DispatchResult.
          jackson-annotations has no transitive deps and is always present on the runtime classpath. -->
     <dependency>
