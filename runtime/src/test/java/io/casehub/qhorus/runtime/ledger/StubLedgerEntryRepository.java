@@ -3,7 +3,9 @@ package io.casehub.qhorus.runtime.ledger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,23 +14,25 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
 import io.casehub.ledger.runtime.repository.LedgerEntryRepository;
 
 /**
- * In-memory stub of {@link LedgerEntryJpaRepository} for CDI-free unit tests.
+ * In-memory stub of {@link LedgerEntryRepository} for CDI-free unit tests.
  *
  * <p>Implements {@link LedgerEntryRepository} directly — do NOT extend
- * {@link LedgerEntryJpaRepository} (which injects {@code @PersistenceUnit EntityManager}).
+ * {@code JpaLedgerEntryRepository} (which injects JPA infrastructure).
  *
  * <p>The {@code entries} list is injected via constructor so it can be shared with
  * {@link StubMessageLedgerEntryRepository}, allowing {@code save()} writes to be
  * visible to qhorus-specific lookups like {@code findByMessageId()}.
  *
- * <p>Refs qhorus#253.
+ * <p>Refs qhorus#253, qhorus#255.
  */
-public class StubLedgerEntryJpaRepository implements LedgerEntryRepository {
+public class StubLedgerEntryRepository implements LedgerEntryRepository {
 
     final List<LedgerEntry> entries;
     public final List<LedgerAttestation> savedAttestations = new ArrayList<>();
+    // Mirrors LedgerSequenceAllocator behaviour: per-subjectId counter, starts at 1. Refs #256.
+    private final Map<UUID, Integer> sequenceCounters = new HashMap<>();
 
-    public StubLedgerEntryJpaRepository(final List<LedgerEntry> entries) {
+    public StubLedgerEntryRepository(final List<LedgerEntry> entries) {
         this.entries = entries;
     }
 
@@ -37,6 +41,8 @@ public class StubLedgerEntryJpaRepository implements LedgerEntryRepository {
         if (entry.id == null) {
             entry.id = UUID.randomUUID(); // simulate @PrePersist id assignment
         }
+        // Simulate LedgerSequenceAllocator.nextSequenceNumber() — overrides any caller-set value.
+        entry.sequenceNumber = sequenceCounters.merge(entry.subjectId, 1, Integer::sum);
         entries.add(entry);
         return entry;
     }

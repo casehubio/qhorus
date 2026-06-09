@@ -12,7 +12,7 @@ import io.casehub.ledger.runtime.model.LedgerEntry;
  * In-memory stub of {@link MessageLedgerEntryRepository} for CDI-free unit tests.
  *
  * <p>Accepts a shared {@code List<LedgerEntry>} so that entries saved via
- * {@link StubLedgerEntryJpaRepository#save} are visible here for
+ * {@link StubLedgerEntryRepository#save} are visible here for
  * {@link #findByMessageId} and {@link #findEarliestWithSubjectByCorrelationId}.
  *
  * <p>Refs qhorus#253.

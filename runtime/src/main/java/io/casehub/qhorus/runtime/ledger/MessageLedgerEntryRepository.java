@@ -297,6 +297,24 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
+     * Batch lookup by message ID collection — one {@code IN} query replacing per-EVENT
+     * individual {@code findByMessageId} calls in {@code getChannelTimeline()}. Refs #262.
+     *
+     * <p>Returns an empty list when {@code messageIds} is empty, avoiding a malformed
+     * {@code IN ()} clause on databases that don't tolerate it.
+     */
+    public List<MessageLedgerEntry> findByMessageIds(final java.util.Collection<Long> messageIds) {
+        if (messageIds.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery(
+                "SELECT e FROM MessageLedgerEntry e WHERE e.messageId IN :ids",
+                MessageLedgerEntry.class)
+                .setParameter("ids", messageIds)
+                .getResultList();
+    }
+
+    /**
      * Cross-channel query for {@code get_obligation_activity}. Returns all entries whose
      * {@code correlationId} exactly matches, ordered chronologically across all channels.
      */

@@ -21,15 +21,15 @@ import io.casehub.qhorus.api.message.MessageType;
 
 class LedgerWritePropagationTest {
 
-    private List<LedgerEntry> sharedEntries;
-    private StubLedgerEntryJpaRepository ledgerStub;
+    private List<LedgerEntry>                sharedEntries;
+    private StubLedgerEntryRepository        ledgerStub;
     private StubMessageLedgerEntryRepository messageStub;
     private LedgerWriteService service;
 
     @BeforeEach
     void setUp() {
         sharedEntries = new ArrayList<>();
-        ledgerStub = new StubLedgerEntryJpaRepository(sharedEntries);
+        ledgerStub = new StubLedgerEntryRepository(sharedEntries);
         messageStub = new StubMessageLedgerEntryRepository(sharedEntries);
 
         service = new LedgerWriteService();

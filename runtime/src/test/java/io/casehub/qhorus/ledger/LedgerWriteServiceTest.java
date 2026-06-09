@@ -30,7 +30,7 @@ import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.StubLedgerEntryJpaRepository;
+import io.casehub.qhorus.runtime.ledger.StubLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.StubMessageLedgerEntryRepository;
 
 /**
@@ -54,7 +54,7 @@ class LedgerWriteServiceTest {
     private MessageLedgerEntry lastMsg() {
         return (MessageLedgerEntry) sharedEntries.get(sharedEntries.size() - 1);
     }
-    private StubLedgerEntryJpaRepository ledgerStub;
+    private StubLedgerEntryRepository        ledgerStub;
     private StubMessageLedgerEntryRepository messageStub;
     private CommitmentAttestationPolicy attestationPolicy;
     private InstanceActorIdProvider actorIdProvider;
@@ -64,7 +64,7 @@ class LedgerWriteServiceTest {
     @BeforeEach
     void setup() {
         sharedEntries = new ArrayList<>();
-        ledgerStub = new StubLedgerEntryJpaRepository(sharedEntries);
+        ledgerStub = new StubLedgerEntryRepository(sharedEntries);
         messageStub = new StubMessageLedgerEntryRepository(sharedEntries);
 
         enabledConfig = mock(LedgerConfig.class);

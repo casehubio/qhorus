@@ -2,6 +2,7 @@ package io.casehub.qhorus.runtime.ledger;
 
 import static org.assertj.core.api.Assertions.*;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -74,5 +75,49 @@ class MessageLedgerEntryRepositoryTest {
     @TestTransaction
     void findEarliestWithSubjectByCorrelationId_returns_empty_when_no_match() {
         assertThat(repository.findEarliestWithSubjectByCorrelationId("no-such-corr")).isEmpty();
+    }
+
+    // ── findByMessageIds (batch fetch for #262) ──────────────────────────────
+
+    @Test
+    @TestTransaction
+    void findByMessageIds_returns_all_matching_entries() {
+        final UUID ch = UUID.randomUUID();
+        // Use negative message IDs — auto-generated Message.id values start from 1 and increment,
+        // so negative IDs never collide with real messages across test runs.
+        final MessageLedgerEntry e1 = MessageLedgerEntryTestFactory.entry(ch, -201L, "EVENT", ch, null);
+        e1.toolName = "tool-alpha";
+        final MessageLedgerEntry e2 = MessageLedgerEntryTestFactory.entry(ch, -202L, "EVENT", ch, null);
+        e2.toolName = "tool-beta";
+        // e3 — not in the requested set
+        final MessageLedgerEntry e3 = MessageLedgerEntryTestFactory.entry(ch, -203L, "COMMAND", ch, "corr-1");
+        ledger.save(e1, null);
+        ledger.save(e2, null);
+        ledger.save(e3, null);
+
+        final List<MessageLedgerEntry> found = repository.findByMessageIds(List.of(-201L, -202L));
+
+        assertThat(found).hasSize(2);
+        assertThat(found.stream().map(e -> e.messageId).toList())
+                .containsExactlyInAnyOrder(-201L, -202L);
+        assertThat(found.stream().map(e -> e.toolName).toList())
+                .containsExactlyInAnyOrder("tool-alpha", "tool-beta");
+    }
+
+    @Test
+    @TestTransaction
+    void findByMessageIds_returns_empty_for_empty_input() {
+        assertThat(repository.findByMessageIds(List.<Long>of())).isEmpty();
+    }
+
+    @Test
+    @TestTransaction
+    void findByMessageIds_excludes_entries_not_in_set() {
+        final UUID ch = UUID.randomUUID();
+        final MessageLedgerEntry e = MessageLedgerEntryTestFactory.entry(ch, -301L, "EVENT", ch, null);
+        ledger.save(e, null);
+
+        // Ask for a messageId that doesn't exist
+        assertThat(repository.findByMessageIds(List.of(-999L))).isEmpty();
     }
 }

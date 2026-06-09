@@ -1421,7 +1421,20 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         List<Message> messages = blockingMessageStore.scan(
                 MessageQuery.poll(ch.id, afterId, effectiveLimit));
 
-        return messages.stream().map(this::toTimelineEntry).toList();
+        // Batch-fetch ledger entries for all EVENT messages in one IN query. Refs #262.
+        final List<Long> eventIds = messages.stream()
+                .filter(m -> m.messageType == MessageType.EVENT)
+                .map(m -> m.id)
+                .toList();
+        final Map<Long, MessageLedgerEntry> ledgerByMessageId = eventIds.isEmpty()
+                ? Map.of()
+                : ledgerRepo.findByMessageIds(eventIds).stream()
+                        .collect(Collectors.toMap(e -> e.messageId, e -> e));
+
+        return messages.stream()
+                .map(m -> entityMapper.toTimelineEntry(m,
+                        m.messageType == MessageType.EVENT ? ledgerByMessageId.get(m.id) : null))
+                .toList();
     }
 
     // 19. get_obligation_activity

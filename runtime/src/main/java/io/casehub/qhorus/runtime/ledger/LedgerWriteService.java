@@ -154,15 +154,12 @@ public class LedgerWriteService {
             resolvedCausedByEntryId = null;
         }
 
-        // ── Sequence number (per resolved subject chain, cross-dtype) ─────────────
-        // Use the tenancyId from dispatch (set by MessageService.dispatch() as effectiveTenancyId,
-        // or by the original caller). Fall back to DEFAULT_TENANT_ID for system/legacy callers
-        // that do not set it. Refs qhorus#260.
+        // tenancyId: from dispatch (set by MessageService.dispatch() as effectiveTenancyId,
+        // or by the original caller). Falls back to DEFAULT_TENANT_ID for system/legacy callers
+        // that run outside a request context. Refs qhorus#260.
         final String tenancyId = dispatch.tenancyId() != null
                 ? dispatch.tenancyId()
                 : TenancyConstants.DEFAULT_TENANT_ID;
-        final int sequenceNumber = ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
-                .map(e -> e.sequenceNumber + 1).orElse(1);
 
         final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
@@ -179,7 +176,7 @@ public class LedgerWriteService {
         entry.actorId = resolvedActorId;
         entry.actorType = dispatch.actorType();
         entry.occurredAt = occurredAt.truncatedTo(ChronoUnit.MILLIS);
-        entry.sequenceNumber = sequenceNumber;
+        // entry.sequenceNumber assigned by ledger.save() via LedgerSequenceAllocator. Refs #256.
         entry.entryType = switch (dispatch.type()) {
             case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
             default -> LedgerEntryType.EVENT;

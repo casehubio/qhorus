@@ -119,55 +119,51 @@ public class ReactiveLedgerWriteService {
         final String tenancyId = dispatch.tenancyId() != null
                 ? dispatch.tenancyId()
                 : TenancyConstants.DEFAULT_TENANT_ID;
+        // sequenceNumber assigned by ledger.save() (MERGE in ReactiveLedgerEntryJpaRepository). Refs #256.
         return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
-                        .flatMap(resolvedCausedByEntryId -> ledger.findLatestBySubjectId(resolvedSubjectId, tenancyId)
-                                .flatMap(latestOpt -> {
-                                    // sequenceNumber is on LedgerEntry (base class) — no cast needed
-                                    final int sequenceNumber = latestOpt.map(e -> e.sequenceNumber + 1)
-                                            .orElse(1);
+                        .flatMap(resolvedCausedByEntryId -> {
+                            final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
-                                    final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
+                            final MessageLedgerEntry entry = new MessageLedgerEntry();
+                            entry.tenancyId = tenancyId;
+                            entry.subjectId = resolvedSubjectId;
+                            entry.channelId = dispatch.channelId();
+                            entry.messageId = messageId;
+                            entry.commitmentId = commitmentId;
+                            entry.causedByEntryId = resolvedCausedByEntryId;
+                            entry.messageType = dispatch.type().name();
+                            entry.target = dispatch.target();
+                            entry.correlationId = dispatch.correlationId();
+                            entry.actorId = resolvedActorId;
+                            entry.actorType = dispatch.actorType();
+                            entry.occurredAt = occurredAt.truncatedTo(ChronoUnit.MILLIS);
+                            // entry.sequenceNumber set by ledger.save() via MERGE. Refs #256.
+                            entry.entryType = switch (dispatch.type()) {
+                                case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
+                                default -> LedgerEntryType.EVENT;
+                            };
 
-                                    final MessageLedgerEntry entry = new MessageLedgerEntry();
-                                    entry.tenancyId = tenancyId;
-                                    entry.subjectId = resolvedSubjectId;
-                                    entry.channelId = dispatch.channelId();
-                                    entry.messageId = messageId;
-                                    entry.commitmentId = commitmentId;
-                                    entry.causedByEntryId = resolvedCausedByEntryId;
-                                    entry.messageType = dispatch.type().name();
-                                    entry.target = dispatch.target();
-                                    entry.correlationId = dispatch.correlationId();
-                                    entry.actorId = resolvedActorId;
-                                    entry.actorType = dispatch.actorType();
-                                    entry.occurredAt = occurredAt.truncatedTo(ChronoUnit.MILLIS);
-                                    entry.sequenceNumber = sequenceNumber;
-                                    entry.entryType = switch (dispatch.type()) {
-                                        case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
-                                        default -> LedgerEntryType.EVENT;
-                                    };
+                            if (dispatch.type() == MessageType.EVENT) {
+                                populateTelemetry(entry, dispatch.telemetry());
+                            } else {
+                                entry.content = dispatch.content();
+                            }
 
-                                    if (dispatch.type() == MessageType.EVENT) {
-                                        populateTelemetry(entry, dispatch.telemetry());
-                                    } else {
-                                        entry.content = dispatch.content();
-                                    }
-
-                                    return ledger.save(entry, tenancyId)
-                                            .flatMap(saved -> {
-                                                final LedgerWriteOutcome outcome = new LedgerWriteOutcome(
-                                                        saved.id, resolvedSubjectId, resolvedCausedByEntryId);
-                                                if (ATTESTATION_TYPES.contains(dispatch.type())
-                                                        && resolvedCausedByEntryId != null) {
-                                                    return writeAttestation(resolvedSubjectId,
-                                                            resolvedCausedByEntryId, dispatch.type(),
-                                                            resolvedActorId, tenancyId)
-                                                            .replaceWith(outcome);
-                                                }
-                                                return Uni.createFrom().item(outcome);
-                                            });
-                                }))));
+                            return ledger.save(entry, tenancyId)
+                                    .flatMap(saved -> {
+                                        final LedgerWriteOutcome outcome = new LedgerWriteOutcome(
+                                                saved.id, resolvedSubjectId, resolvedCausedByEntryId);
+                                        if (ATTESTATION_TYPES.contains(dispatch.type())
+                                                && resolvedCausedByEntryId != null) {
+                                            return writeAttestation(resolvedSubjectId,
+                                                    resolvedCausedByEntryId, dispatch.type(),
+                                                    resolvedActorId, tenancyId)
+                                                    .replaceWith(outcome);
+                                        }
+                                        return Uni.createFrom().item(outcome);
+                                    });
+                        })));
     }
 
     private Uni<Void> writeAttestation(final UUID subjectId, final UUID causedByEntryId,

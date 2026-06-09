@@ -3,16 +3,21 @@ package io.casehub.qhorus.runtime.ledger;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerAttestation;
 import io.casehub.ledger.runtime.model.LedgerEntry;
+import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.privacy.ActorIdentityProvider;
 import io.casehub.ledger.runtime.repository.ReactiveLedgerEntryRepository;
+import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
+import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.smallrye.mutiny.Uni;
@@ -31,14 +36,19 @@ import io.smallrye.mutiny.Uni;
  * <p>In non-reactive builds, {@link StubReactiveLedgerEntryRepository} ({@code @DefaultBean})
  * satisfies the {@link ReactiveLedgerEntryRepository} injection point instead.
  *
- * <p><strong>Sequence number:</strong> {@code save()} calls {@code session.persist()} without
- * sequence assignment. Sequence stays in {@link ReactiveLedgerWriteService#record} until
- * migrated to {@code LedgerSequenceAllocator} — tracked in qhorus#256.
+ * <p><strong>Sequence number:</strong> {@code save()} assigns {@code entry.sequenceNumber}
+ * via the same MERGE pattern as {@code LedgerSequenceAllocator} — atomic and race-free.
+ * Refs qhorus#256.
+ *
+ * <p><strong>Merkle hash chain:</strong> {@code save()} computes {@code entry.digest} and
+ * updates the Merkle frontier when {@code casehub.ledger.hash-chain.enabled=true},
+ * matching the behaviour of {@code JpaLedgerEntryRepository.save()} so both stacks produce
+ * consistent tamper-evident records. Refs qhorus#256.
  *
  * <p><strong>Tenancy:</strong> {@code tenancyId} parameters are accepted but not yet applied
  * to query filters — full tenant isolation wiring is tracked in qhorus#260 Task 14.
  *
- * <p>Refs qhorus#253, qhorus#260.
+ * <p>Refs qhorus#253, qhorus#256, qhorus#260.
  */
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
@@ -50,11 +60,84 @@ public class ReactiveLedgerEntryJpaRepository implements ReactiveLedgerEntryRepo
     @Inject
     ActorIdentityProvider actorIdentityProvider;
 
+    @Inject
+    LedgerConfig ledgerConfig;
+
+    @Inject
+    LedgerMerklePublisher merklePublisher;
+
     @Override
     public Uni<LedgerEntry> save(final LedgerEntry entry, final String tenancyId) {
         entry.tenancyId = tenancyId != null ? tenancyId : TenancyConstants.DEFAULT_TENANT_ID;
-        return repo.getSession()
-                .flatMap(session -> session.persist(entry).replaceWith(entry));
+        return repo.getSession().flatMap(session ->
+            // Step 1: atomic sequence allocation — MERGE + flush + SELECT. Refs #256.
+            session.createNativeQuery("""
+                    MERGE INTO ledger_subject_sequence AS t \
+                    USING (SELECT CAST(?1 AS UUID) AS sid) AS s ON t.subject_id = s.sid \
+                    WHEN MATCHED THEN UPDATE SET next_seq = t.next_seq + 1 \
+                    WHEN NOT MATCHED THEN INSERT (subject_id, next_seq) VALUES (s.sid, 2)\
+                    """)
+                .setParameter(1, entry.subjectId).executeUpdate()
+            .flatMap(i -> session.flush())
+            .flatMap(v -> session.createNativeQuery(
+                    "SELECT next_seq - 1 FROM ledger_subject_sequence WHERE subject_id = ?1",
+                    Integer.class)
+                .setParameter(1, entry.subjectId).getSingleResultOrNull())
+            .flatMap(seq -> {
+                entry.sequenceNumber = seq != null ? seq : 1;
+                // Step 2: tokenise actorId before leafHash so both stacks produce identical digests. Refs #256.
+                if (entry.actorId != null) {
+                    entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
+                }
+                // Step 3: compute Merkle digest (pure Java — must be after sequence + tokenisation).
+                if (ledgerConfig.hashChain().enabled()) {
+                    entry.digest = LedgerMerkleTree.leafHash(entry);
+                }
+                // Step 4: persist entry.
+                return session.persist(entry).replaceWith(entry);
+            })
+            .flatMap(e -> {
+                // Step 5: Merkle frontier update (conditional). Refs #256.
+                if (!ledgerConfig.hashChain().enabled()) {
+                    return Uni.createFrom().item(e);
+                }
+                return session.createQuery(
+                        "SELECT f FROM LedgerMerkleFrontier f WHERE f.subjectId = :sid ORDER BY f.level ASC",
+                        LedgerMerkleFrontier.class)
+                    .setParameter("sid", e.subjectId)
+                    .getResultList()
+                    .flatMap(currentFrontier -> {
+                        final List<LedgerMerkleFrontier> newFrontier =
+                                LedgerMerkleTree.append(e.digest, currentFrontier, e.subjectId);
+                        final Set<Integer> newLevels = newFrontier.stream()
+                                .map(n -> n.level).collect(Collectors.toSet());
+                        // Delete frontier levels not in the new set (mirrors JpaLedgerMerkleFrontierRepository.replace()).
+                        final Uni<Integer> deleteOld = newLevels.isEmpty()
+                                ? Uni.createFrom().item(0)
+                                : session.createMutationQuery(
+                                    "DELETE FROM LedgerMerkleFrontier f WHERE f.subjectId = :sid AND f.level NOT IN :levels")
+                                  .setParameter("sid", e.subjectId)
+                                  .setParameter("levels", newLevels)
+                                  .executeUpdate();
+                        return deleteOld.flatMap(del -> {
+                            // Per-node: delete exact level then persist new node.
+                            Uni<Void> chain = Uni.createFrom().voidItem();
+                            for (final LedgerMerkleFrontier node : newFrontier) {
+                                chain = chain
+                                    .flatMap(v -> session
+                                        .createNamedQuery("LedgerMerkleFrontier.deleteBySubjectAndLevel")
+                                        .setParameter("subjectId", e.subjectId)
+                                        .setParameter("level", node.level)
+                                        .executeUpdate()
+                                        .replaceWithVoid())
+                                    .flatMap(v -> session.persist(node));
+                            }
+                            return chain;
+                        }).invoke(() -> merklePublisher.publish(
+                                e.subjectId, e.sequenceNumber, LedgerMerkleTree.treeRoot(newFrontier)))
+                        .replaceWith(e);
+                    });
+            }));
     }
 
     @Override
