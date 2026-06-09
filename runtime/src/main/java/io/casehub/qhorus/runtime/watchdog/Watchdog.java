@@ -44,6 +44,10 @@ public class Watchdog extends PanacheEntityBase {
     @Column(name = "created_by")
     public String createdBy;
 
+    /* bridge default — replaced by real tenant before persist (Tasks 10, 13); PP-20260520-e6a5f0 */
+    @Column(name = "tenancy_id", nullable = false, updatable = false)
+    public String tenancyId = "system";
+
     @Column(name = "created_at", nullable = false)
     public Instant createdAt;
 

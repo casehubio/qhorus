@@ -80,4 +80,8 @@ public class MessageLedgerEntry extends LedgerEntry {
 
     @Column(name = "source_entity", columnDefinition = "TEXT")
     public String sourceEntity;
+
+    /** Tenant this message belongs to. Null for ledger entries predating #260. */
+    @Column(name = "tenancy_id", updatable = false)
+    public String tenancyId;
 }

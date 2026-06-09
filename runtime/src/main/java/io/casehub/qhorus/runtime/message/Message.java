@@ -41,6 +41,10 @@ public class Message extends PanacheEntityBase {
     @Column(name = "actor_type", nullable = false)
     public ActorType actorType;
 
+    /* bridge default — replaced by real tenant before persist (Tasks 10, 13); PP-20260520-e6a5f0 */
+    @Column(name = "tenancy_id", nullable = false, updatable = false)
+    public String tenancyId = "system";
+
     @Column(columnDefinition = "TEXT")
     public String content;
 

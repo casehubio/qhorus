@@ -83,6 +83,10 @@ public class Channel extends PanacheEntityBase {
     @Column(name = "auto_created", nullable = false)
     public boolean autoCreated = false;
 
+    /* bridge default — replaced by real tenant before persist (Tasks 10, 13); PP-20260520-e6a5f0 */
+    @Column(name = "tenancy_id", nullable = false, updatable = false)
+    public String tenancyId = "system";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     public Instant createdAt;
 
