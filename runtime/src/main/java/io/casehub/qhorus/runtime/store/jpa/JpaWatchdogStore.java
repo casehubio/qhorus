@@ -6,14 +6,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.runtime.store.WatchdogStore;
 import io.casehub.qhorus.runtime.store.query.WatchdogQuery;
 import io.casehub.qhorus.runtime.watchdog.Watchdog;
 
 @ApplicationScoped
 public class JpaWatchdogStore implements WatchdogStore {
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     @Override
     @Transactional
@@ -24,14 +29,16 @@ public class JpaWatchdogStore implements WatchdogStore {
 
     @Override
     public Optional<Watchdog> find(UUID id) {
-        return Optional.ofNullable(Watchdog.findById(id));
+        return Watchdog.find("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId())
+                .firstResultOptional();
     }
 
     @Override
     public List<Watchdog> scan(WatchdogQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM Watchdog WHERE 1=1");
+        StringBuilder jpql = new StringBuilder("FROM Watchdog WHERE tenancyId = ?1");
         List<Object> params = new ArrayList<>();
-        int idx = 1;
+        params.add(currentPrincipal.tenancyId());
+        int idx = 2;
 
         if (q.conditionType() != null) {
             jpql.append(" AND conditionType = ?").append(idx++);
@@ -44,6 +51,6 @@ public class JpaWatchdogStore implements WatchdogStore {
     @Override
     @Transactional
     public void delete(UUID id) {
-        Watchdog.deleteById(id);
+        Watchdog.delete("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId());
     }
 }

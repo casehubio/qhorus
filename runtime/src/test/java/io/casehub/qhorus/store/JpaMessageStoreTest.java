@@ -12,6 +12,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
@@ -31,6 +32,7 @@ class JpaMessageStoreTest {
         Channel ch = new Channel();
         ch.name = "msg-test-" + UUID.randomUUID();
         ch.semantic = ChannelSemantic.APPEND;
+        ch.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
         ch.persist();
         return ch;
     }
@@ -41,6 +43,7 @@ class JpaMessageStoreTest {
         m.sender = sender;
         m.messageType = type;
         m.actorType = ActorType.AGENT;
+        m.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
         m.content = "hello from " + sender;
         return m;
     }

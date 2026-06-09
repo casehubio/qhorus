@@ -12,6 +12,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
 import io.casehub.qhorus.api.message.MessageType;
@@ -22,6 +23,9 @@ import io.casehub.qhorus.runtime.store.query.ChannelQuery;
 
 @ApplicationScoped
 public class ChannelService {
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     @Inject
     ChannelStore channelStore;
@@ -319,6 +323,7 @@ public class ChannelService {
         channel.rateLimitPerInstance = req.rateLimitPerInstance();
         channel.allowedTypes = blankToNull(req.allowedTypes());
         channel.deniedTypes = blankToNull(req.deniedTypes());
+        channel.tenancyId = currentPrincipal.tenancyId();
         return channel;
     }
 

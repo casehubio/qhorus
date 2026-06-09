@@ -11,6 +11,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.message.Commitment;
@@ -153,6 +154,7 @@ class JpaCommitmentStoreTest {
         c.requester = "req";
         c.obligor = "obl";
         c.state = CommitmentState.OPEN;
+        c.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
         return c;
     }
 }

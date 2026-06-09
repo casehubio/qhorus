@@ -20,6 +20,7 @@ import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.ActorTypeResolver;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -65,6 +66,9 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
 public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     private static final Logger LOG = Logger.getLogger(QhorusMcpTools.class);
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     @Inject
     InstanceService instanceService;
@@ -1740,6 +1744,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         w.thresholdCount = thresholdCount;
         w.notificationChannel = notificationChannel;
         w.createdBy = createdBy;
+        w.tenancyId = currentPrincipal.tenancyId();
         w.persist();
         return toWatchdogSummary(w);
     }
@@ -1749,7 +1754,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     @Transactional
     public List<WatchdogSummary> listWatchdogs() {
         requireWatchdogEnabled();
-        return io.casehub.qhorus.runtime.watchdog.Watchdog.<io.casehub.qhorus.runtime.watchdog.Watchdog> listAll()
+        return io.casehub.qhorus.runtime.watchdog.Watchdog
+                .<io.casehub.qhorus.runtime.watchdog.Watchdog>list("tenancyId = ?1", currentPrincipal.tenancyId())
                 .stream()
                 .map(this::toWatchdogSummary)
                 .toList();

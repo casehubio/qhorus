@@ -43,6 +43,10 @@ public class ReactiveJpaWatchdogStore implements ReactiveWatchdogStore {
             jpql.append(" AND conditionType = ?").append(idx++);
             params.add(q.conditionType());
         }
+        if (q.tenancyId() != null) {
+            jpql.append(" AND tenancyId = ?").append(idx++);
+            params.add(q.tenancyId());
+        }
 
         return repo.list(jpql.toString(), params.toArray());
     }

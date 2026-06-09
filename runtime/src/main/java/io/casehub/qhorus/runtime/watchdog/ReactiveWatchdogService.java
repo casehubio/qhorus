@@ -21,7 +21,7 @@ public class ReactiveWatchdogService {
     ReactiveWatchdogStore watchdogStore;
 
     public Uni<Watchdog> register(String conditionType, String targetName, Integer thresholdSeconds,
-            Integer thresholdCount, String notificationChannel, String createdBy) {
+            Integer thresholdCount, String notificationChannel, String createdBy, String tenancyId) {
         return Panache.withTransaction("qhorus", () -> {
             Watchdog w = new Watchdog();
             w.conditionType = conditionType;
@@ -30,12 +30,17 @@ public class ReactiveWatchdogService {
             w.thresholdCount = thresholdCount;
             w.notificationChannel = notificationChannel;
             w.createdBy = createdBy;
+            w.tenancyId = tenancyId;
             return watchdogStore.put(w);
         });
     }
 
     public Uni<List<Watchdog>> listAll() {
         return watchdogStore.scan(WatchdogQuery.all());
+    }
+
+    public Uni<List<Watchdog>> listByTenant(String tenancyId) {
+        return watchdogStore.scan(WatchdogQuery.byTenancy(tenancyId));
     }
 
     public Uni<Optional<Watchdog>> findById(UUID id) {

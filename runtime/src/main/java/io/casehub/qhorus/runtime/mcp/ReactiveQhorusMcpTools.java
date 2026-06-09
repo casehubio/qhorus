@@ -20,6 +20,7 @@ import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.ActorTypeResolver;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.instance.InstanceInfo;
@@ -82,6 +83,9 @@ import io.smallrye.mutiny.Uni;
 public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
     private static final Logger LOG = Logger.getLogger(ReactiveQhorusMcpTools.class);
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     // Reactive services (Category A tools)
     @Inject
@@ -589,8 +593,10 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "notification_channel", description = "Channel to post alert events to") String notificationChannel,
             @ToolArg(name = "created_by", description = "Who is registering this watchdog") String createdBy) {
         requireWatchdogEnabled();
+        // Capture tenancyId on the calling thread (request context active here; not safe inside Uni pipeline)
+        String tenancyId = currentPrincipal.tenancyId();
         return watchdogService.register(conditionType, targetName, thresholdSeconds, thresholdCount,
-                notificationChannel, createdBy)
+                notificationChannel, createdBy, tenancyId)
                 .map(this::toWatchdogSummary);
     }
 
@@ -598,7 +604,9 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             + "Requires casehub.qhorus.watchdog.enabled=true.")
     public Uni<List<WatchdogSummary>> listWatchdogs() {
         requireWatchdogEnabled();
-        return watchdogService.listAll().map(list -> list.stream().map(this::toWatchdogSummary).toList());
+        // Capture tenancyId on the calling thread (request context active here; not safe inside Uni pipeline)
+        String tenancyId = currentPrincipal.tenancyId();
+        return watchdogService.listByTenant(tenancyId).map(list -> list.stream().map(this::toWatchdogSummary).toList());
     }
 
     @Tool(name = "delete_watchdog", description = "Remove a registered watchdog by its ID. "

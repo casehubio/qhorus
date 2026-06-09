@@ -10,6 +10,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.store.MessageStore;
@@ -22,6 +23,9 @@ import io.smallrye.mutiny.Uni;
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
 public class ReactiveChannelService {
+
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
     @Inject
     ReactiveChannelStore channelStore;
@@ -79,7 +83,7 @@ public class ReactiveChannelService {
         return create(name, description, semantic, barrierContributors, allowedWriters, adminInstances, null, null);
     }
 
-    private static Channel populateChannel(ChannelCreateRequest req) {
+    private Channel populateChannel(ChannelCreateRequest req) {
         Channel channel = new Channel();
         channel.name = req.name();
         channel.description = req.description();
@@ -91,6 +95,7 @@ public class ReactiveChannelService {
         channel.rateLimitPerInstance = req.rateLimitPerInstance();
         channel.allowedTypes = blankToNull(req.allowedTypes());
         channel.deniedTypes = blankToNull(req.deniedTypes());
+        channel.tenancyId = currentPrincipal.tenancyId();
         return channel;
     }
 

@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.store.ChannelStore;
@@ -23,12 +24,19 @@ class JpaChannelStoreTest {
     @Inject
     ChannelStore channelStore;
 
+    /** Builds a channel with tenancyId matching the MockCurrentPrincipal default. */
+    private Channel buildChannel(String name, ChannelSemantic semantic) {
+        Channel ch = new Channel();
+        ch.name = name;
+        ch.semantic = semantic;
+        ch.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
+        return ch;
+    }
+
     @Test
     @TestTransaction
     void put_persistsChannelAndAssignsId() {
-        Channel ch = new Channel();
-        ch.name = "put-test-" + UUID.randomUUID();
-        ch.semantic = ChannelSemantic.APPEND;
+        Channel ch = buildChannel("put-test-" + UUID.randomUUID(), ChannelSemantic.APPEND);
 
         Channel saved = channelStore.put(ch);
 
@@ -39,9 +47,7 @@ class JpaChannelStoreTest {
     @Test
     @TestTransaction
     void find_returnsChannel_whenExists() {
-        Channel ch = new Channel();
-        ch.name = "find-test-" + UUID.randomUUID();
-        ch.semantic = ChannelSemantic.APPEND;
+        Channel ch = buildChannel("find-test-" + UUID.randomUUID(), ChannelSemantic.APPEND);
         channelStore.put(ch);
 
         Optional<Channel> found = channelStore.find(ch.id);
@@ -59,9 +65,7 @@ class JpaChannelStoreTest {
     @Test
     @TestTransaction
     void findByName_returnsChannel_whenExists() {
-        Channel ch = new Channel();
-        ch.name = "named-" + UUID.randomUUID();
-        ch.semantic = ChannelSemantic.COLLECT;
+        Channel ch = buildChannel("named-" + UUID.randomUUID(), ChannelSemantic.COLLECT);
         channelStore.put(ch);
 
         Optional<Channel> found = channelStore.findByName(ch.name);
@@ -75,15 +79,11 @@ class JpaChannelStoreTest {
     void scan_pausedOnly_returnsOnlyPausedChannels() {
         String suffix = UUID.randomUUID().toString();
 
-        Channel active = new Channel();
-        active.name = "active-" + suffix;
-        active.semantic = ChannelSemantic.APPEND;
+        Channel active = buildChannel("active-" + suffix, ChannelSemantic.APPEND);
         active.paused = false;
         channelStore.put(active);
 
-        Channel paused = new Channel();
-        paused.name = "paused-" + suffix;
-        paused.semantic = ChannelSemantic.APPEND;
+        Channel paused = buildChannel("paused-" + suffix, ChannelSemantic.APPEND);
         paused.paused = true;
         channelStore.put(paused);
 
@@ -99,19 +99,13 @@ class JpaChannelStoreTest {
     void scan_byNamePrefix_returnsMatchingChannels() {
         String prefix = "pfx-" + UUID.randomUUID() + "/";
 
-        Channel work = new Channel();
-        work.name = prefix + "work";
-        work.semantic = ChannelSemantic.APPEND;
+        Channel work = buildChannel(prefix + "work", ChannelSemantic.APPEND);
         channelStore.put(work);
 
-        Channel observe = new Channel();
-        observe.name = prefix + "observe";
-        observe.semantic = ChannelSemantic.APPEND;
+        Channel observe = buildChannel(prefix + "observe", ChannelSemantic.APPEND);
         channelStore.put(observe);
 
-        Channel other = new Channel();
-        other.name = "other-" + UUID.randomUUID();
-        other.semantic = ChannelSemantic.APPEND;
+        Channel other = buildChannel("other-" + UUID.randomUUID(), ChannelSemantic.APPEND);
         channelStore.put(other);
 
         List<Channel> results = channelStore.scan(ChannelQuery.byNamePrefix(prefix));
@@ -125,14 +119,10 @@ class JpaChannelStoreTest {
     void scan_byNamePrefix_doesNotMatchChannelWithUnderscore_inPrefix() {
         String suffix = UUID.randomUUID().toString();
         // Channel whose name differs from the prefix only because _ would be a SQL wildcard
-        Channel withDash = new Channel();
-        withDash.name = "case-" + suffix;
-        withDash.semantic = ChannelSemantic.APPEND;
+        Channel withDash = buildChannel("case-" + suffix, ChannelSemantic.APPEND);
         channelStore.put(withDash);
 
-        Channel withUnderscore = new Channel();
-        withUnderscore.name = "case_" + suffix;
-        withUnderscore.semantic = ChannelSemantic.APPEND;
+        Channel withUnderscore = buildChannel("case_" + suffix, ChannelSemantic.APPEND);
         channelStore.put(withUnderscore);
 
         // Search for prefix "case_<suffix>" — should not match "case-<suffix>" via SQL wildcard
@@ -145,9 +135,7 @@ class JpaChannelStoreTest {
     @Test
     @TestTransaction
     void delete_removesChannel() {
-        Channel ch = new Channel();
-        ch.name = "delete-test-" + UUID.randomUUID();
-        ch.semantic = ChannelSemantic.APPEND;
+        Channel ch = buildChannel("delete-test-" + UUID.randomUUID(), ChannelSemantic.APPEND);
         channelStore.put(ch);
 
         channelStore.delete(ch.id);

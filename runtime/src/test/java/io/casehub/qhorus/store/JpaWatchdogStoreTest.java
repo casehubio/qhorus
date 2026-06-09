@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.WatchdogEnabledProfile;
 import io.casehub.qhorus.runtime.store.WatchdogStore;
 import io.casehub.qhorus.runtime.store.query.WatchdogQuery;
@@ -32,6 +33,7 @@ class JpaWatchdogStoreTest {
         w.notificationChannel = "alerts";
         w.thresholdSeconds = 300;
         w.createdBy = "test-agent";
+        w.tenancyId = TenancyConstants.DEFAULT_TENANT_ID;
         return w;
     }
 
