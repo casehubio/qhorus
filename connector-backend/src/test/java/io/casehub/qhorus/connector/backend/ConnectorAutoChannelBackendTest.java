@@ -33,6 +33,8 @@ import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.runtime.store.query.ChannelQuery;
 import io.casehub.qhorus.testing.InMemoryChannelBindingStore;
 import io.casehub.qhorus.testing.InMemoryChannelStore;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -48,12 +50,14 @@ class ConnectorAutoChannelBackendTest {
     @InjectMock MessageService messageService;
     @InjectMock ConnectorService connectorService;
     @InjectMock AutoChannelPolicy autoChannelPolicy;
+    @InjectMock CurrentPrincipal currentPrincipal;
 
     private static final String SENDER = "+447911000099";
     private static final String CONNECTOR = InboundConnectorIds.TWILIO_SMS;
 
     @BeforeEach
     void setUp() {
+        Mockito.when(currentPrincipal.tenancyId()).thenReturn(TenancyConstants.DEFAULT_TENANT_ID);
         channelStore.clear();
         channelBindingStore.clear();
         // Reset Mockito invocation history so verify() counts are per-test, not cumulative.

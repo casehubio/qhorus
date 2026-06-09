@@ -14,6 +14,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.qualifier.CrossTenant;
 import io.casehub.qhorus.api.watchdog.AgentStaleContext;
 import io.casehub.qhorus.api.watchdog.AlertContext;
 import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
@@ -22,18 +23,18 @@ import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
 import io.casehub.qhorus.api.watchdog.QueueDepthContext;
 import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
 import io.casehub.qhorus.runtime.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.instance.Instance;
 import io.casehub.qhorus.runtime.message.Commitment;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.store.CommitmentStore;
+import io.casehub.qhorus.runtime.store.CrossTenantChannelStore;
+import io.casehub.qhorus.runtime.store.CrossTenantCommitmentStore;
+import io.casehub.qhorus.runtime.store.CrossTenantMessageStore;
+import io.casehub.qhorus.runtime.store.CrossTenantWatchdogStore;
 import io.casehub.qhorus.runtime.store.InstanceStore;
-import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.WatchdogStore;
 import io.casehub.qhorus.runtime.store.query.InstanceQuery;
 import io.casehub.qhorus.runtime.store.query.MessageQuery;
-import io.casehub.qhorus.runtime.store.query.WatchdogQuery;
 
 /**
  * Evaluates all registered watchdog conditions and fires alert messages
@@ -54,19 +55,26 @@ public class WatchdogEvaluationService {
     QhorusConfig config;
 
     @Inject
-    ChannelService channelService;
-
-    @Inject
     MessageService messageService;
 
     @Inject
     WatchdogStore watchdogStore;
 
+    @CrossTenant
     @Inject
-    MessageStore messageStore;
+    CrossTenantChannelStore crossTenantChannelStore;
 
+    @CrossTenant
     @Inject
-    CommitmentStore commitmentStore;
+    CrossTenantMessageStore crossTenantMessageStore;
+
+    @CrossTenant
+    @Inject
+    CrossTenantCommitmentStore crossTenantCommitmentStore;
+
+    @CrossTenant
+    @Inject
+    CrossTenantWatchdogStore crossTenantWatchdogStore;
 
     @Inject
     InstanceStore instanceStore;
@@ -81,7 +89,7 @@ public class WatchdogEvaluationService {
             return;
         }
 
-        List<Watchdog> watchdogs = watchdogStore.scan(WatchdogQuery.all());
+        List<Watchdog> watchdogs = crossTenantWatchdogStore.listAll();
         Instant now = Instant.now();
 
         for (Watchdog w : watchdogs) {
@@ -122,7 +130,7 @@ public class WatchdogEvaluationService {
         int threshold = w.thresholdSeconds != null ? w.thresholdSeconds : 300;
         Instant cutoff = now.minusSeconds(threshold);
 
-        List<Channel> barriers = channelService.listAll().stream()
+        List<Channel> barriers = crossTenantChannelStore.listAll().stream()
                 .filter(ch -> ch.semantic == ChannelSemantic.BARRIER)
                 .filter(ch -> "*".equals(w.targetName) || ch.name.equals(w.targetName))
                 .filter(ch -> ch.lastActivityAt == null || ch.lastActivityAt.isBefore(cutoff) || threshold == 0)
@@ -136,7 +144,7 @@ public class WatchdogEvaluationService {
             if (required.isEmpty())
                 continue;
 
-            List<String> written = messageStore.distinctSendersByChannel(ch.id, MessageType.EVENT);
+            List<String> written = crossTenantMessageStore.distinctSendersByChannel(ch.id, MessageType.EVENT);
             List<String> missing = required.stream()
                     .map(String::trim)
                     .filter(r -> !r.isBlank())
@@ -160,7 +168,7 @@ public class WatchdogEvaluationService {
         // Threshold formula preserved verbatim from original: for threshold=300, fires for
         // commitments expired >240s ago; for threshold=60, expiring right now; for
         // threshold=0, all commitments with any expiry. See design spec 2026-05-28.
-        List<Commitment> pending = commitmentStore.findAllOpen()
+        List<Commitment> pending = crossTenantCommitmentStore.findAllOpen()
                 .stream()
                 .filter(c -> c.expiresAt != null)
                 .filter(c -> threshold == 0 || c.expiresAt.isBefore(now.plusSeconds(60 - threshold)))
@@ -201,7 +209,7 @@ public class WatchdogEvaluationService {
         int threshold = w.thresholdSeconds != null ? w.thresholdSeconds : 600;
         Instant cutoff = now.minusSeconds(threshold);
 
-        List<Channel> idle = channelService.listAll().stream()
+        List<Channel> idle = crossTenantChannelStore.listAll().stream()
                 .filter(ch -> "*".equals(w.targetName) || ch.name.equals(w.targetName))
                 .filter(ch -> threshold == 0 || ch.lastActivityAt == null || ch.lastActivityAt.isBefore(cutoff))
                 .toList();
@@ -219,14 +227,14 @@ public class WatchdogEvaluationService {
     private boolean evaluateQueueDepth(Watchdog w, Instant now) {
         int threshold = w.thresholdCount != null ? w.thresholdCount : 100;
 
-        List<Channel> channels = channelService.listAll().stream()
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
                 .filter(ch -> "*".equals(w.targetName) || ch.name.equals(w.targetName))
                 .toList();
 
         // Fires on the FIRST channel that exceeds the threshold. If multiple channels
         // are over-depth, only one alert fires per evaluation cycle — pre-existing behaviour.
         for (Channel ch : channels) {
-            long count = messageStore.count(
+            long count = crossTenantMessageStore.count(
                     MessageQuery.builder()
                             .channelId(ch.id)
                             .excludeTypes(List.of(MessageType.EVENT))
@@ -252,7 +260,11 @@ public class WatchdogEvaluationService {
                 w.id, w.targetName, w.notificationChannel, summary, now, context));
 
         // 2. Internal channel dispatch SECOND — failure does not suppress the event above.
-        Optional<Channel> notifChannel = channelService.findByName(w.notificationChannel);
+        //    Use cross-tenant lookup scoped to the watchdog's tenancy — no CDI request context
+        //    available in the scheduler thread. Pass w.tenancyId explicitly so MessageService
+        //    can route without CurrentPrincipal (GE-20260531-446fea pattern).
+        Optional<Channel> notifChannel = crossTenantChannelStore
+                .findByNameAndTenancy(w.notificationChannel, w.tenancyId);
         if (notifChannel.isEmpty()) {
             return;
         }
@@ -262,6 +274,7 @@ public class WatchdogEvaluationService {
                 .type(MessageType.STATUS)
                 .content(summary)
                 .actorType(ActorType.SYSTEM)
+                .tenancyId(w.tenancyId)
                 .build());
     }
 }

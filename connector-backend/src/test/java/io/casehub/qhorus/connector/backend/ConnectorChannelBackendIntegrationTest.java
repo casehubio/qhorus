@@ -17,6 +17,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 import io.casehub.connectors.ConnectorMessage;
 import io.casehub.connectors.ConnectorService;
@@ -34,6 +35,8 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.testing.InMemoryChannelBindingStore;
 import io.casehub.qhorus.testing.InMemoryChannelStore;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -49,11 +52,13 @@ class ConnectorChannelBackendIntegrationTest {
 
     @InjectMock MessageService messageService;
     @InjectMock ConnectorService connectorService;
+    @InjectMock CurrentPrincipal currentPrincipal;
 
     private UUID channelId;
 
     @BeforeEach
     void setUp() {
+        Mockito.when(currentPrincipal.tenancyId()).thenReturn(TenancyConstants.DEFAULT_TENANT_ID);
         channelStore.clear();
         channelBindingStore.clear();
 

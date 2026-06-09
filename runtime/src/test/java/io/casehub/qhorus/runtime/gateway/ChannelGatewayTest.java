@@ -26,6 +26,7 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.runtime.store.CrossTenantChannelStore;
 
 class ChannelGatewayTest {
 
@@ -75,7 +76,7 @@ class ChannelGatewayTest {
         agentBackend = new QhorusChannelBackend();
         normaliser = new DefaultInboundNormaliser();
         gateway = new ChannelGateway(agentBackend, normaliser, messageService,
-                mock(ChannelService.class), mock(Event.class));
+                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Event.class));
         channelId = UUID.randomUUID();
         channelRef = new ChannelRef(channelId, "test-channel");
         gateway.initChannel(channelId, channelRef);
@@ -131,7 +132,7 @@ class ChannelGatewayTest {
         QhorusChannelBackend spy = spy(agentBackend);
         // Re-init gateway with spy to observe post() calls
         ChannelGateway gw2 = new ChannelGateway(spy, normaliser, messageService,
-                mock(ChannelService.class), mock(Event.class));
+                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Event.class));
         UUID ch2 = UUID.randomUUID();
         gw2.initChannel(ch2, new ChannelRef(ch2, "ch2"));
 

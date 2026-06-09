@@ -18,10 +18,12 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.*;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.qualifier.CrossTenant;
 import java.util.Objects;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.runtime.store.CrossTenantChannelStore;
 import io.quarkus.runtime.StartupEvent;
 
 @ApplicationScoped
@@ -35,6 +37,7 @@ public class ChannelGateway {
     final InboundNormaliser normaliser;
     final MessageService messageService;
     final ChannelService channelService;
+    final CrossTenantChannelStore crossTenantChannelStore;
     final Event<ChannelInitialisedEvent> channelInitialisedEvents;
 
     @Inject
@@ -42,11 +45,13 @@ public class ChannelGateway {
                           InboundNormaliser normaliser,
                           MessageService messageService,
                           ChannelService channelService,
+                          @CrossTenant CrossTenantChannelStore crossTenantChannelStore,
                           Event<ChannelInitialisedEvent> channelInitialisedEvents) {
         this.agentBackend = agentBackend;
         this.normaliser = normaliser;
         this.messageService = messageService;
         this.channelService = channelService;
+        this.crossTenantChannelStore = crossTenantChannelStore;
         this.channelInitialisedEvents = channelInitialisedEvents;
     }
 
@@ -84,7 +89,7 @@ public class ChannelGateway {
      * own startup recovery.
      */
     void onStart(@Observes StartupEvent ev) {
-        for (Channel ch : channelService.listAll()) {
+        for (Channel ch : crossTenantChannelStore.listAll()) {
             try {
                 initChannel(ch.id, new ChannelRef(ch.id, ch.name), true);
             } catch (Exception ex) {

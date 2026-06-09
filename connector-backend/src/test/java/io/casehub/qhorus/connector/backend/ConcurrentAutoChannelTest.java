@@ -14,10 +14,13 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
 import io.casehub.connectors.InboundMessage;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.testing.InMemoryChannelBindingStore;
@@ -40,12 +43,14 @@ class ConcurrentAutoChannelTest {
     @InjectMock MessageService messageService;
     @InjectMock ConnectorService connectorService;
     @InjectMock AutoChannelPolicy autoChannelPolicy;
+    @InjectMock CurrentPrincipal currentPrincipal;
 
     private static final String SENDER = "+447911123456";
     private static final String CONNECTOR = InboundConnectorIds.TWILIO_SMS;
 
     @BeforeEach
     void setUp() {
+        Mockito.when(currentPrincipal.tenancyId()).thenReturn(TenancyConstants.DEFAULT_TENANT_ID);
         channelStore.clear();
         channelBindingStore.clear();
     }

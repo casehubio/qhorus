@@ -50,5 +50,14 @@
       <version>3.27.3</version>
       <scope>test</scope>
     </dependency>
+
+    <!-- Provides MockCurrentPrincipal (@DefaultBean) to satisfy CurrentPrincipal
+         injection points added by multi-tenancy (#260). -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform</artifactId>
+      <version>0.2-SNAPSHOT</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

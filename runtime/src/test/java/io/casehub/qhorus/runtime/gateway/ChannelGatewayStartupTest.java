@@ -18,17 +18,19 @@ import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.runtime.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.runtime.store.CrossTenantChannelStore;
 import io.quarkus.runtime.StartupEvent;
 
 class ChannelGatewayStartupTest {
 
     @SuppressWarnings("unchecked")
-    private ChannelGateway gatewayWith(ChannelService channelService) {
+    private ChannelGateway gatewayWith(CrossTenantChannelStore crossTenantChannelStore) {
         return new ChannelGateway(
                 new QhorusChannelBackend(),
                 new DefaultInboundNormaliser(),
                 mock(MessageService.class),
-                channelService,
+                mock(ChannelService.class),
+                crossTenantChannelStore,
                 mock(Event.class));
     }
 
@@ -44,9 +46,9 @@ class ChannelGatewayStartupTest {
     void onStart_registersAgentBackend_forEachPersistedChannel() {
         Channel ch1 = channel("case-1/work");
         Channel ch2 = channel("case-2/observe");
-        ChannelService channelService = mock(ChannelService.class);
-        when(channelService.listAll()).thenReturn(List.of(ch1, ch2));
-        ChannelGateway gateway = gatewayWith(channelService);
+        CrossTenantChannelStore crossTenantChannelStore = mock(CrossTenantChannelStore.class);
+        when(crossTenantChannelStore.listAll()).thenReturn(List.of(ch1, ch2));
+        ChannelGateway gateway = gatewayWith(crossTenantChannelStore);
 
         gateway.onStart(new StartupEvent());
 
@@ -54,17 +56,17 @@ class ChannelGatewayStartupTest {
                 "ch1 should have agent backend after startup");
         assertTrue(gateway.listBackends(ch2.id).stream().anyMatch(b -> "qhorus-internal".equals(b.backendId())),
                 "ch2 should have agent backend after startup");
-        verify(channelService).listAll();
+        verify(crossTenantChannelStore).listAll();
     }
 
     @Test
     void onStart_withNoChannels_doesNothing() {
-        ChannelService channelService = mock(ChannelService.class);
-        when(channelService.listAll()).thenReturn(List.of());
-        ChannelGateway gateway = gatewayWith(channelService);
+        CrossTenantChannelStore crossTenantChannelStore = mock(CrossTenantChannelStore.class);
+        when(crossTenantChannelStore.listAll()).thenReturn(List.of());
+        ChannelGateway gateway = gatewayWith(crossTenantChannelStore);
 
         assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()));
-        verify(channelService).listAll();
+        verify(crossTenantChannelStore).listAll();
     }
 
     @Test
@@ -79,14 +81,15 @@ class ChannelGatewayStartupTest {
                 .doNothing()
                 .when(throwingEvents).fire(any());
 
-        ChannelService channelService = mock(ChannelService.class);
-        when(channelService.listAll()).thenReturn(List.of(bad, good));
+        CrossTenantChannelStore crossTenantChannelStore = mock(CrossTenantChannelStore.class);
+        when(crossTenantChannelStore.listAll()).thenReturn(List.of(bad, good));
 
         ChannelGateway gateway = new ChannelGateway(
                 new QhorusChannelBackend(),
                 new DefaultInboundNormaliser(),
                 mock(MessageService.class),
-                channelService,
+                mock(ChannelService.class),
+                crossTenantChannelStore,
                 throwingEvents);
 
         assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()),
@@ -99,9 +102,9 @@ class ChannelGatewayStartupTest {
     @Test
     void onStart_isIdempotent_whenChannelAlreadyInitialised() {
         Channel ch = channel("case-1/work");
-        ChannelService channelService = mock(ChannelService.class);
-        when(channelService.listAll()).thenReturn(List.of(ch));
-        ChannelGateway gateway = gatewayWith(channelService);
+        CrossTenantChannelStore crossTenantChannelStore = mock(CrossTenantChannelStore.class);
+        when(crossTenantChannelStore.listAll()).thenReturn(List.of(ch));
+        ChannelGateway gateway = gatewayWith(crossTenantChannelStore);
 
         gateway.initChannel(ch.id, new ChannelRef(ch.id, ch.name));
         long countBefore = gateway.listBackends(ch.id).stream()
