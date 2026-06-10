@@ -10,6 +10,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.smallrye.mutiny.Uni;
@@ -29,18 +30,23 @@ public class ReactiveAgentCardResource {
     @Inject
     QhorusConfig config;
 
+    @Inject
+    CurrentPrincipal currentPrincipal;
+
     @GET
     @Path("/agent-card.json")
     @Produces(MediaType.APPLICATION_JSON)
     public Uni<Response> getAgentCard() {
-        QhorusConfig.AgentCard cfg = config.agentCard();
-        AgentCardResource.AgentCard card = new AgentCardResource.AgentCard(
+        final QhorusConfig.AgentCard cfg = config.agentCard();
+        final String tenancyId = currentPrincipal.tenancyId();
+        final AgentCardResource.AgentCard card = new AgentCardResource.AgentCard(
                 cfg.name(),
                 cfg.description(),
                 cfg.url().orElse(""),
                 cfg.version(),
                 buildSkills(),
-                new AgentCardResource.AgentCapabilities(true, true));
+                new AgentCardResource.AgentCapabilities(true, true),
+                tenancyId);
         return Uni.createFrom().item(Response.ok(card).build());
     }
 

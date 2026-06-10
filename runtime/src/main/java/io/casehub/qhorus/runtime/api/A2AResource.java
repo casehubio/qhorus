@@ -132,6 +132,18 @@ public class A2AResource {
         return Response.ok(new SendMessageResponse(task)).build();
     }
 
+    /**
+     * Returns the A2A task status for the given task ID.
+     *
+     * <p><strong>Tenant asymmetry hazard:</strong> messages are stored with the tenant in effect
+     * when they were sent (from {@code X-Tenancy-ID} header or default tenant). This endpoint
+     * filters results by the tenant in effect at query time. Calling without {@code X-Tenancy-ID}
+     * when the task was sent with one, or with a different header value, returns HTTP 404 even
+     * though the task exists — it just exists in a different tenant bucket.
+     *
+     * <p>Always include {@code X-Tenancy-ID} consistently on both
+     * {@code POST /a2a/message:send} and {@code GET /a2a/tasks/{id}} for the same task.
+     */
     @GET
     @Path("/tasks/{id}")
     @Transactional

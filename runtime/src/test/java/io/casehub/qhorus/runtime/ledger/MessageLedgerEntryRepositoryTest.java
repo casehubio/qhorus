@@ -65,7 +65,7 @@ class MessageLedgerEntryRepositoryTest {
         ledger.save(second, null);
 
         Optional<MessageLedgerEntry> found =
-                repository.findEarliestWithSubjectByCorrelationId(corrId);
+                repository.findEarliestWithSubjectByCorrelationId(corrId, null);
         assertThat(found).isPresent();
         assertThat(found.get().messageId).isEqualTo(1L); // seq 1 wins
         assertThat(found.get().subjectId).isEqualTo(subjectId);
@@ -74,7 +74,7 @@ class MessageLedgerEntryRepositoryTest {
     @Test
     @TestTransaction
     void findEarliestWithSubjectByCorrelationId_returns_empty_when_no_match() {
-        assertThat(repository.findEarliestWithSubjectByCorrelationId("no-such-corr")).isEmpty();
+        assertThat(repository.findEarliestWithSubjectByCorrelationId("no-such-corr", null)).isEmpty();
     }
 
     // ── findByMessageIds (batch fetch for #262) ──────────────────────────────

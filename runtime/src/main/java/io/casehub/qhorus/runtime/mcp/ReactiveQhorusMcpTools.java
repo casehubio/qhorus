@@ -1448,11 +1448,12 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to trace across channels") String correlationId,
             @ToolArg(name = "include_content_search", description = "Deprecated — reserved for future use. Has no effect.", required = false) Boolean includeContentSearch,
             @ToolArg(name = "limit", description = "Maximum entries to return (default 100, max 500)", required = false) Integer limit) {
+        final String tenancyId = currentPrincipal.tenancyId();
         return Uni.createFrom().item(() -> {
             final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 100;
 
             final List<MessageLedgerEntry> entries =
-                    ledgerRepo.findByCorrelationIdAcrossChannels(correlationId, effectiveLimit);
+                    ledgerRepo.findByCorrelationIdAcrossChannels(correlationId, effectiveLimit, tenancyId);
 
             if (entries.isEmpty()) {
                 return List.of();
@@ -1524,14 +1525,15 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "sort", description = "Sort order: 'asc' (default) or 'desc'", required = false) String sort,
             @ToolArg(name = "limit", description = "Maximum entries (default 20, max 100)", required = false) Integer limit) {
         Channel ch = resolveChannel(channel);
+        final String tenancyId = currentPrincipal.tenancyId();
         return Uni.createFrom().item(
                 () -> blockingListLedgerEntries(ch.name, typeFilter, agentId, since, afterId,
-                        correlationId, sort, limit));
+                        correlationId, sort, limit, tenancyId));
     }
 
     private List<Map<String, Object>> blockingListLedgerEntries(final String channelName,
             final String typeFilter, final String agentId, final String since, final Long afterId,
-            final String correlationId, final String sort, final Integer limit) {
+            final String correlationId, final String sort, final Integer limit, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
 
@@ -1560,7 +1562,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             throw new IllegalArgumentException("Invalid sort value '" + sort + "' — use 'asc' or 'desc'");
         }
         return ledgerRepo.listEntries(ch.id, types, afterId, agentId, sinceInstant,
-                correlationId, sortDesc, effectiveLimit)
+                correlationId, sortDesc, effectiveLimit, tenancyId)
                 .stream().map(this::toLedgerEntryMap).toList();
     }
 
@@ -1573,14 +1575,15 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to inspect") String correlationId) {
         Channel ch = resolveChannel(channel);
-        return Uni.createFrom().item(() -> blockingGetObligationChain(ch.name, correlationId));
+        final String tenancyId = currentPrincipal.tenancyId();
+        return Uni.createFrom().item(() -> blockingGetObligationChain(ch.name, correlationId, tenancyId));
     }
 
     private ObligationChainSummary blockingGetObligationChain(final String channelName,
-            final String correlationId) {
+            final String correlationId, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
-        final List<MessageLedgerEntry> chain = ledgerRepo.findAllByCorrelationId(ch.id, correlationId);
+        final List<MessageLedgerEntry> chain = ledgerRepo.findAllByCorrelationId(ch.id, correlationId, tenancyId);
         if (chain.isEmpty()) {
             return new ObligationChainSummary(correlationId, null, null, null, null, null,
                     List.of(), 0, null);
@@ -1618,11 +1621,12 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "ledger_entry_id", description = "UUID of the ledger entry") String ledgerEntryId) {
         Channel ch = resolveChannel(channel);
-        return Uni.createFrom().item(() -> blockingGetCausalChain(ch.name, ledgerEntryId));
+        final String tenancyId = currentPrincipal.tenancyId();
+        return Uni.createFrom().item(() -> blockingGetCausalChain(ch.name, ledgerEntryId, tenancyId));
     }
 
     private List<CausalChainEntry> blockingGetCausalChain(final String channelName,
-            final String ledgerEntryId) {
+            final String ledgerEntryId, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
         final UUID entryUuid;
@@ -1632,7 +1636,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             throw new IllegalArgumentException(
                     "Invalid ledger_entry_id '" + ledgerEntryId + "' — must be a UUID");
         }
-        return ledgerRepo.findAncestorChain(ch.id, entryUuid).stream()
+        return ledgerRepo.findAncestorChain(ch.id, entryUuid, tenancyId).stream()
                 .map(e -> new CausalChainEntry(
                         e.id != null ? e.id.toString() : null,
                         e.messageType, e.actorId, e.correlationId,
@@ -1651,17 +1655,18 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "older_than_seconds", description = "Minimum age in seconds (default 30)", required = false) Integer olderThanSeconds) {
         Channel ch = resolveChannel(channel);
-        return Uni.createFrom().item(() -> blockingListStalledObligations(ch.name, olderThanSeconds));
+        final String tenancyId = currentPrincipal.tenancyId();
+        return Uni.createFrom().item(() -> blockingListStalledObligations(ch.name, olderThanSeconds, tenancyId));
     }
 
     private List<StalledObligation> blockingListStalledObligations(final String channelName,
-            final Integer olderThanSeconds) {
+            final Integer olderThanSeconds, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
         final int threshold = olderThanSeconds != null ? olderThanSeconds : 30;
         final java.time.Instant cutoff = java.time.Instant.now().minusSeconds(threshold);
         final java.time.Instant now = java.time.Instant.now();
-        return ledgerRepo.findStalledCommands(ch.id, cutoff).stream()
+        return ledgerRepo.findStalledCommands(ch.id, cutoff, tenancyId).stream()
                 .map(e -> new StalledObligation(e.correlationId, e.actorId, e.content,
                         e.occurredAt != null ? e.occurredAt.toString() : null,
                         e.occurredAt != null
@@ -1678,13 +1683,14 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
     public Uni<ObligationStats> getObligationStats(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
         Channel ch = resolveChannel(channel);
-        return Uni.createFrom().item(() -> blockingGetObligationStats(ch.name));
+        final String tenancyId = currentPrincipal.tenancyId();
+        return Uni.createFrom().item(() -> blockingGetObligationStats(ch.name, tenancyId));
     }
 
-    private ObligationStats blockingGetObligationStats(final String channelName) {
+    private ObligationStats blockingGetObligationStats(final String channelName, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
-        final Map<String, Long> counts = ledgerRepo.countByOutcome(ch.id);
+        final Map<String, Long> counts = ledgerRepo.countByOutcome(ch.id, tenancyId);
         final long total = counts.getOrDefault("COMMAND", 0L);
         final long fulfilled = counts.getOrDefault("DONE", 0L);
         final long failed = counts.getOrDefault("FAILURE", 0L);
@@ -1692,7 +1698,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         final long delegated = counts.getOrDefault("HANDOFF", 0L);
         final long stillOpen = Math.max(0L, total - fulfilled - failed - declined - delegated);
         final long stalled = ledgerRepo
-                .findStalledCommands(ch.id, java.time.Instant.now().minusSeconds(30)).size();
+                .findStalledCommands(ch.id, java.time.Instant.now().minusSeconds(30), tenancyId).size();
         final double rate = total > 0 ? (double) fulfilled / total : 0.0;
         return new ObligationStats((int) total, (int) fulfilled, (int) failed, (int) declined,
                 (int) delegated, (int) stillOpen, (int) stalled, rate);
@@ -1707,11 +1713,12 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "since", description = "ISO-8601 timestamp — include only events at or after this time", required = false) String since) {
         Channel ch = resolveChannel(channel);
-        return Uni.createFrom().item(() -> blockingGetTelemetrySummary(ch.name, since));
+        final String tenancyId = currentPrincipal.tenancyId();
+        return Uni.createFrom().item(() -> blockingGetTelemetrySummary(ch.name, since, tenancyId));
     }
 
     private TelemetrySummary blockingGetTelemetrySummary(final String channelName,
-            final String since) {
+            final String since, final String tenancyId) {
         final Channel ch = blockingChannelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
         java.time.Instant sinceInstant = null;
@@ -1723,7 +1730,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                         "Invalid 'since' timestamp '" + since + "' — use ISO-8601 format");
             }
         }
-        final List<MessageLedgerEntry> events = ledgerRepo.findEventsSince(ch.id, sinceInstant);
+        final List<MessageLedgerEntry> events = ledgerRepo.findEventsSince(ch.id, sinceInstant, tenancyId);
         if (events.isEmpty()) {
             return new TelemetrySummary(0, Map.of(), 0L, 0L);
         }

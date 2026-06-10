@@ -28,10 +28,6 @@ import io.quarkus.test.junit.QuarkusTest;
  * fields, sequence numbers, causal chain links, and filter behaviour.
  *
  * <p>
- * RED phase: tests for non-EVENT types fail until {@code sendMessage} is wired
- * to call {@code LedgerWriteService.record()} for all types (Task 6).
- *
- * <p>
  * Refs #103 — Epic #99.
  */
 @QuarkusTest
@@ -71,7 +67,7 @@ class MessageLedgerCaptureTest {
         setup("mlc-query-1", "agent-a");
         tools.sendMessage("mlc-query-1", "agent-a", "query", "How many orders today?", "corr-mlc-q1", null, null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-query-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-query-1"), null);
         assertEquals(1, entries.size());
         MessageLedgerEntry e = entries.get(0);
         assertEquals("QUERY", e.messageType);
@@ -86,7 +82,7 @@ class MessageLedgerCaptureTest {
         setup("mlc-cmd-1", "agent-a");
         tools.sendMessage("mlc-cmd-1", "agent-a", "command", "Generate the monthly report", "corr-mlc-c1", null, null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-cmd-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-cmd-1"), null);
         assertEquals(1, entries.size());
         assertEquals("COMMAND", entries.get(0).messageType);
         assertEquals("Generate the monthly report", entries.get(0).content);
@@ -98,7 +94,7 @@ class MessageLedgerCaptureTest {
         var q = tools.sendMessage("mlc-resp-1", "agent-a", "query", "Status?", "corr-r1", null, null, null, null, null, null);
         tools.sendMessage("mlc-resp-1", "agent-b", "response", "All good", "corr-r1", q.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-resp-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-resp-1"), null);
         assertEquals(2, entries.size());
         assertEquals("RESPONSE", entries.get(1).messageType);
         assertEquals("All good", entries.get(1).content);
@@ -110,7 +106,7 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-status-1", "agent-a", "command", "Run migration", "corr-s1", null, null, null, null, null, null);
         tools.sendMessage("mlc-status-1", "agent-a", "status", "50% complete", "corr-s1", null, null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-status-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-status-1"), null);
         assertEquals(2, entries.size());
         assertEquals("STATUS", entries.get(1).messageType);
     }
@@ -121,7 +117,7 @@ class MessageLedgerCaptureTest {
         var cmdD1 = tools.sendMessage("mlc-dec-1", "agent-a", "command", "Delete all records", "corr-d1", null, null, null, null, null, null);
         tools.sendMessage("mlc-dec-1", "agent-b", "decline", "I do not have write permissions", "corr-d1", cmdD1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-dec-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-dec-1"), null);
         assertEquals(2, entries.size());
         assertEquals("DECLINE", entries.get(1).messageType);
         assertEquals("I do not have write permissions", entries.get(1).content);
@@ -133,7 +129,7 @@ class MessageLedgerCaptureTest {
         var cmdH1 = tools.sendMessage("mlc-hand-1", "agent-a", "command", "Audit the accounts", "corr-h1", null, null, null, null, null, null);
         tools.sendMessage("mlc-hand-1", "agent-b", "handoff", "passing to agent-c", "corr-h1", cmdH1.messageId(), null, "instance:agent-c", null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-hand-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-hand-1"), null);
         assertEquals(2, entries.size());
         MessageLedgerEntry handoff = entries.get(1);
         assertEquals("HANDOFF", handoff.messageType);
@@ -146,7 +142,7 @@ class MessageLedgerCaptureTest {
         var cmdDone1 = tools.sendMessage("mlc-done-1", "agent-a", "command", "Process refunds", "corr-done1", null, null, null, null, null, null);
         tools.sendMessage("mlc-done-1", "agent-b", "done", "All 42 refunds processed", "corr-done1", cmdDone1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-done-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-done-1"), null);
         assertEquals(2, entries.size());
         assertEquals("DONE", entries.get(1).messageType);
         assertEquals("All 42 refunds processed", entries.get(1).content);
@@ -158,7 +154,7 @@ class MessageLedgerCaptureTest {
         var cmdFail1 = tools.sendMessage("mlc-fail-1", "agent-a", "command", "Run batch job", "corr-fail1", null, null, null, null, null, null);
         tools.sendMessage("mlc-fail-1", "agent-b", "failure", "Database connection lost", "corr-fail1", cmdFail1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-fail-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-fail-1"), null);
         assertEquals(2, entries.size());
         assertEquals("FAILURE", entries.get(1).messageType);
         assertEquals("Database connection lost", entries.get(1).content);
@@ -169,7 +165,7 @@ class MessageLedgerCaptureTest {
         setup("mlc-event-1", "agent-a");
         sendEvent("mlc-event-1", "agent-a", "{\"tool_name\":\"read_file\",\"duration_ms\":42,\"token_count\":1200}");
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-1"), null);
         assertEquals(1, entries.size());
         MessageLedgerEntry e = entries.get(0);
         assertEquals("EVENT", e.messageType);
@@ -184,7 +180,7 @@ class MessageLedgerCaptureTest {
         setup("mlc-event-malformed-1", "agent-a");
         sendEvent("mlc-event-malformed-1", "agent-a", "not-json");
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-malformed-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-malformed-1"), null);
         assertEquals(1, entries.size());
         assertNull(entries.get(0).toolName);
         assertNull(entries.get(0).durationMs);
@@ -195,7 +191,7 @@ class MessageLedgerCaptureTest {
         setup("mlc-event-partial-1", "agent-a");
         sendEvent("mlc-event-partial-1", "agent-a", "{\"duration_ms\":10}");
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-partial-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-event-partial-1"), null);
         assertEquals(1, entries.size());
         assertNull(entries.get(0).toolName);
         assertEquals(10L, entries.get(0).durationMs);
@@ -212,7 +208,7 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-seq-1", "agent-a", "status", "Working", "corr-seq1", null, null, null, null, null, null);
         tools.sendMessage("mlc-seq-1", "agent-b", "done", "Done", "corr-seq1", cmdSeq1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-seq-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-seq-1"), null);
         assertEquals(3, entries.size());
         assertEquals(1, entries.get(0).sequenceNumber);
         assertEquals(2, entries.get(1).sequenceNumber);
@@ -226,8 +222,8 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-seq-2a", "agent-a", "command", "X", null, null, null, null, null, null, null);
         tools.sendMessage("mlc-seq-2b", "agent-b", "command", "Y", null, null, null, null, null, null, null);
 
-        List<MessageLedgerEntry> a = ledgerRepo.findByChannelId(channelId("mlc-seq-2a"));
-        List<MessageLedgerEntry> b = ledgerRepo.findByChannelId(channelId("mlc-seq-2b"));
+        List<MessageLedgerEntry> a = ledgerRepo.findByChannelId(channelId("mlc-seq-2a"), null);
+        List<MessageLedgerEntry> b = ledgerRepo.findByChannelId(channelId("mlc-seq-2b"), null);
         assertEquals(1, a.get(0).sequenceNumber);
         assertEquals(1, b.get(0).sequenceNumber);
     }
@@ -242,7 +238,7 @@ class MessageLedgerCaptureTest {
         var cmdCd1 = tools.sendMessage("mlc-causal-done-1", "agent-a", "command", "Run report", "corr-cd1", null, null, null, null, null, null);
         tools.sendMessage("mlc-causal-done-1", "agent-b", "done", "Report delivered", "corr-cd1", cmdCd1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-done-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-done-1"), null);
         assertEquals(2, entries.size());
         MessageLedgerEntry cmd = entries.get(0);
         MessageLedgerEntry done = entries.get(1);
@@ -258,7 +254,7 @@ class MessageLedgerCaptureTest {
         var cmdCf1 = tools.sendMessage("mlc-causal-fail-1", "agent-a", "command", "Run migration", "corr-cf1", null, null, null, null, null, null);
         tools.sendMessage("mlc-causal-fail-1", "agent-b", "failure", "DB error", "corr-cf1", cmdCf1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-fail-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-fail-1"), null);
         assertEquals(cmd(entries).id, terminal(entries, "FAILURE").causedByEntryId);
     }
 
@@ -268,7 +264,7 @@ class MessageLedgerCaptureTest {
         var cmdCdec1 = tools.sendMessage("mlc-causal-dec-1", "agent-a", "command", "Delete everything", "corr-cdec1", null, null, null, null, null, null);
         tools.sendMessage("mlc-causal-dec-1", "agent-b", "decline", "Out of scope", "corr-cdec1", cmdCdec1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-dec-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-dec-1"), null);
         assertEquals(cmd(entries).id, terminal(entries, "DECLINE").causedByEntryId);
     }
 
@@ -279,7 +275,7 @@ class MessageLedgerCaptureTest {
         var hofChain1 = tools.sendMessage("mlc-causal-chain-1", "agent-b", "handoff", "delegating to agent-c", "corr-chain1", cmdChain1.messageId(), null, "instance:agent-c", null, null, null);
         tools.sendMessage("mlc-causal-chain-1", "agent-c", "done", "Audit complete", "corr-chain1", hofChain1.messageId(), null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-chain-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-chain-1"), null);
         assertEquals(3, entries.size());
         MessageLedgerEntry cmd = entries.get(0);
         MessageLedgerEntry handoff = entries.get(1);
@@ -293,12 +289,10 @@ class MessageLedgerCaptureTest {
 
     @Test
     void doneWithNoCorrelationId_causedByEntryIdNull() {
-        // Status messages (like standalone updates) with no correlationId have no causal predecessor.
-        // Changed from DONE since DONE now requires both inReplyTo and correlationId.
         setup("mlc-causal-nocorr-1", "agent-a");
         tools.sendMessage("mlc-causal-nocorr-1", "agent-a", "status", "Update with no correlation", null, null, null, null, null, null, null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-nocorr-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-causal-nocorr-1"), null);
         assertEquals(1, entries.size());
         assertNull(entries.get(0).causedByEntryId);
     }
@@ -316,7 +310,7 @@ class MessageLedgerCaptureTest {
 
         UUID chId = channelId("mlc-filter-type-1");
         List<MessageLedgerEntry> entries = ledgerRepo.listEntries(
-                chId, Set.of("COMMAND", "DONE"), null, null, null, 20);
+                chId, Set.of("COMMAND", "DONE"), null, null, null, 20, null);
         assertEquals(2, entries.size());
         assertTrue(entries.stream().allMatch(e -> Set.of("COMMAND", "DONE").contains(e.messageType)));
     }
@@ -328,7 +322,7 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-filter-agent-1", "agent-b", "done", "Done", "corr-fa1", cmdFa1.messageId(), null, null, null, null, null);
 
         UUID chId = channelId("mlc-filter-agent-1");
-        List<MessageLedgerEntry> entries = ledgerRepo.listEntries(chId, null, null, "agent-a", null, 20);
+        List<MessageLedgerEntry> entries = ledgerRepo.listEntries(chId, null, null, "agent-a", null, 20, null);
         assertEquals(1, entries.size());
         assertEquals("agent-a", entries.get(0).actorId);
     }
@@ -341,7 +335,7 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-cursor-1", "agent-b", "done", "Done", "corr-cur1", cmdCur1.messageId(), null, null, null, null, null);
 
         UUID chId = channelId("mlc-cursor-1");
-        List<MessageLedgerEntry> page2 = ledgerRepo.listEntries(chId, null, 1L, null, null, 20);
+        List<MessageLedgerEntry> page2 = ledgerRepo.listEntries(chId, null, 1L, null, null, 20, null);
         assertEquals(2, page2.size());
         assertTrue(page2.stream().allMatch(e -> e.sequenceNumber > 1));
     }
@@ -353,7 +347,7 @@ class MessageLedgerCaptureTest {
             sendEvent("mlc-limit-1", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
         }
         UUID chId = channelId("mlc-limit-1");
-        List<MessageLedgerEntry> entries = ledgerRepo.listEntries(chId, null, null, null, null, 3);
+        List<MessageLedgerEntry> entries = ledgerRepo.listEntries(chId, null, null, null, null, 3, null);
         assertEquals(3, entries.size());
     }
 
@@ -364,10 +358,9 @@ class MessageLedgerCaptureTest {
     @Test
     void sendMessage_eventWithNullContent_doesNotThrow() {
         setup("mlc-robust-1", "agent-a");
-        // EVENT must not carry content; null is the correct value — telemetry goes in the telemetry field
         sendEvent("mlc-robust-1", "agent-a", null);
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-robust-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-robust-1"), null);
         assertEquals(1, entries.size());
     }
 
@@ -382,7 +375,7 @@ class MessageLedgerCaptureTest {
         tools.sendMessage("mlc-all-types-1", "agent-b", "done", "Done", corr, cmd.messageId(), null, null, null, null, null);
         sendEvent("mlc-all-types-1", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-all-types-1"));
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(channelId("mlc-all-types-1"), null);
         assertEquals(6, entries.size());
     }
 

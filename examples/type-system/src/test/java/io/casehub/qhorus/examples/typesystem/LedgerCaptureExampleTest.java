@@ -91,7 +91,7 @@ class LedgerCaptureExampleTest {
                 .findFirst()
                 .orElseThrow();
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.channelId());
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.channelId(), null);
 
         // 10 messages → 10 ledger entries
         assertEquals(10, entries.size());
@@ -120,7 +120,7 @@ class LedgerCaptureExampleTest {
                 .findFirst()
                 .orElseThrow();
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.channelId());
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.channelId(), null);
         assertEquals(2, entries.size());
 
         MessageLedgerEntry cmd = entries.get(0);

@@ -13,6 +13,7 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.hibernate.orm.PersistenceUnit;
 
 /**
@@ -25,9 +26,23 @@ import io.quarkus.hibernate.orm.PersistenceUnit;
  *
  * <p>Cross-dtype {@link io.casehub.ledger.runtime.repository.LedgerEntryRepository} operations
  * (sequence assignment, entry lookup by ID, subject history) now live in
- * {@link LedgerEntryJpaRepository}.
+ * {@link QhorusLedgerEntryRepository}.
  *
- * <p>Refs qhorus#253, #101, Epic #99.
+ * <p>All query methods accept a {@code tenancyId} parameter and scope results to that tenant.
+ * Null {@code tenancyId} is normalised to {@link TenancyConstants#DEFAULT_TENANT_ID} by
+ * {@link #tenancyId(String)}. Callers obtain {@code tenancyId} from either
+ * {@code dispatch.tenancyId()} (service layer) or {@code currentPrincipal.tenancyId()} (MCP tools).
+ *
+ * <p><strong>Known limitation — cross-tenant delegation:</strong> {@link
+ * #findEarliestWithSubjectByCorrelationId} and {@link #findByCorrelationIdAcrossChannels} are
+ * now tenant-scoped. A HANDOFF that delegates to an agent in a different tenant will silently
+ * lose {@code subjectId} propagation at the tenant boundary. This is acceptable for current
+ * use cases (cross-tenant delegation not yet supported). See qhorus#265 design spec.
+ *
+ * <p>Unchanged (surrogate PK — unique within datasource, no tenant ambiguity):
+ * {@link #findByMessageId}, {@link #findByMessageIds}.
+ *
+ * <p>Refs qhorus#253, #101, #263, Epic #99.
  */
 @ApplicationScoped
 public class MessageLedgerEntryRepository {
@@ -36,18 +51,20 @@ public class MessageLedgerEntryRepository {
     @PersistenceUnit("qhorus")
     EntityManager em;
 
-    /** All entries for a channel, ordered by sequence number ascending. */
-    public List<MessageLedgerEntry> findByChannelId(final UUID channelId) {
+    /** All entries for a channel in {@code tenancyId}, ordered by sequence number ascending. */
+    public List<MessageLedgerEntry> findByChannelId(final UUID channelId, final String tenancyId) {
         return em.createQuery(
-                "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = :sid ORDER BY e.sequenceNumber ASC",
+                "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = :sid AND e.tenancyId = :tid" +
+                " ORDER BY e.sequenceNumber ASC",
                 MessageLedgerEntry.class)
                 .setParameter("sid", channelId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .getResultList();
     }
 
     /**
      * Filtered query for the {@code list_ledger_entries} MCP tool. All parameters except
-     * {@code channelId} and {@code limit} are optional (pass null to skip).
+     * {@code channelId}, {@code limit}, and {@code tenancyId} are optional (pass null to skip).
      *
      * @param channelId scopes the query to this channel
      * @param messageTypes if non-null/non-empty, only entries whose {@code messageType} is in this set
@@ -55,10 +72,12 @@ public class MessageLedgerEntryRepository {
      * @param agentId if non-null/blank, filter by actorId
      * @param since if non-null, filter by occurredAt &gt;= since
      * @param limit max results
+     * @param tenancyId scopes the query to this tenant
      */
     public List<MessageLedgerEntry> listEntries(final UUID channelId, final Set<String> messageTypes,
-            final Long afterSequence, final String agentId, final Instant since, final int limit) {
-        return listEntries(channelId, messageTypes, afterSequence, agentId, since, null, false, limit);
+            final Long afterSequence, final String agentId, final Instant since,
+            final int limit, final String tenancyId) {
+        return listEntries(channelId, messageTypes, afterSequence, agentId, since, null, false, limit, tenancyId);
     }
 
     /**
@@ -66,15 +85,18 @@ public class MessageLedgerEntryRepository {
      *
      * @param correlationId if non-null/blank, only entries with this correlationId
      * @param sortDesc if true, ORDER BY sequenceNumber DESC (most recent first)
+     * @param tenancyId scopes the query to this tenant; null falls back to DEFAULT_TENANT_ID
      */
     public List<MessageLedgerEntry> listEntries(final UUID channelId, final Set<String> messageTypes,
             final Long afterSequence, final String agentId, final Instant since,
-            final String correlationId, final boolean sortDesc, final int limit) {
+            final String correlationId, final boolean sortDesc, final int limit, final String tenancyId) {
 
+        // tenancyId is the second fixed parameter; dynamic params start at index 3.
         final StringBuilder jpql = new StringBuilder(
-                "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = ?1");
+                "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = ?1 AND e.tenancyId = ?2");
         final List<Object> params = new ArrayList<>();
         params.add(channelId);
+        params.add(tenancyId(tenancyId));
 
         if (messageTypes != null && !messageTypes.isEmpty()) {
             jpql.append(" AND e.messageType IN (?").append(params.size() + 1).append(")");
@@ -109,19 +131,20 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * All ledger entries for a given {@code correlationId} on this channel, ordered ASC.
-     * Used by {@code get_obligation_chain} and as an alternative to the filtered
+     * All ledger entries for a given {@code correlationId} on this channel in {@code tenancyId},
+     * ordered ASC. Used by {@code get_obligation_chain} and as an alternative to the filtered
      * {@link #listEntries} when no other filters are needed.
      */
     public List<MessageLedgerEntry> findAllByCorrelationId(final UUID channelId,
-            final String correlationId) {
+            final String correlationId, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM MessageLedgerEntry e " +
-                        "WHERE e.subjectId = :cid AND e.correlationId = :corr " +
+                        "WHERE e.subjectId = :cid AND e.correlationId = :corr AND e.tenancyId = :tid " +
                         "ORDER BY e.sequenceNumber ASC",
                 MessageLedgerEntry.class)
                 .setParameter("cid", channelId)
                 .setParameter("corr", correlationId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .getResultList();
     }
 
@@ -129,19 +152,19 @@ public class MessageLedgerEntryRepository {
      * Walks {@code causedByEntryId} links upward from {@code entryId} to the root,
      * returning the chain ordered oldest-first (root first, given entry last).
      *
-     * <p>
-     * Stops at channel boundaries and on cycles (cycle-guard via visited set).
-     * Returns an empty list if {@code entryId} does not exist in this channel.
+     * <p>Stops at channel or tenant boundaries and on cycles (cycle-guard via visited set).
+     * Returns an empty list if {@code entryId} does not exist in this channel and tenant.
      */
     public List<MessageLedgerEntry> findAncestorChain(final UUID channelId,
-            final UUID entryId) {
+            final UUID entryId, final String tenancyId) {
         final List<MessageLedgerEntry> chain = new ArrayList<>();
         UUID currentId = entryId;
         final Set<UUID> visited = new java.util.HashSet<>();
+        final String tid = tenancyId(tenancyId);
         while (currentId != null && !visited.contains(currentId)) {
             visited.add(currentId);
             final MessageLedgerEntry entry = em.find(MessageLedgerEntry.class, currentId);
-            if (entry == null || !channelId.equals(entry.channelId)) {
+            if (entry == null || !channelId.equals(entry.channelId) || !tid.equals(entry.tenancyId)) {
                 break;
             }
             chain.add(entry);
@@ -152,42 +175,47 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * COMMAND entries on this channel whose {@code occurredAt} is before {@code olderThan}
-     * and which have no terminal sibling (DONE / FAILURE / DECLINE / HANDOFF) sharing
-     * the same {@code correlationId}. These are the stalled obligations.
+     * COMMAND entries on this channel in {@code tenancyId} whose {@code occurredAt} is before
+     * {@code olderThan} and which have no terminal sibling (DONE / FAILURE / DECLINE / HANDOFF)
+     * sharing the same {@code correlationId}. These are the stalled obligations.
      */
     public List<MessageLedgerEntry> findStalledCommands(final UUID channelId,
-            final Instant olderThan) {
+            final Instant olderThan, final String tenancyId) {
         return em.createQuery(
                 "SELECT c FROM MessageLedgerEntry c " +
                         "WHERE c.subjectId = :cid " +
+                        "AND c.tenancyId = :tid " +
                         "AND c.messageType = 'COMMAND' " +
                         "AND c.occurredAt < :olderThan " +
                         "AND NOT EXISTS (" +
                         "  SELECT t FROM MessageLedgerEntry t " +
                         "  WHERE t.subjectId = :cid " +
+                        "  AND t.tenancyId = :tid " +
                         "  AND t.correlationId = c.correlationId " +
                         "  AND t.messageType IN ('DONE', 'FAILURE', 'DECLINE', 'HANDOFF')" +
                         ")",
                 MessageLedgerEntry.class)
                 .setParameter("cid", channelId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .setParameter("olderThan", olderThan)
                 .getResultList();
     }
 
     /**
-     * Count of each outcome-relevant message type on this channel.
+     * Count of each outcome-relevant message type on this channel in {@code tenancyId}.
      * Returns a map containing keys from {@code COMMAND, DONE, FAILURE, DECLINE, HANDOFF}
      * (absent keys mean zero occurrences).
      */
-    public java.util.Map<String, Long> countByOutcome(final UUID channelId) {
+    public java.util.Map<String, Long> countByOutcome(final UUID channelId, final String tenancyId) {
         final List<Object[]> rows = em.createQuery(
                 "SELECT e.messageType, COUNT(e) FROM MessageLedgerEntry e " +
                         "WHERE e.subjectId = :cid " +
+                        "AND e.tenancyId = :tid " +
                         "AND e.messageType IN ('COMMAND', 'DONE', 'FAILURE', 'DECLINE', 'HANDOFF') " +
                         "GROUP BY e.messageType",
                 Object[].class)
                 .setParameter("cid", channelId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .getResultList();
         final java.util.Map<String, Long> result = new java.util.HashMap<>();
         for (final Object[] row : rows) {
@@ -197,38 +225,40 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * All entries for {@code actorId} on this channel, ordered by sequence number
-     * descending (most recent first), capped at {@code limit}.
+     * All entries for {@code actorId} on this channel in {@code tenancyId}, ordered by
+     * sequence number descending (most recent first), capped at {@code limit}.
      */
     public List<MessageLedgerEntry> findByActorIdInChannel(final UUID channelId,
-            final String actorId, final int limit) {
+            final String actorId, final int limit, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM MessageLedgerEntry e " +
-                        "WHERE e.subjectId = :cid AND e.actorId = :aid " +
+                        "WHERE e.subjectId = :cid AND e.actorId = :aid AND e.tenancyId = :tid " +
                         "ORDER BY e.sequenceNumber DESC",
                 MessageLedgerEntry.class)
                 .setParameter("cid", channelId)
                 .setParameter("aid", actorId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(limit)
                 .getResultList();
     }
 
     /**
-     * All EVENT entries on this channel at or after {@code since} (pass null for all).
-     * Used by the tool layer to compute per-tool telemetry aggregations in Java.
+     * All EVENT entries on this channel in {@code tenancyId} at or after {@code since} (pass null
+     * for all). Used by the tool layer to compute per-tool telemetry aggregations in Java.
      */
     public List<MessageLedgerEntry> findEventsSince(final UUID channelId,
-            final Instant since) {
+            final Instant since, final String tenancyId) {
         final StringBuilder jpql = new StringBuilder(
                 "SELECT e FROM MessageLedgerEntry e " +
-                        "WHERE e.subjectId = :cid AND e.messageType = 'EVENT'");
+                        "WHERE e.subjectId = :cid AND e.messageType = 'EVENT' AND e.tenancyId = :tid");
         if (since != null) {
             jpql.append(" AND e.occurredAt >= :since");
         }
         jpql.append(" ORDER BY e.sequenceNumber ASC");
         final TypedQuery<MessageLedgerEntry> q = em.createQuery(jpql.toString(),
                 MessageLedgerEntry.class)
-                .setParameter("cid", channelId);
+                .setParameter("cid", channelId)
+                .setParameter("tid", tenancyId(tenancyId));
         if (since != null) {
             q.setParameter("since", since);
         }
@@ -236,20 +266,21 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * Returns the most recent COMMAND or HANDOFF entry on this channel with the given
-     * correlation ID. Used at write time to resolve {@code causedByEntryId} for DONE,
-     * FAILURE, DECLINE, and HANDOFF entries.
+     * Returns the most recent COMMAND or HANDOFF entry on this channel in {@code tenancyId} with
+     * the given correlation ID. Used at write time to resolve {@code causedByEntryId}.
      */
     public Optional<MessageLedgerEntry> findLatestByCorrelationId(final UUID channelId,
-            final String correlationId) {
+            final String correlationId, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM MessageLedgerEntry e " +
                         "WHERE e.subjectId = :sid AND e.correlationId = :corr " +
+                        "AND e.tenancyId = :tid " +
                         "AND e.messageType IN ('COMMAND', 'HANDOFF') " +
                         "ORDER BY e.sequenceNumber DESC",
                 MessageLedgerEntry.class)
                 .setParameter("sid", channelId)
                 .setParameter("corr", correlationId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(1)
                 .getResultStream()
                 .findFirst();
@@ -260,7 +291,7 @@ public class MessageLedgerEntryRepository {
      * Used at ledger write time to resolve {@code causedByEntryId} from {@code inReplyTo}.
      *
      * <p>{@code messageId} is the surrogate Long PK of the {@code Message} entity — unique
-     * within the qhorus datasource by construction.
+     * within the qhorus datasource by construction. No tenant parameter needed.
      */
     public Optional<MessageLedgerEntry> findByMessageId(final Long messageId) {
         return em.createQuery(
@@ -273,24 +304,25 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * Returns the earliest entry in a correlation thread that has a non-null {@code subjectId}.
-     * Used at write time to propagate the domain subject ({@code subjectId}) from the originating
+     * Returns the earliest entry in a correlation thread in {@code tenancyId} with a non-null
+     * {@code subjectId}. Used at write time to propagate the domain subject from the originating
      * COMMAND to all subsequent messages in the same correlation thread.
      *
-     * <p>Intentionally qhorus-scoped ({@code FROM MessageLedgerEntry}): {@code correlationId}
-     * is a qhorus field not present on the {@link io.casehub.ledger.runtime.model.LedgerEntry}
-     * base class. Only qhorus entries participate in correlation threads.
+     * <p>Cross-channel by design — scoped only to {@code correlationId} and {@code tenancyId}.
      *
-     * <p>Cross-channel by design — scoped only to {@code correlationId}, not to a channel.
+     * <p><strong>Known limitation:</strong> cross-tenant HANDOFF delegation silently loses
+     * subjectId propagation at the tenant boundary. See qhorus#265 design spec for rationale.
      */
     public Optional<MessageLedgerEntry> findEarliestWithSubjectByCorrelationId(
-            final String correlationId) {
+            final String correlationId, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM MessageLedgerEntry e " +
                         "WHERE e.correlationId = :corr AND e.subjectId IS NOT NULL " +
+                        "AND e.tenancyId = :tid " +
                         "ORDER BY e.occurredAt ASC, e.id ASC",
                 MessageLedgerEntry.class)
                 .setParameter("corr", correlationId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(1)
                 .getResultStream()
                 .findFirst();
@@ -302,6 +334,8 @@ public class MessageLedgerEntryRepository {
      *
      * <p>Returns an empty list when {@code messageIds} is empty, avoiding a malformed
      * {@code IN ()} clause on databases that don't tolerate it.
+     *
+     * <p>No tenant parameter — queries by surrogate PK which is unique within the datasource.
      */
     public List<MessageLedgerEntry> findByMessageIds(final java.util.Collection<Long> messageIds) {
         if (messageIds.isEmpty()) {
@@ -315,18 +349,27 @@ public class MessageLedgerEntryRepository {
     }
 
     /**
-     * Cross-channel query for {@code get_obligation_activity}. Returns all entries whose
-     * {@code correlationId} exactly matches, ordered chronologically across all channels.
+     * Cross-channel query for {@code get_obligation_activity} within {@code tenancyId}.
+     * Returns all entries whose {@code correlationId} exactly matches, ordered chronologically
+     * across all channels in the same tenant.
+     *
+     * <p><strong>Known limitation:</strong> cross-tenant delegation traces break at the tenant
+     * boundary. See qhorus#265 design spec.
      */
     public List<MessageLedgerEntry> findByCorrelationIdAcrossChannels(
-            final String correlationId, final int limit) {
+            final String correlationId, final int limit, final String tenancyId) {
         return em.createQuery(
                 "SELECT e FROM MessageLedgerEntry e " +
-                        "WHERE e.correlationId = :corrId " +
+                        "WHERE e.correlationId = :corrId AND e.tenancyId = :tid " +
                         "ORDER BY e.messageId ASC",
                 MessageLedgerEntry.class)
                 .setParameter("corrId", correlationId)
+                .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(limit)
                 .getResultList();
+    }
+
+    private static String tenancyId(final String tenancyId) {
+        return tenancyId != null ? tenancyId : TenancyConstants.DEFAULT_TENANT_ID;
     }
 }

@@ -134,6 +134,16 @@ public class ReactiveA2AResource {
         });
     }
 
+    /**
+     * Returns the A2A task status for the given task ID.
+     *
+     * <p><strong>Tenant asymmetry hazard:</strong> always include {@code X-Tenancy-ID}
+     * consistently on both {@code POST /a2a/message:send} and {@code GET /a2a/tasks/{id}}
+     * for the same task. A header mismatch (or absence) causes HTTP 404 even when the task
+     * exists — it is simply in a different tenant's data partition.
+     *
+     * @see A2AResource#getTask(String) blocking counterpart with identical semantics
+     */
     @GET
     @Path("/tasks/{id}")
     @Blocking

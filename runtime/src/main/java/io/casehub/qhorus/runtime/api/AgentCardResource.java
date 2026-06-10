@@ -9,6 +9,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.quarkus.arc.properties.UnlessBuildProperty;
 /**
@@ -26,18 +27,22 @@ public class AgentCardResource {
     @Inject
     QhorusConfig config;
 
+    @Inject
+    CurrentPrincipal currentPrincipal;
+
     @GET
     @Path("/agent-card.json")
     @Produces(MediaType.APPLICATION_JSON)
     public AgentCard getAgentCard() {
-        QhorusConfig.AgentCard cfg = config.agentCard();
+        final QhorusConfig.AgentCard cfg = config.agentCard();
         return new AgentCard(
                 cfg.name(),
                 cfg.description(),
                 cfg.url().orElse(""),
                 cfg.version(),
                 buildSkills(),
-                new AgentCapabilities(true, true));
+                new AgentCapabilities(true, true),
+                currentPrincipal.tenancyId());
     }
 
     private List<AgentSkill> buildSkills() {
@@ -68,13 +73,19 @@ public class AgentCardResource {
     // Model records — serialised directly to JSON by Jackson
     // -----------------------------------------------------------------------
 
+    /**
+     * A2A Agent Card. Includes a Qhorus-specific {@code tenancyId} extension field (not in the A2A spec)
+     * to make cards self-describing in multi-tenant deployments.
+     * Callers should include {@code X-Tenancy-ID} in subsequent A2A requests to address the same tenant.
+     */
     public record AgentCard(
             String name,
             String description,
             String url,
             String version,
             List<AgentSkill> skills,
-            AgentCapabilities capabilities) {
+            AgentCapabilities capabilities,
+            String tenancyId) {
     }
 
     public record AgentSkill(

@@ -66,7 +66,7 @@ class LedgerQueryRepoTest {
 
         @Override
         public List<MessageLedgerEntry> findAllByCorrelationId(final UUID channelId,
-                final String correlationId) {
+                final String correlationId, final String tenancyId) {
             return saved.stream()
                     .filter(e -> channelId.equals(e.subjectId)
                             && correlationId.equals(e.correlationId))
@@ -76,7 +76,7 @@ class LedgerQueryRepoTest {
 
         @Override
         public List<MessageLedgerEntry> findAncestorChain(final UUID channelId,
-                final UUID entryId) {
+                final UUID entryId, final String tenancyId) {
             final List<MessageLedgerEntry> chain = new ArrayList<>();
             UUID currentId = entryId;
             final java.util.Set<UUID> visited = new java.util.HashSet<>();
@@ -99,7 +99,7 @@ class LedgerQueryRepoTest {
 
         @Override
         public List<MessageLedgerEntry> findStalledCommands(final UUID channelId,
-                final Instant olderThan) {
+                final Instant olderThan, final String tenancyId) {
             return saved.stream()
                     .filter(e -> channelId.equals(e.subjectId)
                             && "COMMAND".equals(e.messageType)
@@ -114,7 +114,7 @@ class LedgerQueryRepoTest {
         }
 
         @Override
-        public Map<String, Long> countByOutcome(final UUID channelId) {
+        public Map<String, Long> countByOutcome(final UUID channelId, final String tenancyId) {
             final java.util.Set<String> relevant = java.util.Set.of(
                     "COMMAND", "DONE", "FAILURE", "DECLINE", "HANDOFF");
             final Map<String, Long> counts = new java.util.HashMap<>();
@@ -127,7 +127,7 @@ class LedgerQueryRepoTest {
 
         @Override
         public List<MessageLedgerEntry> findByActorIdInChannel(final UUID channelId,
-                final String actorId, final int limit) {
+                final String actorId, final int limit, final String tenancyId) {
             return saved.stream()
                     .filter(e -> channelId.equals(e.subjectId)
                             && actorId.equals(e.actorId))
@@ -140,7 +140,7 @@ class LedgerQueryRepoTest {
 
         @Override
         public List<MessageLedgerEntry> findEventsSince(final UUID channelId,
-                final Instant since) {
+                final Instant since, final String tenancyId) {
             return saved.stream()
                     .filter(e -> channelId.equals(e.subjectId)
                             && "EVENT".equals(e.messageType)
@@ -152,7 +152,7 @@ class LedgerQueryRepoTest {
         public List<MessageLedgerEntry> listEntries(final UUID channelId,
                 final Set<String> messageTypes, final Long afterSequence, final String agentId,
                 final Instant since, final String correlationId, final boolean sortDesc,
-                final int limit) {
+                final int limit, final String tenancyId) {
             java.util.stream.Stream<MessageLedgerEntry> stream = saved.stream()
                     .filter(e -> channelId.equals(e.subjectId));
             if (messageTypes != null && !messageTypes.isEmpty()) {
@@ -236,7 +236,7 @@ class LedgerQueryRepoTest {
         final MessageLedgerEntry done = entry("DONE", "corr-1", cmd.id);
         entry("COMMAND", "corr-2", null); // different correlationId — excluded
 
-        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "corr-1");
+        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "corr-1", null);
 
         assertEquals(2, result.size());
         assertEquals(cmd.id, result.get(0).id);
@@ -247,14 +247,14 @@ class LedgerQueryRepoTest {
     void findAllByCorrelationId_differentChannel_excluded() {
         entry("COMMAND", "corr-1", null, "agent-a", otherChannelId);
 
-        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "corr-1");
+        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "corr-1", null);
 
         assertTrue(result.isEmpty());
     }
 
     @Test
     void findAllByCorrelationId_unknownCorrelation_returnsEmpty() {
-        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "no-such-corr");
+        final List<MessageLedgerEntry> result = repo.findAllByCorrelationId(channelId, "no-such-corr", null);
 
         assertTrue(result.isEmpty());
     }
@@ -267,7 +267,7 @@ class LedgerQueryRepoTest {
         final MessageLedgerEntry handoff = entry("HANDOFF", "corr-a", cmd.id);
         final MessageLedgerEntry done = entry("DONE", "corr-a", handoff.id);
 
-        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, done.id);
+        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, done.id, null);
 
         assertEquals(3, chain.size());
         assertEquals(cmd.id, chain.get(0).id);
@@ -279,7 +279,7 @@ class LedgerQueryRepoTest {
     void findAncestorChain_rootEntry_returnsSingleEntry() {
         final MessageLedgerEntry cmd = entry("COMMAND", "corr-b", null);
 
-        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, cmd.id);
+        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, cmd.id, null);
 
         assertEquals(1, chain.size());
         assertEquals(cmd.id, chain.get(0).id);
@@ -287,7 +287,7 @@ class LedgerQueryRepoTest {
 
     @Test
     void findAncestorChain_unknownEntry_returnsEmpty() {
-        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, UUID.randomUUID());
+        final List<MessageLedgerEntry> chain = repo.findAncestorChain(channelId, UUID.randomUUID(), null);
 
         assertTrue(chain.isEmpty());
     }
@@ -299,7 +299,7 @@ class LedgerQueryRepoTest {
         final MessageLedgerEntry done = entry("DONE", "corr-c", cmd.id, "agent-b", otherChannelId);
 
         // Querying from the other channel: DONE is found but its parent is in a different channel
-        final List<MessageLedgerEntry> chain = repo.findAncestorChain(otherChannelId, done.id);
+        final List<MessageLedgerEntry> chain = repo.findAncestorChain(otherChannelId, done.id, null);
 
         assertEquals(1, chain.size(), "Stops at channel boundary — COMMAND not in queried channel");
         assertEquals(done.id, chain.get(0).id);
@@ -313,7 +313,7 @@ class LedgerQueryRepoTest {
         cmd.occurredAt = Instant.now().minus(60, ChronoUnit.SECONDS);
 
         final Instant threshold = Instant.now().minus(30, ChronoUnit.SECONDS);
-        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold);
+        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold, null);
 
         assertEquals(1, stalled.size());
         assertEquals(cmd.id, stalled.get(0).id);
@@ -326,7 +326,7 @@ class LedgerQueryRepoTest {
         entry("DONE", "corr-ok", cmd.id);
 
         final Instant threshold = Instant.now().minus(30, ChronoUnit.SECONDS);
-        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold);
+        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold, null);
 
         assertTrue(stalled.isEmpty());
     }
@@ -336,7 +336,7 @@ class LedgerQueryRepoTest {
         entry("COMMAND", "corr-new", null); // occurredAt = now, younger than threshold
 
         final Instant threshold = Instant.now().minus(30, ChronoUnit.SECONDS);
-        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold);
+        final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId, threshold, null);
 
         assertTrue(stalled.isEmpty());
     }
@@ -348,7 +348,7 @@ class LedgerQueryRepoTest {
         entry("DECLINE", "corr-declined", cmd.id);
 
         final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId,
-                Instant.now().minus(30, ChronoUnit.SECONDS));
+                Instant.now().minus(30, ChronoUnit.SECONDS), null);
 
         assertTrue(stalled.isEmpty());
     }
@@ -360,7 +360,7 @@ class LedgerQueryRepoTest {
         entry("HANDOFF", "corr-hoff", cmd.id);
 
         final List<MessageLedgerEntry> stalled = repo.findStalledCommands(channelId,
-                Instant.now().minus(30, ChronoUnit.SECONDS));
+                Instant.now().minus(30, ChronoUnit.SECONDS), null);
 
         assertTrue(stalled.isEmpty());
     }
@@ -376,7 +376,7 @@ class LedgerQueryRepoTest {
         entry("STATUS", null, null); // irrelevant type — excluded
         entry("QUERY", null, null); // irrelevant type — excluded
 
-        final Map<String, Long> counts = repo.countByOutcome(channelId);
+        final Map<String, Long> counts = repo.countByOutcome(channelId, null);
 
         assertEquals(2L, counts.get("COMMAND"));
         assertEquals(1L, counts.get("DONE"));
@@ -387,7 +387,7 @@ class LedgerQueryRepoTest {
 
     @Test
     void countByOutcome_emptyChannel_returnsEmptyMap() {
-        final Map<String, Long> counts = repo.countByOutcome(channelId);
+        final Map<String, Long> counts = repo.countByOutcome(channelId, null);
 
         assertTrue(counts.isEmpty());
     }
@@ -396,7 +396,7 @@ class LedgerQueryRepoTest {
     void countByOutcome_differentChannelExcluded() {
         entry("COMMAND", "cx1", null, "agent-a", otherChannelId);
 
-        final Map<String, Long> counts = repo.countByOutcome(channelId);
+        final Map<String, Long> counts = repo.countByOutcome(channelId, null);
 
         assertTrue(counts.isEmpty());
     }
@@ -409,7 +409,7 @@ class LedgerQueryRepoTest {
         final MessageLedgerEntry second = entry("STATUS", "c1", null, "agent-a", channelId);
         entry("DONE", "c1", null, "agent-b", channelId); // different actor — excluded
 
-        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "agent-a", 10);
+        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "agent-a", 10, null);
 
         assertEquals(2, result.size());
         assertEquals(second.id, result.get(0).id, "Most recent first");
@@ -422,14 +422,14 @@ class LedgerQueryRepoTest {
             entry("COMMAND", "c" + i, null, "agent-a", channelId);
         }
 
-        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "agent-a", 3);
+        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "agent-a", 3, null);
 
         assertEquals(3, result.size());
     }
 
     @Test
     void findByActorIdInChannel_unknownActor_returnsEmpty() {
-        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "nobody", 10);
+        final List<MessageLedgerEntry> result = repo.findByActorIdInChannel(channelId, "nobody", 10, null);
 
         assertTrue(result.isEmpty());
     }
@@ -442,7 +442,7 @@ class LedgerQueryRepoTest {
         eventEntry("tool-b", 50, 100);
         entry("COMMAND", "c1", null); // non-EVENT — excluded
 
-        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null);
+        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null, null);
 
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(e -> "EVENT".equals(e.messageType)));
@@ -456,7 +456,7 @@ class LedgerQueryRepoTest {
         eventEntry("tool-new", 20, 20); // occurredAt = now, within window
 
         final Instant cutoff = Instant.now().minus(60, ChronoUnit.SECONDS);
-        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, cutoff);
+        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, cutoff, null);
 
         assertEquals(1, result.size());
         assertEquals("tool-new", result.get(0).toolName);
@@ -466,7 +466,7 @@ class LedgerQueryRepoTest {
     void findEventsSince_nullToolName_stillIncluded() {
         eventEntry(null, 10, 10); // malformed EVENT — toolName absent
 
-        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null);
+        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null, null);
 
         assertEquals(1, result.size());
         assertNull(result.get(0).toolName);
@@ -478,7 +478,7 @@ class LedgerQueryRepoTest {
         e.subjectId = otherChannelId;
         e.channelId = otherChannelId;
 
-        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null);
+        final List<MessageLedgerEntry> result = repo.findEventsSince(channelId, null, null);
 
         assertTrue(result.isEmpty());
     }
@@ -492,7 +492,7 @@ class LedgerQueryRepoTest {
         entry("COMMAND", "corr-B", null);
 
         // Only corr-A entries
-        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, "corr-A", false, 10);
+        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, "corr-A", false, 10, null);
 
         assertEquals(2, result.size());
         assertTrue(result.stream().allMatch(e -> "corr-A".equals(e.correlationId)));
@@ -504,7 +504,7 @@ class LedgerQueryRepoTest {
         entry("STATUS", "c1", null);
         entry("DONE", "c1", null);
 
-        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, null, true, 10);
+        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, null, true, 10, null);
 
         assertEquals(3, result.size());
         assertTrue(result.get(0).sequenceNumber > result.get(1).sequenceNumber,
@@ -516,7 +516,7 @@ class LedgerQueryRepoTest {
         entry("COMMAND", "c2", null);
         entry("DONE", "c2", null);
 
-        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, null, false, 10);
+        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, null, false, 10, null);
 
         assertEquals(2, result.size());
         assertTrue(result.get(0).sequenceNumber < result.get(1).sequenceNumber,
@@ -528,7 +528,7 @@ class LedgerQueryRepoTest {
         entry("COMMAND", "c3", null);
         entry("DONE", "c3", null);
 
-        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, 10);
+        final List<MessageLedgerEntry> result = repo.listEntries(channelId, null, null, null, null, 10, null);
 
         assertEquals(2, result.size());
     }

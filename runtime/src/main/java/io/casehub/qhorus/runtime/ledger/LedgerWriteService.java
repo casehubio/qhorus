@@ -129,13 +129,18 @@ public class LedgerWriteService {
             return LedgerWriteOutcome.DISABLED;
         }
 
+        // tenancyId resolved first — needed by messageRepo queries below. Refs qhorus#260, #263.
+        final String tenancyId = dispatch.tenancyId() != null
+                ? dispatch.tenancyId()
+                : TenancyConstants.DEFAULT_TENANT_ID;
+
         // ── Resolve subjectId (Priority 1 > 2 > 3) ───────────────────────────────
         final UUID resolvedSubjectId;
         if (dispatch.subjectId() != null) {
             resolvedSubjectId = dispatch.subjectId();
         } else if (dispatch.correlationId() != null) {
             resolvedSubjectId = messageRepo
-                    .findEarliestWithSubjectByCorrelationId(dispatch.correlationId())
+                    .findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
                     .map(e -> e.subjectId)
                     .orElse(dispatch.channelId());
         } else {
@@ -153,13 +158,6 @@ public class LedgerWriteService {
         } else {
             resolvedCausedByEntryId = null;
         }
-
-        // tenancyId: from dispatch (set by MessageService.dispatch() as effectiveTenancyId,
-        // or by the original caller). Falls back to DEFAULT_TENANT_ID for system/legacy callers
-        // that run outside a request context. Refs qhorus#260.
-        final String tenancyId = dispatch.tenancyId() != null
-                ? dispatch.tenancyId()
-                : TenancyConstants.DEFAULT_TENANT_ID;
 
         final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 

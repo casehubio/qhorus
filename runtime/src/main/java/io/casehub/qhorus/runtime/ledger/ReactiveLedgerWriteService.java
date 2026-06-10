@@ -120,7 +120,7 @@ public class ReactiveLedgerWriteService {
                 ? dispatch.tenancyId()
                 : TenancyConstants.DEFAULT_TENANT_ID;
         // sequenceNumber assigned by ledger.save() (MERGE in ReactiveLedgerEntryJpaRepository). Refs #256.
-        return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch)
+        return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch, tenancyId)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
                         .flatMap(resolvedCausedByEntryId -> {
                             final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
@@ -221,12 +221,12 @@ public class ReactiveLedgerWriteService {
 
     // ── Priority 1/2/3 subjectId resolution ──────────────────────────────────
 
-    private Uni<UUID> resolveSubjectId(final MessageDispatch dispatch) {
+    private Uni<UUID> resolveSubjectId(final MessageDispatch dispatch, final String tenancyId) {
         if (dispatch.subjectId() != null) {
             return Uni.createFrom().item(dispatch.subjectId());
         }
         if (dispatch.correlationId() != null) {
-            return messageRepo.findEarliestWithSubjectByCorrelationId(dispatch.correlationId())
+            return messageRepo.findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
                     .map(opt -> opt.map(e -> e.subjectId).orElse(dispatch.channelId()));
         }
         return Uni.createFrom().item(dispatch.channelId());

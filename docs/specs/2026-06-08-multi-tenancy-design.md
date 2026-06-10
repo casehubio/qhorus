@@ -322,7 +322,7 @@ Existing `MessageDispatchIntegrationTest` updated to assert `event.tenancyId()` 
 | casehubio/qhorus#264 | Tenant-aware AgentCard (`/.well-known/agent-card.json`) |
 | casehubio/qhorus#265 | A2A inbound endpoint tenant scoping |
 | casehubio/qhorus#266 | `MessageReceivedEvent` migration in consuming repos |
-| casehubio/ledger#127 | Ledger `LedgerEntry` tenancy scoping |
+| ~~casehubio/ledger#127~~ | ~~Ledger `LedgerEntry` tenancy scoping~~ — CLOSED (2026-06-09) |
 | casehubio/work#256 | Work `WorkItem` tenancy scoping |
 
 ---

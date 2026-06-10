@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.TenancyConstants;
 
 /** Builds {@link MessageLedgerEntry} instances with required fields populated. */
 public final class MessageLedgerEntryTestFactory {
@@ -29,6 +30,7 @@ public final class MessageLedgerEntryTestFactory {
         e.actorType = ActorType.AGENT;
         e.actorRole = "test-role";
         e.occurredAt = Instant.now();
+        e.tenancyId = TenancyConstants.DEFAULT_TENANT_ID; // explicit default — matches QhorusLedgerEntryRepository null normalisation
         return e;
     }
 }

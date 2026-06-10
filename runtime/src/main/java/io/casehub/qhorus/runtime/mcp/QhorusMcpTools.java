@@ -1453,7 +1453,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         }
 
         final List<MessageLedgerEntry> entries = ledgerRepo.listEntries(
-                ch.id, types, afterId, agentId, sinceInstant, correlationId, sortDesc, effectiveLimit);
+                ch.id, types, afterId, agentId, sinceInstant, correlationId, sortDesc, effectiveLimit,
+                currentPrincipal.tenancyId());
 
         return entries.stream().map(this::toLedgerEntryMap).toList();
     }
@@ -1469,7 +1470,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
         final Channel ch = resolveChannel(channel);
 
-        final List<MessageLedgerEntry> chain = ledgerRepo.findAllByCorrelationId(ch.id, correlationId);
+        final List<MessageLedgerEntry> chain = ledgerRepo.findAllByCorrelationId(ch.id, correlationId, currentPrincipal.tenancyId());
 
         if (chain.isEmpty()) {
             return new ObligationChainSummary(correlationId, null, null, null, null, null,
@@ -1533,7 +1534,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     "Invalid ledger_entry_id '" + ledgerEntryId + "' — must be a UUID");
         }
 
-        return ledgerRepo.findAncestorChain(ch.id, entryUuid).stream()
+        return ledgerRepo.findAncestorChain(ch.id, entryUuid, currentPrincipal.tenancyId()).stream()
                 .map(e -> new CausalChainEntry(
                         e.id != null ? e.id.toString() : null,
                         e.messageType,
@@ -1559,7 +1560,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         final java.time.Instant cutoff = java.time.Instant.now().minusSeconds(threshold);
         final java.time.Instant now = java.time.Instant.now();
 
-        return ledgerRepo.findStalledCommands(ch.id, cutoff).stream()
+        return ledgerRepo.findStalledCommands(ch.id, cutoff, currentPrincipal.tenancyId()).stream()
                 .map(e -> {
                     final long stalledFor = e.occurredAt != null
                             ? now.getEpochSecond() - e.occurredAt.getEpochSecond()
@@ -1584,7 +1585,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
         final Channel ch = resolveChannel(channel);
 
-        final Map<String, Long> counts = ledgerRepo.countByOutcome(ch.id);
+        final Map<String, Long> counts = ledgerRepo.countByOutcome(ch.id, currentPrincipal.tenancyId());
         final long total = counts.getOrDefault("COMMAND", 0L);
         final long fulfilled = counts.getOrDefault("DONE", 0L);
         final long failed = counts.getOrDefault("FAILURE", 0L);
@@ -1592,7 +1593,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         final long delegated = counts.getOrDefault("HANDOFF", 0L);
         final long stillOpen = Math.max(0L, total - fulfilled - failed - declined - delegated);
         final long stalled = ledgerRepo
-                .findStalledCommands(ch.id, java.time.Instant.now().minusSeconds(30))
+                .findStalledCommands(ch.id, java.time.Instant.now().minusSeconds(30), currentPrincipal.tenancyId())
                 .size();
         final double rate = total > 0 ? (double) fulfilled / total : 0.0;
 
@@ -1621,7 +1622,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             }
         }
 
-        final List<MessageLedgerEntry> events = ledgerRepo.findEventsSince(ch.id, sinceInstant);
+        final List<MessageLedgerEntry> events = ledgerRepo.findEventsSince(ch.id, sinceInstant, currentPrincipal.tenancyId());
 
         if (events.isEmpty()) {
             return new TelemetrySummary(0, Map.of(), 0L, 0L);
@@ -1700,7 +1701,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 100;
 
         final List<io.casehub.qhorus.runtime.ledger.MessageLedgerEntry> entries =
-                ledgerRepo.findByCorrelationIdAcrossChannels(correlationId, effectiveLimit);
+                ledgerRepo.findByCorrelationIdAcrossChannels(correlationId, effectiveLimit, currentPrincipal.tenancyId());
 
         if (entries.isEmpty()) {
             return List.of();

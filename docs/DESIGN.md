@@ -76,6 +76,12 @@ to the incremental `project()` overload to fold only new messages without replay
 
 See `docs/specs/2026-06-02-channel-projection-spi-design.md` and protocol PP-20260602-b748c9.
 
+### HTTP Tenant Principal (runtime/identity/)
+
+`InboundTenancyContext @RequestScoped` — per-request holder populated by `TenancyContextFilter` from the `X-Tenancy-ID` request header. `TenancyContextFilter @Provider @PreMatching @Priority(100) @ApplicationScoped` — reads the header for ALL HTTP requests before resource dispatch. `QhorusInboundCurrentPrincipal @ApplicationScoped @Alternative @Priority(1)` — the default HTTP-layer `CurrentPrincipal`: reads from `InboundTenancyContext`, catches `ContextNotActiveException` for background-thread safety (returns `DEFAULT_TENANT_ID`), `actorId()="anonymous"`. Displaced by `OidcCurrentPrincipal @Priority(100)` from `casehub-platform-oidc`. `X-Tenancy-ID` is a routing header — not a security boundary (see PP-20260610-9487d3). See PP-20260610-85e6a4 for the `@ApplicationScoped` outer bean requirement.
+
+Also: `QhorusSystemCurrentPrincipal @ApplicationScoped @QhorusSystem` (from #260) — `isCrossTenantAdmin()=true`, used by `CrossTenantProducer` for background/scheduler contexts only.
+
 ---
 
 ## Technology Stack
@@ -169,6 +175,7 @@ All services are `@ApplicationScoped`. Mutating methods are `@Transactional`.
 - `InstanceService.register()` replaces capability tags on every upsert — no stale tags accumulate.
 - `LedgerWriteService.recordEvent` runs in `REQUIRES_NEW` — a ledger write failure logs a warning and is swallowed; the message transaction is unaffected.
 - Services inject `*Store` interfaces — Panache calls are isolated in `Jpa*Store` implementations; alternative backends activate via CDI `@Alternative @Priority(1)`.
+- `MessageLedgerEntryRepository` — all 11 query methods except `findByMessageId` and `findByMessageIds` (PK-based) require an explicit `String tenancyId` parameter. `tenancyId=null` normalises to `DEFAULT_TENANT_ID`. `LedgerWriteService.record()` resolves `tenancyId` from `dispatch.tenancyId()` before any `messageRepo` call. Callers obtain tenancyId from `dispatch.tenancyId()` (service layer) or `currentPrincipal.tenancyId()` (MCP tools). Known constraint: `findEarliestWithSubjectByCorrelationId` and `findByCorrelationIdAcrossChannels` are tenant-scoped — cross-tenant HANDOFF delegation loses subjectId propagation at tenant boundary. See #263, #265.
 - `AgentMessageLedgerEntryRepository` uses `EntityManager` directly (not Panache entity statics) because `LedgerEntry` is a plain `@Entity` in casehub-ledger. `ReactiveAgentMessageLedgerEntryRepository` (`@Alternative`) implements `ReactiveLedgerEntryRepository` via `AgentMessageReactivePanacheRepo`; inactive by default — consumers activate via `quarkus.arc.selected-alternatives` alongside a reactive datasource.
 
 ---
@@ -293,6 +300,12 @@ All tools exposed via `QhorusMcpTools` (`@ApplicationScoped`, active by default)
 | `BARRIER` | Block until all `barrierContributors` have sent a non-EVENT message; then deliver all + clear; returns `barrierStatus` string while pending |
 
 `CheckResult` carries an optional `barrierStatus` field (`null` for non-BARRIER channels).
+
+### Ledger query tools — tenant scoping
+
+All ledger query tools (`list_ledger_entries`, `get_obligation_chain`, `get_causal_chain`, `list_stalled_obligations`, `get_obligation_stats`, `get_telemetry_summary`, `get_obligation_activity`) pass `currentPrincipal.tenancyId()` to `MessageLedgerEntryRepository`. Results are scoped to the current request's tenant. In reactive variants, `tenancyId` is captured before entering the `Uni` lambda to avoid request-scope loss on worker threads.
+
+`GET /.well-known/agent-card.json` response includes a `tenancyId` field reflecting `currentPrincipal.tenancyId()` — Qhorus-specific extension to the A2A AgentCard schema (not in the A2A spec). Allows A2A orchestrators to discover which tenant context a card represents.
 
 ### Key invariants
 - LAST_WRITE same-sender write overwrites the existing message in place (same ID, no new row).
