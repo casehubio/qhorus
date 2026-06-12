@@ -30,7 +30,7 @@ class QhorusProcessor {
     NativeImageResourcePatternsBuildItem registerMigrationResources() {
         return NativeImageResourcePatternsBuildItem.builder()
                 .includeGlob("db/qhorus/migration/*.sql")
-                .includeGlob("db/ledger/migration/*.sql")
+                // db/ledger/migration/*.sql — self-registered by LedgerProcessor since ledger#99
                 .build();
     }
 }
