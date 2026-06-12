@@ -7,9 +7,11 @@ import java.util.UUID;
 import java.util.function.Consumer;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.store.CommitmentStore;
@@ -30,6 +32,9 @@ public class CommitmentService {
 
     @Inject
     CommitmentStore store;
+
+    @Inject
+    Event<CommitmentDeclinedEvent> declinedEvents;
 
     /**
      * Called by MessageService when a QUERY or COMMAND is sent.
@@ -70,11 +75,16 @@ public class CommitmentService {
                 c -> c.resolvedAt = Instant.now());
     }
 
-    /** Called when DECLINE is received. */
+    /** Called when DECLINE is received. Fires {@link CommitmentDeclinedEvent}. */
     @Transactional
     public Optional<Commitment> decline(String correlationId) {
-        return transition(correlationId, CommitmentState.DECLINED,
-                c -> c.resolvedAt = Instant.now());
+        return transition(correlationId, CommitmentState.DECLINED, c -> {
+            c.resolvedAt = Instant.now();
+            if (declinedEvents != null) {
+                declinedEvents.fire(new CommitmentDeclinedEvent(
+                        c.id, c.correlationId, c.channelId, c.obligor, c.requester));
+            }
+        });
     }
 
     /** Called when FAILURE is received. */
