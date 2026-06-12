@@ -3,16 +3,24 @@ package io.casehub.qhorus.runtime.message;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.lang.annotation.Annotation;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletionStage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.testing.InMemoryCommitmentStore;
+import jakarta.enterprise.event.Event;
+import jakarta.enterprise.event.NotificationOptions;
+import jakarta.enterprise.util.TypeLiteral;
 
 /**
  * Pure unit tests — no CDI, no database. Uses InMemoryCommitmentStore directly.
@@ -21,11 +29,50 @@ class CommitmentServiceTest {
 
     private final InMemoryCommitmentStore store = new InMemoryCommitmentStore();
     private final CommitmentService service = new CommitmentService();
+    private final List<CommitmentDeclinedEvent> capturedDeclines = new ArrayList<>();
+
+    /** Recording Event<CommitmentDeclinedEvent> — captures fire() calls without CDI. */
+    private final Event<CommitmentDeclinedEvent> recordingDeclinedEvent = new Event<>() {
+        @Override
+        public void fire(final CommitmentDeclinedEvent event) {
+            capturedDeclines.add(event);
+        }
+
+        @Override
+        public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(final U event) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(final U event,
+                final NotificationOptions options) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <U extends CommitmentDeclinedEvent> Event<U> select(final Class<U> subtype,
+                final Annotation... qualifiers) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <U extends CommitmentDeclinedEvent> Event<U> select(final TypeLiteral<U> subtype,
+                final Annotation... qualifiers) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Event<CommitmentDeclinedEvent> select(final Annotation... qualifiers) {
+            throw new UnsupportedOperationException();
+        }
+    };
 
     @BeforeEach
     void setup() {
         service.store = store;
+        service.declinedEvents = recordingDeclinedEvent;
         store.clear();
+        capturedDeclines.clear();
     }
 
     // --- Happy path ---
@@ -77,6 +124,30 @@ class CommitmentServiceTest {
         Commitment c = store.findByCorrelationId("corr-decline").get();
         assertEquals(CommitmentState.DECLINED, c.state);
         assertNotNull(c.resolvedAt);
+    }
+
+    @Test
+    void decline_firesDeclinedEvent() {
+        UUID channelId = UUID.randomUUID();
+        service.open(UUID.randomUUID(), "corr-event", channelId,
+                MessageType.COMMAND, "req", "obl", null);
+
+        service.decline("corr-event");
+
+        assertThat(capturedDeclines).hasSize(1);
+        CommitmentDeclinedEvent ev = capturedDeclines.get(0);
+        assertThat(ev.correlationId()).isEqualTo("corr-event");
+        assertThat(ev.channelId()).isEqualTo(channelId);
+        assertThat(ev.obligor()).isEqualTo("obl");
+        assertThat(ev.requester()).isEqualTo("req");
+    }
+
+    @Test
+    void decline_onAlreadyTerminal_doesNotFireEvent() {
+        openCmd("corr-terminal");
+        service.fulfill("corr-terminal");
+        service.decline("corr-terminal");
+        assertThat(capturedDeclines).isEmpty();
     }
 
     @Test

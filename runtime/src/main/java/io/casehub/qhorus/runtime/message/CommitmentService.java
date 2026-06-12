@@ -80,10 +80,8 @@ public class CommitmentService {
     public Optional<Commitment> decline(String correlationId) {
         return transition(correlationId, CommitmentState.DECLINED, c -> {
             c.resolvedAt = Instant.now();
-            if (declinedEvents != null) {
-                declinedEvents.fire(new CommitmentDeclinedEvent(
-                        c.id, c.correlationId, c.channelId, c.obligor, c.requester));
-            }
+            declinedEvents.fire(new CommitmentDeclinedEvent(
+                    c.id, c.correlationId, c.channelId, c.obligor, c.requester));
         });
     }
 
