@@ -128,6 +128,28 @@ public class ReactiveCommitmentService {
     }
 
     /**
+     * Extends the watchdog deadline of an OPEN or ACKNOWLEDGED commitment.
+     * No-op if the commitment does not exist or is in a terminal state.
+     * Reactive mirror of {@link CommitmentService#extendDeadline}.
+     */
+    public Uni<Optional<Commitment>> extendDeadline(final String correlationId,
+            final Instant newDeadline) {
+        if (correlationId == null || correlationId.isBlank()) {
+            return Uni.createFrom().item(Optional.empty());
+        }
+        return Panache.withTransaction("qhorus", () ->
+            store.findByCorrelationId(correlationId).flatMap(opt -> {
+                if (opt.isEmpty() || opt.get().state.isTerminal()) {
+                    return Uni.createFrom().item(Optional.empty());
+                }
+                final Commitment c = opt.get();
+                c.expiresAt = newDeadline;
+                return store.save(c).map(Optional::of);
+            })
+        );
+    }
+
+    /**
      * Returns the Commitment for the given correlation ID, if any.
      * Used by ReactiveA2AResource to derive task state from commitment lifecycle.
      */

@@ -141,6 +141,27 @@ public class CommitmentService {
     }
 
     /**
+     * Extends the watchdog deadline of an OPEN or ACKNOWLEDGED commitment.
+     * No-op if the commitment does not exist or is in a terminal state.
+     *
+     * <p>The long-term answer is a {@code SUSPENDED} state that {@link #expireOverdue()}
+     * skips entirely, but this is the correct near-term fix for callers such as
+     * {@code casehub-openclaw}'s {@code casehub_block} tool (openclaw#23).
+     */
+    @Transactional
+    public Optional<Commitment> extendDeadline(String correlationId, Instant newDeadline) {
+        if (correlationId == null || correlationId.isBlank()) {
+            return Optional.empty();
+        }
+        return store.findByCorrelationId(correlationId)
+                .filter(c -> !c.state.isTerminal())
+                .map(c -> {
+                    c.expiresAt = newDeadline;
+                    return store.save(c);
+                });
+    }
+
+    /**
      * Returns the Commitment for the given correlation ID, if any.
      * Used by A2AResource to derive task state from commitment lifecycle.
      */

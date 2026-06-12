@@ -249,6 +249,54 @@ class CommitmentServiceTest {
         assertEquals(CommitmentState.EXPIRED, store.findByCorrelationId("exp-3").get().state);
     }
 
+    // --- extendDeadline ---
+
+    @Test
+    void extendDeadline_updatesExpiresAt_onOpenCommitment() {
+        openCmdWithExpiry("corr-extend", Instant.now().plusSeconds(10));
+        Instant newDeadline = Instant.now().plusSeconds(300);
+
+        Optional<Commitment> result = service.extendDeadline("corr-extend", newDeadline);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().expiresAt).isEqualTo(newDeadline);
+        assertThat(result.get().state).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void extendDeadline_updatesExpiresAt_onAcknowledgedCommitment() {
+        openCmdWithExpiry("corr-extend-ack", Instant.now().plusSeconds(10));
+        service.acknowledge("corr-extend-ack");
+        Instant newDeadline = Instant.now().plusSeconds(300);
+
+        Optional<Commitment> result = service.extendDeadline("corr-extend-ack", newDeadline);
+
+        assertThat(result).isPresent();
+        assertThat(result.get().expiresAt).isEqualTo(newDeadline);
+        assertThat(result.get().state).isEqualTo(CommitmentState.ACKNOWLEDGED);
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenCommitmentIsFulfilled() {
+        openCmd("corr-extend-term");
+        service.fulfill("corr-extend-term");
+        Instant newDeadline = Instant.now().plusSeconds(300);
+
+        Optional<Commitment> result = service.extendDeadline("corr-extend-term", newDeadline);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenNotFound() {
+        assertThat(service.extendDeadline("no-such", Instant.now().plusSeconds(60))).isEmpty();
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenCorrelationIdIsNull() {
+        assertThat(service.extendDeadline(null, Instant.now().plusSeconds(60))).isEmpty();
+    }
+
     // --- Query methods ---
 
     @Test
