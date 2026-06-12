@@ -1,7 +1,5 @@
 package io.casehub.qhorus.runtime.identity;
 
-import java.io.IOException;
-
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -34,7 +32,7 @@ public class TenancyContextFilter implements ContainerRequestFilter {
     InboundTenancyContext ctx;
 
     @Override
-    public void filter(final ContainerRequestContext requestContext) throws IOException {
+    public void filter(final ContainerRequestContext requestContext) {
         ctx.set(requestContext.getHeaderString("X-Tenancy-ID"));
     }
 }
