@@ -87,7 +87,7 @@ public class ReactiveLedgerEntryJpaRepository implements ReactiveLedgerEntryRepo
                 entry.sequenceNumber = seq != null ? seq : 1;
                 // Step 2: tokenise actorId before leafHash so both stacks produce identical digests. Refs #256.
                 if (entry.actorId != null) {
-                    entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
+                    entry.actorId = actorIdentityProvider.tokenise(entry.actorId, entry.actorType);
                 }
                 // Step 3: compute Merkle digest (pure Java — must be after sequence + tokenisation).
                 if (ledgerConfig.hashChain().enabled()) {
@@ -249,7 +249,7 @@ public class ReactiveLedgerEntryJpaRepository implements ReactiveLedgerEntryRepo
     public Uni<LedgerAttestation> saveAttestation(final LedgerAttestation attestation, final String tenancyId) {
         // TODO: apply tenancyId to attestation before persist (qhorus#260 Task 14)
         if (attestation.attestorId != null) {
-            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
+            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId, null);
         }
         return repo.getSession()
                 .flatMap(session -> session.persist(attestation).replaceWith(attestation));

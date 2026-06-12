@@ -96,7 +96,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
             entry.occurredAt = Instant.now();
         }
         if (entry.actorId != null) {
-            entry.actorId = actorIdentityProvider.tokenise(entry.actorId);
+            entry.actorId = actorIdentityProvider.tokenise(entry.actorId, entry.actorType);
         }
         entry.compliance().ifPresent(cs -> {
             if (cs.decisionContext != null) {
@@ -138,7 +138,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "LedgerEntry " + attestation.ledgerEntryId + " not found in tenant " + tenancyId));
         if (attestation.attestorId != null) {
-            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId);
+            attestation.attestorId = actorIdentityProvider.tokenise(attestation.attestorId, null);
         }
         em.persist(attestation);
         if (entry.actorId != null) {
