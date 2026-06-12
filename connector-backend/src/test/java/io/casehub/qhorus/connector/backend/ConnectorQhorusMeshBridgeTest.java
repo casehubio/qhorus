@@ -61,6 +61,15 @@ class ConnectorQhorusMeshBridgeTest {
     }
 
     @Test
+    void nullConnectorId_noOp_spiContractHonoured() {
+        when(channelService.findByName("connector-audit")).thenReturn(Optional.of(channel()));
+
+        assertThatCode(() -> bridge.notifyDelivered(null, "dest", "Hello"))
+                .doesNotThrowAnyException();
+        verify(messageService, never()).dispatch(any());
+    }
+
+    @Test
     void blankDeliveryChannelName_noOp() {
         bridge.deliveryChannelName = "";
 

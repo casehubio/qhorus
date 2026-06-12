@@ -78,6 +78,10 @@ public class ConnectorQhorusMeshBridge implements ConnectorMeshBridge {
     public void notifyDelivered(final String connectorId, final String destination, final String content) {
         try {
             if (deliveryChannelName.isBlank()) return;
+            if (connectorId == null) {
+                LOG.warn("ConnectorMeshBridge: connectorId is null — no-op");
+                return;
+            }
 
             // Capture context synchronously on the calling (HTTP request) thread.
             // QhorusInboundCurrentPrincipal absorbs ContextNotActiveException internally —
