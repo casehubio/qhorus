@@ -11,6 +11,7 @@
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [qhorus-reactive-gating.md](qhorus-reactive-gating.md) | Use @IfBuildProperty per-bean (not ExcludedTypeBuildItem) for reactive stack gating | Runtime reactive beans, QhorusProcessor |
+| [reactive-blocking-spi-worker-pool.md](reactive-blocking-spi-worker-pool.md) | Reactive services calling blocking SPI must shift to Infrastructure.getDefaultWorkerPool() via runSubscriptionOn | runtime/ reactive services invoking blocking SPI (ObligorTrustPolicy, etc.) |
 
 ## Channels
 
@@ -58,6 +59,13 @@
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [event-content-free-signal-type.md](event-content-free-signal-type.md) | Informatory role defines observe channel membership — STATUS for content-bearing observations (no expected reply), EVENT for content-free signals; observe channel accepts EVENT and STATUS per PLATFORM.md | All MessageDispatch.Builder call sites; connector-backend |
+
+## A2A / SSE
+
+| Protocol | Summary | Applies to |
+|----------|---------|------------|
+| [sse-sink-async-close.md](sse-sink-async-close.md) | SseEventSink.send() is async — chain sink.close() via thenRun/whenComplete, never synchronously after send() | runtime/api/ — any JAX-RS SSE endpoint using SseEventSink |
+| [a2a-decline-maps-to-cancelled.md](a2a-decline-maps-to-cancelled.md) | A2A task state for DECLINE is "cancelled" (explicit refusal), not "failed" (infrastructure error) | runtime/api/A2ATaskState — all A2A state derivation paths |
 
 ## Testing
 
