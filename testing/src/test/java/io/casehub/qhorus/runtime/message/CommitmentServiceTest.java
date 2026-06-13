@@ -297,6 +297,11 @@ class CommitmentServiceTest {
         assertThat(service.extendDeadline(null, Instant.now().plusSeconds(60))).isEmpty();
     }
 
+    @Test
+    void extendDeadline_isNoOp_whenCorrelationIdIsBlank() {
+        assertThat(service.extendDeadline("   ", Instant.now().plusSeconds(60))).isEmpty();
+    }
+
     // --- Query methods ---
 
     @Test

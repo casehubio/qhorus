@@ -3,6 +3,8 @@ package io.casehub.qhorus.runtime.api;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -17,6 +19,10 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.sse.Sse;
+import jakarta.ws.rs.sse.SseEventSink;
+
+import io.casehub.qhorus.api.gateway.OutboundMessage;
 
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.CommitmentState;
@@ -186,7 +192,139 @@ public class A2AResource {
         return Response.ok(new Task(taskId, channel.name, new TaskStatus(state), history)).build();
     }
 
-    private static Response error400(String message) {
+    /**
+     * SSE stream endpoint — pushes {@code task_status_update} events as messages arrive
+     * on the task's channel, then closes when a terminal type is received.
+     *
+     * <p><strong>Thread model:</strong> Quarkus dispatches this method on a virtual thread
+     * (blocking-capable). This is load-bearing: {@code @Transactional} works correctly here
+     * because virtual threads can block on JTA/JDBC without stalling the Vert.x I/O thread.
+     * The {@link SseEventSink} is held open after the method returns — subsequent SSE events
+     * are pushed from the virtual thread that executes {@link A2AChannelBackend#post} via
+     * {@link io.casehub.qhorus.runtime.gateway.ChannelGateway#fanOut}.
+     *
+     * <p><strong>Immediate-close paths:</strong> A2A disabled, invalid task ID, task not
+     * found, and already-terminal tasks all send a single event and close immediately.
+     *
+     * <p><strong>{@code @Transactional} semantics:</strong> the initial CommitmentStore
+     * and message-history reads are atomic (same requirement as {@link #getTask}). With
+     * a void SSE method, the transaction commits when the method body returns — before the
+     * sink stays open. Events then flow without a transaction.
+     *
+     * <p><strong>Timing note:</strong> {@link io.casehub.qhorus.runtime.gateway.ChannelGateway#fanOut}
+     * dispatches {@link A2AChannelBackend#post} on a virtual thread inside the enclosing
+     * {@code @Transactional} dispatch. The DB may not have committed when the SSE event fires.
+     * Clients must treat SSE events as notification triggers, not consistency guarantees.
+     *
+     * <p><strong>Server restart:</strong> SSE subscriptions do not survive restarts.
+     * Clients must re-subscribe after a restart. A keepalive/timeout mechanism is tracked
+     * in qhorus#278.
+     */
+    @GET
+    @Path("/tasks/{id}/stream")
+    @Produces("text/event-stream")
+    @Transactional
+    public void streamTask(
+            @PathParam("id") final String taskId,
+            @Context final SseEventSink sink,
+            @Context final Sse sse) {
+
+        if (!config.a2a().enabled()) {
+            sendErrorEvent(sink, sse, taskId, "A2A endpoint is disabled");
+            return;
+        }
+
+        UUID corrId;
+        try {
+            corrId = UUID.fromString(taskId);
+        } catch (final IllegalArgumentException e) {
+            sendErrorEvent(sink, sse, taskId, "Invalid task ID format — expected UUID");
+            return;
+        }
+
+        final List<Message> messages = messageService.findAllByCorrelationId(taskId);
+        if (messages.isEmpty()) {
+            sendErrorEvent(sink, sse, taskId, "Task not found: " + taskId);
+            return;
+        }
+
+        // Already terminal? Send immediate final event and close — no dangling connection.
+        final Commitment commitment = commitmentService.findByCorrelationId(taskId).orElse(null);
+        final String currentState = (commitment != null && commitment.state != CommitmentState.OPEN)
+                ? A2ATaskState.fromCommitmentState(commitment.state)
+                : A2ATaskState.fromMessageHistory(messages);
+
+        if ("completed".equals(currentState) || "failed".equals(currentState)
+                || "cancelled".equals(currentState)) {
+            sendStatusEvent(sink, sse, taskId, currentState);
+            return;
+        }
+
+        // Task is in-progress — register a consumer and keep the sink open.
+        // AtomicReference allows the consumer lambda to reference itself for deregistration.
+        final AtomicReference<Consumer<OutboundMessage>> ref = new AtomicReference<>();
+        final Consumer<OutboundMessage> consumer = msg -> {
+            if (sink.isClosed()) {
+                a2aBackend.deregisterStream(corrId, ref.get());
+                return;
+            }
+            final boolean terminal = A2ATaskState.TERMINAL_TYPES.contains(msg.type());
+            final String state = A2ATaskState.fromMessageType(msg.type());
+            final String json = """
+                    {"id":"%s","status":{"state":"%s"},"final":%b}""".formatted(taskId, state, terminal);
+            // sink.send() is async (CompletionStage) — chain close and deregister after it completes.
+            // whenComplete handles both send-success (terminal → close) and send-failure (deregister).
+            // Never call sink.close() synchronously after send() — the response may not yet be written.
+            sink.send(sse.newEventBuilder().name("task_status_update").data(json).build())
+                    .whenComplete((v, ex) -> {
+                        if (ex != null) {
+                            // Broken pipe or I/O error — deregister so future post() calls skip us
+                            a2aBackend.deregisterStream(corrId, ref.get());
+                        } else if (terminal) {
+                            // Send succeeded — close sink and deregister
+                            if (!sink.isClosed()) sink.close();
+                            a2aBackend.deregisterStream(corrId, ref.get());
+                        }
+                    });
+        };
+        ref.set(consumer);
+        a2aBackend.registerStream(corrId, consumer);
+        // Transaction commits here (method returns) — sink stays open for event-driven updates
+    }
+
+    /**
+     * Sends a terminal status event and chains {@link SseEventSink#close()} asynchronously
+     * after the send completes. Never calls close synchronously — that causes
+     * {@code IllegalStateException: Response has already been written} in RESTEasy Reactive
+     * when the async write hasn't finished.
+     */
+    private static void sendStatusEvent(final SseEventSink sink, final Sse sse,
+            final String taskId, final String state) {
+        final String json = """
+                {"id":"%s","status":{"state":"%s"},"final":true}""".formatted(taskId, state);
+        sink.send(sse.newEventBuilder().name("task_status_update").data(json).build())
+                .thenRun(() -> { if (!sink.isClosed()) sink.close(); });
+    }
+
+    /**
+     * Sends an error event and chains {@link SseEventSink#close()} asynchronously.
+     * HTTP 200 is returned with {@code text/event-stream} content type. This is deliberate:
+     * SSE void methods cannot return a different HTTP status code. The {@code event:error}
+     * event type allows clients to distinguish this from status updates.
+     *
+     * <p>Note: POST /a2a/message:send and GET /a2a/tasks/{id} return HTTP 501 when A2A is
+     * disabled. This endpoint returns HTTP 200 + {@code event:error} — an intentional
+     * difference dictated by the JAX-RS void SSE method constraint.
+     */
+    private static void sendErrorEvent(final SseEventSink sink, final Sse sse,
+            final String taskId, final String error) {
+        final String json = """
+                {"id":"%s","error":"%s","final":true}""".formatted(taskId, error);
+        sink.send(sse.newEventBuilder().name("error").data(json).build())
+                .thenRun(() -> { if (!sink.isClosed()) sink.close(); });
+    }
+
+    private static Response error400(final String message) {
         return Response.status(Response.Status.BAD_REQUEST)
                 .entity(new ErrorResponse(message))
                 .type(MediaType.APPLICATION_JSON)

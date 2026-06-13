@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -24,22 +25,38 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.arc.properties.UnlessBuildProperty;
+
 /**
  * Protocol bridge backend that registers A2A as a first-class gateway participant.
  *
  * <p>Handles inbound A2A messages by resolving the sender's actor type and
- * calling {@link io.casehub.qhorus.runtime.message.MessageService#dispatch} directly.
- * Enforcement (paused check, allowed_writers ACL, rate limiting, LAST_WRITE, fanOut) is
- * applied by {@code dispatch()} — no bypass. Artefact lifecycle is intentionally omitted:
+ * calling {@link MessageService#dispatch} directly. Enforcement (paused check,
+ * allowed_writers ACL, rate limiting, LAST_WRITE, fanOut) is applied by
+ * {@code dispatch()} — no bypass. Artefact lifecycle is intentionally omitted:
  * the A2A protocol has no artefact-ref passing.
- * {@link #post} is the outbound hook
- * called by {@link ChannelGateway#fanOut} — currently a logging no-op, the
- * correct hook for future SSE streaming (casehubio/qhorus#147).
  *
- * <p>Registration is idempotent per channel — {@link #ensureRegistered} uses
- * a ConcurrentHashMap set so only the first caller wins the race.
+ * <p>{@link #post} is the outbound hook called by {@link ChannelGateway#fanOut}
+ * after message persistence. It dispatches to all SSE consumers registered for
+ * the message's correlationId via {@link #registerStream}. Consumers own their
+ * own lifecycle — they deregister themselves via {@link #deregisterStream} on
+ * terminal events or send failures.
  *
- * Refs #135
+ * <p>{@link #registeredChannels} tracks gateway-registered channels for idempotent
+ * registration. {@link #sseStreams} is a separate registry for SSE consumers —
+ * the two maps are independent.
+ *
+ * <p><strong>Thread safety:</strong> {@link #sseStreams} uses {@link ConcurrentHashMap}
+ * with a {@link ConcurrentHashMap#newKeySet()} value. {@link #deregisterStream} uses
+ * {@link ConcurrentHashMap#compute} for atomic empty-removal — prevents a TOCTOU race
+ * where a new consumer added between isEmpty() and remove() would be orphaned.
+ *
+ * <p><strong>Known constraint:</strong> SSE subscriptions do not survive server restarts.
+ * After restart, this backend is not re-registered via {@link ChannelInitialisedEvent}
+ * (lazy registration is by design per ADR-0008). Clients must re-subscribe and poll
+ * to recover missed events. The proper fix requires persisting A2A channel participation
+ * — tracked separately.
+ *
+ * <p>Refs #135, #147.
  */
 @UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
@@ -47,7 +64,16 @@ public class A2AChannelBackend implements ChannelBackend {
 
     private static final Logger LOG = Logger.getLogger(A2AChannelBackend.class);
 
+    /** Tracks channels registered with the gateway (idempotent ensureRegistered). */
     private final Set<UUID> registeredChannels = ConcurrentHashMap.newKeySet();
+
+    /**
+     * SSE consumer registry, keyed by correlationId.
+     * Each consumer is called on every {@link #post} for its correlationId.
+     * Consumers deregister themselves on terminal events or send failures.
+     */
+    private final ConcurrentHashMap<UUID, Set<Consumer<OutboundMessage>>> sseStreams =
+            new ConcurrentHashMap<>();
 
     @Inject
     ChannelGateway gateway;
@@ -72,33 +98,59 @@ public class A2AChannelBackend implements ChannelBackend {
     }
 
     @Override
-    public void open(ChannelRef channel, Map<String, String> metadata) {
-        // no-op — registration state managed by ensureRegistered
+    public void open(final ChannelRef channel, final Map<String, String> metadata) {
+        // no-op — channel registration managed by ensureRegistered
     }
 
     /**
      * Outbound hook called by {@link ChannelGateway#fanOut} after a message is persisted.
-     * Currently a logging no-op — the correct hook for future SSE streaming (#147).
+     * Dispatches to all SSE consumers registered for the message's correlationId.
+     *
+     * <p>EVENT messages have {@code null} correlationId by protocol definition and are
+     * silently ignored — they do not carry task-level semantic state.
+     *
+     * <p>Each consumer manages its own lifecycle. This method does not perform cleanup —
+     * consumers call {@link #deregisterStream} when they encounter terminal events or
+     * send failures.
+     *
+     * <p><strong>Timing:</strong> called on a virtual thread from within the enclosing
+     * {@code @Transactional} dispatch — the DB transaction may not have committed yet
+     * when consumers are notified. Clients must treat SSE events as triggers, not
+     * consistency guarantees.
      */
     @Override
-    public void post(ChannelRef channel, OutboundMessage message) {
+    public void post(final ChannelRef channel, final OutboundMessage message) {
         LOG.debugf("A2A backend notified: channel=%s correlationId=%s type=%s",
-                channel.name(), message.correlationId(), message.senderActorType());
+                channel.name(), message.correlationId(), message.type());
+        if (message.correlationId() == null) {
+            return; // EVENT messages — always null correlationId, no task-level state
+        }
+        final Set<Consumer<OutboundMessage>> consumers = sseStreams.get(message.correlationId());
+        if (consumers == null || consumers.isEmpty()) {
+            return;
+        }
+        // Snapshot the set before iterating — consumers may call deregisterStream()
+        // which modifies the map via compute(). Per-consumer try-catch ensures one
+        // bad consumer (broken pipe, uncaught exception) does not block the rest.
+        for (final Consumer<OutboundMessage> consumer : Set.copyOf(consumers)) {
+            try {
+                consumer.accept(message);
+            } catch (final Exception e) {
+                LOG.debugf(e, "SSE consumer exception for correlationId %s", message.correlationId());
+            }
+        }
     }
 
     @Override
-    public void close(ChannelRef channel) {
+    public void close(final ChannelRef channel) {
         registeredChannels.remove(channel.id());
     }
 
     /**
      * Registers this backend on the channel if not already registered.
-     * Thread-safe — uses ConcurrentHashMap add semantics; only one caller wins the race.
-     *
-     * @param channelId UUID of the channel
-     * @param ref       ChannelRef for open() initialisation
+     * Thread-safe — ConcurrentHashMap.add() is atomic; only one caller wins the race.
      */
-    public void ensureRegistered(UUID channelId, ChannelRef ref) {
+    public void ensureRegistered(final UUID channelId, final ChannelRef ref) {
         if (registeredChannels.add(channelId)) {
             open(ref, Map.of());
             gateway.registerBackend(channelId, this, "agent");
@@ -106,12 +158,49 @@ public class A2AChannelBackend implements ChannelBackend {
     }
 
     /**
+     * Registers a consumer to receive outbound messages for the given correlationId.
+     * The consumer is called on the virtual thread that executes {@link ChannelGateway#fanOut}.
+     *
+     * <p>Multiple consumers may be registered per correlationId (e.g. multiple SSE connections).
+     * The consumer is responsible for calling {@link #deregisterStream} when it no longer
+     * needs notifications.
+     */
+    void registerStream(final UUID correlationId, final Consumer<OutboundMessage> consumer) {
+        sseStreams.computeIfAbsent(correlationId, k -> ConcurrentHashMap.newKeySet())
+                  .add(consumer);
+    }
+
+    /**
+     * Removes a consumer from the SSE registry.
+     *
+     * <p>Uses {@link ConcurrentHashMap#compute} for atomic removal — prevents the TOCTOU
+     * race where another thread adds a new consumer between the isEmpty() check and the
+     * map entry removal, which would orphan the newly-added consumer.
+     */
+    void deregisterStream(final UUID correlationId, final Consumer<OutboundMessage> consumer) {
+        sseStreams.compute(correlationId, (k, s) -> {
+            if (s == null) return null;
+            s.remove(consumer);
+            return s.isEmpty() ? null : s;
+        });
+    }
+
+    /**
+     * Returns the number of SSE consumers registered for the given correlationId.
+     * Package-private for test visibility — allows integration tests to synchronize
+     * on registration without relying on timing.
+     */
+    int streamCount(final UUID correlationId) {
+        final Set<Consumer<OutboundMessage>> s = sseStreams.get(correlationId);
+        return s == null ? 0 : s.size();
+    }
+
+    /**
      * Processes an inbound A2A message: resolves actor type, builds structured sender,
-     * and calls {@link io.casehub.qhorus.runtime.message.MessageService#dispatch} directly.
+     * and calls {@link MessageService#dispatch} directly.
+     *
      * <p>Message type mapping: {@code role:"agent"} → {@code "response"};
-     * all other roles → {@code "query"}. SYSTEM-typed actors via A2A also receive
-     * type {@code "query"} — this heuristic covers current A2A usage patterns;
-     * richer mapping is tracked in casehubio/qhorus#148.
+     * all other roles → {@code "query"}. Richer mapping is tracked in qhorus#148.
      *
      * @param channelName     Qhorus channel name (from A2A contextId)
      * @param role            A2A role string ("user", "agent", or custom)
@@ -122,19 +211,18 @@ public class A2AChannelBackend implements ChannelBackend {
      * @return the correlationId used for this message
      */
     @Transactional
-    public String receive(String channelName, String role, String textContent,
-            String taskId, Map<String, String> metadata, String actorTypeHeader) {
-        ActorType resolved = actorResolver.resolve(role, actorTypeHeader, metadata);
-        String agentId = metadata.get("agentId");
-        String sender = buildSender(resolved, agentId, role);
+    public String receive(final String channelName, final String role, final String textContent,
+            final String taskId, final Map<String, String> metadata, final String actorTypeHeader) {
+        final ActorType resolved = actorResolver.resolve(role, actorTypeHeader, metadata);
+        final String agentId = metadata.get("agentId");
+        final String sender = buildSender(resolved, agentId, role);
         String type = "agent".equals(role) ? "response" : "query";
-        String correlationId = (taskId != null && !taskId.isBlank())
+        final String correlationId = (taskId != null && !taskId.isBlank())
                 ? taskId
                 : UUID.randomUUID().toString();
 
-        Channel ch = channelService.findByName(channelName)
+        final Channel ch = channelService.findByName(channelName)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
-        // For RESPONSE type, find the prior QUERY/COMMAND by correlationId to satisfy inReplyTo.
         Long inReplyTo = null;
         if ("response".equals(type)) {
             inReplyTo = Message.<Message> find(
@@ -142,8 +230,6 @@ public class A2AChannelBackend implements ChannelBackend {
                     .firstResultOptional()
                     .map(m -> m.id)
                     .orElse(null);
-            // If no prior message exists for this correlationId, the agent is initiating
-            // a new interaction — treat it as a QUERY rather than an orphaned RESPONSE.
             if (inReplyTo == null) {
                 type = "query";
             }
@@ -160,7 +246,7 @@ public class A2AChannelBackend implements ChannelBackend {
         return correlationId;
     }
 
-    private String buildSender(ActorType resolved, String agentId, String role) {
+    private String buildSender(final ActorType resolved, final String agentId, final String role) {
         return switch (resolved) {
             case AGENT -> (agentId != null && ActorTypeResolver.resolve(agentId) == ActorType.AGENT)
                     ? agentId

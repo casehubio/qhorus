@@ -271,4 +271,51 @@ class ReactiveCommitmentServiceTest {
         assertThat(result).isPresent();
         assertThat(result.get().correlationId).isEqualTo(correlationId);
     }
+
+    // ── extendDeadline — reactive mirror of CommitmentService.extendDeadline ─
+
+    @Test
+    void extendDeadline_updatesExpiresAt_onOpenCommitment() {
+        final String correlationId = "corr-extend-" + UUID.randomUUID();
+        final Instant original = Instant.now().plusSeconds(10);
+        final Commitment committed = openCommitment(correlationId, "agent-a");
+        committed.expiresAt = original;
+        Panache.withTransaction("qhorus", () -> store.save(committed)).await().indefinitely();
+
+        final Instant newDeadline = Instant.now().plusSeconds(300);
+        final Optional<Commitment> result = svc.extendDeadline(correlationId, newDeadline)
+                .await().indefinitely();
+
+        assertThat(result).isPresent();
+        assertThat(result.get().expiresAt).isEqualTo(newDeadline);
+        assertThat(result.get().state).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenTerminal() {
+        final String correlationId = "corr-extend-term-" + UUID.randomUUID();
+        openCommitment(correlationId, "agent-a");
+        svc.fulfill(correlationId).await().indefinitely();
+
+        final Optional<Commitment> result = svc.extendDeadline(correlationId, Instant.now().plusSeconds(300))
+                .await().indefinitely();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenNotFound() {
+        final Optional<Commitment> result = svc.extendDeadline("no-such-corr", Instant.now().plusSeconds(60))
+                .await().indefinitely();
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void extendDeadline_isNoOp_whenCorrelationIdIsNull() {
+        final Optional<Commitment> result = svc.extendDeadline(null, Instant.now().plusSeconds(60))
+                .await().indefinitely();
+
+        assertThat(result).isEmpty();
+    }
 }

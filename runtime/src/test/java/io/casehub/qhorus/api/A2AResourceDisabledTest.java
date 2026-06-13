@@ -1,6 +1,7 @@
 package io.casehub.qhorus.api;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 
 import org.junit.jupiter.api.Test;
@@ -76,5 +77,29 @@ class A2AResourceDisabledTest {
                 .then()
                 .statusCode(501)
                 .body(containsString("a2a"));
+    }
+
+    // -----------------------------------------------------------------------
+    // GET /a2a/tasks/{id}/stream — disabled
+    //
+    // NOTE: the stream endpoint returns HTTP 200 + event:error (not 501) when
+    // A2A is disabled. JAX-RS void SSE methods cannot return a different HTTP
+    // status code. The event:error event type allows clients to detect the
+    // disabled state. This is a deliberate divergence from the 501 pattern
+    // used by the non-SSE endpoints. Refs qhorus#147.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void streamEndpoint_whenA2ADisabled_returnsHttp200WithErrorEvent() {
+        final String body = given()
+                .accept("text/event-stream")
+                .when().get("/a2a/tasks/any-task-id/stream")
+                .then()
+                .statusCode(200)
+                .contentType("text/event-stream")
+                .extract().body().asString();
+
+        assertThat(body).contains("event:error");
+        assertThat(body).contains("\"final\":true");
     }
 }
