@@ -15,10 +15,10 @@ public record DispatchResult(
         Long inReplyTo,
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> artefactRefs,
         String target,
-        UUID ledgerEntryId,
-        UUID subjectId,
-        UUID causedByEntryId,
-        int parentReplyCount,
+        UUID ledgerEntryId,     // null when ledger writes suppressed (e.g. LAST_WRITE overwrite)
+        UUID subjectId,         // resolved value actually written to ledger
+        UUID causedByEntryId,   // resolved value actually written to ledger
+        int parentReplyCount,   // updated reply count on the inReplyTo message; 0 when inReplyTo is null
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> advisories
 ) {
     public DispatchResult {
