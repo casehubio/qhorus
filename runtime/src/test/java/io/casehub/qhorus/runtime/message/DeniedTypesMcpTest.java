@@ -33,18 +33,21 @@ class DeniedTypesMcpTest {
 
     @Test
     @TestTransaction
-    void sendMessage_deniedType_throwsToolCallException() {
+    void sendMessage_deniedType_returnsAdvisory() {
         tools.createChannel(
                 "oversight-denied", "Oversight channel",
                 null, null, null, null, null, null,
                 null, "EVENT",
                 null, null, null, null);
 
-        assertThatThrownBy(() ->
-                tools.sendMessage("oversight-denied", "telemetry-agent", "event",
-                        null, null, null, null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class)
-                .hasMessageContaining("denies");
+        // EVENT is not obligation-creating — dispatch succeeds with advisory
+        io.casehub.qhorus.api.message.DispatchResult result = tools.sendMessage("oversight-denied", "telemetry-agent", "event",
+                null, null, null, null, null, null, null, null);
+
+        assertThat(result.advisories()).isNotEmpty();
+        String adv = result.advisories().get(0);
+        assertThat(adv).contains("denies");
+        assertThat(adv).contains("EVENT");
     }
 
     @Test

@@ -255,17 +255,20 @@ class MessageServiceTypeEnforcementTest {
         String name = "server-msg-" + System.nanoTime();
         UUID channelId = createChannel(name, Set.of(MessageType.QUERY, MessageType.COMMAND));
 
-        MessageTypeViolationException ex = assertThrows(MessageTypeViolationException.class,
-                () -> QuarkusTransaction.requiringNew().run(() -> messageService.dispatch(
-                        MessageDispatch.builder()
-                                .channelId(channelId)
-                                .sender("agent-1")
-                                .type(MessageType.EVENT)
-                                .telemetry("{}")
-                                .actorType(ActorTypeResolver.resolve("agent-1"))
-                                .build())));
-        assertTrue(ex.getMessage().contains(name), "Expected channel name in error: " + ex.getMessage());
-        assertTrue(ex.getMessage().contains("EVENT"), "Expected type in error: " + ex.getMessage());
+        // EVENT is not obligation-creating — dispatch succeeds with advisory
+        DispatchResult result = QuarkusTransaction.requiringNew().call(() -> messageService.dispatch(
+                MessageDispatch.builder()
+                        .channelId(channelId)
+                        .sender("agent-1")
+                        .type(MessageType.EVENT)
+                        .telemetry("{}")
+                        .actorType(ActorTypeResolver.resolve("agent-1"))
+                        .build()));
+
+        assertFalse(result.advisories().isEmpty(), "Expected advisory for EVENT on constrained channel");
+        String adv = result.advisories().get(0);
+        assertTrue(adv.contains(name), "Expected channel name in advisory: " + adv);
+        assertTrue(adv.contains("EVENT"), "Expected type in advisory: " + adv);
     }
 
     @Test

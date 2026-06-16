@@ -90,19 +90,22 @@ class NormativeLayoutTypeEnforcementTest {
     }
 
     @Test
-    void oversightChannel_rejectsEvent_serverSide() {
+    void oversightChannel_advisesEvent_serverSide() {
         SecureCodeReviewScenario s = scenario("enf-4-");
         QuarkusTransaction.requiringNew().run(s::setupChannels);
 
-        assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> {
-            messageService.dispatch(                    MessageDispatch.builder()
+        DispatchResult[] result = new DispatchResult[1];
+        QuarkusTransaction.requiringNew().run(() -> {
+            result[0] = messageService.dispatch(MessageDispatch.builder()
                     .channelId(s.oversightChannel().id)
                     .sender("agent-x")
                     .type(MessageType.EVENT)
                     .telemetry("{\"tool\":\"blocked\"}")
                     .actorType(ActorTypeResolver.resolve("agent-x"))
                     .build());
-        })).isInstanceOf(MessageTypeViolationException.class);
+        });
+        assertThat(result[0].advisories()).isNotEmpty();
+        assertThat(result[0].advisories().get(0)).contains("Message dispatched.");
     }
 
     @Test
@@ -204,23 +207,24 @@ class NormativeLayoutTypeEnforcementTest {
     }
 
     @Test
-    void violationException_messageContainsChannelNameAndType() {
+    void advisory_messageContainsChannelNameAndType() {
         SecureCodeReviewScenario s = scenario("enf-8-");
         QuarkusTransaction.requiringNew().run(s::setupChannels);
 
-        // STATUS is not in "EVENT" — sending it to observe channel should throw with
-        // channel name and type name in the message
-        assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> {
-            messageService.dispatch(                    MessageDispatch.builder()
+        DispatchResult[] result = new DispatchResult[1];
+        QuarkusTransaction.requiringNew().run(() -> {
+            result[0] = messageService.dispatch(MessageDispatch.builder()
                     .channelId(s.observeChannel().id)
                     .sender("agent-x")
                     .type(MessageType.STATUS)
                     .content("still working")
                     .actorType(ActorTypeResolver.resolve("agent-x"))
                     .build());
-        }))
-                .isInstanceOf(MessageTypeViolationException.class)
-                .hasMessageContaining(s.observeChannel)
-                .hasMessageContaining("STATUS");
+        });
+        assertThat(result[0].advisories()).isNotEmpty();
+        String adv = result[0].advisories().get(0);
+        assertThat(adv).contains(s.observeChannel);
+        assertThat(adv).contains("STATUS");
+        assertThat(adv).contains("Message dispatched.");
     }
 }

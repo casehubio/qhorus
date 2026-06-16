@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
@@ -195,15 +196,17 @@ class ChannelServiceTest {
         UUID[] chId = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> chId[0] = channelService.findByName(name).orElseThrow().id);
 
-        assertThrows(io.casehub.qhorus.api.message.MessageTypeViolationException.class, () ->
-                QuarkusTransaction.requiringNew().run(() ->
-                        messageService.dispatch(MessageDispatch.builder()
-                                .channelId(chId[0])
-                                .sender("telemetry-agent")
-                                .type(MessageType.EVENT)
-                                .telemetry("{\"tool\":\"search\"}")
-                                .actorType(ActorTypeResolver.resolve("telemetry-agent"))
-                                .build())));
+        // EVENT is not obligation-creating — dispatch succeeds with advisory
+        DispatchResult[] result = new DispatchResult[1];
+        QuarkusTransaction.requiringNew().run(() ->
+                result[0] = messageService.dispatch(MessageDispatch.builder()
+                        .channelId(chId[0])
+                        .sender("telemetry-agent")
+                        .type(MessageType.EVENT)
+                        .telemetry("{\"tool\":\"search\"}")
+                        .actorType(ActorTypeResolver.resolve("telemetry-agent"))
+                        .build()));
+        assertFalse(result[0].advisories().isEmpty(), "Expected advisory for denied EVENT");
 
         // non-denied type passes
         QuarkusTransaction.requiringNew().run(() ->
