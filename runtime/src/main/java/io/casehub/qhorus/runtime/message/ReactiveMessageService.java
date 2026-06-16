@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
@@ -141,6 +142,8 @@ public class ReactiveMessageService {
      * Internal dispatch logic — runs within a Hibernate Reactive session.
      */
     private Uni<DispatchResult> doDispatch(final MessageDispatch dispatch) {
+        final AtomicReference<List<String>> advisoriesRef = new AtomicReference<>(List.of());
+
         // Phase 1: Channel load (reactive)
         return reactiveChannelStore.find(dispatch.channelId())
                 .flatMap(chOpt -> {
@@ -219,7 +222,12 @@ public class ReactiveMessageService {
                 .invoke(ch -> {
                     // Phase 1e: Type policy (sync)
                     if (ch != null) {
-                        messageTypePolicy.validate(ch, dispatch.type());
+                        messageTypePolicy.validate(ch, dispatch.type()); // hard gate
+                        final String adv = messageTypePolicy.advisory(ch, dispatch.type());
+                        if (adv != null) {
+                            LOG.warn(adv);
+                            advisoriesRef.set(List.of(adv));
+                        }
                     }
                 })
                 // Phase 2: Transaction — LAST_WRITE / insert / commitment / reply / activity / ledger
@@ -255,7 +263,8 @@ public class ReactiveMessageService {
                                                                         ArtefactRefParser.parse(
                                                                                 last.artefactRefs),
                                                                         last.target,
-                                                                        null, null, null, 0)));
+                                                                        null, null, null, 0,
+                                                                        advisoriesRef.get())));
                                             } else {
                                                 throw new IllegalStateException(
                                                         "LAST_WRITE channel '" + ch.name
@@ -346,7 +355,8 @@ public class ReactiveMessageService {
                                             lo.entryId(),
                                             lo.subjectId(),
                                             lo.causedByEntryId(),
-                                            ctx.replyCount());
+                                            ctx.replyCount(),
+                                            advisoriesRef.get());
                                 });
                     });
                 });
