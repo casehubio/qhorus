@@ -12,6 +12,7 @@
 |----------|---------|------------|
 | [qhorus-reactive-gating.md](qhorus-reactive-gating.md) | Use @IfBuildProperty per-bean (not ExcludedTypeBuildItem) for reactive stack gating | Runtime reactive beans, QhorusProcessor |
 | [reactive-blocking-spi-worker-pool.md](reactive-blocking-spi-worker-pool.md) | Reactive services calling blocking SPI must shift to Infrastructure.getDefaultWorkerPool() via runSubscriptionOn | runtime/ reactive services invoking blocking SPI (ObligorTrustPolicy, etc.) |
+| [reactive-inmemory-store-selected-alternatives.md](reactive-inmemory-store-selected-alternatives.md) | Consumers with reactive.enabled=true + casehub-qhorus-testing must list InMemoryReactive*Store in quarkus.arc.selected-alternatives | @QuarkusTest consumers enabling the reactive stack |
 
 ## Channels
 
@@ -33,12 +34,13 @@
 | [http-principal-applicationscoped-pattern.md](http-principal-applicationscoped-pattern.md) | HTTP-aware CDI principal reading from @RequestScoped holder must be @ApplicationScoped — @RequestScoped makes try-catch unreachable via CDI proxy | runtime/identity/ — any CDI bean reading a @RequestScoped holder for background-safe fallback |
 | [http-tenancy-header-not-security-boundary.md](http-tenancy-header-not-security-boundary.md) | X-Tenancy-ID is a routing header, not a security boundary — document in Javadoc; production isolation requires casehub-platform-oidc | runtime/identity/, runtime/api/ — any HTTP-layer tenant routing code |
 
-## JPA Stores
+## JPA Stores / Persistence
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [jpa-like-prefix-metachar-escaping.md](jpa-like-prefix-metachar-escaping.md) | LIKE prefix branches must escape !, %, _ and declare ESCAPE '!' — in-memory path uses startsWith() (exact) and JPA must match | JpaChannelStore.scan(), ReactiveJpaChannelStore.scan() |
 | [scheduled-service-cross-tenant-stores.md](scheduled-service-cross-tenant-stores.md) | @Scheduled / no-request-context services must use @CrossTenant stores + explicit tenancyId param — never inject CurrentPrincipal | @Scheduled, @Observes StartupEvent, async observers touching entity stores |
+| [optional-module-jpa-package-registration.md](optional-module-jpa-package-registration.md) | Consumers adding an optional qhorus module with JPA entities must register its package in quarkus.hibernate-orm.qhorus.packages | Consumers of casehub-qhorus-slack-channel and future optional modules |
 
 ## Ledger
 

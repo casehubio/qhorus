@@ -1,0 +1,236 @@
+package io.casehub.qhorus.slack;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import io.casehub.connectors.slack.bot.SlackBotClient;
+import io.casehub.qhorus.api.gateway.ChannelRef;
+import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+
+/**
+ * Unit tests for SlackChannelBackend — CDI-free, constructor injection.
+ */
+class SlackChannelBackendTest {
+
+    private SlackBotBindingStore bindingStore;
+    private SlackThreadCacheStore threadCacheStore;
+    private SlackBotClient slackBotClient;
+    private ChannelGateway gateway;
+    private SlackChannelBackend backend;
+
+    private final UUID channelId = UUID.randomUUID();
+    private final ChannelRef channelRef = new ChannelRef(channelId, "test-channel");
+    private final String slackChannelId = "C123ABC";
+    private final String workspaceId = "T123ABC";
+    private final String token = "xoxb-test";
+
+    @BeforeEach
+    void setUp() {
+        bindingStore = mock(SlackBotBindingStore.class);
+        threadCacheStore = mock(SlackThreadCacheStore.class);
+        slackBotClient = mock(SlackBotClient.class);
+        gateway = mock(ChannelGateway.class);
+
+        backend = new SlackChannelBackend(
+                bindingStore, threadCacheStore, slackBotClient,
+                new SlackInboundNormaliser(), gateway);
+
+        // Pre-populate binding cache — simulates onChannelInitialised having run
+        SlackBotBinding binding = binding();
+        backend.bindingCache.put(channelId, binding);
+    }
+
+    @Test
+    void post_eventType_skipsImmediately() {
+        OutboundMessage msg = outbound(MessageType.EVENT, UUID.randomUUID(), "data");
+        backend.post(channelRef, msg);
+        verify(slackBotClient, never()).postMessage(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void post_nullContent_skipsImmediately() {
+        OutboundMessage msg = outbound(MessageType.STATUS, UUID.randomUUID(), null);
+        backend.post(channelRef, msg);
+        verify(slackBotClient, never()).postMessage(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void post_noBinding_skipsWithDebugLog() {
+        backend.bindingCache.remove(channelId);
+        OutboundMessage msg = outbound(MessageType.QUERY, null, "Hello");
+        backend.post(channelRef, msg);
+        verify(slackBotClient, never()).postMessage(anyString(), anyString(), anyString(), any());
+    }
+
+    @Test
+    void post_nullCorrelationId_sendsTopLevelMessage() {
+        mockToken();
+        when(slackBotClient.postMessage(token, slackChannelId, "Hello", null))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
+        OutboundMessage msg = outbound(MessageType.QUERY, null, "Hello");
+        backend.post(channelRef, msg);
+        verify(slackBotClient).postMessage(token, slackChannelId, "Hello", null);
+        verify(threadCacheStore, never()).save(any(), any(), any());
+    }
+
+    @Test
+    void post_firstMessageWithCorrId_sendsTopLevelAndCachesThreadTs() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
+        when(slackBotClient.postMessage(token, slackChannelId, "Hi", null))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
+
+        backend.post(channelRef, outbound(MessageType.COMMAND, corrId, "Hi"));
+
+        verify(slackBotClient).postMessage(token, slackChannelId, "Hi", null);
+        verify(threadCacheStore).save(channelId, corrId, "1.1");
+        assertThat(backend.threadCache.get(channelId)).containsEntry(corrId, "1.1");
+    }
+
+    @Test
+    void post_secondMessageSameCorrId_sendsAsThreadReply() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        // Warm memory cache
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(token, slackChannelId, "Reply", "1.1"))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.RESPONSE, corrId, "Reply"));
+
+        verify(slackBotClient).postMessage(token, slackChannelId, "Reply", "1.1");
+        verify(threadCacheStore, never()).save(any(), any(), any());
+    }
+
+    @Test
+    void post_doneMessage_evictsCacheEntry() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(any(), any(), any(), any()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.DONE, corrId, "Done!"));
+
+        verify(threadCacheStore).delete(channelId, corrId);
+        assertThat(backend.threadCache.get(channelId)).doesNotContainKey(corrId);
+    }
+
+    @Test
+    void post_failureMessage_evictsCacheEntry() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(any(), any(), any(), any()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.FAILURE, corrId, "Failed"));
+
+        verify(threadCacheStore).delete(channelId, corrId);
+    }
+
+    @Test
+    void post_declineMessage_evictsCacheEntry() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(any(), any(), any(), any()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.DECLINE, corrId, "Declined"));
+
+        verify(threadCacheStore).delete(channelId, corrId);
+    }
+
+    @Test
+    void post_handoffMessage_doesNotEvictCacheEntry() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(any(), any(), any(), any()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.HANDOFF, corrId, "Handing off"));
+
+        verify(threadCacheStore, never()).delete(any(), any());
+        assertThat(backend.threadCache.get(channelId)).containsKey(corrId);
+    }
+
+    @Test
+    void post_responseMessage_doesNotEvictCacheEntry() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+        when(slackBotClient.postMessage(any(), any(), any(), any()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.2", null));
+
+        backend.post(channelRef, outbound(MessageType.RESPONSE, corrId, "Answer"));
+
+        verify(threadCacheStore, never()).delete(any(), any());
+    }
+
+    @Test
+    void post_slackApiFailure_logsWarnNoMutation() {
+        UUID corrId = UUID.randomUUID();
+        mockToken();
+        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
+        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
+                .thenReturn(new SlackBotClient.PostResult(false, null, "channel_not_found"));
+
+        backend.post(channelRef, outbound(MessageType.COMMAND, corrId, "Hi"));
+
+        verify(threadCacheStore, never()).save(any(), any(), any());
+        assertThat(backend.threadCache).doesNotContainKey(channelId);
+    }
+
+    // --- helpers ---
+
+    private SlackBotBinding binding() {
+        SlackBotBinding b = new SlackBotBinding();
+        b.channelId = channelId;
+        b.slackChannelId = slackChannelId;
+        b.workspaceId = workspaceId;
+        b.createdAt = Instant.now();
+        return b;
+    }
+
+    private void mockToken() {
+        // Override resolveToken to return a fixed token without needing MicroProfile Config
+        backend = new SlackChannelBackend(
+                bindingStore, threadCacheStore, slackBotClient,
+                new SlackInboundNormaliser(), gateway) {
+            @Override
+            String resolveToken(String wid) {
+                return token;
+            }
+        };
+        backend.bindingCache.put(channelId, binding());
+    }
+
+    private OutboundMessage outbound(MessageType type, UUID corrId, String content) {
+        return new OutboundMessage(UUID.randomUUID(), "agent:test", type, content, corrId, null, null);
+    }
+}

@@ -206,7 +206,7 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
     public void post(final ChannelRef channel, final OutboundMessage message) {
         CacheEntry entry = cache.get(channel.id());
         if (entry == null) {
-            LOG.errorf("No cache entry for channel %s (%s) — cannot post outbound message",
+            LOG.debugf("No cache entry for channel %s (%s) — not a connector-backed channel, skipping",
                     channel.id(), channel.name());
             return;
         }

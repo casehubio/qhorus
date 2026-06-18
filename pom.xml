@@ -18,6 +18,7 @@
     <module>connectors</module>
     <module>runtime</module>
     <module>connector-backend</module>
+    <module>slack-channel</module>
     <module>deployment</module>
     <module>testing</module>
     <module>examples</module>

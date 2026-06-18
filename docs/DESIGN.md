@@ -26,6 +26,18 @@ Maven multi-module layout:
 | API | `casehub-qhorus-api` | Enums, SPIs, and extension interfaces — no JPA |
 | Runtime | `casehub-qhorus` | Extension runtime — entities, services, MCP tools, REST |
 | Deployment | `casehub-qhorus-deployment` | Build-time processor — feature registration, native config |
+| Connector Backend | `casehub-qhorus-connector-backend` | Optional bridge — routes `InboundMessage` CDI events from casehub-connectors into Qhorus channel dispatch. Activates by classpath presence. |
+| Slack Channel | `casehub-qhorus-slack-channel` | Optional `HumanParticipatingChannelBackend` via `SlackBotClient`; thread-aware delivery with composite in-memory + DB-backed thread cache. Activates by classpath presence. |
+| Testing | `casehub-qhorus-testing` | In-memory store implementations for `@QuarkusTest` in consumers. |
+
+### Optional Modules — JPA Entity Registration
+
+Optional modules that ship JPA entities (e.g. `casehub-qhorus-slack-channel` ships entities
+in `io.casehub.qhorus.slack`) must have their package registered in
+`quarkus.hibernate-orm.qhorus.packages` by the consumer. The default scan covers only
+`io.casehub.qhorus.runtime` and `io.casehub.ledger.runtime` — optional module packages are
+explicitly excluded to prevent silent PU scope expansion. Consumers opt in by appending
+the module's package to that property.
 
 ### Gateway SPI (api module)
 
