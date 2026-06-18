@@ -109,6 +109,7 @@ public class ReactiveLedgerEntryJpaRepository implements ReactiveLedgerEntryRepo
                     .flatMap(currentFrontier -> {
                         final List<LedgerMerkleFrontier> newFrontier =
                                 LedgerMerkleTree.append(e.digest, currentFrontier, e.subjectId);
+                        newFrontier.forEach(node -> node.tenancyId = e.tenancyId);
                         final Set<Integer> newLevels = newFrontier.stream()
                                 .map(n -> n.level).collect(Collectors.toSet());
                         // Delete frontier levels not in the new set (mirrors JpaLedgerMerkleFrontierRepository.replace()).
