@@ -1,6 +1,5 @@
 package io.casehub.qhorus.testing;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -52,9 +51,9 @@ public class InMemoryReactiveChannelStore implements ReactiveChannelStore {
 
     @Override
     public Uni<Void> updateLastActivity(UUID channelId, String tenancyId) {
-        // tenancyId ignored — InMemoryReactiveChannelStore is single-tenant (test semantics)
-        return Uni.createFrom().voidItem().invoke(() ->
-            blocking.find(channelId).ifPresent(ch -> ch.lastActivityAt = Instant.now()));
+        // No-op — delegates to InMemoryChannelStore which is a no-op for the same reason.
+        // See InMemoryChannelStore.updateLastActivity() for the full explanation.
+        return Uni.createFrom().voidItem();
     }
 
     @Override

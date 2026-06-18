@@ -69,8 +69,9 @@ public class InMemoryChannelStore implements ChannelStore {
 
     @Override
     public void updateLastActivity(UUID channelId, String tenancyId) {
-        // tenancyId ignored — InMemoryChannelStore is single-tenant (test semantics)
-        find(channelId).ifPresent(ch -> ch.lastActivityAt = Instant.now());
+        // No-op — modifying the Hibernate-enhanced entity in-place triggers a dirty-check
+        // flush when called from within Panache.withSession(), generating a spurious JPA UPDATE.
+        // lastActivityAt is set at creation time via put(); staleness tracking is irrelevant in tests.
     }
 
     @Override
