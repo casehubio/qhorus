@@ -76,3 +76,4 @@
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [observer-test-transaction-discipline.md](observer-test-transaction-discipline.md) | Tests asserting MessageObserver invocation must use QuarkusTransaction.requiringNew(), not @TestTransaction | @QuarkusTest classes dispatching messages and asserting observer state |
+| [inmemory-store-no-entity-mutation-in-session.md](inmemory-store-no-entity-mutation-in-session.md) | InMemory store methods must not mutate PanacheEntity fields within Panache.withSession() scope — use no-op or side-map | casehub-qhorus-testing — all InMemory*Store and InMemoryReactive*Store implementations |
