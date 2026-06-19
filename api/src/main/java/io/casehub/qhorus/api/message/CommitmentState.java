@@ -18,7 +18,19 @@ public enum CommitmentState {
     /** FAILURE received; debtor attempted but could not complete. */
     FAILED,
 
-    /** HANDOFF received; obligation transferred to a new debtor. A child Commitment was created. */
+    /**
+     * HANDOFF received; obligation transferred to a new debtor. A child Commitment was created.
+     *
+     * <p><strong>Terminal state.</strong> This commitment is closed. The active obligation lives
+     * in the child Commitment (state {@code OPEN}), not here.
+     * Use {@code CommitmentStore.findByCorrelationId()} to locate the child — it returns the
+     * child OPEN commitment after a HANDOFF, not this DELEGATED parent.
+     *
+     * <p><strong>Cross-system warning:</strong> {@code WorkItemStatus.DELEGATED} in
+     * {@code casehub-work} (refs casehubio/work#240) is <em>non-terminal</em> —
+     * it represents a pre-acceptance hold, not a closed obligation.
+     * Do not conflate the two when writing integration code that crosses both systems.
+     */
     DELEGATED,
 
     /** Deadline exceeded with no response; infrastructure-generated terminal state. */
