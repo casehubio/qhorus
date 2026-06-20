@@ -72,4 +72,28 @@ class SlackInboundNormaliserTest {
         NormalisedMessage result = normaliser.normalise(channel, msg);
         assertThat(result.correlationId()).isEqualTo(corrId);
     }
+
+    @Test
+    void slashCommand_producesCommand() {
+        InboundHumanMessage msg = new InboundHumanMessage(
+                "U123", "/approve", Instant.now(), Map.of("slack-ts", "1.1"), null, null);
+        NormalisedMessage result = normaliser.normalise(channel, msg);
+        assertThat(result.type()).isEqualTo(MessageType.COMMAND);
+    }
+
+    @Test
+    void slashCommand_nullContent_doesNotThrowNpe_producesQuery() {
+        InboundHumanMessage msg = new InboundHumanMessage(
+                "U123", null, Instant.now(), Map.of("slack-ts", "1.1"), null, null);
+        NormalisedMessage result = normaliser.normalise(channel, msg);
+        assertThat(result.type()).isEqualTo(MessageType.QUERY);
+    }
+
+    @Test
+    void slashCommand_emptyString_producesQuery() {
+        InboundHumanMessage msg = new InboundHumanMessage(
+                "U123", "", Instant.now(), Map.of("slack-ts", "1.1"), null, null);
+        NormalisedMessage result = normaliser.normalise(channel, msg);
+        assertThat(result.type()).isEqualTo(MessageType.QUERY);
+    }
 }
