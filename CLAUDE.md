@@ -242,6 +242,7 @@ casehub-qhorus/
 │       │   ├── QhorusChannelBackend.java        — default AgentChannelBackend; registry anchor for qhorus-internal slot; post() is a deliberate no-op (fanOut skips this backend; persistence already happened in dispatch())
 │       │   ├── DefaultInboundNormaliser.java    — @DefaultBean, always QUERY, human: sender prefix; passes correlationId through; nulls inReplyTo/artefactRefs/target
 │       │   ├── InProcessMessageBus.java         — @DefaultBean MessageObserver: fires CDI Event<MessageReceivedEvent> async; LOCAL scope; fast path for embedded harnesses
+│       │   ├── QhorusCloudEventAdapter.java     — @ApplicationScoped; @ObservesAsync MessageReceivedEvent → fires Event<CloudEvent>.fireAsync(); bridges Qhorus dispatch to the CloudEvents CDI bus without coupling observers to Qhorus types; type=io.casehub.qhorus.message.<msgtype>, source=/casehub-qhorus/channel/<id>, tenancyid extension from event (not CurrentPrincipal); CloudEvent on classpath via casehub-qhorus-api → casehub-platform-api → cloudevents-core. Refs #279.
 │       │   └── DuplicateParticipatingBackendException.java
 │       └── api/
 │           ├── AgentCardResource.java   — GET /.well-known/agent-card.json (@UnlessBuildProperty); AgentCard record has tenancyId field reflecting CurrentPrincipal.tenancyId() — Qhorus-specific extension to the A2A spec; Refs #264
