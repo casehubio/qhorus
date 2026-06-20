@@ -157,8 +157,12 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
             return;
         }
 
-        // Cache new thread root — only on first post for this correlationId
-        if (message.correlationId() != null && threadTs == null && result.ts() != null) {
+        boolean isTerminal = message.type() == DONE || message.type() == FAILURE || message.type() == DECLINE;
+
+        // Cache new thread root — only on first post for a non-terminal correlationId.
+        // Terminal types (DONE/FAILURE/DECLINE) are about to evict the entry; writing then
+        // immediately deleting is a pointless persist+delete cycle.
+        if (message.correlationId() != null && threadTs == null && result.ts() != null && !isTerminal) {
             UUID corrId = message.correlationId();
             threadCache.computeIfAbsent(channel.id(), k -> new ConcurrentHashMap<>())
                     .put(corrId, result.ts());
@@ -168,8 +172,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         // Evict on terminal commitment: DONE/FAILURE/DECLINE.
         // HANDOFF: do NOT evict — delegated agent continues in the same thread.
         // RESPONSE: do NOT evict — human may reply in the same Slack thread.
-        if ((message.type() == DONE || message.type() == FAILURE || message.type() == DECLINE)
-                && message.correlationId() != null) {
+        if (isTerminal && message.correlationId() != null) {
             UUID corrId = message.correlationId();
             Map<UUID, String> channelThreads = threadCache.get(channel.id());
             if (channelThreads != null) channelThreads.remove(corrId);

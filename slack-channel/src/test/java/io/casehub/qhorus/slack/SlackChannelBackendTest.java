@@ -195,6 +195,46 @@ class SlackChannelBackendTest {
     }
 
     @Test
+    void post_doneMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
+        UUID corrId = UUID.randomUUID();
+        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
+        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
+
+        backend.post(channelRef, outbound(MessageType.DONE, corrId, "Done!"));
+
+        verify(threadCacheStore, never()).save(any(), any(), any());
+        verify(threadCacheStore).delete(channelId, corrId);
+        assertThat(backend.threadCache).doesNotContainKey(channelId);
+    }
+
+    @Test
+    void post_failureMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
+        UUID corrId = UUID.randomUUID();
+        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
+        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
+
+        backend.post(channelRef, outbound(MessageType.FAILURE, corrId, "Failed"));
+
+        verify(threadCacheStore, never()).save(any(), any(), any());
+        verify(threadCacheStore).delete(channelId, corrId);
+    }
+
+    @Test
+    void post_declineMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
+        UUID corrId = UUID.randomUUID();
+        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
+        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
+                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
+
+        backend.post(channelRef, outbound(MessageType.DECLINE, corrId, "Declined"));
+
+        verify(threadCacheStore, never()).save(any(), any(), any());
+        verify(threadCacheStore).delete(channelId, corrId);
+    }
+
+    @Test
     void post_slackApiFailure_logsWarnNoMutation() {
         UUID corrId = UUID.randomUUID();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
