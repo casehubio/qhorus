@@ -288,6 +288,28 @@ class SlackChannelBackendTest {
         verify(threadCacheStore).save(eq(channelId), any(UUID.class), eq(rootTs));
     }
 
+    @Test
+    void evict_removesFromAllInMemoryMaps() {
+        UUID corrId = UUID.randomUUID();
+        String slackChId = "C999";
+        SlackBotBinding b = new SlackBotBinding();
+        b.channelId = channelId;
+        b.slackChannelId = slackChId;
+        b.workspaceId = "T999";
+        b.createdAt = java.time.Instant.now();
+
+        backend.bindingCache.put(channelId, b);
+        backend.slackToChannel.put(slackChId, channelRef);
+        backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .put(corrId, "1.1");
+
+        backend.evict(channelId);
+
+        assertThat(backend.bindingCache).doesNotContainKey(channelId);
+        assertThat(backend.slackToChannel).doesNotContainKey(slackChId);
+        assertThat(backend.threadCache).doesNotContainKey(channelId);
+    }
+
     // --- helpers ---
 
     private SlackBotBinding binding() {

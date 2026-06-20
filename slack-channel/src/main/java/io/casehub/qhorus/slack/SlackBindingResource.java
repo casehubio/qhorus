@@ -91,14 +91,10 @@ public class SlackBindingResource {
     @DELETE
     @Path("/{channelId}")
     public Response delete(@PathParam("channelId") UUID channelId) {
-        // Read binding from cache BEFORE DB delete to access slackChannelId
-        SlackBotBinding binding = backend.bindingCache.get(channelId);
-        bindingStore.deleteByChannelId(channelId);
+        backend.evict(channelId);
         gateway.deregisterBackend(channelId, SlackChannelBackend.BACKEND_ID);
-        backend.bindingCache.remove(channelId);
-        if (binding != null) backend.slackToChannel.remove(binding.slackChannelId);
-        backend.threadCache.remove(channelId);
-        // DB thread cache rows intentionally NOT deleted — TTL cleanup handles them
+        bindingStore.deleteByChannelId(channelId);
+        // DB thread cache rows intentionally NOT deleted — TTL cleanup handles them.
         return Response.noContent().build();
     }
 }

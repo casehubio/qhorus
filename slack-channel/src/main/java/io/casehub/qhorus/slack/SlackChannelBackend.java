@@ -231,6 +231,17 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         return CompletableFuture.completedFuture(null);
     }
 
+    /**
+     * Evicts in-memory routing state for the channel (in-memory only).
+     * Called from SlackBindingResource on admin unbinding.
+     * DB thread cache rows are left for TTL cleanup — in-flight posts still return early cleanly.
+     */
+    void evict(UUID channelId) {
+        SlackBotBinding binding = bindingCache.remove(channelId);
+        if (binding != null) slackToChannel.remove(binding.slackChannelId);
+        threadCache.remove(channelId);
+    }
+
     /** Called by ChannelGateway on channel deletion — removes all state for the channel. */
     @Override
     public void close(ChannelRef channel) {
