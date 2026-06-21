@@ -55,7 +55,12 @@ public class QhorusCloudEventAdapter {
     }
 
     public void onMessageReceived(@ObservesAsync MessageReceivedEvent event) {
-        cloudEventBus.fireAsync(toCloudEvent(event));
+        cloudEventBus.fireAsync(toCloudEvent(event))
+                .exceptionally(ex -> {
+                    LOG.warnf(ex, "CloudEvent dispatch failed for channel=%s type=%s",
+                            event.channelId(), event.messageType());
+                    return null;
+                });
     }
 
     private CloudEvent toCloudEvent(MessageReceivedEvent event) {

@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import io.casehub.connectors.ConnectorMessage;
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
+import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
 import io.casehub.qhorus.api.gateway.ChannelRef;
@@ -136,8 +138,8 @@ class ConnectorChannelBackendTest {
         when(channelService.findByConnectorKey(InboundConnectorIds.TWILIO_SMS, "+1234"))
                 .thenReturn(Optional.of(channel(channelId, "sms-bob")));
 
-        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, "+1234", "+9999",
-                "hello world", Instant.now(), Map.of());
+        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+1234", "+9999",
+                "hello world", List.of(), Instant.now(), Map.of(), null);
         backend.onInboundMessage(msg);
 
         ArgumentCaptor<InboundHumanMessage> captor = ArgumentCaptor.forClass(InboundHumanMessage.class);
@@ -153,8 +155,8 @@ class ConnectorChannelBackendTest {
     void onInboundMessage_noChannelFound_doesNotThrow_andIncrementsCounter() {
         when(channelService.findByConnectorKey(any(), any())).thenReturn(Optional.empty());
 
-        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, "+5555", "+9000",
-                "hi", Instant.now(), Map.of());
+        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+5555", "+9000",
+                "hi", List.of(), Instant.now(), Map.of(), null);
 
         assertThatCode(() -> backend.onInboundMessage(msg)).doesNotThrowAnyException();
         verifyNoInteractions(gateway);

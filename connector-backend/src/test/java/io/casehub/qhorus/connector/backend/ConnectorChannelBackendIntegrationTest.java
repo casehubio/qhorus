@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -22,6 +23,7 @@ import org.mockito.Mockito;
 import io.casehub.connectors.ConnectorMessage;
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
+import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
@@ -79,8 +81,8 @@ class ConnectorChannelBackendIntegrationTest {
 
     @Test
     void inboundMessage_routesToMessageService() {
-        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, "+15551110000",
-                "+14155552671", "I need help", Instant.now(), Map.of());
+        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+15551110000",
+                "+14155552671", "I need help", List.of(), Instant.now(), Map.of(), null);
 
         // Call through CDI proxy — synchronous; no async waiting required.
         backend.onInboundMessage(msg);
@@ -100,8 +102,8 @@ class ConnectorChannelBackendIntegrationTest {
         // onInboundMessage returns CompletionStage<Void>; join() waits for observer completion
         // before asserting. ConnectorChannelBackend is in main sources — ArC registers its
         // @ObservesAsync method at build time, so fireAsync() reliably delivers the event.
-        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, "+15551110000",
-                "+14155552671", "CDI wiring check", Instant.now(), Map.of());
+        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+15551110000",
+                "+14155552671", "CDI wiring check", List.of(), Instant.now(), Map.of(), null);
 
         // 2 s: the observer does a single map lookup and one method call; generous budget for CI.
         inboundMessageEvent.fireAsync(msg).toCompletableFuture().get(2, TimeUnit.SECONDS);
@@ -116,8 +118,8 @@ class ConnectorChannelBackendIntegrationTest {
     void unknownSender_noChannelBound_discardCounterIncremented() {
         double before = backend.discardedCount(InboundConnectorIds.TWILIO_SMS);
 
-        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, "+99999",
-                "+14155552671", "hello", Instant.now(), Map.of());
+        InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+99999",
+                "+14155552671", "hello", List.of(), Instant.now(), Map.of(), null);
         backend.onInboundMessage(msg);
 
         verify(messageService, never()).dispatch(any());

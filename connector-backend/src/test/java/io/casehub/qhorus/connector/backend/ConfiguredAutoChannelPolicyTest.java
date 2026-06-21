@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.connectors.InboundConnectorIds;
+import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.channel.ChannelSlugValidator;
@@ -24,13 +26,13 @@ class ConfiguredAutoChannelPolicyTest {
     private ConfiguredAutoChannelPolicy policy;
 
     private InboundMessage smsMsg(String sender) {
-        return new InboundMessage(InboundConnectorIds.TWILIO_SMS, sender,
-                "+14155550000", "hello", Instant.now(), Map.of());
+        return new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, sender,
+                "+14155550000", "hello", List.of(), Instant.now(), Map.of(), null);
     }
 
     private InboundMessage emailMsg(String sender) {
-        return new InboundMessage(InboundConnectorIds.EMAIL, sender,
-                "support@company.com", "hello", Instant.now(), Map.of());
+        return new InboundMessage(InboundConnectorIds.EMAIL, InboundConnectorTypes.EMAIL, sender,
+                "support@company.com", "hello", List.of(), Instant.now(), Map.of(), null);
     }
 
     @BeforeEach
@@ -110,8 +112,8 @@ class ConfiguredAutoChannelPolicyTest {
 
     @Test
     void unknownConnector_noEntry_returnsEmpty() {
-        InboundMessage slackMsg = new InboundMessage("slack-inbound", "U12345",
-                "C67890", "hi", Instant.now(), Map.of());
+        InboundMessage slackMsg = new InboundMessage(InboundConnectorIds.SLACK_INBOUND, InboundConnectorTypes.SLACK, "U12345",
+                "C67890", "hi", List.of(), Instant.now(), Map.of(), null);
         assertThat(policy.onFirstContact(slackMsg, "C67890")).isEmpty();
     }
 
@@ -157,8 +159,8 @@ class ConfiguredAutoChannelPolicyTest {
         when(waEntry.semantic()).thenReturn(Optional.empty());
         when(config.entries()).thenReturn(Map.of(InboundConnectorIds.WHATSAPP, waEntry));
 
-        InboundMessage waMsg = new InboundMessage(InboundConnectorIds.WHATSAPP,
-                "+44791100001", "+14155550000", "hi", Instant.now(), Map.of());
+        InboundMessage waMsg = new InboundMessage(InboundConnectorIds.WHATSAPP, InboundConnectorTypes.WHATSAPP,
+                "+44791100001", "+14155550000", "hi", List.of(), Instant.now(), Map.of(), null);
 
         Optional<AutoChannelSpec> result = policy.onFirstContact(waMsg, "+44791100001");
 

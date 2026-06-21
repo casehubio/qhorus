@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -18,6 +19,7 @@ import org.mockito.Mockito;
 
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
+import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
@@ -70,8 +72,8 @@ class ConcurrentAutoChannelTest {
 
         double autoCreatedBefore = backend.autoCreatedCount(CONNECTOR);
 
-        InboundMessage msg1 = new InboundMessage(CONNECTOR, SENDER, "+14155550000", "first", Instant.now(), Map.of());
-        InboundMessage msg2 = new InboundMessage(CONNECTOR, SENDER, "+14155550000", "second", Instant.now(), Map.of());
+        InboundMessage msg1 = new InboundMessage(CONNECTOR, InboundConnectorTypes.SMS, SENDER, "+14155550000", "first", List.of(), Instant.now(), Map.of(), null);
+        InboundMessage msg2 = new InboundMessage(CONNECTOR, InboundConnectorTypes.SMS, SENDER, "+14155550000", "second", List.of(), Instant.now(), Map.of(), null);
 
         CompletableFuture<Void> f1 = CompletableFuture.runAsync(() -> backend.onInboundMessage(msg1));
         CompletableFuture<Void> f2 = CompletableFuture.runAsync(() -> backend.onInboundMessage(msg2));

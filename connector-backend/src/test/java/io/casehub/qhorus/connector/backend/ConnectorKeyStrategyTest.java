@@ -3,6 +3,7 @@ package io.casehub.qhorus.connector.backend;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ import io.casehub.connectors.InboundMessage;
 class ConnectorKeyStrategyTest {
 
     private InboundMessage msg(String connectorId, String senderId, String channelRef) {
-        return new InboundMessage(connectorId, senderId, channelRef, "content", Instant.now(), Map.of());
+        return new InboundMessage(connectorId, "test-type", senderId, channelRef, "content", List.of(), Instant.now(), Map.of(), null);
     }
 
     @Test

@@ -318,7 +318,9 @@ class SlackChannelBackendTest {
 
         io.casehub.connectors.InboundMessage msg = new io.casehub.connectors.InboundMessage(
             io.casehub.connectors.InboundConnectorIds.SLACK_INBOUND,
-            "U123", slackChannelId, "hello", java.time.Instant.now(), meta);
+            io.casehub.connectors.InboundConnectorTypes.SLACK,
+            "U123", slackChannelId, "hello", java.util.List.of(),
+            java.time.Instant.now(), meta, null);
 
         backend.onInboundMessage(msg).toCompletableFuture().join();
 

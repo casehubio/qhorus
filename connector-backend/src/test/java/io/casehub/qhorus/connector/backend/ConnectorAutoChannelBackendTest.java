@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import org.mockito.Mockito;
 import io.casehub.connectors.ConnectorMessage;
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
+import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
@@ -71,7 +73,7 @@ class ConnectorAutoChannelBackendTest {
     }
 
     private InboundMessage smsMsg(String sender, String content) {
-        return new InboundMessage(CONNECTOR, sender, "+14155550000", content, Instant.now(), Map.of());
+        return new InboundMessage(CONNECTOR, InboundConnectorTypes.SMS, sender, "+14155550000", content, List.of(), Instant.now(), Map.of(), null);
     }
 
     private AutoChannelSpec smsSpec(String sender) {
