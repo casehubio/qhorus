@@ -77,7 +77,7 @@ class ToolErrorHandlingTest {
                          "params":{"protocolVersion":"2024-11-05","capabilities":{},
                                    "clientInfo":{"name":"test","version":"1"}}}
                         """)
-                .when().post("/mcp")
+                .when().post("/qhorus")
                 .then().statusCode(200)
                 .extract().header("Mcp-Session-Id");
     }
@@ -100,7 +100,7 @@ class ToolErrorHandlingTest {
                                    "arguments":{"channel":"http-test-nonexistent-1234",
                                                 "caller_instance_id":"any"}}}
                         """)
-                .when().post("/mcp")
+                .when().post("/qhorus")
                 .then()
                 .statusCode(200)
                 // Tool-level error — NOT a JSON-RPC protocol error
@@ -123,7 +123,7 @@ class ToolErrorHandlingTest {
                                                 "type":"status",
                                                 "content":"hello"}}}
                         """)
-                .when().post("/mcp")
+                .when().post("/qhorus")
                 .then()
                 .statusCode(200)
                 .body("error", nullValue())

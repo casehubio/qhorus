@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
+import io.quarkiverse.mcp.server.McpServer;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
@@ -59,6 +60,7 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
  * readable errors without changing the happy-path return types of the 37
  * structured-return tools. See ADR-0001.
  */
+@McpServer("qhorus")
 @UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @ApplicationScoped

@@ -15,6 +15,7 @@ import jakarta.transaction.Transactional;
 
 import org.jboss.logging.Logger;
 
+import io.quarkiverse.mcp.server.McpServer;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
@@ -76,6 +77,7 @@ import io.smallrye.mutiny.Uni;
  * {@link IllegalStateException}) are automatically wrapped in
  * {@link io.quarkiverse.mcp.server.ToolCallException} by the quarkus-mcp-server interceptor.
  */
+@McpServer("qhorus")
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @ApplicationScoped
