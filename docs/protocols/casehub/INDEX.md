@@ -61,6 +61,7 @@
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [event-content-free-signal-type.md](event-content-free-signal-type.md) | Informatory role defines observe channel membership — STATUS for content-bearing observations (no expected reply), EVENT for content-free signals; observe channel accepts EVENT and STATUS per PLATFORM.md | All MessageDispatch.Builder call sites; connector-backend |
+| [command-obligation-verification-type-check.md](command-obligation-verification-type-check.md) | Verify COMMAND obligation outcomes by response-type inspection ({DONE,FAILURE,DECLINE}), not CommitmentStore state — RESPONSE fulfills any commitment via correlationId | Evidential verification / Zone 3 audit tooling built on casehub-qhorus |
 
 ## A2A / SSE
 
