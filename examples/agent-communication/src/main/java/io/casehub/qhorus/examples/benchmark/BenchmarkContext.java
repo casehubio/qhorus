@@ -18,5 +18,6 @@ public record BenchmarkContext(
         UUID artefactUuid,       // V1: ghost artefact UUID (never created in DataStore)
         UUID observedChannelId,  // V2: channel with 0 messages
         String priorCorrId,      // V3: correlationId with pre-planted FAILURE commitment
-        String expectedToken     // V4: UUID token in message 3 of data channel
+        String expectedToken,    // V4: UUID token in message 3 of data channel
+        String benchmarkCorrId   // All: corrId of the Zone 2 COMMAND; Zone 3 checks this commitment
 ) {}
