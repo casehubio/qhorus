@@ -28,16 +28,25 @@ class CommitmentAttestationPolicyTest {
     }
 
     @Test
-    void functionalInterface_lambdaCompiles() {
-        CommitmentAttestationPolicy p = (type, actorId) -> Optional
+    void lambda_threeArgForm_compiles() {
+        CommitmentAttestationPolicy p = (type, actorId, ctx) -> Optional
                 .of(new AttestationOutcome(AttestationVerdict.SOUND, 1.0, actorId, ActorType.AGENT));
         Optional<AttestationOutcome> result = p.attestationFor(MessageType.DONE, "agent-a");
         assertTrue(result.isPresent());
     }
 
     @Test
+    void twoArgDefault_delegatesToThreeArg_withNullContext() {
+        CommitmentAttestationPolicy p = (type, actorId, ctx) -> {
+            assertNull(ctx); // default 2-arg path passes null context
+            return Optional.empty();
+        };
+        assertTrue(p.attestationFor(MessageType.DONE, "agent-a").isEmpty());
+    }
+
+    @Test
     void policy_canReturnEmpty_forUnwantedTypes() {
-        CommitmentAttestationPolicy p = (type, actorId) -> Optional.empty();
+        CommitmentAttestationPolicy p = (type, actorId, ctx) -> Optional.empty();
         assertTrue(p.attestationFor(MessageType.DONE, "agent-a").isEmpty());
     }
 
@@ -48,6 +57,7 @@ class CommitmentAttestationPolicyTest {
         when(att.doneConfidence()).thenReturn(0.7);
         when(att.failureConfidence()).thenReturn(0.6);
         when(att.declineConfidence()).thenReturn(0.4);
+        when(att.responseConfidence()).thenReturn(0.3);
         QhorusConfig cfg = mock(QhorusConfig.class);
         when(cfg.attestation()).thenReturn(att);
         StoredCommitmentAttestationPolicy p = new StoredCommitmentAttestationPolicy();
@@ -111,8 +121,24 @@ class CommitmentAttestationPolicyTest {
     }
 
     @Test
-    void stored_response_returnsEmpty() {
-        assertTrue(policyWithDefaults().attestationFor(MessageType.RESPONSE, "agent-a").isEmpty());
+    void stored_response_returnsFlagged_withResponseConfidence_fromSystem() {
+        // RESPONSE on a COMMAND obligation uses wrong vocabulary — FLAGGED with low confidence
+        QhorusConfig.Attestation att = mock(QhorusConfig.Attestation.class);
+        when(att.doneConfidence()).thenReturn(0.7);
+        when(att.failureConfidence()).thenReturn(0.6);
+        when(att.declineConfidence()).thenReturn(0.4);
+        when(att.responseConfidence()).thenReturn(0.3);
+        QhorusConfig cfg = mock(QhorusConfig.class);
+        when(cfg.attestation()).thenReturn(att);
+        StoredCommitmentAttestationPolicy p = new StoredCommitmentAttestationPolicy();
+        p.config = cfg;
+
+        var result = p.attestationFor(MessageType.RESPONSE, "agent-b");
+        assertTrue(result.isPresent());
+        assertEquals(AttestationVerdict.FLAGGED, result.get().verdict());
+        assertEquals(0.3, result.get().confidence(), 1e-9);
+        assertEquals("system", result.get().attestorId());
+        assertEquals(ActorType.SYSTEM, result.get().attestorType());
     }
 
     @Test

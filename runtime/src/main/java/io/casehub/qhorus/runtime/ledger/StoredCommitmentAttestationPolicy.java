@@ -9,6 +9,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
+import io.casehub.qhorus.api.spi.CommitmentContext;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.quarkus.arc.DefaultBean;
 
@@ -25,6 +26,8 @@ import io.quarkus.arc.DefaultBean;
  * attestorId = "system"</li>
  * <li>DECLINE → FLAGGED, confidence from {@code casehub.qhorus.attestation.decline-confidence} (default 0.4),
  * attestorId = "system"</li>
+ * <li>RESPONSE → FLAGGED, confidence from {@code casehub.qhorus.attestation.response-confidence} (default 0.3),
+ * attestorId = "system" — wrong vocabulary for a COMMAND obligation (PP-20260623-fd69f3)</li>
  * <li>All other types → empty (no attestation)</li>
  * </ul>
  *
@@ -33,9 +36,11 @@ import io.quarkus.arc.DefaultBean;
  * {@code recencyWeight × confidence}. Values below 1.0 reflect epistemic caution —
  * a single message outcome is not fully diagnostic of trustworthiness. DECLINE
  * receives the lowest confidence because refusing may be appropriate professional judgment.
+ * RESPONSE receives the lowest confidence of all because it is ambiguous — the agent may
+ * not have understood the vocabulary requirement rather than being deceptive.
  *
  * <p>
- * Refs #123.
+ * Refs #123, #304, #305.
  */
 @DefaultBean
 @ApplicationScoped
@@ -46,7 +51,7 @@ public class StoredCommitmentAttestationPolicy implements CommitmentAttestationP
 
     @Override
     public Optional<AttestationOutcome> attestationFor(final MessageType terminalType,
-            final String resolvedActorId) {
+            final String resolvedActorId, final CommitmentContext context) {
         return switch (terminalType) {
             case DONE -> Optional.of(new AttestationOutcome(
                     AttestationVerdict.SOUND,
@@ -61,6 +66,11 @@ public class StoredCommitmentAttestationPolicy implements CommitmentAttestationP
             case DECLINE -> Optional.of(new AttestationOutcome(
                     AttestationVerdict.FLAGGED,
                     config.attestation().declineConfidence(),
+                    "system",
+                    ActorType.SYSTEM));
+            case RESPONSE -> Optional.of(new AttestationOutcome(
+                    AttestationVerdict.FLAGGED,
+                    config.attestation().responseConfidence(),
                     "system",
                     ActorType.SYSTEM));
             default -> Optional.empty();

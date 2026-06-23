@@ -178,10 +178,11 @@ casehub-qhorus/
 │       │   ├── CommitmentExpiredEvent.java — CDI event record fired by CommitmentService.expireOverdue() once per expired commitment; carries commitmentId, correlationId, channelId, obligor (nullable), requester, expiresAt (stall duration signal); Refs #281
 │       │   └── CommitmentState.java     — (existing, unchanged)
 │       └── spi/                         — consumer-facing SPI interfaces (per consumer-spi-placement protocol); @DefaultBean impls in runtime/
-│           ├── CommitmentAttestationPolicy.java — @FunctionalInterface SPI: determines LedgerAttestation for DONE/FAILURE/DECLINE; AttestationOutcome record; Refs #123
+│           ├── CommitmentAttestationPolicy.java — SPI: determines LedgerAttestation for DONE/FAILURE/DECLINE/RESPONSE; 3-arg attestationFor(MessageType, String, CommitmentContext) is abstract; 2-arg default delegates with null context; AttestationOutcome record; Refs #123, #304
 │           ├── InstanceActorIdProvider.java     — @FunctionalInterface SPI: maps instanceId → ledger actorId; Refs #124
 │           ├── ObligorTrustPolicy.java          — @FunctionalInterface SPI: permits(ObligorTrustContext) — called for COMMAND + named non-prefixed target; Refs #213
-│           └── ObligorTrustContext.java         — record: obligorId, channelId (UUID), channelName — passed to ObligorTrustPolicy.permits()
+│           ├── ObligorTrustContext.java         — record: obligorId, channelId (UUID), channelName — passed to ObligorTrustPolicy.permits()
+│           └── CommitmentContext.java           — record: correlationId, channelId (UUID), channelName (nullable), commitmentId (UUID, nullable); passed to CommitmentAttestationPolicy.attestationFor() for evidential checks; Refs #304
 ├── runtime/                             — Extension runtime module
 │   └── src/main/java/io/casehub/qhorus/runtime/
 │       ├── config/QhorusConfig.java     — @ConfigMapping(prefix = "casehub.qhorus"); A2a.SseSettings: heartbeat-interval-seconds (default 15s), max-duration-seconds (default 1800s)
@@ -215,6 +216,10 @@ casehub-qhorus/
 │       │   ├── InboundTenancyContext.java          — @RequestScoped holder populated by TenancyContextFilter from X-Tenancy-ID header; null/blank → DEFAULT_TENANT_ID; Refs #265
 │       │   ├── TenancyContextFilter.java           — @Provider @PreMatching @Priority(100) @ApplicationScoped JAX-RS filter; reads X-Tenancy-ID, calls ctx.set(); runs for ALL HTTP requests; Refs #265
 │       │   └── QhorusInboundCurrentPrincipal.java  — @ApplicationScoped @DefaultBean CurrentPrincipal; reads from InboundTenancyContext; ContextNotActiveException catch → DEFAULT_TENANT_ID (background-thread safety); actorId()="anonymous"; displaced by any @Alternative (e.g. FixedCurrentPrincipal in tests, OidcCurrentPrincipal @Priority(100) in OIDC deployments); X-Tenancy-ID is NOT a security boundary; Refs #265, #269
+│       ├── audit/
+│       │   ├── BenchmarkContext.java    — record: variant-specific ground truth for Zone 3 evidential checks (variantId, artefactUuid, observedChannelId, priorCorrId, expectedToken, benchmarkCorrId); Refs #303
+│       │   ├── BenchmarkViolation.java  — record: (variantId, invariant, description, evidence); I_ec or I_df; Refs #303
+│       │   └── EvidentialChecker.java   — @DefaultBean @ApplicationScoped; check(String messageType, String content, BenchmarkContext) — benchmark path (V1–V4); checkObligation(String terminalType, CommitmentContext) — attestation path vocabulary check; published in io.casehub:casehub-qhorus; Refs #303, #304
 │       ├── ledger/
 │       │   ├── MessageLedgerEntry.java              — JPA JOINED subclass of LedgerEntry; records all 9 message types
 │       │   ├── MessageLedgerEntryRepository.java    — qhorus-scoped queries only (FROM MessageLedgerEntry); does NOT implement LedgerEntryRepository; no @Priority; all query methods except findByMessageId and findByMessageIds accept String tenancyId (null → DEFAULT_TENANT_ID); methods: listEntries (7-param 6-param-compat + 9-param; both gain tenancyId), findAllByCorrelationId, findAncestorChain, findStalledCommands, countByOutcome, findByActorIdInChannel, findEventsSince, findLatestByCorrelationId, findEarliestWithSubjectByCorrelationId, findByCorrelationIdAcrossChannels (all gain tenancyId); findByMessageId and findByMessageIds unchanged (PK-based); Refs #253, #262, #263
@@ -226,7 +231,7 @@ casehub-qhorus/
 │       │   ├── ReactiveMessageLedgerEntryRepository.java — @IfBuildProperty; qhorus-scoped reactive queries only; does NOT implement ReactiveLedgerEntryRepository; methods: findByChannelId(channelId, tenancyId), findLatestByCorrelationId(channelId, corrId, tenancyId), findEarliestWithSubjectByCorrelationId(corrId, tenancyId) (all tenant-scoped), findByMessageId(messageId) (PK — unchanged); Refs #253, #263
 │       │   ├── LedgerWriteService.java              — record(Channel, Message): writes entry for ALL 9 types; injects LedgerEntryRepository ledger (cross-dtype: save, findEntryById, saveAttestation; sequence now assigned by QhorusLedgerEntryRepository.save() — findLatestBySubjectId removed) + MessageLedgerEntryRepository messageRepo (findByMessageId, findEarliestWithSubjectByCorrelationId); instanceof guard in writeAttestation(); Refs #253, #255, #256
 │       │   ├── DefaultInstanceActorIdProvider.java  — @DefaultBean no-op identity impl of InstanceActorIdProvider (interface in api/spi/); replaced by Claudony's session→persona mapping
-│       │   ├── StoredCommitmentAttestationPolicy.java — @DefaultBean impl of CommitmentAttestationPolicy (interface in api/spi/): DONE→SOUND/0.7, FAILURE→FLAGGED/0.6, DECLINE→FLAGGED/0.4; config via casehub.qhorus.attestation.*
+│       │   ├── StoredCommitmentAttestationPolicy.java — @DefaultBean impl of CommitmentAttestationPolicy (interface in api/spi/): DONE→SOUND/0.7, FAILURE→FLAGGED/0.6, DECLINE→FLAGGED/0.4, RESPONSE→FLAGGED/0.3 (wrong vocabulary for COMMAND obligation); config via casehub.qhorus.attestation.* incl. response-confidence (default 0.3); Refs #123, #304, #305
 │       │   └── ReactiveLedgerWriteService.java      — reactive mirror of LedgerWriteService; two injections: ReactiveLedgerEntryRepository ledger + ReactiveMessageLedgerEntryRepository messageRepo; sequence assignment removed — now delegated to ReactiveLedgerEntryJpaRepository.save(); Refs #253, #256
 │       ├── QhorusEntityMapper.java      — @ApplicationScoped CDI bean: toChannelDetail(Channel, long), toTimelineEntry(Message); injects ObjectMapper — shared by QhorusMcpToolsBase and QhorusDashboardService
 │       ├── mcp/

@@ -23,6 +23,7 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
+import io.casehub.qhorus.api.spi.CommitmentContext;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
@@ -67,7 +68,7 @@ public class ReactiveLedgerWriteService {
 
     private static final Logger LOG = Logger.getLogger(ReactiveLedgerWriteService.class);
     private static final Set<MessageType> ATTESTATION_TYPES = Set.of(
-            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE);
+            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.RESPONSE);
 
     @Inject
     ReactiveLedgerEntryRepository ledger;          // cross-dtype: save, findLatestBySubjectId,
@@ -158,7 +159,7 @@ public class ReactiveLedgerWriteService {
                                                 && resolvedCausedByEntryId != null) {
                                             return writeAttestation(resolvedSubjectId,
                                                     resolvedCausedByEntryId, dispatch.type(),
-                                                    resolvedActorId, tenancyId)
+                                                    resolvedActorId, tenancyId, commitmentId)
                                                     .replaceWith(outcome);
                                         }
                                         return Uni.createFrom().item(outcome);
@@ -167,7 +168,8 @@ public class ReactiveLedgerWriteService {
     }
 
     private Uni<Void> writeAttestation(final UUID subjectId, final UUID causedByEntryId,
-            final MessageType type, final String actorId, final String tenancyId) {
+            final MessageType type, final String actorId, final String tenancyId,
+            final UUID commitmentId) {
         return ledger.findEntryById(causedByEntryId, tenancyId)
                 .flatMap(priorOpt -> {
                     // instanceof guard: causedByEntryId may reference any LedgerEntry subtype;
@@ -178,7 +180,9 @@ public class ReactiveLedgerWriteService {
                     if (!"COMMAND".equals(prior.messageType) && !"HANDOFF".equals(prior.messageType)) {
                         return Uni.createFrom().voidItem();
                     }
-                    final var outcomeOpt = attestationPolicy.attestationFor(type, actorId);
+                    final CommitmentContext ctx = new CommitmentContext(
+                            prior.correlationId, prior.channelId, null, commitmentId);
+                    final var outcomeOpt = attestationPolicy.attestationFor(type, actorId, ctx);
                     if (outcomeOpt.isEmpty()) {
                         return Uni.createFrom().voidItem();
                     }

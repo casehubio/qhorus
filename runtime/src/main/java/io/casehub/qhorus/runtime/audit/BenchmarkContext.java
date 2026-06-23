@@ -1,4 +1,4 @@
-package io.casehub.qhorus.examples.benchmark;
+package io.casehub.qhorus.runtime.audit;
 
 import java.util.UUID;
 
@@ -11,7 +11,7 @@ import java.util.UUID;
  * variant are null.
  *
  * <p>
- * Refs #297, #298.
+ * Refs #297, #298, #303.
  */
 public record BenchmarkContext(
         String variantId,

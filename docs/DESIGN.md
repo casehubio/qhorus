@@ -74,6 +74,29 @@ embedded harnesses: `fireAsync(MessageReceivedEvent)`. `MessageObserverDispatche
 (package-private static utility) is shared by both blocking and reactive services,
 enforces EVENT content null (PP-20260508-90428f), and isolates observer failures.
 
+### Commitment Attestation SPI (api module)
+
+`CommitmentAttestationPolicy` determines what `LedgerAttestation` to write when a message
+discharges a commitment. 3-arg abstract method: `attestationFor(MessageType, String resolvedActorId,
+CommitmentContext)`. A 2-arg default delegates with `null` context for backward compat.
+`StoredCommitmentAttestationPolicy` (default) returns SOUND/0.7 for DONE, FLAGGED/0.6 for FAILURE,
+FLAGGED/0.4 for DECLINE, FLAGGED/0.3 for RESPONSE (wrong vocabulary for a COMMAND obligation).
+
+`CommitmentContext` (in `api/spi/`) carries `correlationId`, `channelId`, `channelName` (nullable),
+`commitmentId` (nullable). Passed so evidential policy implementations can query the ledger before
+deciding verdict. Implementations must handle `null` defensively — the 2-arg default delegates with null.
+
+### Evidential Audit Package (runtime/audit/)
+
+`EvidentialChecker` (`@DefaultBean @ApplicationScoped`) is injectable by any consumer. Two entry points:
+- `check(String messageType, String content, BenchmarkContext)` — benchmark path (Zone 1–3 variant checks)
+- `checkObligation(String terminalType, CommitmentContext)` — attestation path vocabulary check (I_ec)
+
+`BenchmarkContext` carries variant-specific ground truth (artefactUuid, observedChannelId, priorCorrId,
+expectedToken, benchmarkCorrId). `BenchmarkViolation` is the output record (variantId, invariant,
+description, evidence). casehub-devtown injects `EvidentialChecker` directly for pre-attestation
+evidential checks (casehub-devtown#13).
+
 ### Channel Projection SPI (api module)
 
 `ChannelProjection<S>` (in `api/spi/`) is a pure left-fold over a channel's message
@@ -160,7 +183,7 @@ All services are `@ApplicationScoped`. Mutating methods are `@Transactional`.
 | `MessageService` | `runtime.message` | send (increments `replyCount`, updates `channel.lastActivityAt`), pollAfter (excludes EVENT), findById, findByCorrelationId |
 | `InstanceService` | `runtime.instance` | register (upsert + capability replacement), heartbeat, findByInstanceId, findByCapability, listAll, markStaleOlderThan |
 | `DataService` | `runtime.data` | store (create or chunked append), getByKey, getByUuid, listAll, claim, release, isGcEligible |
-| `LedgerWriteService` | `runtime.ledger` | Writes `AgentMessageLedgerEntry` on every structured EVENT; runs in `REQUIRES_NEW` transaction — failure is non-fatal and does not roll back `send_message` |
+| `LedgerWriteService` | `runtime.ledger` | Writes `MessageLedgerEntry` for ALL 9 message types; runs in `REQUIRES_NEW`; writes `LedgerAttestation` for DONE/FAILURE/DECLINE/RESPONSE (RESPONSE→FLAGGED/0.3 when prior entry is COMMAND — wrong vocabulary signal); passes `CommitmentContext` to `CommitmentAttestationPolicy` |
 | `ProjectionService` | `runtime.message` | Folds a channel's message history through a `ChannelProjection<S>` and returns `ProjectionResult<S>(state, lastMessageId)`. Four overloads: full, scoped-full, incremental (cursor from `lastMessageId`), scoped-incremental. Scope validation rejects conflicting `channelId` and `descending=true`. All reads via `MessageStore.scan()`. |
 
 ### Reactive services (`quarkus.qhorus.reactive.enabled=true`)

@@ -15,9 +15,9 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.examples.agent.AgentResponse;
 import io.casehub.qhorus.examples.agent.UnstructuredWorkerAgent;
 import io.casehub.qhorus.examples.agent.WorkerAgent;
-import io.casehub.qhorus.examples.benchmark.BenchmarkContext;
-import io.casehub.qhorus.examples.benchmark.BenchmarkViolation;
-import io.casehub.qhorus.examples.benchmark.EvidentialChecker;
+import io.casehub.qhorus.runtime.audit.BenchmarkContext;
+import io.casehub.qhorus.runtime.audit.BenchmarkViolation;
+import io.casehub.qhorus.runtime.audit.EvidentialChecker;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -229,8 +229,8 @@ class NormativeBenchmarkDemoTest {
                 "V1", GHOST_UUID, null, null, null, corrId);
 
         print("");
-        print("Zone 3: EvidentialChecker.check(response, ctx)");
-        final var violations = checker.check(response, ctx);
+        print("Zone 3: EvidentialChecker.check(response.messageType(), response.content(), ctx)");
+        final var violations = checker.check(response.messageType(), response.content(), ctx);
 
         if (violations.isEmpty()) {
             print("  Result: no violations — agent gave a correct honest response");

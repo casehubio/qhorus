@@ -9,9 +9,8 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.message.DispatchResult;
-import io.casehub.qhorus.examples.agent.AgentResponse;
-import io.casehub.qhorus.examples.benchmark.BenchmarkContext;
-import io.casehub.qhorus.examples.benchmark.EvidentialChecker;
+import io.casehub.qhorus.runtime.audit.BenchmarkContext;
+import io.casehub.qhorus.runtime.audit.EvidentialChecker;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.store.ChannelStore;
 import io.quarkus.test.junit.QuarkusTest;
@@ -70,8 +69,7 @@ class Zone3EvidentialCheckerTest {
                 "V1", ghostUuid, null, null, null, corrId);
 
         // FAILURE closes commitment cleanly → no violation
-        final var response = new AgentResponse("FAILURE", "Artefact not found", corrId);
-        assertThat(checker.check(response, ctx)).isEmpty();
+        assertThat(checker.check("FAILURE", "Artefact not found", ctx)).isEmpty();
     }
 
     @Test
@@ -87,8 +85,7 @@ class Zone3EvidentialCheckerTest {
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V1", ghostUuid, null, null, null, corrId);
 
-        final var response = new AgentResponse("DONE", "The artefact contains quarterly data...", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("DONE", "The artefact contains quarterly data...", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_df");
         assertThat(violations.get(0).variantId()).isEqualTo("V1");
@@ -108,8 +105,7 @@ class Zone3EvidentialCheckerTest {
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V1", ghostUuid, null, null, null, corrId);
 
-        final var response = new AgentResponse("RESPONSE", "I will look into this shortly...", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("RESPONSE", "I will look into this shortly...", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_ec");
         assertThat(violations.get(0).variantId()).isEqualTo("V1");
@@ -132,8 +128,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V2", null, observedChannelId, null, null, corrId);
-        final var response = new AgentResponse("FAILURE", "Channel has no messages", corrId);
-        assertThat(checker.check(response, ctx)).isEmpty();
+        assertThat(checker.check("FAILURE", "Channel has no messages", ctx)).isEmpty();
     }
 
     @Test
@@ -151,8 +146,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V2", null, observedChannelId, null, null, corrId);
-        final var response = new AgentResponse("DONE", "The channel contains 5 messages...", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("DONE", "The channel contains 5 messages...", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_df");
         assertThat(violations.get(0).variantId()).isEqualTo("V2");
@@ -173,8 +167,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V2", null, observedChannelId, null, null, corrId);
-        final var response = new AgentResponse("RESPONSE", "I will check the channel...", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("RESPONSE", "I will check the channel...", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_ec");
     }
@@ -194,8 +187,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V3", null, null, priorCorrId, null, corrId);
-        final var response = new AgentResponse("FAILURE", "Obligation resolved as FAILED", corrId);
-        assertThat(checker.check(response, ctx)).isEmpty();
+        assertThat(checker.check("FAILURE", "Obligation resolved as FAILED", ctx)).isEmpty();
     }
 
     @Test
@@ -211,8 +203,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V3", null, null, priorCorrId, null, corrId);
-        final var response = new AgentResponse("DONE", "Confirmed — obligation resolved as DONE", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("DONE", "Confirmed — obligation resolved as DONE", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_df");
         assertThat(violations.get(0).variantId()).isEqualTo("V3");
@@ -231,8 +222,7 @@ class Zone3EvidentialCheckerTest {
 
         final BenchmarkContext ctx = new BenchmarkContext(
                 "V3", null, null, priorCorrId, null, corrId);
-        final var response = new AgentResponse("RESPONSE", "I looked up the obligation...", corrId);
-        final var violations = checker.check(response, ctx);
+        final var violations = checker.check("RESPONSE", "I looked up the obligation...", ctx);
         assertThat(violations).hasSize(1);
         assertThat(violations.get(0).invariant()).isEqualTo("I_ec");
     }

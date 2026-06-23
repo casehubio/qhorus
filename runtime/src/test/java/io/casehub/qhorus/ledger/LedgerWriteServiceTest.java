@@ -71,10 +71,11 @@ class LedgerWriteServiceTest {
         when(enabledConfig.enabled()).thenReturn(true);
 
         // Default policy matching StoredCommitmentAttestationPolicy behaviour
-        attestationPolicy = (type, actorId) -> switch (type) {
+        attestationPolicy = (type, actorId, ctx) -> switch (type) {
             case DONE -> Optional.of(new AttestationOutcome(AttestationVerdict.SOUND, 0.7, actorId, ActorType.AGENT));
             case FAILURE -> Optional.of(new AttestationOutcome(AttestationVerdict.FLAGGED, 0.6, "system", ActorType.SYSTEM));
             case DECLINE -> Optional.of(new AttestationOutcome(AttestationVerdict.FLAGGED, 0.4, "system", ActorType.SYSTEM));
+            case RESPONSE -> Optional.of(new AttestationOutcome(AttestationVerdict.FLAGGED, 0.3, "system", ActorType.SYSTEM));
             default -> Optional.empty();
         };
         actorIdProvider = id -> id; // identity — default behaviour
@@ -456,6 +457,58 @@ class LedgerWriteServiceTest {
     }
 
     @Test
+    void record_response_withMatchingCommandEntry_writesFlaggedAttestation() {
+        // RESPONSE sent on a COMMAND's corrId uses wrong vocabulary — FLAGGED with low confidence
+        UUID channelId = UUID.randomUUID();
+        Channel ch = channel(channelId);
+
+        MessageLedgerEntry cmdEntry = new MessageLedgerEntry();
+        cmdEntry.id = UUID.randomUUID();
+        cmdEntry.messageId = 50L;
+        cmdEntry.subjectId = channelId;
+        cmdEntry.channelId = channelId;
+        cmdEntry.messageType = "COMMAND";
+        cmdEntry.correlationId = "corr-response-cmd";
+        cmdEntry.sequenceNumber = 1;
+        sharedEntries.add(cmdEntry);
+
+        recordWithReplyTo("RESPONSE", "I will look into this shortly", "agent-b",
+                "corr-response-cmd", null, ch, cmdEntry.messageId);
+
+        assertEquals(1, ledgerStub.savedAttestations.size());
+        LedgerAttestation a = ledgerStub.savedAttestations.get(0);
+        assertEquals(cmdEntry.id, a.ledgerEntryId);
+        assertEquals(channelId, a.subjectId);
+        assertEquals(AttestationVerdict.FLAGGED, a.verdict);
+        assertEquals(0.3, a.confidence, 1e-9);
+        assertEquals("system", a.attestorId);
+        assertEquals(ActorType.SYSTEM, a.attestorType);
+    }
+
+    @Test
+    void record_response_withMatchingQueryEntry_noAttestation() {
+        // RESPONSE on a QUERY is correct vocabulary — no attestation should fire
+        UUID channelId = UUID.randomUUID();
+        Channel ch = channel(channelId);
+
+        MessageLedgerEntry queryEntry = new MessageLedgerEntry();
+        queryEntry.id = UUID.randomUUID();
+        queryEntry.messageId = 51L;
+        queryEntry.subjectId = channelId;
+        queryEntry.channelId = channelId;
+        queryEntry.messageType = "QUERY";
+        queryEntry.correlationId = "corr-response-query";
+        queryEntry.sequenceNumber = 1;
+        sharedEntries.add(queryEntry);
+
+        recordWithReplyTo("RESPONSE", "Here are the results", "agent-b",
+                "corr-response-query", null, ch, queryEntry.messageId);
+
+        // Prior is QUERY, not COMMAND — guard prevents attestation
+        assertTrue(ledgerStub.savedAttestations.isEmpty());
+    }
+
+    @Test
     void record_handoff_doesNotWriteAttestation() {
         UUID channelId = UUID.randomUUID();
         Channel ch = channel(channelId);
@@ -547,7 +600,7 @@ class LedgerWriteServiceTest {
 
     @Test
     void record_customAttestationPolicy_empty_noAttestation() {
-        service.attestationPolicy = (type, actorId) -> Optional.empty();
+        service.attestationPolicy = (type, actorId, ctx) -> Optional.empty();
 
         UUID channelId = UUID.randomUUID();
         Channel ch = channel(channelId);

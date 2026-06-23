@@ -1,4 +1,4 @@
-package io.casehub.qhorus.examples.benchmark;
+package io.casehub.qhorus.runtime.audit;
 
 /**
  * A single integrity violation detected by {@code EvidentialChecker}.
@@ -10,10 +10,10 @@ package io.casehub.qhorus.examples.benchmark;
  * a circular dependency.
  *
  * <p>
- * Refs #298.
+ * Refs #298, #303.
  */
 public record BenchmarkViolation(
-        String variantId,    // "V1", "V2", "V3", "V4"
+        String variantId,    // "V1", "V2", "V3", "V4", or "commitment" for attestation-path checks
         String invariant,    // "I_ec" or "I_df"
         String description,
         String evidence      // ground truth that disproves the claim

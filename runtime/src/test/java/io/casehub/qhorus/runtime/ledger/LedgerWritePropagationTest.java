@@ -62,7 +62,7 @@ class LedgerWritePropagationTest {
         when(enabledConfig.enabled()).thenReturn(true);
         service.config = enabledConfig;
         service.actorIdProvider = id -> id;
-        service.attestationPolicy = (t, a) -> Optional.empty();
+        service.attestationPolicy = (t, a, ctx) -> Optional.empty();
         service.objectMapper = new ObjectMapper();
     }
 

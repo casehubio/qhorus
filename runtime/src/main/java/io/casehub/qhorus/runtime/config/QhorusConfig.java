@@ -181,5 +181,17 @@ public interface QhorusConfig {
          */
         @WithDefault("0.4")
         double declineConfidence();
+
+        /**
+         * Confidence score (0.0–1.0) for the FLAGGED attestation written when a RESPONSE
+         * message closes a COMMAND commitment (wrong vocabulary). Default: 0.3.
+         *
+         * <p>RESPONSE is query-fulfillment vocabulary — semantically wrong for a COMMAND
+         * obligation. Low confidence reflects that the agent may not have understood the
+         * vocabulary requirement rather than being deliberately deceptive.
+         * See PP-20260623-fd69f3.
+         */
+        @WithDefault("0.3")
+        double responseConfidence();
     }
 }

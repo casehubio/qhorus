@@ -24,6 +24,7 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
+import io.casehub.qhorus.api.spi.CommitmentContext;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 
 /**
@@ -85,7 +86,7 @@ public class LedgerWriteService {
 
     private static final Logger LOG = Logger.getLogger(LedgerWriteService.class);
     private static final Set<MessageType> ATTESTATION_TYPES = Set.of(
-            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE);
+            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.RESPONSE);
 
     @Inject
     public LedgerEntryRepository ledger;
@@ -187,14 +188,19 @@ public class LedgerWriteService {
         }
 
         // ── Attestation for terminal commitment types ─────────────────────────────
-        // Guard: only attest against COMMAND or HANDOFF entries — not STATUS, RESPONSE, etc.
+        // Guard: only attest against COMMAND or HANDOFF entries — not STATUS, EVENT, etc.
+        // RESPONSE is included: when an agent sends RESPONSE on a COMMAND's corrId, the
+        // commitment closes as FULFILLED but wrong vocabulary was used — write FLAGGED.
         // instanceof check is intentional: causedByEntryId may reference any LedgerEntry
         // subtype; attestation only makes sense for qhorus COMMAND/HANDOFF entries.
         if (ATTESTATION_TYPES.contains(dispatch.type()) && resolvedCausedByEntryId != null) {
             ledger.findEntryById(resolvedCausedByEntryId, tenancyId).ifPresent(prior -> {
                 if (prior instanceof MessageLedgerEntry priorMsg
                         && ("COMMAND".equals(priorMsg.messageType) || "HANDOFF".equals(priorMsg.messageType))) {
-                    writeAttestation(resolvedSubjectId, priorMsg, dispatch.type(), resolvedActorId, tenancyId);
+                    final CommitmentContext ctx = new CommitmentContext(
+                            priorMsg.correlationId, priorMsg.channelId, null, commitmentId);
+                    writeAttestation(resolvedSubjectId, priorMsg, dispatch.type(), resolvedActorId,
+                            tenancyId, ctx);
                 }
             });
         }
@@ -204,8 +210,9 @@ public class LedgerWriteService {
     }
 
     private void writeAttestation(final UUID subjectId, final MessageLedgerEntry commandEntry,
-            final MessageType terminalType, final String resolvedActorId, final String tenancyId) {
-        attestationPolicy.attestationFor(terminalType, resolvedActorId).ifPresent(outcome -> {
+            final MessageType terminalType, final String resolvedActorId, final String tenancyId,
+            final CommitmentContext context) {
+        attestationPolicy.attestationFor(terminalType, resolvedActorId, context).ifPresent(outcome -> {
             try {
                 final LedgerAttestation attestation = new LedgerAttestation();
                 attestation.ledgerEntryId = commandEntry.id;
