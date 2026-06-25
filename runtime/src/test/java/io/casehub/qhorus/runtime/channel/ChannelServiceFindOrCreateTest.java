@@ -93,7 +93,7 @@ class ChannelServiceFindOrCreateTest {
     void throwsWhenNoConnectorBinding() {
         // Use a valid slug name — no connector binding fields → should throw IAE
         String validName = "my-channel-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        ChannelCreateRequest noBinding = ChannelCreateRequest.simple(validName, ChannelSemantic.APPEND);
+        ChannelCreateRequest noBinding = ChannelCreateRequest.builder(validName).build();
         assertThatThrownBy(() -> channelService.findOrCreateWithBinding(noBinding))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("connector binding");

@@ -143,17 +143,16 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
             return Optional.empty();
         }
         AutoChannelSpec spec = specOpt.get();
-        ChannelCreateRequest req = new ChannelCreateRequest(
-                spec.channelName(),
-                spec.description(),
-                spec.semantic(),
-                null, null, null, null, null,
-                spec.allowedTypes(),
-                spec.deniedTypes(),
-                msg.connectorId(),
-                lookupKey,
-                spec.outboundConnectorId(),
-                spec.outboundDestination());
+        ChannelCreateRequest req = ChannelCreateRequest.builder(spec.channelName())
+                .description(spec.description())
+                .semantic(spec.semantic())
+                .allowedTypes(spec.allowedTypes())
+                .deniedTypes(spec.deniedTypes())
+                .inboundConnectorId(msg.connectorId())
+                .externalKey(lookupKey)
+                .outboundConnectorId(spec.outboundConnectorId())
+                .outboundDestination(spec.outboundDestination())
+                .build();
         try {
             FindOrCreateResult result = channelService.findOrCreateWithBinding(req);
             if (result.wasCreated()) {

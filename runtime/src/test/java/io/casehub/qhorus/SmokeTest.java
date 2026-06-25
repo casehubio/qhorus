@@ -16,6 +16,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.data.DataService;
@@ -67,8 +68,8 @@ class SmokeTest {
         assertEquals("online", alice.status);
 
         // 2. Create a channel — capture lastActivityAt at creation time
-        Channel channel = channelService.create("smoke-channel", "Smoke test channel",
-                ChannelSemantic.APPEND, null);
+        Channel channel = channelService.create(ChannelCreateRequest.builder("smoke-channel")
+                .description("Smoke test channel").build());
         var channelCreatedAt = channel.lastActivityAt;
 
         // Brief pause so lastActivityAt can advance after messaging

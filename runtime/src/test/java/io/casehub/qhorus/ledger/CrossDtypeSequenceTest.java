@@ -18,6 +18,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -58,7 +59,8 @@ class CrossDtypeSequenceTest {
 
         // 1. Create channel in its own committed transaction
         QuarkusTransaction.requiringNew().run(() ->
-                channelService.create(channelName, "Cross-dtype seq test", ChannelSemantic.APPEND, null));
+                channelService.create(ChannelCreateRequest.builder(channelName)
+                        .description("Cross-dtype seq test").build()));
 
         final UUID[] channelId = new UUID[1];
         QuarkusTransaction.requiringNew().run(() ->

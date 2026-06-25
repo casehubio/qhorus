@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Disabled;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ReactiveChannelService;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -24,7 +25,8 @@ class ReactiveChannelServiceTest extends ChannelServiceContractTest {
 
     @Override
     protected Channel create(String name, String desc, ChannelSemantic sem) {
-        return svc.create(name, desc, sem, null, null, null, null, null).await().indefinitely();
+        return svc.create(ChannelCreateRequest.builder(name)
+                .description(desc).semantic(sem).build()).await().indefinitely();
     }
 
     @Override

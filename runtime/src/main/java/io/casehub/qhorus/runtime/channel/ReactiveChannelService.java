@@ -10,7 +10,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.store.MessageStore;
 import io.casehub.qhorus.runtime.store.ReactiveChannelStore;
@@ -34,57 +33,11 @@ public class ReactiveChannelService {
 
     /** Primary creation path — all named-param overloads funnel here via the 10-arg overload. */
     public Uni<Channel> create(ChannelCreateRequest req) {
-        // populateChannel() is pure (no IO) — entity construction happens outside the transaction.
+        // Channel.fromRequest() is pure (no IO) — entity construction happens outside the transaction.
         // A JPA entity is a transient POJO until persist() is called inside the session;
         // it becomes managed when channelStore.put(channel) runs. Do NOT move this inside the lambda.
-        Channel channel = populateChannel(req);
+        Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
         return Panache.withTransaction("qhorus", () -> channelStore.put(channel));
-    }
-
-    public Uni<Channel> create(String name, String description, ChannelSemantic semantic,
-            String barrierContributors, String allowedWriters, String adminInstances,
-            Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        // ChannelCreateRequest construction runs validation before the transaction
-        return create(new ChannelCreateRequest(
-                name, description, semantic, barrierContributors,
-                allowedWriters, adminInstances, rateLimitPerChannel, rateLimitPerInstance,
-                null, null,
-                null, null, null, null));
-    }
-
-    public Uni<Channel> create(String name, String description, ChannelSemantic semantic,
-            String barrierContributors) {
-        return create(name, description, semantic, barrierContributors, null, null, null, null);
-    }
-
-    public Uni<Channel> create(String name, String description, ChannelSemantic semantic,
-            String barrierContributors, String allowedWriters) {
-        return create(name, description, semantic, barrierContributors, allowedWriters, null, null, null);
-    }
-
-    public Uni<Channel> create(String name, String description, ChannelSemantic semantic,
-            String barrierContributors, String allowedWriters, String adminInstances) {
-        return create(name, description, semantic, barrierContributors, allowedWriters, adminInstances, null, null);
-    }
-
-    private Channel populateChannel(ChannelCreateRequest req) {
-        Channel channel = new Channel();
-        channel.name = req.name();
-        channel.description = req.description();
-        channel.semantic = req.semantic();
-        channel.barrierContributors = req.barrierContributors();
-        channel.allowedWriters = blankToNull(req.allowedWriters());
-        channel.adminInstances = blankToNull(req.adminInstances());
-        channel.rateLimitPerChannel = req.rateLimitPerChannel();
-        channel.rateLimitPerInstance = req.rateLimitPerInstance();
-        channel.allowedTypes = MessageType.serializeTypes(req.allowedTypes());
-        channel.deniedTypes  = MessageType.serializeTypes(req.deniedTypes());
-        channel.tenancyId = currentPrincipal.tenancyId();
-        return channel;
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
     }
 
     public Uni<Channel> setRateLimits(UUID channelId, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {

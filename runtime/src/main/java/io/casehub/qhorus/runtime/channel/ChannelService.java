@@ -12,7 +12,6 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
@@ -39,33 +38,6 @@ public class ChannelService {
     @Inject
     ChannelGateway channelGateway;
 
-    @Transactional
-    public Channel create(String name, String description, ChannelSemantic semantic, String barrierContributors) {
-        return create(name, description, semantic, barrierContributors, null);
-    }
-
-    @Transactional
-    public Channel create(String name, String description, ChannelSemantic semantic, String barrierContributors,
-            String allowedWriters) {
-        return create(name, description, semantic, barrierContributors, allowedWriters, null);
-    }
-
-    @Transactional
-    public Channel create(String name, String description, ChannelSemantic semantic, String barrierContributors,
-            String allowedWriters, String adminInstances) {
-        return create(name, description, semantic, barrierContributors, allowedWriters, adminInstances, null, null);
-    }
-
-    @Transactional
-    public Channel create(String name, String description, ChannelSemantic semantic, String barrierContributors,
-            String allowedWriters, String adminInstances, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        return create(new ChannelCreateRequest(
-                name, description, semantic, barrierContributors,
-                allowedWriters, adminInstances, rateLimitPerChannel, rateLimitPerInstance,
-                null, null,
-                null, null, null, null));
-    }
-
     /**
      * Creates a channel from a {@link ChannelCreateRequest}, optionally persisting a connector binding.
      *
@@ -75,7 +47,7 @@ public class ChannelService {
      */
     @Transactional
     public Channel create(final ChannelCreateRequest req) {
-        Channel channel = populateChannel(req);
+        Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
         channelStore.put(channel);
 
         if (req.hasConnectorBinding()) {
@@ -133,7 +105,7 @@ public class ChannelService {
             return new FindOrCreateResult(existing, false);
         }
 
-        Channel channel = populateChannel(req);
+        Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
         channel.autoCreated = true;
         channelStore.put(channel);
 
@@ -302,25 +274,6 @@ public class ChannelService {
         return binding;
     }
 
-    private Channel populateChannel(ChannelCreateRequest req) {
-        Channel channel = new Channel();
-        channel.name = req.name();
-        channel.description = req.description();
-        channel.semantic = req.semantic();
-        channel.barrierContributors = req.barrierContributors();
-        channel.allowedWriters = blankToNull(req.allowedWriters());
-        channel.adminInstances = blankToNull(req.adminInstances());
-        channel.rateLimitPerChannel = req.rateLimitPerChannel();
-        channel.rateLimitPerInstance = req.rateLimitPerInstance();
-        channel.allowedTypes = MessageType.serializeTypes(req.allowedTypes());
-        channel.deniedTypes  = MessageType.serializeTypes(req.deniedTypes());
-        channel.tenancyId = currentPrincipal.tenancyId();
-        return channel;
-    }
-
-    private static String blankToNull(String s) {
-        return (s == null || s.isBlank()) ? null : s;
-    }
 
     @Transactional
     public void updateLastActivity(UUID channelId, String tenancyId) {

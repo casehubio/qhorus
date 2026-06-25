@@ -240,10 +240,21 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                         "Invalid semantic '" + semantic + "'. Valid values: APPEND, COLLECT, BARRIER, EPHEMERAL, LAST_WRITE");
             }
         }
-        ChannelCreateRequest req = new ChannelCreateRequest(name, description, sem, barrierContributors,
-                allowedWriters, adminInstances, rateLimitPerChannel, rateLimitPerInstance,
-                MessageType.parseTypes(allowedTypes), MessageType.parseTypes(deniedTypes),
-                inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
+        ChannelCreateRequest req = ChannelCreateRequest.builder(name)
+                .description(description)
+                .semantic(sem)
+                .barrierContributors(barrierContributors)
+                .allowedWriters(allowedWriters)
+                .adminInstances(adminInstances)
+                .rateLimitPerChannel(rateLimitPerChannel)
+                .rateLimitPerInstance(rateLimitPerInstance)
+                .allowedTypes(MessageType.parseTypes(allowedTypes))
+                .deniedTypes(MessageType.parseTypes(deniedTypes))
+                .inboundConnectorId(inboundConnectorId)
+                .externalKey(externalKey)
+                .outboundConnectorId(outboundConnectorId)
+                .outboundDestination(outboundDestination)
+                .build();
         if (req.hasConnectorBinding()) {
             // Binding requires blocking JPA — use blocking service for the whole create+bind operation.
             return Uni.createFrom().item(() -> blockingChannelService.create(req))

@@ -6,7 +6,6 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ReactiveChannelService;
@@ -29,11 +28,10 @@ class ReactiveChannelServiceDeniedTypesTest {
     @Test
     void overlappingAllowedAndDenied_throwsBeforeTransaction() {
         assertThatThrownBy(() ->
-                svc.create(new ChannelCreateRequest(
-                        "ch", null, ChannelSemantic.APPEND,
-                        null, null, null, null, null,
-                        Set.of(MessageType.QUERY), Set.of(MessageType.QUERY),
-                        null, null, null, null)))
+                svc.create(ChannelCreateRequest.builder("ch")
+                        .allowedTypes(Set.of(MessageType.QUERY))
+                        .deniedTypes(Set.of(MessageType.QUERY))
+                        .build()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("intersect");
     }

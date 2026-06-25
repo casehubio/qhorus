@@ -13,6 +13,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.DeleteChannelResult;
@@ -36,7 +37,7 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_emptyChannel_returnsSuccessWithZeroMessages() {
         String name = "del-tool-empty-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
         DeleteChannelResult result = QuarkusTransaction.requiringNew().call(() -> tools.deleteChannel(name, false, null));
 
@@ -48,7 +49,7 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_withMessages_forceFalse_throwsWithCount() {
         String name = "del-tool-guard-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
         UUID[] chId = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> chId[0] = channelService.findByName(name).orElseThrow().id);
@@ -70,7 +71,7 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_withMessages_forceTrue_deletesAllAndReturnsCount() {
         String name = "del-tool-force-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
         UUID[] chId = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> chId[0] = channelService.findByName(name).orElseThrow().id);
@@ -106,7 +107,7 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_afterDeletion_channelNoLongerListed() {
         String name = "del-tool-gone-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
         QuarkusTransaction.requiringNew().run(() -> tools.deleteChannel(name, false, null));
 
         QuarkusTransaction.requiringNew().run(() -> assertTrue(channelService.findByName(name).isEmpty()));
@@ -119,7 +120,7 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_noAdminList_anyCallerAllowed() {
         String name = "del-admin-open-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(name, "No admin list", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("No admin list").build()));
 
         // No admin_instances — any caller (or null caller) can delete
         DeleteChannelResult result = QuarkusTransaction.requiringNew()
@@ -180,7 +181,7 @@ class DeleteChannelToolTest {
     void deleteChannel_withOpenCommitment_forceTrue_succeeds() {
         String name = "del-tool-commit-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() ->
-                channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+                channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
         UUID[] chId = new UUID[1];
         QuarkusTransaction.requiringNew().run(() ->

@@ -12,6 +12,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
@@ -65,7 +66,7 @@ class WaitForReplyEdgeCaseTest {
         String unknownAgent = "agent-not-registered-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -106,8 +107,8 @@ class WaitForReplyEdgeCaseTest {
         String corrIdB = "corr-b-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var waitChannel = channelService.create(waitCh, "Wait channel", ChannelSemantic.APPEND, null);
-            var resp = channelService.create(respCh, "Response channel", ChannelSemantic.APPEND, null);
+            var waitChannel = channelService.create(ChannelCreateRequest.builder(waitCh).description("Wait channel").build());
+            var resp = channelService.create(ChannelCreateRequest.builder(respCh).description("Response channel").build());
             // Create a Commitment on the wait channel for the waiter's corrId
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(waitChannel.id)
@@ -159,7 +160,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "COLLECT channel", ChannelSemantic.COLLECT, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("COLLECT channel").semantic(ChannelSemantic.COLLECT).build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -198,7 +199,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "BARRIER channel", ChannelSemantic.BARRIER, "alice,bob");
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER channel").semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob").build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -239,7 +240,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -275,7 +276,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-unique-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -312,7 +313,7 @@ class WaitForReplyEdgeCaseTest {
 
         // Pre-commit both queries then both responses
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult queryA = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -378,7 +379,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             // Only a QUERY with the correlationId — no RESPONSE
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
@@ -410,7 +411,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -452,7 +453,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult cmd = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")

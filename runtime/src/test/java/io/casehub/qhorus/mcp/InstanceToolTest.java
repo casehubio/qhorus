@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.instance.Instance;
 import io.casehub.qhorus.runtime.instance.InstanceService;
@@ -32,7 +32,7 @@ class InstanceToolTest {
     @Test
     @TestTransaction
     void registerCreatesInstanceAndReturnsContextSnapshot() {
-        channelService.create("welcome-ch", "General channel", ChannelSemantic.APPEND, null);
+        channelService.create(ChannelCreateRequest.builder("welcome-ch").description("General channel").build());
 
         QhorusMcpTools.RegisterResponse resp = tools.register("test-agent", "A test agent", List.of("code-review", "java"), null, null);
 

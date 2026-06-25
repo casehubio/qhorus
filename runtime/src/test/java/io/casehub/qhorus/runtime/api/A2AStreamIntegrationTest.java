@@ -18,7 +18,6 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
@@ -113,9 +112,8 @@ class A2AStreamIntegrationTest {
         final UUID[] chId = {null};
         final Long[] cmdId = {null};
 
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(new ChannelCreateRequest(
-                channelName, "SSE test", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null)));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(channelName)
+                .description("SSE test").build()));
         QuarkusTransaction.requiringNew().run(() ->
                 chId[0] = channelService.findByName(channelName).orElseThrow().id);
         QuarkusTransaction.requiringNew().run(() -> {
@@ -158,9 +156,8 @@ class A2AStreamIntegrationTest {
         final UUID[] chId = {null};
         final Long[] cmdId = {null};
 
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(new ChannelCreateRequest(
-                channelName, "SSE decline test", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null)));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(channelName)
+                .description("SSE decline test").build()));
         QuarkusTransaction.requiringNew().run(() ->
                 chId[0] = channelService.findByName(channelName).orElseThrow().id);
         QuarkusTransaction.requiringNew().run(() -> {
@@ -329,9 +326,8 @@ class A2AStreamIntegrationTest {
     private record ChannelSetup(UUID channelId, long commandMessageId) {}
 
     private ChannelSetup createChannelAndDispatchCommand(final String channelName, final String taskId) {
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(new ChannelCreateRequest(
-                channelName, "SSE test", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null)));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(channelName)
+                .description("SSE test").build()));
         final UUID[] chId = {null};
         QuarkusTransaction.requiringNew().run(() ->
                 chId[0] = channelService.findByName(channelName).orElseThrow().id);

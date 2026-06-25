@@ -48,9 +48,8 @@ class ReactiveChannelTimelineTest {
     private UUID createChannel(final String name) {
         final UUID[] id = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            final Channel ch = channelService.create(new ChannelCreateRequest(
-                    name, "reactive timeline test", io.casehub.qhorus.api.channel.ChannelSemantic.APPEND,
-                    null, null, null, null, null, null, null, null, null, null, null));
+            final Channel ch = channelService.create(ChannelCreateRequest.builder(name)
+                    .description("reactive timeline test").build());
             id[0] = ch.id;
         });
         return id[0];

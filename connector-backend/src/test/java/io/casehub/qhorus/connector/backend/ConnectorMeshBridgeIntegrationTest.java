@@ -20,7 +20,6 @@ import org.mockito.Mockito;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
@@ -115,8 +114,8 @@ class ConnectorMeshBridgeIntegrationTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private UUID createDeliveryChannel() {
-        return channelService.create(new ChannelCreateRequest(
-                "connector-audit", "Connector delivery audit", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null)).id;
+        return channelService.create(ChannelCreateRequest.builder("connector-audit")
+                .description("Connector delivery audit")
+                .build()).id;
     }
 }

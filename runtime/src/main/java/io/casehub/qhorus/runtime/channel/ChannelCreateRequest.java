@@ -73,12 +73,102 @@ public record ChannelCreateRequest(
         return inboundConnectorId != null;
     }
 
-    /** Convenience factory — no connector binding, no type restrictions. */
-    public static ChannelCreateRequest simple(final String name, final ChannelSemantic semantic) {
-        return new ChannelCreateRequest(name, null, semantic, null,
-                null, null, null, null,
-                null,   // allowedTypes — null means "open"
-                null,   // deniedTypes — null means "open"
-                null, null, null, null);
+    public static Builder builder(String name) {
+        return new Builder(name);
+    }
+
+    public static final class Builder {
+        private final String name;
+        private String description;
+        private ChannelSemantic semantic = ChannelSemantic.APPEND;
+        private String barrierContributors;
+        private String allowedWriters;
+        private String adminInstances;
+        private Integer rateLimitPerChannel;
+        private Integer rateLimitPerInstance;
+        private Set<MessageType> allowedTypes;
+        private Set<MessageType> deniedTypes;
+        private String inboundConnectorId;
+        private String externalKey;
+        private String outboundConnectorId;
+        private String outboundDestination;
+
+        private Builder(String name) {
+            this.name = name;
+        }
+
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
+
+        public Builder semantic(ChannelSemantic semantic) {
+            this.semantic = semantic;
+            return this;
+        }
+
+        public Builder barrierContributors(String barrierContributors) {
+            this.barrierContributors = barrierContributors;
+            return this;
+        }
+
+        public Builder allowedWriters(String allowedWriters) {
+            this.allowedWriters = allowedWriters;
+            return this;
+        }
+
+        public Builder adminInstances(String adminInstances) {
+            this.adminInstances = adminInstances;
+            return this;
+        }
+
+        public Builder rateLimitPerChannel(Integer rateLimitPerChannel) {
+            this.rateLimitPerChannel = rateLimitPerChannel;
+            return this;
+        }
+
+        public Builder rateLimitPerInstance(Integer rateLimitPerInstance) {
+            this.rateLimitPerInstance = rateLimitPerInstance;
+            return this;
+        }
+
+        public Builder allowedTypes(Set<MessageType> allowedTypes) {
+            this.allowedTypes = allowedTypes;
+            return this;
+        }
+
+        public Builder deniedTypes(Set<MessageType> deniedTypes) {
+            this.deniedTypes = deniedTypes;
+            return this;
+        }
+
+        public Builder inboundConnectorId(String inboundConnectorId) {
+            this.inboundConnectorId = inboundConnectorId;
+            return this;
+        }
+
+        public Builder externalKey(String externalKey) {
+            this.externalKey = externalKey;
+            return this;
+        }
+
+        public Builder outboundConnectorId(String outboundConnectorId) {
+            this.outboundConnectorId = outboundConnectorId;
+            return this;
+        }
+
+        public Builder outboundDestination(String outboundDestination) {
+            this.outboundDestination = outboundDestination;
+            return this;
+        }
+
+        public ChannelCreateRequest build() {
+            return new ChannelCreateRequest(name, description, semantic,
+                    barrierContributors, allowedWriters, adminInstances,
+                    rateLimitPerChannel, rateLimitPerInstance,
+                    allowedTypes, deniedTypes,
+                    inboundConnectorId, externalKey,
+                    outboundConnectorId, outboundDestination);
+        }
     }
 }

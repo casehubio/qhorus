@@ -14,6 +14,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
@@ -60,7 +61,7 @@ class MessageOrderingTest {
         List<Long> writtenIds = new ArrayList<>();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "Ordering test", ChannelSemantic.APPEND, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("Ordering test").build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < 10; i++) {
                 DispatchResult m = messageService.dispatch(                        MessageDispatch.builder()
@@ -114,7 +115,8 @@ class MessageOrderingTest {
         List<Long> writtenIds = new ArrayList<>();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "COLLECT ordering test", ChannelSemantic.COLLECT, null);
+            channelService.create(ChannelCreateRequest.builder(ch)
+                    .description("COLLECT ordering test").semantic(ChannelSemantic.COLLECT).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < 5; i++) {
                 DispatchResult m = messageService.dispatch(                        MessageDispatch.builder()
@@ -160,8 +162,9 @@ class MessageOrderingTest {
         String ch = "ord-barrier-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "BARRIER ordering test",
-                    ChannelSemantic.BARRIER, "alice,bob,carol");
+            channelService.create(ChannelCreateRequest.builder(ch)
+                    .description("BARRIER ordering test")
+                    .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob,carol").build());
             var channel = channelService.findByName(ch).orElseThrow();
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
@@ -221,7 +224,7 @@ class MessageOrderingTest {
         List<Long> writtenIds = new ArrayList<>();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "Cursor walk test", ChannelSemantic.APPEND, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("Cursor walk test").build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < totalMessages; i++) {
                 DispatchResult m = messageService.dispatch(                        MessageDispatch.builder()
@@ -282,7 +285,8 @@ class MessageOrderingTest {
         String ch = "ord-eph-cursor-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "EPHEMERAL cursor ordering", ChannelSemantic.EPHEMERAL, null);
+            channelService.create(ChannelCreateRequest.builder(ch)
+                    .description("EPHEMERAL cursor ordering").semantic(ChannelSemantic.EPHEMERAL).build());
             var channel = channelService.findByName(ch).orElseThrow();
             // Write 5 messages
             for (int i = 0; i < 5; i++) {

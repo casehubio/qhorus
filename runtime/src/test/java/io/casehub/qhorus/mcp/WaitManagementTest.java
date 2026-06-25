@@ -16,6 +16,7 @@ import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CommitmentDetail;
@@ -206,7 +207,7 @@ class WaitManagementTest {
 
         // Create channel and QUERY (creates Commitment in OPEN state) atomically
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             var channel = channelService.findByName(ch).orElseThrow();
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
@@ -250,7 +251,7 @@ class WaitManagementTest {
         String corrId = UUID.randomUUID().toString();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             var channel = channelService.findByName(ch).orElseThrow();
             // QUERY creates Commitment in OPEN state — this is what list_pending_commitments queries
             messageService.dispatch(                    MessageDispatch.builder()

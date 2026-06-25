@@ -5,7 +5,6 @@ import java.util.Set;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
@@ -50,18 +49,17 @@ public class SecureCodeReviewScenario {
 
     /** Create the 3-channel normative layout for this case. */
     public void setupChannels() {
-        channelService.create(new ChannelCreateRequest(
-                workChannel, "Worker coordination", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null));
-        channelService.create(new ChannelCreateRequest(
-                observeChannel, "Telemetry", ChannelSemantic.APPEND,
-                null, null, null, null, null, Set.of(MessageType.EVENT), null,
-                null, null, null, null));
-        channelService.create(new ChannelCreateRequest(
-                oversightChannel, "Human governance", ChannelSemantic.APPEND,
-                null, null, null, null, null,
-                Set.of(MessageType.QUERY, MessageType.COMMAND), null,
-                null, null, null, null));
+        channelService.create(ChannelCreateRequest.builder(workChannel)
+                .description("Worker coordination")
+                .build());
+        channelService.create(ChannelCreateRequest.builder(observeChannel)
+                .description("Telemetry")
+                .allowedTypes(Set.of(MessageType.EVENT))
+                .build());
+        channelService.create(ChannelCreateRequest.builder(oversightChannel)
+                .description("Human governance")
+                .allowedTypes(Set.of(MessageType.QUERY, MessageType.COMMAND))
+                .build());
     }
 
     public Channel workChannel() {

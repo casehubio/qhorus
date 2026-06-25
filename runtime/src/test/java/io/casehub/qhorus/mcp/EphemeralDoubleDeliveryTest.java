@@ -14,6 +14,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
@@ -61,7 +62,8 @@ class EphemeralDoubleDeliveryTest {
         String ch = "eph-seq-exactly-once-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "EPHEMERAL exactly-once sequential", ChannelSemantic.EPHEMERAL, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("EPHEMERAL exactly-once sequential")
+                    .semantic(ChannelSemantic.EPHEMERAL).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < messageCount; i++) {
                 messageService.dispatch(                        MessageDispatch.builder()
@@ -113,8 +115,8 @@ class EphemeralDoubleDeliveryTest {
         String ch = "eph-single-del-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "EPHEMERAL single message",
-                    ChannelSemantic.EPHEMERAL, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("EPHEMERAL single message")
+                    .semantic(ChannelSemantic.EPHEMERAL).build());
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("writer")
@@ -152,7 +154,8 @@ class EphemeralDoubleDeliveryTest {
         String ch = "eph-drain-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "EPHEMERAL sequential drain", ChannelSemantic.EPHEMERAL, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("EPHEMERAL sequential drain")
+                    .semantic(ChannelSemantic.EPHEMERAL).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < 6; i++) {
                 messageService.dispatch(                        MessageDispatch.builder()
@@ -205,7 +208,8 @@ class EphemeralDoubleDeliveryTest {
         String ch = "eph-partial-del-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "EPHEMERAL partial delete", ChannelSemantic.EPHEMERAL, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("EPHEMERAL partial delete")
+                    .semantic(ChannelSemantic.EPHEMERAL).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < 5; i++) {
                 messageService.dispatch(                        MessageDispatch.builder()

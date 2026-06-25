@@ -11,6 +11,8 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
+import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CommitmentDetail;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -21,11 +23,14 @@ class CommitmentToolTest {
     @Inject
     QhorusMcpTools tools;
 
+    @Inject
+    ChannelService channelService;
+
     @Test
     @TestTransaction
     void listMyCommitments_asObligor_showsCommandToMe() {
         String ch = "ct-ob-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
         var sent = tools.sendMessage(ch, "orchestrator", "command",
                 "do the task", null, null, null, "role:worker", null, null, null);
 
@@ -40,7 +45,7 @@ class CommitmentToolTest {
     @TestTransaction
     void listMyCommitments_asRequester_showsPendingCommand() {
         String ch = "ct-rq-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
         tools.sendMessage(ch, "orchestrator", "command",
                 "do the task", null, null, null, "role:worker", null, null, null);
 
@@ -53,7 +58,7 @@ class CommitmentToolTest {
     @TestTransaction
     void listMyCommitments_fulfilledExcluded() {
         String ch = "ct-ful-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
         var sent = tools.sendMessage(ch, "req", "command", "task", null, null, null, "role:obl", null, null, null);
         tools.sendMessage(ch, "obl", "done", "done", sent.correlationId(), sent.messageId(), null, null, null, null, null);
 
@@ -64,7 +69,7 @@ class CommitmentToolTest {
     @TestTransaction
     void getCommitment_returnsCurrentState() {
         String ch = "ct-get-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
         var sent = tools.sendMessage(ch, "req", "query",
                 "what is the count?", null, null, null, null, null, null, null);
 
@@ -79,7 +84,7 @@ class CommitmentToolTest {
     @TestTransaction
     void getCommitment_afterDone_showsFulfilled() {
         String ch = "ct-done-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
         var sent = tools.sendMessage(ch, "req", "command",
                 "run the report", null, null, null, null, null, null, null);
         tools.sendMessage(ch, "obl", "done",

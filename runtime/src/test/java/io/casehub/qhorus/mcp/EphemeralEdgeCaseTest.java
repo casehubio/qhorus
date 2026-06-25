@@ -11,6 +11,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
@@ -85,7 +86,8 @@ class EphemeralEdgeCaseTest {
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "EPHEMERAL", ChannelSemantic.EPHEMERAL, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch)
+                    .description("EPHEMERAL").semantic(ChannelSemantic.EPHEMERAL).build());
             // Send QUERY first (creates Commitment in OPEN state), then RESPONSE.
             // The QUERY message counts in the channel — but the test asserts checkMessages
             // finds exactly 1 RESPONSE, so we account for the QUERY being an EPHEMERAL message too.

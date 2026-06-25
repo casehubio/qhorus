@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.store.ChannelBindingStore;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -28,10 +27,11 @@ class ChannelBindingUpdateTest {
     ChannelBindingStore channelBindingStore;
 
     private Channel channelWithBinding(String suffix) {
-        return channelService.create(new ChannelCreateRequest(
-                "binding-ch-" + suffix, "desc", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null,
-                "twilio", "+44" + suffix, "twilio-out", "+44" + suffix));
+        return channelService.create(ChannelCreateRequest.builder("binding-ch-" + suffix)
+                .description("desc")
+                .inboundConnectorId("twilio").externalKey("+44" + suffix)
+                .outboundConnectorId("twilio-out").outboundDestination("+44" + suffix)
+                .build());
     }
 
     @Test
@@ -56,8 +56,8 @@ class ChannelBindingUpdateTest {
     @Test
     @TestTransaction
     void updateConnectorBinding_throwsWhenNoBinding() {
-        Channel ch = channelService.create(ChannelCreateRequest.simple(
-                "no-binding-ch-" + UUID.randomUUID(), ChannelSemantic.APPEND));
+        Channel ch = channelService.create(ChannelCreateRequest.builder(
+                "no-binding-ch-" + UUID.randomUUID()).build());
         assertThrows(IllegalStateException.class, () ->
                 channelService.updateConnectorBinding(ch.id, "out", "dest"));
     }

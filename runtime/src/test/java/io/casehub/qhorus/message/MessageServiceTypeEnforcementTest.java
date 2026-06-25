@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
@@ -35,11 +34,8 @@ class MessageServiceTypeEnforcementTest {
     private UUID createChannel(String name, Set<MessageType> allowedTypes) {
         UUID[] id = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            var ch = channelService.create(new ChannelCreateRequest(
-                    name, "Test channel", ChannelSemantic.APPEND,
-                    null, null, null, null, null,
-                    allowedTypes, null,
-                    null, null, null, null));
+            var ch = channelService.create(ChannelCreateRequest.builder(name)
+                    .description("Test channel").allowedTypes(allowedTypes).build());
             id[0] = ch.id;
         });
         return id[0];
@@ -49,7 +45,7 @@ class MessageServiceTypeEnforcementTest {
     private UUID createOpenChannel(String name) {
         UUID[] id = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            var ch = channelService.create(name, "Open channel", ChannelSemantic.APPEND, null);
+            var ch = channelService.create(ChannelCreateRequest.builder(name).description("Open channel").build());
             id[0] = ch.id;
         });
         return id[0];

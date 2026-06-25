@@ -196,31 +196,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Channel management tools
     // ---------------------------------------------------------------------------
 
-    /** Convenience overload — no ACL or rate limits. Used by tests and internal callers. */
-    ChannelDetail createChannel(String name, String description, String semantic, String barrierContributors) {
-        return createChannel(name, description, semantic, barrierContributors, null, null, null, null, null, null, null, null, null, null);
-    }
-
-    /** Convenience overload — allowed_writers but no admin_instances or rate limits. */
-    ChannelDetail createChannel(String name, String description, String semantic, String barrierContributors,
-            String allowedWriters) {
-        return createChannel(name, description, semantic, barrierContributors, allowedWriters, null, null, null, null, null, null, null, null, null);
-    }
-
-    /** Convenience overload — allowed_writers and admin_instances but no rate limits. */
-    ChannelDetail createChannel(String name, String description, String semantic, String barrierContributors,
-            String allowedWriters, String adminInstances) {
-        return createChannel(name, description, semantic, barrierContributors, allowedWriters, adminInstances, null,
-                null, null, null, null, null, null, null);
-    }
-
-    /** Convenience overload — full 8-param (rate limits) but no allowed_types. Backward compatibility for tests. */
-    ChannelDetail createChannel(String name, String description, String semantic, String barrierContributors,
-            String allowedWriters, String adminInstances, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
-        return createChannel(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
-                rateLimitPerChannel, rateLimitPerInstance, null, null, null, null, null, null);
-    }
-
     @Tool(name = "create_channel", description = "Create a named channel with declared semantic. "
             + "Semantic defaults to APPEND if not specified. "
             + "Use allowed_types to restrict which MessageType values may be sent to this channel "
@@ -260,11 +235,21 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                         "Invalid semantic '" + semantic + "'. Valid values: APPEND, COLLECT, BARRIER, EPHEMERAL, LAST_WRITE");
             }
         }
-        Channel ch = channelService.create(new ChannelCreateRequest(
-                name, description, sem, barrierContributors, allowedWriters, adminInstances,
-                rateLimitPerChannel, rateLimitPerInstance,
-                MessageType.parseTypes(allowedTypes), MessageType.parseTypes(deniedTypes),
-                inboundConnectorId, externalKey, outboundConnectorId, outboundDestination));
+        Channel ch = channelService.create(ChannelCreateRequest.builder(name)
+                .description(description)
+                .semantic(sem)
+                .barrierContributors(barrierContributors)
+                .allowedWriters(allowedWriters)
+                .adminInstances(adminInstances)
+                .rateLimitPerChannel(rateLimitPerChannel)
+                .rateLimitPerInstance(rateLimitPerInstance)
+                .allowedTypes(MessageType.parseTypes(allowedTypes))
+                .deniedTypes(MessageType.parseTypes(deniedTypes))
+                .inboundConnectorId(inboundConnectorId)
+                .externalKey(externalKey)
+                .outboundConnectorId(outboundConnectorId)
+                .outboundDestination(outboundDestination)
+                .build());
         // initChannel() is now called by ChannelService.create() — no duplicate call needed.
         return toChannelDetail(ch, 0L);
     }

@@ -12,6 +12,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
@@ -55,7 +56,7 @@ class WaitForReplyTest {
         String ch = "wfr-exists-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -98,7 +99,7 @@ class WaitForReplyTest {
         String ch = "wfr-timeout-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             // Send QUERY to create a Commitment — wait_for_reply polls Commitment state
             messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
@@ -133,7 +134,7 @@ class WaitForReplyTest {
         String waitCorrId = "corr-wait-" + UUID.randomUUID();
         String otherCorrId = "corr-other-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -177,7 +178,7 @@ class WaitForReplyTest {
         String ch = "wfr-type-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -221,7 +222,7 @@ class WaitForReplyTest {
         String ch = "wfr-done-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult cmd = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -262,7 +263,7 @@ class WaitForReplyTest {
         String ch = "wfr-commitment-ok-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -298,7 +299,7 @@ class WaitForReplyTest {
         String ch = "wfr-commitment-timeout-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -326,7 +327,7 @@ class WaitForReplyTest {
         String ch = "wfr-double-" + System.nanoTime();
         String corrId = "corr-" + UUID.randomUUID();
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")
@@ -367,7 +368,7 @@ class WaitForReplyTest {
         String corrId = "corr-" + UUID.randomUUID();
         Long[] queryId = new Long[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Test").build());
             // QUERY creates the Commitment — wait_for_reply polls it
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)

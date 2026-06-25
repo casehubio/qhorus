@@ -12,9 +12,9 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -37,7 +37,7 @@ class ChannelServiceInitChannelTest {
         final Channel[] created = new Channel[1];
 
         QuarkusTransaction.requiringNew().run(() ->
-                created[0] = channelService.create(name, "Test", ChannelSemantic.APPEND, null));
+                created[0] = channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
         assertThat(eventCapture.channelIds())
                 .as("ChannelInitialisedEvent must fire for runtime-created channel")

@@ -11,6 +11,8 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
+import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.store.CommitmentStore;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -28,11 +30,14 @@ class CommitmentLifecycleTest {
     @Inject
     CommitmentStore commitmentStore;
 
+    @Inject
+    ChannelService channelService;
+
     @Test
     @TestTransaction
     void commandLifecycle_openStatusDone_tracksCorrectly() {
         String ch = "e2e-cmd-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
 
         // Orchestrator sends COMMAND — creates OPEN commitment
         var cmd = tools.sendMessage(ch, "orchestrator", "command",
@@ -65,7 +70,7 @@ class CommitmentLifecycleTest {
     @TestTransaction
     void queryLifecycle_queryResponse_tracksCorrectly() {
         String ch = "e2e-qry-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
 
         var q = tools.sendMessage(ch, "agent-a", "query",
                 "what is the current row count?", null, null, null, null, null, null, null);
@@ -82,7 +87,7 @@ class CommitmentLifecycleTest {
     @TestTransaction
     void declineLifecycle_commandDecline_tracksCorrectly() {
         String ch = "e2e-dcl-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
 
         var cmd = tools.sendMessage(ch, "orchestrator", "command",
                 "perform a financial audit", null, null, null, "role:code-reviewer", null, null, null);
@@ -100,7 +105,7 @@ class CommitmentLifecycleTest {
     @TestTransaction
     void handoffLifecycle_createsDelegationChain() {
         String ch = "e2e-hof-" + UUID.randomUUID();
-        tools.createChannel(ch, "APPEND", null, null);
+        channelService.create(ChannelCreateRequest.builder(ch).build());
 
         var cmd = tools.sendMessage(ch, "orchestrator", "command",
                 "run compliance check", null, null, null, "role:agent-a", null, null, null);

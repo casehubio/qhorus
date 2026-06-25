@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -20,7 +21,8 @@ class ChannelServiceTest extends ChannelServiceContractTest {
 
     @Override
     protected Channel create(String name, String desc, ChannelSemantic sem) {
-        return svc.create(name, desc, sem, null, null, null, null, null);
+        return svc.create(ChannelCreateRequest.builder(name)
+                .description(desc).semantic(sem).build());
     }
 
     @Override

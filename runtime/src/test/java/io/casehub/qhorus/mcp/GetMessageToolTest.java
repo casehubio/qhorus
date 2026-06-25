@@ -11,6 +11,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.MessageSummary;
@@ -32,7 +33,7 @@ class GetMessageToolTest {
     @Test
     void getMessage_knownId_returnsCorrectSummary() {
         String channelName = "msg-get-ch-" + System.nanoTime();
-        QuarkusTransaction.requiringNew().run(() -> channelService.create(channelName, "Test", ChannelSemantic.APPEND, null));
+        QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(channelName).description("Test").build()));
 
         Long[] msgId = new Long[1];
         QuarkusTransaction.requiringNew().run(() -> {

@@ -10,13 +10,13 @@ class ChannelCreateRequestSlugTest {
     @Test
     void simple_acceptsValidSlug() {
         assertThatNoException().isThrownBy(() ->
-            ChannelCreateRequest.simple("billing-output", ChannelSemantic.APPEND));
+            ChannelCreateRequest.builder("billing-output").build());
     }
 
     @Test
     void simple_acceptsHierarchical() {
         assertThatNoException().isThrownBy(() ->
-            ChannelCreateRequest.simple("case-abc/work", ChannelSemantic.APPEND));
+            ChannelCreateRequest.builder("case-abc/work").build());
     }
 
     @Test

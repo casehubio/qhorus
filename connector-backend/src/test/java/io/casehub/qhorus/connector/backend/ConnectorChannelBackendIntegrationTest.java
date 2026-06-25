@@ -25,7 +25,6 @@ import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundConnectorIds;
 import io.casehub.connectors.InboundConnectorTypes;
 import io.casehub.connectors.InboundMessage;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.MessageType;
@@ -64,10 +63,13 @@ class ConnectorChannelBackendIntegrationTest {
         channelStore.clear();
         channelBindingStore.clear();
 
-        Channel ch = channelService.create(new ChannelCreateRequest(
-                "sms-alice", "Alice's SMS conversation", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null,
-                InboundConnectorIds.TWILIO_SMS, "+15551110000", "twilio-sms", "+15551110000"));
+        Channel ch = channelService.create(ChannelCreateRequest.builder("sms-alice")
+                .description("Alice's SMS conversation")
+                .inboundConnectorId(InboundConnectorIds.TWILIO_SMS)
+                .externalKey("+15551110000")
+                .outboundConnectorId("twilio-sms")
+                .outboundDestination("+15551110000")
+                .build());
         channelId = ch.id;
         // initChannel fires @Observes ChannelInitialisedEvent synchronously —
         // ConnectorChannelBackend.onChannelInitialised populates cache before setUp returns.
@@ -143,11 +145,13 @@ class ConnectorChannelBackendIntegrationTest {
     @Test
     void duplicateBinding_throws() {
         assertThatThrownBy(() ->
-            channelService.create(new ChannelCreateRequest(
-                "sms-bob", "Bob's channel", ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null,
-                InboundConnectorIds.TWILIO_SMS, "+15551110000",   // same key as alice — should conflict
-                "twilio-sms", "+15551110000"))
+            channelService.create(ChannelCreateRequest.builder("sms-bob")
+                .description("Bob's channel")
+                .inboundConnectorId(InboundConnectorIds.TWILIO_SMS)
+                .externalKey("+15551110000")   // same key as alice — should conflict
+                .outboundConnectorId("twilio-sms")
+                .outboundDestination("+15551110000")
+                .build())
         ).isInstanceOf(IllegalStateException.class)
          .hasMessageContaining("Connector binding already exists");
     }

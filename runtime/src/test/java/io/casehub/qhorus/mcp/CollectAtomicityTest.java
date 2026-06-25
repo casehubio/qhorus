@@ -15,6 +15,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
@@ -63,7 +64,8 @@ class CollectAtomicityTest {
         String ch = "col-atomic-seq-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "COLLECT sequential atomicity test", ChannelSemantic.COLLECT, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("COLLECT sequential atomicity test")
+                    .semantic(ChannelSemantic.COLLECT).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < messageCount; i++) {
                 messageService.dispatch(                        MessageDispatch.builder()
@@ -109,7 +111,8 @@ class CollectAtomicityTest {
         List<Long> writtenIds = new ArrayList<>();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "COLLECT ID check", ChannelSemantic.COLLECT, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("COLLECT ID check")
+                    .semantic(ChannelSemantic.COLLECT).build());
             var channel = channelService.findByName(ch).orElseThrow();
             for (int i = 0; i < 8; i++) {
                 DispatchResult m = messageService.dispatch(                        MessageDispatch.builder()
@@ -158,7 +161,8 @@ class CollectAtomicityTest {
         String ch = "col-atomic-cycles-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(
-                () -> channelService.create(ch, "COLLECT cycle test", ChannelSemantic.COLLECT, null));
+                () -> channelService.create(ChannelCreateRequest.builder(ch).description("COLLECT cycle test")
+                        .semantic(ChannelSemantic.COLLECT).build()));
 
         try {
             // Cycle 1: write 3 messages, collect all 3
@@ -237,7 +241,8 @@ class CollectAtomicityTest {
         String ch = "col-atomic-event-leak-" + System.nanoTime();
 
         QuarkusTransaction.requiringNew().run(
-                () -> channelService.create(ch, "COLLECT EVENT leak test", ChannelSemantic.COLLECT, null));
+                () -> channelService.create(ChannelCreateRequest.builder(ch).description("COLLECT EVENT leak test")
+                        .semantic(ChannelSemantic.COLLECT).build()));
 
         try {
             // Write 2 non-EVENT and 3 EVENTs

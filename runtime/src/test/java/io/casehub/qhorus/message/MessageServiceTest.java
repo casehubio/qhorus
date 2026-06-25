@@ -16,6 +16,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
@@ -34,7 +35,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void sendMessagePersistsAllFields() {
-        Channel ch = channelService.create("msg-test-1", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-1").description("Test").build());
 
         DispatchResult result = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
@@ -61,7 +62,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void sendReplyIncrementsParentReplyCount() {
-        Channel ch = channelService.create("msg-test-2", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-2").description("Test").build());
         DispatchResult request = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
                 .sender("alice")
@@ -88,7 +89,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void sendUpdatesChannelLastActivity() throws InterruptedException {
-        Channel ch = channelService.create("msg-test-3", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-3").description("Test").build());
         var activityBefore = ch.lastActivityAt;
 
         Thread.sleep(5);
@@ -108,7 +109,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void pollAfterReturnsMessagesAfterGivenIdInAscendingOrder() {
-        Channel ch = channelService.create("msg-test-4", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-4").description("Test").build());
         DispatchResult m1 = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
                 .sender("alice")
@@ -143,7 +144,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void pollAfterWithZeroReturnsAllMessagesInOrder() {
-        Channel ch = channelService.create("msg-test-zero", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-zero").description("Test").build());
         messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
                 .sender("alice")
@@ -169,7 +170,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void pollAfterExcludesEventMessages() {
-        Channel ch = channelService.create("msg-test-5", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-5").description("Test").build());
         DispatchResult m1 = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
                 .sender("alice")
@@ -202,7 +203,7 @@ class MessageServiceTest {
     @Test
     @TestTransaction
     void findByCorrelationIdReturnsMatchingMessage() {
-        Channel ch = channelService.create("msg-test-6", "Test", ChannelSemantic.APPEND, null);
+        Channel ch = channelService.create(ChannelCreateRequest.builder("msg-test-6").description("Test").build());
         messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id)
                 .sender("alice")

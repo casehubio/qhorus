@@ -14,6 +14,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.runtime.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
@@ -73,7 +74,7 @@ class WaitForReplyCorrelationIsolationTest {
 
         // Pre-commit BOTH queries then BOTH responses
         QuarkusTransaction.requiringNew().run(() -> {
-            channelService.create(ch, "Sequential waiters channel", ChannelSemantic.APPEND, null);
+            channelService.create(ChannelCreateRequest.builder(ch).description("Sequential waiters channel").build());
             var channel = channelService.findByName(ch).orElseThrow();
             DispatchResult queryA = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
@@ -149,8 +150,7 @@ class WaitForReplyCorrelationIsolationTest {
         String freshCorrId = "corr-fresh-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Stale response channel",
-                    ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Stale response channel").build());
             // Stale QUERY + RESPONSE from a prior cycle
             DispatchResult staleQuery = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
@@ -208,8 +208,7 @@ class WaitForReplyCorrelationIsolationTest {
         String corrIdLong = corrIdShort + "-extended-suffix-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Exact match test",
-                    ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Exact match test").build());
             // QUERY + RESPONSE for corrIdLong (the longer one) — creates a FULFILLED Commitment
             DispatchResult queryLong = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id)
@@ -267,7 +266,7 @@ class WaitForReplyCorrelationIsolationTest {
         String corrId = "corr-cancel-race-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ch, "Cancel race test", ChannelSemantic.APPEND, null);
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("Cancel race test").build());
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id)
                     .sender("alice")

@@ -12,7 +12,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
@@ -121,11 +120,10 @@ class NormativeLayoutRobustnessTest {
         String channelName = "rob-3-typed-" + System.nanoTime();
         Channel[] ch = new Channel[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            ch[0] = channelService.create(new ChannelCreateRequest(
-                    channelName, "Type constraint test", ChannelSemantic.APPEND,
-                    null, null, null, null, null,
-                    Set.of(MessageType.EVENT, MessageType.STATUS), null,
-                    null, null, null, null));
+            ch[0] = channelService.create(ChannelCreateRequest.builder(channelName)
+                    .description("Type constraint test")
+                    .allowedTypes(Set.of(MessageType.EVENT, MessageType.STATUS))
+                    .build());
         });
 
         // EVENT should be permitted
@@ -173,11 +171,9 @@ class NormativeLayoutRobustnessTest {
         String channelName = "rob-4-empty-" + System.nanoTime();
         Channel[] ch = new Channel[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            ch[0] = channelService.create(new ChannelCreateRequest(
-                    channelName, "Empty types test", ChannelSemantic.APPEND,
-                    null, null, null, null, null,
-                    null, null,
-                    null, null, null, null));
+            ch[0] = channelService.create(ChannelCreateRequest.builder(channelName)
+                    .description("Empty types test")
+                    .build());
         });
 
         // Verify allowedTypes is null (null Set → open channel)

@@ -13,6 +13,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageType;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity
@@ -105,5 +106,25 @@ public class Channel extends PanacheEntityBase {
         if (lastActivityAt == null) {
             lastActivityAt = now;
         }
+    }
+
+    public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
+        Channel ch = new Channel();
+        ch.name = req.name();
+        ch.description = req.description();
+        ch.semantic = req.semantic();
+        ch.barrierContributors = req.barrierContributors();
+        ch.allowedWriters = blankToNull(req.allowedWriters());
+        ch.adminInstances = blankToNull(req.adminInstances());
+        ch.rateLimitPerChannel = req.rateLimitPerChannel();
+        ch.rateLimitPerInstance = req.rateLimitPerInstance();
+        ch.allowedTypes = MessageType.serializeTypes(req.allowedTypes());
+        ch.deniedTypes = MessageType.serializeTypes(req.deniedTypes());
+        ch.tenancyId = tenancyId;
+        return ch;
+    }
+
+    private static String blankToNull(String s) {
+        return (s == null || s.isBlank()) ? null : s;
     }
 }

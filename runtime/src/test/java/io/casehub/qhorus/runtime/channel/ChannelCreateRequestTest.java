@@ -57,7 +57,7 @@ class ChannelCreateRequestTest {
 
     @Test
     void simpleFactoryHasNullDeniedTypes() {
-        final ChannelCreateRequest req = ChannelCreateRequest.simple("ch", ChannelSemantic.APPEND);
+        final ChannelCreateRequest req = ChannelCreateRequest.builder("ch").build();
         assertThat(req.deniedTypes()).isNull();
     }
 

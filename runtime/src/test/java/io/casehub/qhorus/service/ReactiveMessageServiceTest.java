@@ -80,17 +80,13 @@ class ReactiveMessageServiceTest extends MessageServiceContractTest {
             Integer rateLimitPerInstance, Set<MessageType> allowedTypes, ChannelSemantic semantic) {
         UUID[] id = new UUID[1];
         QuarkusTransaction.requiringNew().run(() -> {
-            Channel ch = channelService.create(new ChannelCreateRequest(
-                    "contract-reactive-" + UUID.randomUUID(),
-                    "contract test channel",
-                    semantic,
-                    /* barrierContributors */ null,
-                    allowedWriters,
-                    /* adminInstances */ null,
-                    /* rateLimitPerChannel */ null,
-                    rateLimitPerInstance,
-                    allowedTypes, null,
-                    null, null, null, null));
+            var builder = ChannelCreateRequest.builder("contract-reactive-" + UUID.randomUUID())
+                    .description("contract test channel")
+                    .semantic(semantic);
+            if (allowedWriters != null) builder.allowedWriters(allowedWriters);
+            if (rateLimitPerInstance != null) builder.rateLimitPerInstance(rateLimitPerInstance);
+            if (allowedTypes != null) builder.allowedTypes(allowedTypes);
+            Channel ch = channelService.create(builder.build());
             if (paused) {
                 ch.paused = true;
             }
