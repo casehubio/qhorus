@@ -436,7 +436,13 @@
       "Bash(curl -s -I \"https://repo1.maven.org/maven2/io/quarkus/quarkus-rest-client/3.32.2/quarkus-rest-client-3.32.2.pom\")",
       "Bash(mvn dependency:resolve -Dartifact=io.quarkus:quarkus-rest-client-reactive:3.32.2 -q)",
       "Bash(gh workflow *)",
-      "Skill(fix-ci)"
+      "Skill(fix-ci)",
+      "Bash(git *)",
+      "mcp__intellij-index__ide_read_file",
+      "mcp__intellij-index__ide_file_structure",
+      "mcp__intellij-index__ide_project_status",
+      "mcp__intellij-index__ide_find_symbol",
+      "Bash(gh issue *)"
     ]
   }
 }

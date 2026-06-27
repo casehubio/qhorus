@@ -16,7 +16,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.eclipse.microprofile.config.Config;
+import io.casehub.platform.api.credentials.CredentialPropertyKeys;
+import io.casehub.platform.api.credentials.CredentialResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +37,7 @@ class SlackChannelBackendTest {
     private SlackThreadCacheStore threadCacheStore;
     private SlackBotClient slackBotClient;
     private ChannelGateway gateway;
-    private Config config;
+    private CredentialResolver credentialResolver;
     private SlackChannelBackend backend;
 
     private final UUID channelId = UUID.randomUUID();
@@ -51,19 +52,19 @@ class SlackChannelBackendTest {
         threadCacheStore = mock(SlackThreadCacheStore.class);
         slackBotClient = mock(SlackBotClient.class);
         gateway = mock(ChannelGateway.class);
-        config = mock(Config.class);
+        credentialResolver = mock(CredentialResolver.class);
 
         backend = new SlackChannelBackend(
                 bindingStore, threadCacheStore, slackBotClient,
-                new SlackInboundNormaliser(), gateway, config);
+                new SlackInboundNormaliser(), gateway, credentialResolver);
 
         // Pre-populate binding cache — simulates onChannelInitialised having run
         SlackBotBinding binding = binding();
         backend.bindingCache.put(channelId, binding);
 
         // Default token stub for all tests that post to Slack
-        when(config.getValue("casehub.qhorus.slack-channel.credentials." + workspaceId, String.class))
-                .thenReturn(token);
+        when(credentialResolver.resolve(workspaceId))
+                .thenReturn(Map.of(CredentialPropertyKeys.BEARER_TOKEN, token));
     }
 
     @Test

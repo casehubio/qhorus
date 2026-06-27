@@ -4,13 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import java.util.NoSuchElementException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.ws.rs.core.Response;
 
-import org.eclipse.microprofile.config.Config;
+import io.casehub.platform.api.credentials.CredentialPropertyKeys;
+import io.casehub.platform.api.credentials.CredentialResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,13 +29,12 @@ class SlackBindingResourceTest {
     private SlackChannelBackend backend;
     private ChannelBindingStore channelBindingStore;
     private SlackThreadCacheStore threadCacheStore;
-    private Config config;
+    private CredentialResolver credentialResolver;
     private SlackBindingResource resource;
 
     private final UUID channelId = UUID.randomUUID();
     private final String workspaceId = "T123ABC";
     private final String slackChannelId = "C123ABC";
-    private final String credKey = "casehub.qhorus.slack-channel.credentials." + workspaceId;
 
     @BeforeEach
     void setUp() {
@@ -44,11 +44,11 @@ class SlackBindingResourceTest {
         backend = mock(SlackChannelBackend.class);
         channelBindingStore = mock(ChannelBindingStore.class);
         threadCacheStore = mock(SlackThreadCacheStore.class);
-        config = mock(Config.class);
+        credentialResolver = mock(CredentialResolver.class);
 
         resource = new SlackBindingResource(
                 bindingStore, channelService, gateway, backend,
-                channelBindingStore, threadCacheStore, config);
+                channelBindingStore, threadCacheStore, credentialResolver);
 
         // Default: channel exists, no conflict, valid token
         Channel ch = new Channel();
@@ -56,7 +56,8 @@ class SlackBindingResourceTest {
         ch.name = "test-channel";
         when(channelService.findById(channelId)).thenReturn(Optional.of(ch));
         when(channelBindingStore.findByChannelId(channelId)).thenReturn(Optional.empty());
-        when(config.getValue(credKey, String.class)).thenReturn("xoxb-valid");
+        when(credentialResolver.resolve(workspaceId))
+                .thenReturn(Map.of(CredentialPropertyKeys.BEARER_TOKEN, "xoxb-valid"));
     }
 
     @Test
@@ -78,7 +79,7 @@ class SlackBindingResourceTest {
 
     @Test
     void put_missingCredential_returns400_beforeSave() {
-        when(config.getValue(credKey, String.class)).thenThrow(new NoSuchElementException());
+        when(credentialResolver.resolve(workspaceId)).thenReturn(Map.of());
         Response r = resource.put(channelId, new SlackBindingRequest(slackChannelId, workspaceId));
         assertThat(r.getStatus()).isEqualTo(400);
         verify(bindingStore, never()).save(any());
@@ -86,7 +87,8 @@ class SlackBindingResourceTest {
 
     @Test
     void put_blankCredential_returns400_beforeSave() {
-        when(config.getValue(credKey, String.class)).thenReturn("");
+        when(credentialResolver.resolve(workspaceId))
+                .thenReturn(Map.of(CredentialPropertyKeys.BEARER_TOKEN, ""));
         Response r = resource.put(channelId, new SlackBindingRequest(slackChannelId, workspaceId));
         assertThat(r.getStatus()).isEqualTo(400);
         verify(bindingStore, never()).save(any());

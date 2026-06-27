@@ -1,7 +1,6 @@
 package io.casehub.qhorus.slack;
 
 import java.time.Instant;
-import java.util.NoSuchElementException;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
@@ -16,8 +15,8 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import org.eclipse.microprofile.config.Config;
-
+import io.casehub.platform.api.credentials.CredentialPropertyKeys;
+import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
@@ -45,7 +44,7 @@ public class SlackBindingResource {
     private final SlackChannelBackend backend;
     private final ChannelBindingStore channelBindingStore;
     private final SlackThreadCacheStore threadCacheStore;
-    private final Config config;
+    private final CredentialResolver credentialResolver;
 
     public SlackBindingResource(SlackBotBindingStore bindingStore,
                                 ChannelService channelService,
@@ -53,14 +52,14 @@ public class SlackBindingResource {
                                 SlackChannelBackend backend,
                                 ChannelBindingStore channelBindingStore,
                                 SlackThreadCacheStore threadCacheStore,
-                                Config config) {
+                                CredentialResolver credentialResolver) {
         this.bindingStore = bindingStore;
         this.channelService = channelService;
         this.gateway = gateway;
         this.backend = backend;
         this.channelBindingStore = channelBindingStore;
         this.threadCacheStore = threadCacheStore;
-        this.config = config;
+        this.credentialResolver = credentialResolver;
     }
 
     /**
@@ -91,17 +90,15 @@ public class SlackBindingResource {
         }
 
         // 3. Credential must exist and be non-blank
-        String credKey = "casehub.qhorus.slack-channel.credentials." + req.workspaceId();
-        String token;
-        try {
-            token = config.getValue(credKey, String.class);
-        } catch (NoSuchElementException e) {
+        var creds = credentialResolver.resolve(req.workspaceId());
+        String token = creds.get(CredentialPropertyKeys.BEARER_TOKEN);
+        if (token == null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Missing credential: " + credKey).build();
+                    .entity("Missing credential: casehub.credentials." + req.workspaceId()).build();
         }
         if (token.isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("Credential " + credKey + " is configured but blank").build();
+                    .entity("Credential casehub.credentials." + req.workspaceId() + " is configured but blank").build();
         }
 
         // 4. Clean stale state — safe no-op for fresh binds; handles the rebind case

@@ -30,8 +30,9 @@ import io.casehub.qhorus.api.gateway.HumanParticipatingChannelBackend;
 import io.casehub.qhorus.api.gateway.InboundHumanMessage;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.platform.api.credentials.CredentialPropertyKeys;
+import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import org.eclipse.microprofile.config.Config;
 
 /**
  * {@link HumanParticipatingChannelBackend} that delivers messages to Slack threads
@@ -52,7 +53,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
     private final SlackBotClient slackBotClient;
     private final SlackInboundNormaliser slackInboundNormaliser;
     private final ChannelGateway gateway;
-    private final Config config;
+    private final CredentialResolver credentialResolver;
 
     // Forward: channelId → binding (for post())
     final ConcurrentHashMap<UUID, SlackBotBinding> bindingCache = new ConcurrentHashMap<>();
@@ -66,13 +67,13 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
                                SlackBotClient slackBotClient,
                                SlackInboundNormaliser slackInboundNormaliser,
                                ChannelGateway gateway,
-                               Config config) {
+                               CredentialResolver credentialResolver) {
         this.bindingStore = bindingStore;
         this.threadCacheStore = threadCacheStore;
         this.slackBotClient = slackBotClient;
         this.slackInboundNormaliser = slackInboundNormaliser;
         this.gateway = gateway;
-        this.config = config;
+        this.credentialResolver = credentialResolver;
     }
 
     @Override
@@ -258,8 +259,12 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         bindingStore.deleteByChannelId(channel.id());
     }
 
-    /** Resolves bot token from MicroProfile Config using workspaceId as the credential key. */
     String resolveToken(String workspaceId) {
-        return config.getValue("casehub.qhorus.slack-channel.credentials." + workspaceId, String.class);
+        Map<String, String> creds = credentialResolver.resolve(workspaceId);
+        String token = creds.get(CredentialPropertyKeys.BEARER_TOKEN);
+        if (token == null || token.isBlank()) {
+            throw new NoSuchElementException("No bearer-token for credential ref: " + workspaceId);
+        }
+        return token;
     }
 }

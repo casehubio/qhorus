@@ -17,7 +17,7 @@ public class SlackBotBinding {
     /** Slack channel ID, e.g. "C123ABC". */
     public String slackChannelId;
 
-    /** Slack workspace/team ID, e.g. "T123ABC". Also used as the MicroProfile Config credential key. */
+    /** Slack workspace/team ID, e.g. "T123ABC". Also used as the CredentialResolver credential ref. */
     public String workspaceId;
 
     public Instant createdAt;
