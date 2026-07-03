@@ -230,7 +230,7 @@ class Zone3EvidentialCheckerTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private UUID resolveChannelId(final String name) {
-        return channelStore.findByName(name).orElseThrow().id;
+        return channelStore.findByName(name).orElseThrow().id();
     }
 
     /** Plant a FAILED obligation for priorCorrId on its own prior channel. */

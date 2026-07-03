@@ -2,6 +2,7 @@ package io.casehub.qhorus.mcp;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.UUID;
 
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
@@ -209,7 +210,7 @@ class WaitForReplyEdgeCaseTest {
         String corrId = "corr-" + UUID.randomUUID();
 
         QuarkusTransaction.requiringNew().run(() -> {
-            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER channel").semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob").build());
+            var channel = channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER channel").semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob")).build());
             DispatchResult query = messageService.dispatch(MessageDispatch.builder()
                     .channelId(channel.id())
                     .sender("alice")

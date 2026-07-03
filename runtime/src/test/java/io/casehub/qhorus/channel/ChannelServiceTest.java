@@ -52,7 +52,7 @@ class ChannelServiceTest {
     @Test
     @TestTransaction
     void createChannelWithBarrierContributors() {
-        Channel ch = channelService.create(ChannelCreateRequest.builder("sync-point").description("Wait for all reviewers").semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob,carol").build());
+        Channel ch = channelService.create(ChannelCreateRequest.builder("sync-point").description("Wait for all reviewers").semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob", "carol")).build());
 
         assertEquals(ChannelSemantic.BARRIER, ch.semantic());
         assertEquals(List.of("alice", "bob", "carol"), ch.barrierContributors());

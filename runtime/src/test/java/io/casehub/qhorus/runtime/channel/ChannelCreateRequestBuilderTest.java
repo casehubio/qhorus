@@ -3,6 +3,7 @@ package io.casehub.qhorus.runtime.channel;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -28,9 +29,9 @@ class ChannelCreateRequestBuilderTest {
         io.casehub.qhorus.api.channel.ChannelCreateRequest req = io.casehub.qhorus.api.channel.ChannelCreateRequest.builder("full-ch")
                                                                                                                    .description("Full channel")
                                                                                                                    .semantic(ChannelSemantic.BARRIER)
-                                                                                                                   .barrierContributors("alice,bob")
-                                                                                                                   .allowedWriters("alice")
-                                                                                                                   .adminInstances("admin-1")
+                                                                                                                   .barrierContributors(List.of("alice", "bob"))
+                                                                                                                   .allowedWriters(List.of("alice"))
+                                                                                                                   .adminInstances(List.of("admin-1"))
                                                                                                                    .rateLimitPerChannel(100)
                                                                                                                    .rateLimitPerInstance(10)
                                                                                                                    .allowedTypes(Set.of(MessageType.QUERY, MessageType.COMMAND))
@@ -44,9 +45,9 @@ class ChannelCreateRequestBuilderTest {
         assertThat(req.name()).isEqualTo("full-ch");
         assertThat(req.description()).isEqualTo("Full channel");
         assertThat(req.semantic()).isEqualTo(ChannelSemantic.BARRIER);
-        assertThat(req.barrierContributors()).isEqualTo("alice,bob");
-        assertThat(req.allowedWriters()).isEqualTo("alice");
-        assertThat(req.adminInstances()).isEqualTo("admin-1");
+        assertThat(req.barrierContributors()).containsExactly("alice", "bob");
+        assertThat(req.allowedWriters()).containsExactly("alice");
+        assertThat(req.adminInstances()).containsExactly("admin-1");
         assertThat(req.rateLimitPerChannel()).isEqualTo(100);
         assertThat(req.rateLimitPerInstance()).isEqualTo(10);
         assertThat(req.allowedTypes()).containsExactlyInAnyOrder(MessageType.QUERY, MessageType.COMMAND);

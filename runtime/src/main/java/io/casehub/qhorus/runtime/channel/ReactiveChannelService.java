@@ -11,17 +11,23 @@ import jakarta.inject.Inject;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
+import io.casehub.qhorus.api.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.FindOrCreateResult;
+import io.casehub.qhorus.api.channel.ReactiveChannelManager;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.ReactiveChannelStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
-public class ReactiveChannelService {
+public class ReactiveChannelService implements ReactiveChannelManager {
 
     @Inject
     CurrentPrincipal currentPrincipal;
@@ -32,11 +38,64 @@ public class ReactiveChannelService {
     @Inject
     public MessageStore messageStore;
 
-    public Uni<Channel> create(io.casehub.qhorus.api.channel.ChannelCreateRequest req) {
+    @Inject
+    ChannelBindingStore channelBindingStore;
+
+    @Override
+    public Uni<Channel> create(ChannelCreateRequest req) {
         Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
         return Panache.withTransaction("qhorus", () -> channelStore.put(channel));
     }
 
+    @Override
+    public Uni<FindOrCreateResult> findOrCreate(final ChannelCreateRequest req) {
+        if (req.hasConnectorBinding()) {
+            return findOrCreateWithBinding(req);
+        }
+        return findOrCreateByName(req);
+    }
+
+    private Uni<FindOrCreateResult> findOrCreateWithBinding(final ChannelCreateRequest req) {
+        // Binding lookup is blocking — offload to worker pool
+        return Uni.createFrom().item(() ->
+                        channelBindingStore.findByKey(req.inboundConnectorId(), req.externalKey()))
+                .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
+                .flatMap(existingBinding -> {
+                    if (existingBinding.isPresent()) {
+                        return channelStore.find(existingBinding.get().channelId())
+                                .map(opt -> opt.orElseThrow(() -> new IllegalStateException(
+                                        "Stale binding: binding exists for key '" + req.externalKey()
+                                        + "' (connector=" + req.inboundConnectorId()
+                                        + ") but referenced channel was deleted")))
+                                .map(ch -> new FindOrCreateResult(ch, false));
+                    }
+                    // Create new channel with autoCreated flag
+                    Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
+                    Channel autoCreated = channel.toBuilder().autoCreated(true).build();
+                    return Panache.withTransaction("qhorus", () ->
+                            channelStore.put(autoCreated)
+                                    .chain(saved -> Uni.createFrom().item(() -> {
+                                        channelBindingStore.put(new ChannelConnectorBinding(
+                                                saved.id(), req.inboundConnectorId(), req.externalKey(),
+                                                req.outboundConnectorId(), req.outboundDestination()));
+                                        return new FindOrCreateResult(saved, true);
+                                    }).runSubscriptionOn(Infrastructure.getDefaultWorkerPool())));
+                });
+    }
+
+    // No concurrency recovery — see #317 for the PostgreSQL transaction-rollback concern
+    private Uni<FindOrCreateResult> findOrCreateByName(final ChannelCreateRequest req) {
+        return Panache.withTransaction("qhorus", () ->
+                channelStore.findByName(req.name())
+                        .flatMap(existing -> {
+                            if (existing.isPresent()) {
+                                return Uni.createFrom().item(new FindOrCreateResult(existing.get(), false));
+                            }
+                            return create(req).map(ch -> new FindOrCreateResult(ch, true));
+                        }));
+    }
+
+    @Override
     public Uni<Channel> setRateLimits(UUID channelId, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
@@ -45,20 +104,23 @@ public class ReactiveChannelService {
                         .rateLimitPerInstance(rateLimitPerInstance).build())));
     }
 
-    public Uni<Channel> setAllowedWriters(UUID channelId, String allowedWriters) {
+    @Override
+    public Uni<Channel> setAllowedWriters(UUID channelId, List<String> allowedWriters) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .flatMap(ch -> channelStore.put(ch.toBuilder()
-                        .allowedWriters(Channel.splitCsv(allowedWriters)).build())));
+                        .allowedWriters(allowedWriters).build())));
     }
 
-    public Uni<Channel> setAdminInstances(UUID channelId, String adminInstances) {
+    @Override
+    public Uni<Channel> setAdminInstances(UUID channelId, List<String> adminInstances) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .flatMap(ch -> channelStore.put(ch.toBuilder()
-                        .adminInstances(Channel.splitCsv(adminInstances)).build())));
+                        .adminInstances(adminInstances).build())));
     }
 
+    @Override
     public Uni<Channel> setTypeConstraints(final UUID channelId,
                                            final Set<MessageType> allowedTypes, final Set<MessageType> deniedTypes) {
         final Set<MessageType> allowed = allowedTypes != null ? allowedTypes : Set.of();
@@ -89,12 +151,14 @@ public class ReactiveChannelService {
         return channelStore.find(id);
     }
 
+    @Override
     public Uni<Channel> pause(UUID channelId) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
                 .flatMap(ch -> channelStore.put(ch.toBuilder().paused(true).build())));
     }
 
+    @Override
     public Uni<Channel> resume(UUID channelId) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
@@ -105,6 +169,7 @@ public class ReactiveChannelService {
         return channelStore.scan(ChannelQuery.all());
     }
 
+    @Override
     public Uni<Long> delete(final UUID channelId, final boolean force) {
         return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
                 .map(opt -> opt.orElseThrow(

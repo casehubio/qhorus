@@ -256,9 +256,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         Channel ch = channelService.create(ChannelCreateRequest.builder(name)
                                                                      .description(description)
                                                                      .semantic(sem)
-                                                                     .barrierContributors(barrierContributors)
-                                                                     .allowedWriters(allowedWriters)
-                                                                     .adminInstances(adminInstances)
+                                                                     .barrierContributors(splitCsv(barrierContributors))
+                                                                     .allowedWriters(splitCsv(allowedWriters))
+                                                                     .adminInstances(splitCsv(adminInstances))
                                                                      .rateLimitPerChannel(rateLimitPerChannel)
                                                                      .rateLimitPerInstance(rateLimitPerInstance)
                                                                      .allowedTypes(MessageType.parseTypes(allowedTypes))
@@ -305,7 +305,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers (instance IDs and/or capability:tag / role:name). Null = open to all.", required = false) String allowedWriters) {
         Channel resolved = resolveChannel(channel);
-        Channel ch       = channelService.setAllowedWriters(resolved.id(), allowedWriters);
+        Channel ch       = channelService.setAllowedWriters(resolved.id(), splitCsv(allowedWriters));
         return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
     }
 
@@ -317,7 +317,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel. Null = open to any caller.", required = false) String adminInstances) {
         Channel resolved = resolveChannel(channel);
-        Channel ch       = channelService.setAdminInstances(resolved.id(), adminInstances);
+        Channel ch       = channelService.setAdminInstances(resolved.id(), splitCsv(adminInstances));
         return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
     }
 

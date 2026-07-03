@@ -33,7 +33,7 @@ import io.casehub.qhorus.api.gateway.InboundHumanMessage;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
-import io.casehub.qhorus.runtime.channel.FindOrCreateResult;
+import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.api.store.ChannelBindingStore;
@@ -189,7 +189,7 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
                 .outboundDestination(spec.outboundDestination())
                 .build();
         try {
-            FindOrCreateResult result = channelService.findOrCreateWithBinding(req);
+            FindOrCreateResult result = channelService.findOrCreate(req);
             if (result.wasCreated()) {
                 meterRegistry.counter("inbound_channels_auto_created_total",
                         "connector_id", msg.connectorId()).increment();

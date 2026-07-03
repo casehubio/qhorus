@@ -40,6 +40,22 @@ public abstract class MessageServiceContractTest {
      */
     protected abstract void persistInstance(String instanceId, List<String> capabilities);
 
+    // ── CSV test helper ───────────────────────────────────────────────────────
+
+    /**
+     * Converts a CSV string to {@code List<String>} for test convenience.
+     * Canonical copy: {@code QhorusMcpToolsBase.splitCsv()} — duplicated here
+     * because that method is {@code protected static} and inaccessible from tests.
+     */
+    protected static java.util.List<String> splitCsv(String csv) {
+        if (csv == null || csv.isBlank()) return null;
+        java.util.List<String> result = java.util.Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        return result.isEmpty() ? null : result;
+    }
+
     // ── Convenience channel factory wrappers ──────────────────────────────────
 
     protected UUID createOpenChannel() {

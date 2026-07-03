@@ -21,6 +21,7 @@ import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.message.ReactiveMessageDispatcher;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
@@ -83,7 +84,7 @@ class ReactiveMessageServiceTest extends MessageServiceContractTest {
             var builder = ChannelCreateRequest.builder("contract-reactive-" + UUID.randomUUID())
                     .description("contract test channel")
                     .semantic(semantic);
-            if (allowedWriters != null) builder.allowedWriters(allowedWriters);
+            if (allowedWriters != null) builder.allowedWriters(splitCsv(allowedWriters));
             if (rateLimitPerInstance != null) builder.rateLimitPerInstance(rateLimitPerInstance);
             if (allowedTypes != null) builder.allowedTypes(allowedTypes);
             Channel ch = channelService.create(builder.build());
@@ -124,5 +125,10 @@ class ReactiveMessageServiceTest extends MessageServiceContractTest {
         assertThat(svc.findById(result.messageId()).await().indefinitely())
                 .isPresent()
                 .hasValueSatisfying(m -> assertThat(m.deadline()).isEqualTo(deadline));
+    }
+
+    @Test
+    void reactiveMessageServiceImplementsDispatcher() {
+        assertThat(svc).isInstanceOf(ReactiveMessageDispatcher.class);
     }
 }

@@ -1,7 +1,6 @@
 package io.casehub.qhorus.runtime.channel;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.UUID;
 
@@ -15,7 +14,7 @@ import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Tests for {@link ChannelService#findOrCreateWithBinding(io.casehub.qhorus.api.channel.ChannelCreateRequest)}.
+ * Tests for {@link ChannelService#findOrCreate(io.casehub.qhorus.api.channel.ChannelCreateRequest)}.
  *
  * <p>Each test uses a unique phone number to avoid cross-test state issues.
  * The method uses REQUIRES_NEW which commits independently of any surrounding context,
@@ -49,8 +48,8 @@ class ChannelServiceFindOrCreateTest {
 
     @Test
     void createsChannelAndBindingWhenNotFound() {
-        String phone = uniquePhone();
-        FindOrCreateResult result = channelService.findOrCreateWithBinding(smsRequest(phone));
+        String                                           phone  = uniquePhone();
+        io.casehub.qhorus.api.channel.FindOrCreateResult result = channelService.findOrCreate(smsRequest(phone));
 
         assertThat(result.wasCreated()).isTrue();
         assertThat(result.channel()).isNotNull();
@@ -64,9 +63,9 @@ class ChannelServiceFindOrCreateTest {
 
     @Test
     void returnsExistingChannelWhenAlreadyCreated() {
-        String phone = uniquePhone();
-        FindOrCreateResult first  = channelService.findOrCreateWithBinding(smsRequest(phone));
-        FindOrCreateResult second = channelService.findOrCreateWithBinding(smsRequest(phone));
+        String                                           phone  = uniquePhone();
+        io.casehub.qhorus.api.channel.FindOrCreateResult first  = channelService.findOrCreate(smsRequest(phone));
+        io.casehub.qhorus.api.channel.FindOrCreateResult second = channelService.findOrCreate(smsRequest(phone));
 
         assertThat(first.wasCreated()).isTrue();
         assertThat(second.wasCreated()).isFalse();
@@ -78,9 +77,9 @@ class ChannelServiceFindOrCreateTest {
     @Test
     void differentSenders_createSeparateChannels() {
         String phone1 = uniquePhone();
-        String phone2 = uniquePhone();
-        FindOrCreateResult r1 = channelService.findOrCreateWithBinding(smsRequest(phone1));
-        FindOrCreateResult r2 = channelService.findOrCreateWithBinding(smsRequest(phone2));
+        String                                           phone2 = uniquePhone();
+        io.casehub.qhorus.api.channel.FindOrCreateResult r1     = channelService.findOrCreate(smsRequest(phone1));
+        io.casehub.qhorus.api.channel.FindOrCreateResult r2     = channelService.findOrCreate(smsRequest(phone2));
 
         assertThat(r1.wasCreated()).isTrue();
         assertThat(r2.wasCreated()).isTrue();
@@ -90,12 +89,27 @@ class ChannelServiceFindOrCreateTest {
     }
 
     @Test
-    void throwsWhenNoConnectorBinding() {
-        // Use a valid slug name — no connector binding fields → should throw IAE
-        String                                             validName = "my-channel-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        io.casehub.qhorus.api.channel.ChannelCreateRequest noBinding = io.casehub.qhorus.api.channel.ChannelCreateRequest.builder(validName).build();
-        assertThatThrownBy(() -> channelService.findOrCreateWithBinding(noBinding))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("connector binding");
+    void findOrCreate_nameBasedLookup_createsNew() {
+        String validName = "test-name-based-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        io.casehub.qhorus.api.channel.ChannelCreateRequest req =
+                io.casehub.qhorus.api.channel.ChannelCreateRequest.builder(validName).build();
+        io.casehub.qhorus.api.channel.FindOrCreateResult result = channelService.findOrCreate(req);
+
+        assertThat(result.wasCreated()).isTrue();
+        assertThat(result.channel()).isNotNull();
+        assertThat(result.channel().name()).isEqualTo(validName);
+    }
+
+    @Test
+    void findOrCreate_nameBasedLookup_findsExisting() {
+        String validName = "test-find-existing-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        io.casehub.qhorus.api.channel.ChannelCreateRequest req =
+                io.casehub.qhorus.api.channel.ChannelCreateRequest.builder(validName).build();
+        channelService.create(req);
+
+        io.casehub.qhorus.api.channel.FindOrCreateResult result = channelService.findOrCreate(req);
+
+        assertThat(result.wasCreated()).isFalse();
+        assertThat(result.channel().name()).isEqualTo(validName);
     }
 }

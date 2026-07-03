@@ -8,12 +8,15 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
@@ -23,7 +26,7 @@ import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 
 @ApplicationScoped
-public class ChannelService {
+public class ChannelService implements ChannelManager {
 
     @Inject
     CurrentPrincipal currentPrincipal;
@@ -40,6 +43,7 @@ public class ChannelService {
     @Inject
     ChannelGateway channelGateway;
 
+    @Override
     @Transactional
     public Channel create(final ChannelCreateRequest req) {
         Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId());
@@ -62,11 +66,16 @@ public class ChannelService {
         return channel;
     }
 
+    @Override
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public FindOrCreateResult findOrCreateWithBinding(final ChannelCreateRequest req) {
-        if (!req.hasConnectorBinding()) {
-            throw new IllegalArgumentException("findOrCreateWithBinding requires a connector binding");
+    public FindOrCreateResult findOrCreate(final ChannelCreateRequest req) {
+        if (req.hasConnectorBinding()) {
+            return findOrCreateWithBinding(req);
         }
+        return findOrCreateByName(req);
+    }
+
+    private FindOrCreateResult findOrCreateWithBinding(final ChannelCreateRequest req) {
         Optional<ChannelConnectorBinding> existingBinding = channelBindingStore
                 .findByKey(req.inboundConnectorId(), req.externalKey());
         if (existingBinding.isPresent()) {
@@ -89,6 +98,26 @@ public class ChannelService {
         return new FindOrCreateResult(channel, true);
     }
 
+    private FindOrCreateResult findOrCreateByName(final ChannelCreateRequest req) {
+        Optional<Channel> existing = channelStore.findByName(req.name());
+        if (existing.isPresent()) {
+            return new FindOrCreateResult(existing.get(), false);
+        }
+        try {
+            Channel channel = create(req);
+            return new FindOrCreateResult(channel, true);
+        } catch (PersistenceException ex) {
+            // Race: another caller created the same channel name concurrently.
+            // The unique constraint on channel name prevents duplicates — retry lookup.
+            Optional<Channel> winner = channelStore.findByName(req.name());
+            if (winner.isPresent()) {
+                return new FindOrCreateResult(winner.get(), false);
+            }
+            throw ex;
+        }
+    }
+
+    @Override
     @Transactional
     public Channel setRateLimits(UUID channelId, Integer rateLimitPerChannel, Integer rateLimitPerInstance) {
         Channel ch = channelStore.find(channelId)
@@ -98,22 +127,25 @@ public class ChannelService {
                 .rateLimitPerInstance(rateLimitPerInstance).build());
     }
 
+    @Override
     @Transactional
-    public Channel setAllowedWriters(UUID channelId, String allowedWriters) {
+    public Channel setAllowedWriters(UUID channelId, List<String> allowedWriters) {
         Channel ch = channelStore.find(channelId)
                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         return channelStore.put(ch.toBuilder()
-                .allowedWriters(Channel.splitCsv(allowedWriters)).build());
+                .allowedWriters(allowedWriters).build());
     }
 
+    @Override
     @Transactional
-    public Channel setAdminInstances(UUID channelId, String adminInstances) {
+    public Channel setAdminInstances(UUID channelId, List<String> adminInstances) {
         Channel ch = channelStore.find(channelId)
                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         return channelStore.put(ch.toBuilder()
-                .adminInstances(Channel.splitCsv(adminInstances)).build());
+                .adminInstances(adminInstances).build());
     }
 
+    @Override
     @Transactional
     public Channel setTypeConstraints(final UUID channelId,
                                       final Set<MessageType> allowedTypes, final Set<MessageType> deniedTypes) {
@@ -149,6 +181,7 @@ public class ChannelService {
                 .flatMap(binding -> channelStore.find(binding.channelId()));
     }
 
+    @Override
     @Transactional
     public Channel pause(UUID channelId) {
         Channel ch = channelStore.find(channelId)
@@ -156,6 +189,7 @@ public class ChannelService {
         return channelStore.put(ch.toBuilder().paused(true).build());
     }
 
+    @Override
     @Transactional
     public Channel resume(UUID channelId) {
         Channel ch = channelStore.find(channelId)
@@ -167,6 +201,7 @@ public class ChannelService {
         return channelStore.scan(ChannelQuery.all());
     }
 
+    @Override
     @Transactional
     public long delete(final UUID channelId, final boolean force) {
         Channel ch = channelStore.find(channelId)

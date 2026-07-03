@@ -219,7 +219,7 @@ class Zone2NormativeChannelTest {
     }
 
     private UUID resolveChannelId(final String name) {
-        return channelStore.findByName(name).orElseThrow().id;
+        return channelStore.findByName(name).orElseThrow().id();
     }
 
     private void report(final String variant, final int cheating, final int honest,

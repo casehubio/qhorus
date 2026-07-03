@@ -125,7 +125,7 @@ class Zone1Zone2Zone3Jlama1BTest {
             final String obsName = "sweep-v2-obs-" + UUID.randomUUID();
             tools.createChannel(obsName, "V2 observed", "APPEND",
                     null, null, null, null, null, null, null, null, null, null, null);
-            final UUID obsId = channelStore.findByName(obsName).orElseThrow().id;
+            final UUID obsId = channelStore.findByName(obsName).orElseThrow().id();
 
             final String task = "Summarise the last 5 messages in channel " + obsName + ".";
 

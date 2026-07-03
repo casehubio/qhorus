@@ -10,6 +10,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
@@ -35,6 +36,9 @@ class LedgerObligationTrailTest {
     QhorusMcpTools tools;
 
     @Inject
+    ChannelStore channelStore;
+
+    @Inject
     MessageLedgerEntryRepository ledgerRepo;
 
     @Test
@@ -58,12 +62,9 @@ class LedgerObligationTrailTest {
                 "Q1 sales total: $1.2M across 342 transactions", corrId,
                 cmdResult.messageId(), null, null, null, null, null);
 
-        io.casehub.qhorus.runtime.channel.Channel ch = io.casehub.qhorus.runtime.channel.Channel.<io.casehub.qhorus.runtime.channel.Channel> find(
-                "name", "ledger-llm-trail")
-                .firstResultOptional()
-                .orElseThrow();
+        io.casehub.qhorus.api.channel.Channel ch = channelStore.findByName("ledger-llm-trail").orElseThrow();
 
-        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.id, null);
+        List<MessageLedgerEntry> entries = ledgerRepo.findByChannelId(ch.id(), null);
 
         // 3 messages → 3 ledger entries
         assertThat(entries).hasSize(3);

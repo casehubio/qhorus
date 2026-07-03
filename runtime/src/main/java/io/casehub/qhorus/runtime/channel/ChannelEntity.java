@@ -109,22 +109,6 @@ public class ChannelEntity extends PanacheEntityBase {
         }
     }
 
-    public static ChannelEntity fromRequest(io.casehub.qhorus.api.channel.ChannelCreateRequest req, String tenancyId) {
-        ChannelEntity ch = new ChannelEntity();
-        ch.name = req.name();
-        ch.description = req.description();
-        ch.semantic = req.semantic();
-        ch.barrierContributors = req.barrierContributors();
-        ch.allowedWriters = blankToNull(req.allowedWriters());
-        ch.adminInstances = blankToNull(req.adminInstances());
-        ch.rateLimitPerChannel = req.rateLimitPerChannel();
-        ch.rateLimitPerInstance = req.rateLimitPerInstance();
-        ch.allowedTypes = MessageType.serializeTypes(req.allowedTypes());
-        ch.deniedTypes = MessageType.serializeTypes(req.deniedTypes());
-        ch.tenancyId = tenancyId;
-        return ch;
-    }
-
     public static ChannelEntity fromDomain(io.casehub.qhorus.api.channel.Channel channel) {
         ChannelEntity e = new ChannelEntity();
         e.id = channel.id();

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.examples.agent.OrchestratorAgent;
 import io.casehub.qhorus.examples.agent.WorkerAgent;
-import io.casehub.qhorus.runtime.channel.Channel;
+import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -64,13 +64,13 @@ class NormativeLayoutAgentTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             Channel work = channelService.findByName(workName).orElseThrow();
-            assertThat(work.allowedTypes).isNull();
+            assertThat(work.allowedTypes()).isNull();
 
             Channel observe = channelService.findByName(observeName).orElseThrow();
-            assertThat(observe.allowedTypes).isEqualTo("EVENT");
+            assertThat(observe.allowedTypes()).containsExactly(io.casehub.qhorus.api.message.MessageType.EVENT);
 
             Channel oversight = channelService.findByName(oversightName).orElseThrow();
-            assertThat(oversight.allowedTypes).isEqualTo("QUERY,COMMAND");
+            assertThat(oversight.allowedTypes()).containsExactlyInAnyOrder(io.casehub.qhorus.api.message.MessageType.QUERY, io.casehub.qhorus.api.message.MessageType.COMMAND);
         });
     }
 

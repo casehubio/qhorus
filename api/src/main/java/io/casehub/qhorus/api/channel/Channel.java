@@ -40,9 +40,9 @@ public record Channel(
                 req.name(),
                 req.description(),
                 req.semantic() != null ? req.semantic() : ChannelSemantic.APPEND,
-                splitCsv(req.barrierContributors()),
-                splitCsv(req.allowedWriters()),
-                splitCsv(req.adminInstances()),
+                req.barrierContributors(),
+                req.allowedWriters(),
+                req.adminInstances(),
                 req.rateLimitPerChannel(),
                 req.rateLimitPerInstance(),
                 req.allowedTypes(),
@@ -52,15 +52,6 @@ public record Channel(
                 tenancyId,
                 now,
                 now);
-    }
-
-    public static List<String> splitCsv(String csv) {
-        if (csv == null || csv.isBlank()) return null;
-        List<String> result = java.util.Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .toList();
-        return result.isEmpty() ? null : result;
     }
 
     public Builder toBuilder() {

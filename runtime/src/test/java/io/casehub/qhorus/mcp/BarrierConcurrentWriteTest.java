@@ -2,6 +2,7 @@ package io.casehub.qhorus.mcp;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -62,7 +63,7 @@ class BarrierConcurrentWriteTest {
         String ch = "bar-event-then-status-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(
                 () -> channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER contributor test")
-                        .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob").build()));
+                        .semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob")).build()));
 
         try {
             // alice sends EVENT first (should NOT satisfy her contribution)
@@ -137,7 +138,7 @@ class BarrierConcurrentWriteTest {
         String ch = "bar-concurrent-write-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(
                 () -> channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER concurrent write test")
-                        .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob,carol").build()));
+                        .semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob", "carol")).build()));
 
         ExecutorService pool = Executors.newFixedThreadPool(3);
         CountDownLatch ready = new CountDownLatch(3);
@@ -238,7 +239,7 @@ class BarrierConcurrentWriteTest {
 
         QuarkusTransaction.requiringNew().run(() -> {
             channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER double comma")
-                    .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,,bob").build());
+                    .semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob")).build());
         });
 
         try {
@@ -288,7 +289,7 @@ class BarrierConcurrentWriteTest {
         String ch = "bar-interleaved-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(
                 () -> channelService.create(ChannelCreateRequest.builder(ch).description("BARRIER interleaved check")
-                        .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob").build()));
+                        .semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob")).build()));
 
         try {
             // alice writes

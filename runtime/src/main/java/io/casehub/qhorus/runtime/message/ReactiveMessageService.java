@@ -23,6 +23,7 @@ import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.message.ReactiveMessageDispatcher;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 import io.casehub.qhorus.runtime.channel.AllowedWritersPolicy;
@@ -70,7 +71,7 @@ import io.smallrye.mutiny.infrastructure.Infrastructure;
  */
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
-public class ReactiveMessageService {
+public class ReactiveMessageService implements ReactiveMessageDispatcher {
 
     private static final Logger LOG = Logger.getLogger(ReactiveMessageService.class);
 

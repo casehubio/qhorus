@@ -164,7 +164,7 @@ class MessageOrderingTest {
         QuarkusTransaction.requiringNew().run(() -> {
             channelService.create(ChannelCreateRequest.builder(ch)
                     .description("BARRIER ordering test")
-                    .semantic(ChannelSemantic.BARRIER).barrierContributors("alice,bob,carol").build());
+                    .semantic(ChannelSemantic.BARRIER).barrierContributors(List.of("alice", "bob", "carol")).build());
             var channel = channelService.findByName(ch).orElseThrow();
             messageService.dispatch(                    MessageDispatch.builder()
                     .channelId(channel.id())

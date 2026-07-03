@@ -345,6 +345,22 @@ public abstract class QhorusMcpToolsBase {
     }
 
     /**
+     * Parses a nullable/blank CSV tool parameter into an immutable list.
+     * Used at the MCP tool boundary to convert comma-separated string arguments
+     * into the {@code List<String>} expected by service methods.
+     *
+     * @return null if input is null or blank; otherwise a non-empty list of trimmed, non-empty segments
+     */
+    protected static List<String> splitCsv(String csv) {
+        if (csv == null || csv.isBlank()) return null;
+        List<String> result = java.util.Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        return result.isEmpty() ? null : result;
+    }
+
+    /**
      * Throws {@link IllegalStateException} if the channel has an {@code admin_instances} list
      * and {@code callerInstanceId} is not in it (or is null).
      */

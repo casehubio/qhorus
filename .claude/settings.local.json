@@ -442,7 +442,24 @@
       "mcp__intellij-index__ide_file_structure",
       "mcp__intellij-index__ide_project_status",
       "mcp__intellij-index__ide_find_symbol",
-      "Bash(gh issue *)"
+      "Bash(gh issue *)",
+      "Bash(python3 *)",
+      "Bash(cat \"$\\(git -C /Users/mdproctor/claude/casehub/qhorus rev-parse --show-toplevel\\)/.superpowers/sdd/progress.md\")",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 1)",
+      "Bash(git -C /Users/mdproctor/claude/casehub/qhorus rm runtime/src/main/java/io/casehub/qhorus/runtime/channel/FindOrCreateResult.java)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/review-package 10d2816 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 2)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/review-package 357fe86 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 3)",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(git commit *)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 4)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/review-package 0840a13 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 5)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/review-package efd2bc4 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 6)",
+      "Bash(git commit -m 'refactor\\(#315\\): remove ChannelEntity.fromRequest\\(\\) dead code *)"
     ]
   }
 }

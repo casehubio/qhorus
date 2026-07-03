@@ -30,6 +30,7 @@ import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.runtime.channel.AllowedWritersPolicy;
 import jakarta.transaction.TransactionSynchronizationRegistry;
 
@@ -46,7 +47,7 @@ import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 
 @ApplicationScoped
-public class MessageService {
+public class MessageService implements MessageDispatcher {
 
     private static final Logger LOG = Logger.getLogger(MessageService.class);
 

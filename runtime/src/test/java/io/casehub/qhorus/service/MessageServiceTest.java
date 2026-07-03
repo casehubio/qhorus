@@ -11,6 +11,7 @@ import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
@@ -20,6 +21,9 @@ import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @QuarkusTest
 @TestTransaction
@@ -66,7 +70,7 @@ class MessageServiceTest extends MessageServiceContractTest {
             Integer rateLimitPerInstance, Set<MessageType> allowedTypes, ChannelSemantic semantic) {
         UUID id = UUID.randomUUID();
         Channel ch = Channel.builder("contract-" + id).id(id).semantic(semantic).paused(paused)
-                .allowedWriters(Channel.splitCsv(allowedWriters)).rateLimitPerInstance(rateLimitPerInstance)
+                .allowedWriters(splitCsv(allowedWriters)).rateLimitPerInstance(rateLimitPerInstance)
                 .allowedTypes(allowedTypes).build();
         return channelStore.put(ch).id();
     }
@@ -74,5 +78,10 @@ class MessageServiceTest extends MessageServiceContractTest {
     @Override
     protected void persistInstance(String instanceId, List<String> capabilities) {
         instanceService.register(instanceId, "contract-test agent", capabilities);
+    }
+
+    @Test
+    void messageServiceImplementsDispatcher() {
+        assertThat(svc).isInstanceOf(MessageDispatcher.class);
     }
 }

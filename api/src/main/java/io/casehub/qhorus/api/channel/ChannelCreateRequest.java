@@ -1,6 +1,7 @@
 package io.casehub.qhorus.api.channel;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import io.casehub.qhorus.api.message.MessageType;
@@ -24,9 +25,9 @@ public record ChannelCreateRequest(
         String name,
         String description,
         ChannelSemantic semantic,
-        String barrierContributors,
-        String allowedWriters,
-        String adminInstances,
+        List<String> barrierContributors,
+        List<String> allowedWriters,
+        List<String> adminInstances,
         Integer rateLimitPerChannel,
         Integer rateLimitPerInstance,
         Set<MessageType> allowedTypes,
@@ -53,8 +54,11 @@ public record ChannelCreateRequest(
         // must not alter the validated state. Set.copyOf(null) throws NPE, hence the null guard.
         // Null is preserved (not normalized to Set.of()) — null means "open" and is a meaningful
         // contract distinct from "empty allowed set (nothing permitted)".
-        allowedTypes = allowedTypes != null ? Set.copyOf(allowedTypes) : null;
-        deniedTypes  = deniedTypes  != null ? Set.copyOf(deniedTypes)  : null;
+        barrierContributors = barrierContributors != null ? List.copyOf(barrierContributors) : null;
+        allowedWriters     = allowedWriters     != null ? List.copyOf(allowedWriters)     : null;
+        adminInstances     = adminInstances     != null ? List.copyOf(adminInstances)     : null;
+        allowedTypes       = allowedTypes       != null ? Set.copyOf(allowedTypes)        : null;
+        deniedTypes        = deniedTypes        != null ? Set.copyOf(deniedTypes)          : null;
 
         // Validate overlap — both fields may be null (null means "open", not "block all")
         if (allowedTypes != null && !allowedTypes.isEmpty()
@@ -80,9 +84,9 @@ public record ChannelCreateRequest(
         private final String name;
         private String description;
         private ChannelSemantic semantic = ChannelSemantic.APPEND;
-        private String barrierContributors;
-        private String allowedWriters;
-        private String adminInstances;
+        private List<String> barrierContributors;
+        private List<String> allowedWriters;
+        private List<String> adminInstances;
         private Integer rateLimitPerChannel;
         private Integer rateLimitPerInstance;
         private Set<MessageType> allowedTypes;
@@ -106,17 +110,17 @@ public record ChannelCreateRequest(
             return this;
         }
 
-        public Builder barrierContributors(String barrierContributors) {
+        public Builder barrierContributors(List<String> barrierContributors) {
             this.barrierContributors = barrierContributors;
             return this;
         }
 
-        public Builder allowedWriters(String allowedWriters) {
+        public Builder allowedWriters(List<String> allowedWriters) {
             this.allowedWriters = allowedWriters;
             return this;
         }
 
-        public Builder adminInstances(String adminInstances) {
+        public Builder adminInstances(List<String> adminInstances) {
             this.adminInstances = adminInstances;
             return this;
         }

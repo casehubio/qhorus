@@ -251,9 +251,9 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
         ChannelCreateRequest req = ChannelCreateRequest.builder(name)
                 .description(description)
                 .semantic(sem)
-                .barrierContributors(barrierContributors)
-                .allowedWriters(allowedWriters)
-                .adminInstances(adminInstances)
+                .barrierContributors(splitCsv(barrierContributors))
+                .allowedWriters(splitCsv(allowedWriters))
+                .adminInstances(splitCsv(adminInstances))
                 .rateLimitPerChannel(rateLimitPerChannel)
                 .rateLimitPerInstance(rateLimitPerInstance)
                 .allowedTypes(MessageType.parseTypes(allowedTypes))
@@ -309,7 +309,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers (instance IDs and/or capability:tag / role:name). Null = open to all.", required = false) String allowedWriters) {
         return resolveChannelAsync(channel)
-                .flatMap(resolved -> channelService.setAllowedWriters(resolved.id(), allowedWriters))
+                .flatMap(resolved -> channelService.setAllowedWriters(resolved.id(), splitCsv(allowedWriters)))
                 .flatMap(ch -> messageStore.countByChannel(ch.id())
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
@@ -321,7 +321,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel. Null = open to any caller.", required = false) String adminInstances) {
         return resolveChannelAsync(channel)
-                .flatMap(resolved -> channelService.setAdminInstances(resolved.id(), adminInstances))
+                .flatMap(resolved -> channelService.setAdminInstances(resolved.id(), splitCsv(adminInstances)))
                 .flatMap(ch -> messageStore.countByChannel(ch.id())
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
