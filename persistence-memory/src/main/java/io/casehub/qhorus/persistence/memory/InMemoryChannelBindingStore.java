@@ -56,6 +56,20 @@ public class InMemoryChannelBindingStore implements ChannelBindingStore {
     }
 
     @Override
+    public Optional<ChannelConnectorBinding> putIfAbsent(ChannelConnectorBinding binding) {
+        String key = compoundKey(binding.inboundConnectorId(), binding.externalKey());
+        synchronized (this) {
+            ChannelConnectorBinding existing = byKey.get(key);
+            if (existing != null) {
+                return Optional.of(existing);
+            }
+            byChannelId.put(binding.channelId(), binding);
+            byKey.put(key, binding);
+            return Optional.empty();
+        }
+    }
+
+    @Override
     public void delete(UUID channelId) {
         synchronized (this) {
             ChannelConnectorBinding existing = byChannelId.remove(channelId);

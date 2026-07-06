@@ -49,7 +49,13 @@ public class ChannelService implements ChannelManager {
     @Override
     @Transactional
     public Channel create(final ChannelCreateRequest req) {
-        return channelCreateHelper.createInNewTransaction(req, false);
+        FindOrCreateResult result = channelCreateHelper.createInNewTransaction(req, false);
+        if (req.hasConnectorBinding() && !result.wasCreated()) {
+            throw new IllegalStateException(
+                    "Connector binding already exists for connector '"
+                    + req.inboundConnectorId() + "' key '" + req.externalKey() + "'");
+        }
+        return result.channel();
     }
 
     @Override
@@ -73,8 +79,21 @@ public class ChannelService implements ChannelManager {
             return new FindOrCreateResult(existing, false);
         }
 
-        Channel channel = channelCreateHelper.createInNewTransaction(req, true);
-        return new FindOrCreateResult(channel, true);
+        try {
+            return channelCreateHelper.createInNewTransaction(req, true);
+        } catch (PersistenceException | IllegalStateException ex) {
+            Optional<ChannelConnectorBinding> winner = channelBindingStore
+                    .findByKey(req.inboundConnectorId(), req.externalKey());
+            if (winner.isPresent()) {
+                Channel existing = channelStore.find(winner.get().channelId())
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Race recovery failed: binding exists for key '" + req.externalKey()
+                                + "' but referenced channel was deleted"));
+                return new FindOrCreateResult(existing, false);
+            }
+            throw ex instanceof PersistenceException pe ? pe
+                    : new PersistenceException(ex.getMessage(), ex);
+        }
     }
 
     private FindOrCreateResult findOrCreateByName(final ChannelCreateRequest req) {
@@ -83,8 +102,7 @@ public class ChannelService implements ChannelManager {
             return new FindOrCreateResult(existing.get(), false);
         }
         try {
-            Channel channel = channelCreateHelper.createInNewTransaction(req, false);
-            return new FindOrCreateResult(channel, true);
+            return channelCreateHelper.createInNewTransaction(req, false);
         } catch (PersistenceException ex) {
             // Race: another caller created the same channel name concurrently.
             // The unique constraint on channel name prevents duplicates — retry lookup.

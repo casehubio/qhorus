@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
@@ -39,6 +40,23 @@ public class JpaChannelBindingStore implements ChannelBindingStore {
             ChannelConnectorBindingEntity.flush();
         } else {
             entity.persistAndFlush();
+        }
+    }
+
+    @Override
+    @Transactional
+    public Optional<ChannelConnectorBinding> putIfAbsent(ChannelConnectorBinding binding) {
+        Optional<ChannelConnectorBinding> existing = findByKey(binding.inboundConnectorId(), binding.externalKey());
+        if (existing.isPresent()) {
+            return existing;
+        }
+        try {
+            ChannelConnectorBindingEntity entity = ChannelConnectorBindingEntity.fromDomain(binding);
+            entity.persistAndFlush();
+            return Optional.empty();
+        } catch (PersistenceException ex) {
+            ChannelConnectorBindingEntity.getEntityManager().clear();
+            return findByKey(binding.inboundConnectorId(), binding.externalKey());
         }
     }
 
