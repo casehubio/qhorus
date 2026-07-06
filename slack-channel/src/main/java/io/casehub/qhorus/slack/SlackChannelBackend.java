@@ -61,7 +61,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
     // Reverse: slackChannelId → ChannelRef (for onInboundMessage())
     final ConcurrentHashMap<String, ChannelRef> slackToChannel = new ConcurrentHashMap<>();
     // Thread cache: channelId → (correlationId → threadTs)
-    final ConcurrentHashMap<UUID, ConcurrentHashMap<UUID, String>> threadCache = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<UUID, ConcurrentHashMap<String, String>> threadCache = new ConcurrentHashMap<>();
 
     public SlackChannelBackend(SlackBotBindingStore bindingStore,
                                SlackThreadCacheStore threadCacheStore,
@@ -113,7 +113,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
             // Warm thread cache from DB — preserves thread continuity across restarts
             List<SlackThreadCache> entries = threadCacheStore.findByChannelId(channelId);
             if (!entries.isEmpty()) {
-                ConcurrentHashMap<UUID, String> channelThreads = threadCache
+                ConcurrentHashMap<String, String> channelThreads = threadCache
                         .computeIfAbsent(channelId, k -> new ConcurrentHashMap<>());
                 entries.forEach(e -> channelThreads.put(e.id.correlationId, e.threadTs));
             }
@@ -148,8 +148,8 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         // Thread lookup: memory first, then DB fallback (post-restart recovery)
         String threadTs = null;
         if (message.correlationId() != null) {
-            UUID corrId = message.correlationId();
-            Map<UUID, String> channelThreads = threadCache.get(channel.id());
+            String corrId = message.correlationId();
+            Map<String, String> channelThreads = threadCache.get(channel.id());
             threadTs = channelThreads != null ? channelThreads.get(corrId) : null;
             if (threadTs == null) {
                 threadTs = threadCacheStore.findThreadTs(channel.id(), corrId).orElse(null);
@@ -170,7 +170,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         // Terminal types (DONE/FAILURE/DECLINE) are about to evict the entry; writing then
         // immediately deleting is a pointless persist+delete cycle.
         if (message.correlationId() != null && threadTs == null && result.ts() != null && !isTerminal) {
-            UUID corrId = message.correlationId();
+            String corrId = message.correlationId();
             threadCache.computeIfAbsent(channel.id(), k -> new ConcurrentHashMap<>())
                     .put(corrId, result.ts());
             threadCacheStore.save(channel.id(), corrId, result.ts());
@@ -180,8 +180,8 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         // HANDOFF: do NOT evict — delegated agent continues in the same thread.
         // RESPONSE: do NOT evict — human may reply in the same Slack thread.
         if (isTerminal && message.correlationId() != null) {
-            UUID corrId = message.correlationId();
-            Map<UUID, String> channelThreads = threadCache.get(channel.id());
+            String corrId = message.correlationId();
+            Map<String, String> channelThreads = threadCache.get(channel.id());
             if (channelThreads != null) channelThreads.remove(corrId);
             threadCacheStore.delete(channel.id(), corrId);
         }
@@ -211,15 +211,15 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
         if (slackThreadTs != null && !slackThreadTs.equals(slackTs)) {
             // Thread reply — reverse-lookup existing corrId from DB
             corrIdStr = threadCacheStore.findCorrelationId(channelRef.id(), slackThreadTs)
-                    .map(UUID::toString).orElse(null);
+                    .orElse(null);
         } else {
             corrIdStr = null;
         }
 
         if (corrIdStr == null) {
             // New top-level message (or reply to an unknown thread) — generate corrId and cache
-            UUID corrId = UUID.randomUUID();
-            corrIdStr = corrId.toString();
+            String corrId = UUID.randomUUID().toString();
+            corrIdStr = corrId;
             // rootTs: for thread replies, use slackThreadTs (the thread root).
             // For top-level messages, use slackTs (this message IS the root).
             // Slack requires thread_ts to equal the ROOT message's timestamp.

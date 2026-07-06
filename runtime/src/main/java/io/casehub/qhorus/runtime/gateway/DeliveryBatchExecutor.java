@@ -125,7 +125,7 @@ class DeliveryBatchExecutor {
                 m.sender(),
                 m.messageType(),
                 m.content(),
-                m.correlationId() != null ? UUID.fromString(m.correlationId()) : null,
+                m.correlationId(),
                 m.inReplyTo(),
                 ActorTypeResolver.resolve(m.sender()));
     }

@@ -332,7 +332,7 @@ public class ChannelGateway {
                 msg.sender(),
                 msg.messageType(),
                 msg.content(),
-                parseCorrelationUuid(msg.correlationId()),
+                msg.correlationId(),
                 msg.inReplyTo(),
                 msg.actorType());
 
@@ -351,15 +351,6 @@ public class ChannelGateway {
                             backend.backendId(), channelId, ex.getMessage());
                 }
             });
-        }
-    }
-
-    private static UUID parseCorrelationUuid(String correlationId) {
-        if (correlationId == null) return null;
-        try {
-            return UUID.fromString(correlationId);
-        } catch (IllegalArgumentException e) {
-            return null;
         }
     }
 

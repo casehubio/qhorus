@@ -20,7 +20,7 @@ public class SlackThreadCacheStore {
     EntityManager em;
 
     /** Forward lookup: (channelId, correlationId) → threadTs. Used in post(). */
-    public Optional<String> findThreadTs(UUID channelId, UUID correlationId) {
+    public Optional<String> findThreadTs(UUID channelId, String correlationId) {
         return em.createQuery(
                 "SELECT c.threadTs FROM SlackThreadCache c WHERE c.id.channelId = :ch AND c.id.correlationId = :corr",
                 String.class)
@@ -30,10 +30,10 @@ public class SlackThreadCacheStore {
     }
 
     /** Reverse lookup: (channelId, threadTs) → correlationId. Used for inbound thread-reply routing. */
-    public Optional<UUID> findCorrelationId(UUID channelId, String threadTs) {
+    public Optional<String> findCorrelationId(UUID channelId, String threadTs) {
         return em.createQuery(
                 "SELECT c.id.correlationId FROM SlackThreadCache c WHERE c.id.channelId = :ch AND c.threadTs = :ts",
-                UUID.class)
+                String.class)
                 .setParameter("ch", channelId)
                 .setParameter("ts", threadTs)
                 .getResultStream().findFirst();
@@ -49,7 +49,7 @@ public class SlackThreadCacheStore {
     }
 
     @Transactional
-    public void save(UUID channelId, UUID correlationId, String threadTs) {
+    public void save(UUID channelId, String correlationId, String threadTs) {
         SlackThreadCache entry = new SlackThreadCache();
         entry.id = new SlackThreadCacheId(channelId, correlationId);
         entry.threadTs = threadTs;
@@ -59,7 +59,7 @@ public class SlackThreadCacheStore {
 
     /** Evict on terminal commitment state (DONE / FAILURE / DECLINE). */
     @Transactional
-    public void delete(UUID channelId, UUID correlationId) {
+    public void delete(UUID channelId, String correlationId) {
         em.createQuery(
                 "DELETE FROM SlackThreadCache c WHERE c.id.channelId = :ch AND c.id.correlationId = :corr")
                 .setParameter("ch", channelId)

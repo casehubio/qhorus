@@ -198,8 +198,7 @@ class A2AStreamIntegrationTest {
     @Test
     void sseStream_receivesCompletedEvent_whenDoneDispatched() throws Exception {
         final String channelName = "stream-live-done-" + UUID.randomUUID();
-        final UUID corrId = UUID.randomUUID();
-        final String taskId = corrId.toString();
+        final String taskId = UUID.randomUUID().toString();
 
         final ChannelSetup setup = createChannelAndDispatchCommand(channelName, taskId);
 
@@ -216,7 +215,7 @@ class A2AStreamIntegrationTest {
                 source.open();
 
                 Awaitility.await().atMost(2, TimeUnit.SECONDS)
-                        .until(() -> a2aBackend.streamCount(corrId) > 0);
+                        .until(() -> a2aBackend.streamCount(taskId) > 0);
 
                 QuarkusTransaction.requiringNew().run(() ->
                         messageService.dispatch(MessageDispatch.builder()
@@ -237,8 +236,7 @@ class A2AStreamIntegrationTest {
     @Test
     void sseStream_receivesCancelledEvent_whenDeclineDispatched() throws Exception {
         final String channelName = "stream-live-decline-" + UUID.randomUUID();
-        final UUID corrId = UUID.randomUUID();
-        final String taskId = corrId.toString();
+        final String taskId = UUID.randomUUID().toString();
 
         final ChannelSetup setup = createChannelAndDispatchCommand(channelName, taskId);
 
@@ -255,7 +253,7 @@ class A2AStreamIntegrationTest {
                 source.open();
 
                 Awaitility.await().atMost(2, TimeUnit.SECONDS)
-                        .until(() -> a2aBackend.streamCount(corrId) > 0);
+                        .until(() -> a2aBackend.streamCount(taskId) > 0);
 
                 QuarkusTransaction.requiringNew().run(() ->
                         messageService.dispatch(MessageDispatch.builder()
@@ -281,8 +279,7 @@ class A2AStreamIntegrationTest {
         // non-keepalive events count as task events.
         // heartbeat-interval-seconds=1 in A2AEnabledProfile means ≥3 keepalives in 3s.
         final String channelName = "stream-keepalive-" + UUID.randomUUID();
-        final UUID corrId = UUID.randomUUID();
-        final String taskId = corrId.toString();
+        final String taskId = UUID.randomUUID().toString();
 
         // Dispatch COMMAND so task exists — without it, streamTask() returns immediately
         // with "task not found" and fires the event handler, self-defeating the test.
@@ -304,7 +301,7 @@ class A2AStreamIntegrationTest {
                 source.open();
 
                 Awaitility.await().atMost(2, TimeUnit.SECONDS)
-                        .until(() -> a2aBackend.streamCount(corrId) > 0);
+                        .until(() -> a2aBackend.streamCount(taskId) > 0);
 
                 // Load-bearing sleep: keepalive events are filtered out, so there is no signal to await.
                 // 3s > 3 × heartbeat-interval-seconds=1, confirming ≥3 keepalive cycles pass
@@ -312,7 +309,7 @@ class A2AStreamIntegrationTest {
                 Thread.sleep(3_000);
 
                 assertThat(events).as("Keepalive events must not appear as task events").isEmpty();
-                assertThat(a2aBackend.streamCount(corrId))
+                assertThat(a2aBackend.streamCount(taskId))
                         .as("Connection must still be open after keepalives").isGreaterThan(0);
                 // SseEventSource.close() in try-with-resources triggers sink.isClosed() → loop exits
             }

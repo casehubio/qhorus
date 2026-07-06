@@ -48,7 +48,7 @@ public class SlackThreadCacheCleanupJob {
         // and do a full sweep of any corrId whose threadTs is no longer in the DB
         for (var channelEntry : backend.threadCache.entrySet()) {
             UUID channelId = channelEntry.getKey();
-            Map<UUID, String> channelThreads = channelEntry.getValue();
+            Map<String, String> channelThreads = channelEntry.getValue();
             channelThreads.keySet().removeIf(corrId ->
                     store.findThreadTs(channelId, corrId).isEmpty());
         }

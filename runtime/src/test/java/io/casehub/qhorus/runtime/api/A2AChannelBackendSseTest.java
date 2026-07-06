@@ -38,7 +38,7 @@ class A2AChannelBackendSseTest {
         ref = new ChannelRef(UUID.randomUUID(), "test-channel");
     }
 
-    private static OutboundMessage outbound(final UUID correlationId, final MessageType type) {
+    private static OutboundMessage outbound(final String correlationId, final MessageType type) {
         return new OutboundMessage(
                 UUID.randomUUID(), "agent", type, "content",
                 correlationId, null, ActorType.AGENT);
@@ -48,7 +48,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void registerStream_thenPost_consumerReceivesMessage() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final List<OutboundMessage> received = new ArrayList<>();
         backend.registerStream(corrId, received::add);
 
@@ -60,7 +60,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void registerStream_multipleConsumers_allReceiveMessage() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final AtomicInteger count = new AtomicInteger();
         backend.registerStream(corrId, msg -> count.incrementAndGet());
         backend.registerStream(corrId, msg -> count.incrementAndGet());
@@ -73,7 +73,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void streamCount_afterRegister_returnsCorrectCount() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         assertThat(backend.streamCount(corrId)).isEqualTo(0);
 
         backend.registerStream(corrId, msg -> {});
@@ -87,7 +87,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void deregisterStream_removesConsumer_noLongerReceivesMessages() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final List<OutboundMessage> received = new ArrayList<>();
         final Consumer<OutboundMessage> consumer = received::add;
 
@@ -101,7 +101,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void deregisterStream_lastConsumer_removesCorrelationEntry() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final Consumer<OutboundMessage> consumer = msg -> {};
 
         backend.registerStream(corrId, consumer);
@@ -114,14 +114,14 @@ class A2AChannelBackendSseTest {
     @Test
     void deregisterStream_unknownCorrelationId_isNoOp() {
         // Must not throw even if the correlationId has no registered consumers
-        backend.deregisterStream(UUID.randomUUID(), msg -> {});
+        backend.deregisterStream(UUID.randomUUID().toString(), msg -> {});
     }
 
     // ── post() null correlationId guard (EVENT messages) ─────────────────────
 
     @Test
     void post_nullCorrelationId_ignoresAllConsumers() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final AtomicInteger count = new AtomicInteger();
         backend.registerStream(corrId, msg -> count.incrementAndGet());
 
@@ -137,8 +137,8 @@ class A2AChannelBackendSseTest {
     @Test
     void post_unknownCorrelationId_ignoresAllConsumers() {
         // post() for a correlationId with no registered consumers — should not throw
-        final UUID other = UUID.randomUUID();
-        backend.registerStream(UUID.randomUUID(), msg -> {
+        final String other = UUID.randomUUID().toString();
+        backend.registerStream(UUID.randomUUID().toString(), msg -> {
             throw new AssertionError("should not be called");
         });
 
@@ -149,7 +149,7 @@ class A2AChannelBackendSseTest {
 
     @Test
     void post_oneConsumerThrows_otherConsumersStillReceiveMessage() {
-        final UUID corrId = UUID.randomUUID();
+        final String corrId = UUID.randomUUID().toString();
         final AtomicInteger goodCount = new AtomicInteger();
 
         backend.registerStream(corrId, msg -> { throw new RuntimeException("simulated broken pipe"); });

@@ -71,14 +71,14 @@ class SlackChannelBackendTest {
 
     @Test
     void post_eventType_skipsImmediately() {
-        OutboundMessage msg = outbound(MessageType.EVENT, UUID.randomUUID(), "data");
+        OutboundMessage msg = outbound(MessageType.EVENT, UUID.randomUUID().toString(), "data");
         backend.post(channelRef, msg);
         verify(slackBotClient, never()).postMessage(anyString(), anyString(), anyString(), any());
     }
 
     @Test
     void post_nullContent_skipsImmediately() {
-        OutboundMessage msg = outbound(MessageType.STATUS, UUID.randomUUID(), null);
+        OutboundMessage msg = outbound(MessageType.STATUS, UUID.randomUUID().toString(), null);
         backend.post(channelRef, msg);
         verify(slackBotClient, never()).postMessage(anyString(), anyString(), anyString(), any());
     }
@@ -103,7 +103,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_firstMessageWithCorrId_sendsTopLevelAndCachesThreadTs() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
         when(slackBotClient.postMessage(token, slackChannelId, "Hi", null))
                 .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
@@ -117,7 +117,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_secondMessageSameCorrId_sendsAsThreadReply() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         // Warm memory cache
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
@@ -132,7 +132,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_doneMessage_evictsCacheEntry() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(any(), any(), any(), any()))
@@ -146,7 +146,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_failureMessage_evictsCacheEntry() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(any(), any(), any(), any()))
@@ -159,7 +159,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_declineMessage_evictsCacheEntry() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(any(), any(), any(), any()))
@@ -172,7 +172,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_handoffMessage_doesNotEvictCacheEntry() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(any(), any(), any(), any()))
@@ -186,7 +186,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_responseMessage_doesNotEvictCacheEntry() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(any(), any(), any(), any()))
@@ -199,7 +199,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_doneMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
         when(slackBotClient.postMessage(any(), any(), any(), isNull()))
                 .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
@@ -213,7 +213,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_failureMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
         when(slackBotClient.postMessage(any(), any(), any(), isNull()))
                 .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
@@ -226,7 +226,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_declineMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
         when(slackBotClient.postMessage(any(), any(), any(), isNull()))
                 .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
@@ -239,7 +239,7 @@ class SlackChannelBackendTest {
 
     @Test
     void post_slackApiFailure_logsWarnNoMutation() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
         when(slackBotClient.postMessage(any(), any(), any(), isNull()))
                 .thenReturn(new SlackBotClient.PostResult(false, null, "channel_not_found"));
@@ -284,7 +284,7 @@ class SlackChannelBackendTest {
     @Test
     void onChannelInitialised_restartRecovery_loadsThreadCacheFromDb() {
         UUID chId = UUID.randomUUID();
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         String threadTs = "1718567890.123456";
 
         SlackBotBinding binding = new SlackBotBinding();
@@ -328,12 +328,12 @@ class SlackChannelBackendTest {
         backend.onInboundMessage(msg).toCompletableFuture().join();
 
         // MUST save with rootTs (the thread root), NOT replyTs (the reply's own ts)
-        verify(threadCacheStore).save(eq(channelId), any(UUID.class), eq(rootTs));
+        verify(threadCacheStore).save(eq(channelId), anyString(), eq(rootTs));
     }
 
     @Test
     void evict_removesFromAllInMemoryMaps() {
-        UUID corrId = UUID.randomUUID();
+        String corrId = UUID.randomUUID().toString();
         String slackChId = "C999";
         SlackBotBinding b = new SlackBotBinding();
         b.channelId = channelId;
@@ -383,7 +383,7 @@ class SlackChannelBackendTest {
         return b;
     }
 
-    private OutboundMessage outbound(MessageType type, UUID corrId, String content) {
+    private OutboundMessage outbound(MessageType type, String corrId, String content) {
         return new OutboundMessage(UUID.randomUUID(), "agent:test", type, content, corrId, null, null);
     }
 }

@@ -9,10 +9,7 @@ import io.casehub.qhorus.api.message.MessageType;
  * @param messageId     delivery-scoped identifier for this fan-out event; NOT the Qhorus
  *                      ledger message ID (which is a Long). Backends must not use this to
  *                      reference messages in the Qhorus ledger.
- * @param correlationId null for EVENT messages not correlated to a COMMAND; non-null for
- *                      RESPONSE, DONE, FAILURE, DECLINE, STATUS linked to a prior COMMAND.
- *                      UUID form — converted from the String correlationId in
- *                      {@link io.casehub.qhorus.api.message.MessageDispatch} by the fanOut caller
+ * @param correlationId the correlation identifier (nullable — null for EVENT messages)
  * @param inReplyTo     the Qhorus ledger message ID (Long) of the message being replied to.
  *                      Required (non-null) when type is DONE, DECLINE, FAILURE, RESPONSE, or
  *                      HANDOFF — these types require {@code inReplyTo} in the
@@ -26,6 +23,6 @@ public record OutboundMessage(
         String sender,
         MessageType type,
         String content,
-        UUID correlationId,
+        String correlationId,
         Long inReplyTo,
         ActorType senderActorType) {}

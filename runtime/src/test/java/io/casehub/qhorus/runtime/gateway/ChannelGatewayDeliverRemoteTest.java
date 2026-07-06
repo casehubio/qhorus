@@ -1,8 +1,10 @@
 package io.casehub.qhorus.runtime.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.*;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -48,51 +50,53 @@ class ChannelGatewayDeliverRemoteTest {
     }
 
     @Test
-    void deliverRemote_callsPostOnBestEffortBackend() throws Exception {
+    void deliverRemote_callsPostOnBestEffortBackend() {
         // Register a BEST_EFFORT backend
         gateway.initChannel(channelId, new ChannelRef(channelId, channelName));
         gateway.registerBackend(channelId, new RecordingBackend("test-be", ActorType.AGENT, posted),
                 "agent");
 
         gateway.deliverRemote(channelId, 1L);
-        Thread.sleep(100); // virtual thread dispatch
 
-        assertThat(posted).hasSize(1);
+        await().atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> assertThat(posted).hasSize(1));
         assertThat(posted.get(0).sender()).isEqualTo("agent-1");
     }
 
     @Test
-    void deliverRemote_skipsAgentBackend() throws Exception {
+    void deliverRemote_skipsAgentBackend() {
         gateway.initChannel(channelId, new ChannelRef(channelId, channelName));
         // No additional backends registered — only the agent backend
 
         gateway.deliverRemote(channelId, 1L);
-        Thread.sleep(100);
 
-        assertThat(posted).isEmpty();
+        await().during(Duration.ofMillis(200))
+                .atMost(Duration.ofMillis(500))
+                .untilAsserted(() -> assertThat(posted).isEmpty());
     }
 
     @Test
-    void deliverRemote_skipsAtLeastOnceBackend() throws Exception {
+    void deliverRemote_skipsAtLeastOnceBackend() {
         gateway.initChannel(channelId, new ChannelRef(channelId, channelName));
         gateway.registerBackend(channelId,
                 new RecordingBackend("tracked-be", ActorType.AGENT, posted, DeliveryGuarantee.AT_LEAST_ONCE),
                 "agent");
 
         gateway.deliverRemote(channelId, 1L);
-        Thread.sleep(100);
 
-        assertThat(posted).isEmpty();
+        await().during(Duration.ofMillis(200))
+                .atMost(Duration.ofMillis(500))
+                .untilAsserted(() -> assertThat(posted).isEmpty());
     }
 
     @Test
-    void deliverRemote_lazyInitializesUnknownChannel() throws Exception {
+    void deliverRemote_lazyInitializesUnknownChannel() {
         // Do NOT call initChannel — simulate a channel created on another node
         gateway.deliverRemote(channelId, 1L);
-        Thread.sleep(100);
 
         // Verify the channel was lazy-initialized (registry now has an entry)
-        assertThat(gateway.listBackends(channelId)).isNotEmpty();
+        await().atMost(Duration.ofSeconds(2))
+                .untilAsserted(() -> assertThat(gateway.listBackends(channelId)).isNotEmpty());
     }
 
     @Test

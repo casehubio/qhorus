@@ -75,7 +75,7 @@ public class A2AChannelBackend implements ChannelBackend {
      * Each consumer is called on every {@link #post} for its correlationId.
      * Consumers deregister themselves on terminal events or send failures.
      */
-    private final ConcurrentHashMap<UUID, Set<Consumer<OutboundMessage>>> sseStreams =
+    private final ConcurrentHashMap<String, Set<Consumer<OutboundMessage>>> sseStreams =
             new ConcurrentHashMap<>();
 
     @Inject
@@ -171,7 +171,7 @@ public class A2AChannelBackend implements ChannelBackend {
      * The consumer is responsible for calling {@link #deregisterStream} when it no longer
      * needs notifications.
      */
-    void registerStream(final UUID correlationId, final Consumer<OutboundMessage> consumer) {
+    void registerStream(final String correlationId, final Consumer<OutboundMessage> consumer) {
         sseStreams.computeIfAbsent(correlationId, k -> ConcurrentHashMap.newKeySet())
                   .add(consumer);
     }
@@ -183,7 +183,7 @@ public class A2AChannelBackend implements ChannelBackend {
      * race where another thread adds a new consumer between the isEmpty() check and the
      * map entry removal, which would orphan the newly-added consumer.
      */
-    void deregisterStream(final UUID correlationId, final Consumer<OutboundMessage> consumer) {
+    void deregisterStream(final String correlationId, final Consumer<OutboundMessage> consumer) {
         sseStreams.compute(correlationId, (k, s) -> {
             if (s == null) return null;
             s.remove(consumer);
@@ -196,7 +196,7 @@ public class A2AChannelBackend implements ChannelBackend {
      * Package-private for test visibility — allows integration tests to synchronize
      * on registration without relying on timing.
      */
-    int streamCount(final UUID correlationId) {
+    int streamCount(final String correlationId) {
         final Set<Consumer<OutboundMessage>> s = sseStreams.get(correlationId);
         return s == null ? 0 : s.size();
     }
@@ -223,9 +223,18 @@ public class A2AChannelBackend implements ChannelBackend {
         final String agentId = metadata.get("agentId");
         final String sender = buildSender(resolved, agentId, role);
         String type = "agent".equals(role) ? "response" : "query";
-        final String correlationId = (taskId != null && !taskId.isBlank())
-                ? taskId
-                : UUID.randomUUID().toString();
+        final String correlationId;
+        if (taskId != null && !taskId.isBlank()) {
+            String normalized;
+            try {
+                normalized = UUID.fromString(taskId).toString();
+            } catch (IllegalArgumentException e) {
+                normalized = taskId;
+            }
+            correlationId = normalized;
+        } else {
+            correlationId = UUID.randomUUID().toString();
+        }
 
         final Channel ch = channelService.findByName(channelName)
                                                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));

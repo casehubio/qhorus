@@ -9,11 +9,11 @@ import jakarta.persistence.Embeddable;
 public class SlackThreadCacheId implements Serializable {
 
     public UUID channelId;
-    public UUID correlationId;
+    public String correlationId;
 
     public SlackThreadCacheId() {}
 
-    public SlackThreadCacheId(UUID channelId, UUID correlationId) {
+    public SlackThreadCacheId(UUID channelId, String correlationId) {
         this.channelId = channelId;
         this.correlationId = correlationId;
     }

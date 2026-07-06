@@ -236,13 +236,13 @@ public class A2AResource {
             return;
         }
 
-        final UUID corrId;
         try {
-            corrId = UUID.fromString(taskId);
+            UUID.fromString(taskId); // validate format
         } catch (final IllegalArgumentException e) {
             sendErrorEvent(sink, sse, taskId, "Invalid task ID format — expected UUID");
             return;
         }
+        final String corrId = taskId.toLowerCase();
 
         // Short-lived transactional reads — commits before loop starts
         final AtomicBoolean notFound = new AtomicBoolean(false);

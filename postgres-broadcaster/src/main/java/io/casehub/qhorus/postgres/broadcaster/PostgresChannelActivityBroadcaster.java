@@ -1,6 +1,8 @@
 package io.casehub.qhorus.postgres.broadcaster;
 
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -51,7 +53,8 @@ public class PostgresChannelActivityBroadcaster implements ChannelActivityBroadc
     /** PostgreSQL channel name. Must be a valid unquoted identifier (underscores, lowercase). */
     static final String CHANNEL = "qhorus_channel_activity";
     private static final int FILTER_SIZE = 1000;
-    private static final long RECONNECT_DELAY_MS = 5000;
+    private static final long INITIAL_DELAY_MS = 1000;
+    private static final long MAX_DELAY_MS = 60_000;
 
     @Inject
     @ReactiveDataSource("qhorus")
@@ -65,6 +68,9 @@ public class PostgresChannelActivityBroadcaster implements ChannelActivityBroadc
 
     private final SelfNotificationFilter filter = new SelfNotificationFilter(FILTER_SIZE);
     private volatile PgConnection subscriberConnection;
+    private final AtomicLong currentDelayMs = new AtomicLong(INITIAL_DELAY_MS);
+    private final AtomicBoolean reconnecting = new AtomicBoolean(false);
+    private final AtomicBoolean stopped = new AtomicBoolean(false);
 
     @PostConstruct
     void startListening() {
@@ -73,6 +79,7 @@ public class PostgresChannelActivityBroadcaster implements ChannelActivityBroadc
 
     @PreDestroy
     void stopListening() {
+        stopped.set(true);
         PgConnection conn = subscriberConnection;
         if (conn != null) {
             conn.close().subscribe().with(ok -> {}, err -> {});
@@ -135,6 +142,16 @@ public class PostgresChannelActivityBroadcaster implements ChannelActivityBroadc
      * (PostgreSQL LISTEN is session-scoped — a new connection has no active subscriptions).
      */
     private void acquireAndListen() {
+        if (stopped.get()) return;
+        if (!reconnecting.compareAndSet(false, true)) return;
+
+        // Close previous connection to prevent leaked LISTEN subscriptions
+        PgConnection prev = subscriberConnection;
+        if (prev != null) {
+            prev.close().subscribe().with(ok -> {}, err -> {});
+            subscriberConnection = null;
+        }
+
         pool.getConnection().subscribe().with(
                 conn -> {
                     io.vertx.pgclient.PgConnection pgDelegate =
@@ -144,23 +161,40 @@ public class PostgresChannelActivityBroadcaster implements ChannelActivityBroadc
                     pgConn.notificationHandler(n -> handleNotification(n.getPayload()));
                     pgConn.query("LISTEN " + CHANNEL).execute()
                             .subscribe().with(
-                                    ok -> LOG.infof("Subscribed to PostgreSQL channel '%s'", CHANNEL),
-                                    err -> LOG.errorf(err, "Failed to LISTEN on '%s'", CHANNEL));
+                                    ok -> {
+                                        LOG.infof("Subscribed to PostgreSQL channel '%s'", CHANNEL);
+                                        currentDelayMs.set(INITIAL_DELAY_MS);
+                                        reconnecting.set(false);
+                                    },
+                                    err -> {
+                                        LOG.errorf(err, "Failed to LISTEN on '%s'", CHANNEL);
+                                        pgConn.close().subscribe().with(ok2 -> {}, err2 -> {});
+                                        subscriberConnection = null;
+                                        reconnecting.set(false);
+                                        scheduleReconnect();
+                                    });
                     pgDelegate.closeHandler(v -> {
+                        if (subscriberConnection != pgConn) return; // stale — already replaced
                         LOG.warn("PostgreSQL subscriber connection lost — reconnecting");
-                        acquireAndListen();
+                        scheduleReconnect();
                     });
                 },
                 err -> {
                     LOG.errorf(err, "Failed to acquire subscriber connection for '%s'", CHANNEL);
-                    Thread.ofVirtual().start(() -> {
-                        try {
-                            Thread.sleep(RECONNECT_DELAY_MS);
-                        } catch (InterruptedException ignored) {
-                            Thread.currentThread().interrupt();
-                        }
-                        acquireAndListen();
-                    });
+                    reconnecting.set(false);
+                    scheduleReconnect();
                 });
+    }
+
+    private void scheduleReconnect() {
+        long delay = currentDelayMs.getAndUpdate(d -> Math.min(d * 2, MAX_DELAY_MS));
+        Thread.ofVirtual().start(() -> {
+            try {
+                Thread.sleep(delay);
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+            acquireAndListen();
+        });
     }
 }

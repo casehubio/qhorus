@@ -432,7 +432,7 @@ class DeliveryServiceTest {
         assertThat(out.sender()).isEqualTo("agent-1");
         assertThat(out.type()).isEqualTo(MessageType.RESPONSE);
         assertThat(out.content()).isEqualTo("here is the result");
-        assertThat(out.correlationId()).isEqualTo(UUID.fromString(m.correlationId()));
+        assertThat(out.correlationId()).isEqualTo(m.correlationId());
         assertThat(out.inReplyTo()).isEqualTo(42L);
         assertThat(out.messageId()).isNotNull(); // random UUID assigned
     }
@@ -643,7 +643,7 @@ class DeliveryServiceTest {
         assertThat(out.sender()).isEqualTo("agent-1");
         assertThat(out.type()).isEqualTo(MessageType.DONE);
         assertThat(out.content()).isEqualTo("completed");
-        assertThat(out.correlationId()).isEqualTo(UUID.fromString(corrId));
+        assertThat(out.correlationId()).isEqualTo(corrId);
         assertThat(out.inReplyTo()).isEqualTo(10L);
     }
 

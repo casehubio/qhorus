@@ -171,7 +171,7 @@ class ChannelGatewayTest {
 
         final Long replyToId = 42L;
         OutboundMessage msg = new OutboundMessage(UUID.randomUUID(), "worker",
-                MessageType.DONE, "task complete", UUID.randomUUID(), replyToId, ActorType.AGENT);
+                MessageType.DONE, "task complete", UUID.randomUUID().toString(), replyToId, ActorType.AGENT);
         gateway.fanOut(channelId, "my-channel", msg);
 
         Thread.sleep(200);

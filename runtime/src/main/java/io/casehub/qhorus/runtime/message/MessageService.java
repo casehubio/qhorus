@@ -191,7 +191,7 @@ public class MessageService implements MessageDispatcher {
                     try {
                         channelGateway.fanOut(ch.id(), ch.name(), new OutboundMessage(
                                 UUID.randomUUID(), dispatch.sender(), dispatch.type(), dispatch.content(),
-                                parseCorrelationUuid(dispatch.correlationId()),
+                                dispatch.correlationId(),
                                 dispatch.inReplyTo(),
                                 dispatch.actorType()));
                     } catch (final Exception e) {
@@ -299,7 +299,7 @@ public class MessageService implements MessageDispatcher {
             try {
                 hasTracked = channelGateway.fanOut(ch.id(), ch.name(), new OutboundMessage(
                         UUID.randomUUID(), dispatch.sender(), dispatch.type(), dispatch.content(),
-                        parseCorrelationUuid(dispatch.correlationId()),
+                        dispatch.correlationId(),
                         dispatch.inReplyTo(),
                         dispatch.actorType()));
             } catch (final Exception e) {
@@ -414,17 +414,4 @@ public class MessageService implements MessageDispatcher {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    /**
-     * Parses a correlation ID string as a UUID, returning null for null input or
-     * invalid UUID strings. Correlation IDs are not required to be UUIDs, but
-     * {@link OutboundMessage} uses UUID for the correlationId field.
-     */
-    private static UUID parseCorrelationUuid(String correlationId) {
-        if (correlationId == null) return null;
-        try {
-            return UUID.fromString(correlationId);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
 }

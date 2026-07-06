@@ -121,7 +121,7 @@ class A2AChannelBackendIntegrationTest {
                 "agent",
                 MessageType.COMMAND,
                 "content",
-                UUID.randomUUID(),
+                UUID.randomUUID().toString(),
                 null,
                 ActorType.AGENT);
 

@@ -311,7 +311,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                     channelGateway.fanOut(ch.id(), ch.name(), new OutboundMessage(
                                             UUID.randomUUID(), dispatch.sender(), dispatch.type(),
                                             dispatch.content(),
-                                            parseCorrelationUuid(dispatch.correlationId()),
+                                            dispatch.correlationId(),
                                             dispatch.inReplyTo(),
                                             dispatch.actorType()));
                                 } catch (final Exception e) {
@@ -365,7 +365,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                     ch.id(), ch.name(), new OutboundMessage(
                                                     UUID.randomUUID(), dispatch.sender(),
                                                     dispatch.type(), dispatch.content(),
-                                                    parseCorrelationUuid(dispatch.correlationId()),
+                                                    dispatch.correlationId(),
                                                     dispatch.inReplyTo(),
                                                     dispatch.actorType()));
 
@@ -513,17 +513,4 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                         .build()));
     }
 
-    /**
-     * Parses a correlation ID string as a UUID, returning null for null input or
-     * invalid UUID strings. Correlation IDs are not required to be UUIDs, but
-     * {@link OutboundMessage} uses UUID for the correlationId field.
-     */
-    private static UUID parseCorrelationUuid(String correlationId) {
-        if (correlationId == null) return null;
-        try {
-            return UUID.fromString(correlationId);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
 }
