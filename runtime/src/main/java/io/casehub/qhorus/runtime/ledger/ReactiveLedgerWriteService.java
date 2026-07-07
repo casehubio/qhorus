@@ -203,7 +203,7 @@ public class ReactiveLedgerWriteService {
                             .replaceWithVoid();
                 })
                 .onFailure().recoverWithUni(e -> {
-                    LOG.warnf("Could not write attestation for entry %s — trust signal lost but pipeline unaffected",
+                    LOG.warnf(e, "Could not write attestation for entry %s — trust signal lost but pipeline unaffected",
                             causedByEntryId);
                     return Uni.createFrom().voidItem();
                 });
