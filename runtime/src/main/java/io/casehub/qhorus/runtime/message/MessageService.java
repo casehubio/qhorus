@@ -104,6 +104,12 @@ public class MessageService implements MessageDispatcher {
     @Inject
     ChannelActivityBroadcaster broadcaster;
 
+    @Inject
+    jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer> tracerInstance;
+
+    @Inject
+    io.casehub.qhorus.runtime.config.QhorusTracingConfig tracingConfig;
+
     @Transactional
     public DispatchResult dispatch(final MessageDispatch dispatch) {
         final String effectiveTenancyId = dispatch.tenancyId() != null
@@ -123,6 +129,33 @@ public class MessageService implements MessageDispatcher {
                     "Channel '" + ch.name() + "' is paused — send_message blocked. Use resume_channel to re-enable.");
         }
 
+        io.opentelemetry.api.trace.Span span = null;
+        if (tracingConfig.enabled() && tracingConfig.dispatch() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder("qhorus.dispatch")
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .startSpan();
+        }
+        try (io.opentelemetry.context.Scope scope = span != null ? span.makeCurrent() : null) {
+            // Set span attributes: message-level first (always available), then channel-level (if resolved)
+            if (span != null) {
+                span.setAttribute("qhorus.message.type", dispatch.type().name());
+                span.setAttribute("qhorus.message.sender", dispatch.sender());
+                span.setAttribute("qhorus.actor.type", dispatch.actorType().name());
+                if (dispatch.correlationId() != null) {
+                    span.setAttribute("qhorus.message.correlation_id", dispatch.correlationId());
+                }
+                if (dispatch.target() != null) {
+                    span.setAttribute("qhorus.message.target", dispatch.target());
+                }
+
+                if (ch != null) {
+                    span.setAttribute("qhorus.channel.id", ch.id().toString());
+                    span.setAttribute("qhorus.channel.name", ch.name());
+                    span.setAttribute("qhorus.channel.semantic", ch.semantic().name());
+                    span.setAttribute("qhorus.tenancy.id", effectiveTenancyId);
+                }
+            }
+
         if (ch != null && dispatch.type() != MessageType.EVENT) {
             final String sender = dispatch.sender();
             if (!allowedWritersPolicy.isAllowedWriter(sender, ch.allowedWriters(), () -> {
@@ -135,6 +168,9 @@ public class MessageService implements MessageDispatcher {
                         "Sender '" + sender + "' is not permitted to write to channel '" + ch.name()
                                 + "'. Channel has an allowed_writers ACL.");
             }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.acl");
+            }
         }
 
         if (ch != null && dispatch.type() != MessageType.EVENT) {
@@ -142,6 +178,9 @@ public class MessageService implements MessageDispatcher {
                     ch.id(), ch.name(), dispatch.sender(), ch.rateLimitPerChannel(), ch.rateLimitPerInstance());
             if (rateLimitError != null) {
                 throw new IllegalStateException(rateLimitError);
+            }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.rate_limit");
             }
         }
 
@@ -154,6 +193,9 @@ public class MessageService implements MessageDispatcher {
                         "COMMAND rejected: obligor '" + dispatch.target()
                         + "' did not meet the trust threshold");
             }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.trust");
+            }
         }
 
         List<String> advisories = List.of();
@@ -163,6 +205,9 @@ public class MessageService implements MessageDispatcher {
             if (adv != null) {
                 LOG.warn(adv);
                 advisories = List.of(adv);
+            }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.type_policy");
             }
         }
 
@@ -289,6 +334,10 @@ public class MessageService implements MessageDispatcher {
                 saved.tenancyId(),
                 saved, observers.handles(), tsr);
 
+        if (span != null) {
+            span.addEvent("qhorus.observer.dispatch");
+        }
+
         if (ch != null && dispatch.type() != MessageType.EVENT) {
             rateLimiter.recordSend(ch.id(), dispatch.sender(),
                     ch.rateLimitPerChannel(), ch.rateLimitPerInstance());
@@ -338,6 +387,17 @@ public class MessageService implements MessageDispatcher {
                 ledgerOutcome.subjectId(),
                 ledgerOutcome.causedByEntryId(),
                 parentReplyCount, advisories);
+        } catch (Exception e) {
+            if (span != null) {
+                span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                span.recordException(e);
+            }
+            throw e;
+        } finally {
+            if (span != null) {
+                span.end();
+            }
+        }
     }
 
     public Optional<Message> findById(final Long id) {

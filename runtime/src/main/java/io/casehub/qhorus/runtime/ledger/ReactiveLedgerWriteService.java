@@ -90,6 +90,12 @@ public class ReactiveLedgerWriteService {
     @Inject
     ObjectMapper objectMapper;
 
+    @Inject
+    jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer> tracerInstance;
+
+    @Inject
+    io.casehub.qhorus.runtime.config.QhorusTracingConfig tracingConfig;
+
     /**
      * Record the given dispatch as an immutable ledger entry via the reactive stack.
      *
@@ -120,8 +126,51 @@ public class ReactiveLedgerWriteService {
         final String tenancyId = dispatch.tenancyId() != null
                 ? dispatch.tenancyId()
                 : TenancyConstants.DEFAULT_TENANT_ID;
+
+        // ── Build span with cross-request link for terminal messages ─────────
+        final Uni<io.opentelemetry.api.trace.Span> spanUni;
+        if (tracingConfig.enabled() && tracingConfig.ledgerWrite() && tracerInstance.isResolvable()) {
+            final io.opentelemetry.api.trace.Tracer tracer = tracerInstance.get();
+            if (isTerminalType(dispatch.type()) && dispatch.correlationId() != null) {
+                spanUni = messageRepo.findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
+                        .map(originalOpt -> {
+                            final io.opentelemetry.api.trace.SpanBuilder builder = tracer.spanBuilder("qhorus.ledger.write")
+                                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL);
+                            if (originalOpt.isPresent()) {
+                                final MessageLedgerEntry original = originalOpt.get();
+                                if (original.traceId != null) {
+                                    final io.opentelemetry.api.trace.SpanContext linkedContext =
+                                            io.opentelemetry.api.trace.SpanContext.createFromRemoteParent(
+                                                    original.traceId,
+                                                    "0000000000000000", // spanId not available
+                                                    io.opentelemetry.api.trace.TraceFlags.getDefault(),
+                                                    io.opentelemetry.api.trace.TraceState.getDefault());
+                                    builder.addLink(linkedContext);
+                                }
+                            }
+                            return builder.startSpan();
+                        });
+            } else {
+                spanUni = Uni.createFrom().item(tracer.spanBuilder("qhorus.ledger.write")
+                        .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                        .startSpan());
+            }
+        } else {
+            spanUni = Uni.createFrom().nullItem();
+        }
+
         // sequenceNumber assigned by ledger.save() (MERGE in ReactiveLedgerEntryJpaRepository). Refs #256.
-        return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch, tenancyId)
+        return spanUni.flatMap(span -> {
+            final io.opentelemetry.context.Scope scope = span != null ? span.makeCurrent() : null;
+            if (span != null) {
+                span.setAttribute("qhorus.ledger.entry_type", dispatch.type().name());
+                span.setAttribute("qhorus.ledger.channel_id", dispatch.channelId().toString());
+                span.setAttribute("qhorus.ledger.message_id", messageId.toString());
+            }
+            final io.opentelemetry.api.trace.Span finalSpan = span;
+            final io.opentelemetry.context.Scope finalScope = scope;
+
+            return Panache.withTransaction("qhorus", () -> resolveSubjectId(dispatch, tenancyId)
                 .flatMap(resolvedSubjectId -> resolveCausedByEntryId(dispatch)
                         .flatMap(resolvedCausedByEntryId -> {
                             final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
@@ -164,7 +213,18 @@ public class ReactiveLedgerWriteService {
                                         }
                                         return Uni.createFrom().item(outcome);
                                     });
-                        })));
+                        })))
+                    .onFailure().invoke(t -> {
+                        if (finalSpan != null) {
+                            finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                            finalSpan.recordException(t);
+                        }
+                    })
+                    .onTermination().invoke(() -> {
+                        if (finalScope != null) finalScope.close();
+                        if (finalSpan != null) finalSpan.end();
+                    });
+        });
     }
 
     private Uni<Void> writeAttestation(final UUID subjectId, final UUID causedByEntryId,
@@ -222,6 +282,11 @@ public class ReactiveLedgerWriteService {
         } catch (final Exception ignored) {
         }
         return CapabilityTag.GLOBAL;
+    }
+
+    private static boolean isTerminalType(final MessageType type) {
+        return type == MessageType.DONE || type == MessageType.FAILURE
+                || type == MessageType.DECLINE;
     }
 
     // ── Priority 1/2/3 subjectId resolution ──────────────────────────────────

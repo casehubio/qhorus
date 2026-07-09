@@ -13,6 +13,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.Instance;
+
+import io.opentelemetry.api.trace.Tracer;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
@@ -23,6 +26,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 
 class ChannelGatewayDeliverRemoteTest {
 
@@ -46,7 +50,9 @@ class ChannelGatewayDeliverRemoteTest {
                 new StubCrossTenantChannelStore(),
                 mock(Event.class),             // channelInitialisedEvents
                 new StubDeliveryConfig(),
-                messageStore);
+                messageStore,
+                mock(Instance.class),
+                mock(QhorusTracingConfig.class));
     }
 
     @Test

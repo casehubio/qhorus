@@ -13,6 +13,7 @@
 | [qhorus-reactive-gating.md](qhorus-reactive-gating.md) | Use @IfBuildProperty per-bean (not ExcludedTypeBuildItem) for reactive stack gating | Runtime reactive beans, QhorusProcessor |
 | [reactive-blocking-spi-worker-pool.md](reactive-blocking-spi-worker-pool.md) | Reactive services calling blocking SPI must shift to Infrastructure.getDefaultWorkerPool() via runSubscriptionOn | runtime/ reactive services invoking blocking SPI (ObligorTrustPolicy, etc.) |
 | [reactive-inmemory-store-selected-alternatives.md](reactive-inmemory-store-selected-alternatives.md) | Consumers with reactive.enabled=true + casehub-qhorus-persistence-memory must list InMemoryReactive*Store in quarkus.arc.selected-alternatives | @QuarkusTest consumers enabling the reactive stack |
+| [reactive-otel-span-operator-ordering.md](reactive-otel-span-operator-ordering.md) | Chain onFailure before onTermination in reactive OTel span lifecycle — reversed order silently loses errors | Any Mutiny chain managing OTel span lifecycle manually |
 
 ## Channels
 

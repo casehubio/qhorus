@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.gateway;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.api.gateway.DeliveryCursor;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
@@ -770,7 +772,12 @@ class DeliveryServiceTest {
      * Creates a stub ChannelGateway that returns the given entries from trackedEntries().
      * Uses a real QhorusChannelBackend and no-ops for all other gateway dependencies.
      */
+    @SuppressWarnings("unchecked")
     private ChannelGateway createStubGateway(List<ChannelGateway.BackendEntry> entries) {
+        jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer> mockTracerInstance =
+                mock(jakarta.enterprise.inject.Instance.class);
+        when(mockTracerInstance.isResolvable()).thenReturn(false);
+
         return new ChannelGateway(
                 new QhorusChannelBackend(),
                 new DefaultInboundNormaliser(),
@@ -779,7 +786,9 @@ class DeliveryServiceTest {
                 channelStore,
                 null, // channelInitialisedEvents — not used in these tests
                 deliveryConfig,
-                messageStore
+                messageStore,
+                mockTracerInstance,
+                null  // tracingConfig — not used when tracerInstance.isResolvable() == false
         ) {
             @Override
             List<BackendEntry> trackedEntries(UUID channelId) {

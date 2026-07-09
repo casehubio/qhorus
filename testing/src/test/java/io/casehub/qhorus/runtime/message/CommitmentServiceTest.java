@@ -72,6 +72,14 @@ class CommitmentServiceTest {
     void setup() {
         service.store = store;
         service.declinedEvents = recordingDeclinedEvent;
+        service.tracingConfig = new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
+            public boolean enabled() { return false; }
+            public boolean dispatch() { return false; }
+            public boolean commitments() { return false; }
+            public boolean fanOut() { return false; }
+            public boolean ledgerWrite() { return false; }
+            public boolean delivery() { return false; }
+        };
         store.clear();
         capturedDeclines.clear();
     }

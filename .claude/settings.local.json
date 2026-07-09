@@ -460,7 +460,21 @@
       "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/review-package efd2bc4 HEAD)",
       "Bash(bash /Users/mdproctor/.claude/plugins/cache/claude-plugins-official/superpowers/6.0.3/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-02-message-dispatcher-channel-manager-spi.md 6)",
       "Bash(git commit -m 'refactor\\(#315\\): remove ChannelEntity.fromRequest\\(\\) dead code *)",
-      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-05-cdi-persistence-memory.md 1)"
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-05-cdi-persistence-memory.md 1)",
+      "Bash(git -C /Users/mdproctor/claude/casehub/qhorus rev-parse HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-08-otel-trace-instrumentation.md 1)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package fd575a87 HEAD /Users/mdproctor/claude/casehub/qhorus)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package fd575a87 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-08-otel-trace-instrumentation.md 2)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package 4a1bbec0 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-08-otel-trace-instrumentation.md 3)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package b0025f08 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package 862765c0 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-08-otel-trace-instrumentation.md 5)",
+      "Bash(xargs jar tf)",
+      "Bash(jar tf *)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/review-package 94c20925 HEAD)",
+      "Bash(bash /Users/mdproctor/.claude/skills/subagent-driven-development/scripts/task-brief /Users/mdproctor/claude/public/casehub/qhorus/plans/2026-07-08-otel-trace-instrumentation.md 6)"
     ]
   }
 }

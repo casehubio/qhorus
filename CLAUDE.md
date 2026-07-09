@@ -66,32 +66,10 @@ Before any git operation, run `git rev-parse --show-toplevel` to confirm which r
 
 # CaseHub Qhorus — Claude Code Project Guide
 
-## Platform Context
-
-This repo is one component of the casehubio multi-repo platform. **Before implementing anything — any feature, SPI, data model, or abstraction — run the Platform Coherence Protocol.**
-
-> **Platform docs:** Local paths use `../parent/docs/` as root. If a path doesn't exist, the parent repo isn't cloned locally — fetch from `https://raw.githubusercontent.com/casehubio/parent/main/docs/<path>` instead.
-
-The protocol asks: Does this already exist elsewhere? Is this the right repo for it? Does this create a consolidation opportunity? Is this consistent with how the platform handles the same concern in other repos?
-
-**Platform architecture (fetch before any implementation decision):**
-```
-../parent/docs/PLATFORM.md
-```
-
-**This repo's deep-dive:**
-```
-../parent/docs/repos/casehub-qhorus.md
-```
-
-**Other repo deep-dives** (fetch the relevant ones when your implementation touches their domain):
-- casehub-ledger: `../parent/docs/repos/casehub-ledger.md`
-- casehub-work: `../parent/docs/repos/casehub-work.md`
-- casehub-engine: `../parent/docs/repos/casehub-engine.md`
-- claudony: `../parent/docs/repos/claudony.md`
-- casehub-connectors: `../parent/docs/repos/casehub-connectors.md`
-
----
+## Platform Docs
+- [Platform Index](https://raw.githubusercontent.com/casehubio/parent/main/docs/INDEX.md) — discovery index (start here)
+- [Building Platform](https://raw.githubusercontent.com/casehubio/parent/main/docs/guides/building-platform.md) — platform contributor guide
+- [This repo's deep-dive](https://raw.githubusercontent.com/casehubio/parent/main/docs/repos/casehub-qhorus.md)
 
 ## Project Type
 
@@ -200,6 +178,7 @@ casehub-qhorus/
 │   └── src/main/java/io/casehub/qhorus/runtime/
 │       ├── config/QhorusConfig.java     — @ConfigMapping(prefix = "casehub.qhorus"); A2a.SseSettings: heartbeat-interval-seconds (default 15s), max-duration-seconds (default 1800s)
 │       ├── config/DeliveryConfig.java   — @ConfigMapping(prefix = "casehub.qhorus.delivery"); enabled (default true), batchSize (default 100), maxConsecutiveFailures (default 10), reconciliationInterval (default "30s")
+│       ├── config/QhorusTracingConfig.java — @ConfigMapping(prefix = "casehub.qhorus.tracing"); enabled, dispatch, commitments, fanOut, ledgerWrite, delivery (all default true); runtime config, not build-time
 │       ├── channel/
 │       │   ├── Channel.java             — PanacheEntity; `allowedTypes` TEXT nullable — null = open; `deniedTypes` TEXT nullable — null = no denial; comma-separated MessageType names evaluated by MessageTypePolicy SPI — COMMAND/QUERY violations are hard-enforced (throw); all other violations produce advisories in DispatchResult.advisories(); denial-first within COMMAND/QUERY
 │       │   ├── ChannelSemantic.java     — enum: APPEND|COLLECT|BARRIER|EPHEMERAL|LAST_WRITE
@@ -336,6 +315,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 - `ledger_subject_sequence` is NOT a JPA entity — Hibernate `drop-and-create` does not create it. All test modules that enable the ledger (`casehub.ledger.enabled=true`) must include `import-qhorus-test.sql` (one `CREATE TABLE IF NOT EXISTS ledger_subject_sequence ...` statement) and set `quarkus.hibernate-orm.qhorus.sql-load-script=import-qhorus-test.sql`. Rows survive context restarts because H2 uses `DB_CLOSE_DELAY=-1`; tests must use fresh random UUIDs per run as subjectIds to avoid cross-context sequence pollution. Refs #256.
 - Optional modules (`a2a`, `watchdog`) require a `@TestProfile` that sets `casehub.qhorus.<module>.enabled=true`. Any `@TestProfile` that causes Quarkus to restart must also include the full `quarkus.datasource.qhorus.*` block (db-kind, jdbc.url, username, password) plus `quarkus.datasource.qhorus.reactive=false` and `quarkus.hibernate-orm.qhorus.database.generation=drop-and-create` in `getConfigOverrides()` — Quarkus restarts do not inherit test `application.properties` from prior context. Do NOT add `casehub.qhorus.reactive.enabled` to H2/JDBC profiles — that property is BUILD_TIME only and its presence in `application.properties` triggers a SmallRye Config runtime validation error (`SRCFG00050`). Reactive tests (all `@Disabled`, require Docker) set it via `ReactiveTestProfile.getConfigOverrides()`.
 - `RateLimiter` is an `@ApplicationScoped` in-memory bean — its state does NOT roll back with `@TestTransaction`. Use unique channel names per test to avoid cross-test interference.
+- CDI-free unit tests that construct `MessageService`, `CommitmentService`, `LedgerWriteService`, `ChannelGateway`, or `DeliveryBatchExecutor` directly must set `service.tracingConfig` to a disabled-tracing implementation (all methods return `false`). Without it, `tracingConfig.enabled()` throws NPE. `tracerInstance` can be left null when tracing is disabled. Refs #197.
 - `WatchdogScheduler` runs in its own thread/transaction and cannot see uncommitted test data. Tests calling `watchdogService.evaluateAll()` directly with the scheduler active must use `@TestTransaction` to prevent the scheduler from picking up in-flight test data and firing spurious side effects.
 - `MessageStore.distinctSendersByChannel(channelId, MessageType.EVENT)` — the second parameter is the **excluded** type, not an included type. Passing `EVENT` returns senders of all non-EVENT messages; EVENTs are excluded. BARRIER_STUCK test setup must use `MessageType.STATUS` (or any non-EVENT type) as the barrier contribution message — EVENTs from agents do not count as contributions. `JpaMessageStore` query: `WHERE channelId = ?1 AND messageType != ?2`.
 - `check_messages` excludes `EVENT` messages by default — use `check_messages(include_events=true, reader_instance_id=<id>)` with a `register(read_only=true)` observer instance to assert EVENT delivery in tests. `read_observer_events`, `register_observer`, and `deregister_observer` were removed in #121-G.

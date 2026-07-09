@@ -81,6 +81,13 @@
       <artifactId>micrometer-core</artifactId>
     </dependency>
 
+    <!-- OpenTelemetry — optional: tracing for message dispatch, commitments, fanOut, ledger writes -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-api</artifactId>
+      <optional>true</optional>
+    </dependency>
+
     <!-- Qhorus API — enums, SPI interfaces, exception types -->
     <dependency>
       <groupId>io.casehub</groupId>
@@ -167,6 +174,13 @@
     <dependency>
       <groupId>org.awaitility</groupId>
       <artifactId>awaitility</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- OpenTelemetry SDK testing — for in-memory span capture in unit/integration tests -->
+    <dependency>
+      <groupId>io.opentelemetry</groupId>
+      <artifactId>opentelemetry-sdk-testing</artifactId>
       <scope>test</scope>
     </dependency>
 

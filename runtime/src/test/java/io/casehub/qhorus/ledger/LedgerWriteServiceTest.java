@@ -87,6 +87,14 @@ class LedgerWriteServiceTest {
         service.actorIdProvider = actorIdProvider;
         service.attestationPolicy = attestationPolicy;
         service.objectMapper = new ObjectMapper();
+        service.tracingConfig = new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
+            public boolean enabled() { return false; }
+            public boolean dispatch() { return false; }
+            public boolean commitments() { return false; }
+            public boolean fanOut() { return false; }
+            public boolean ledgerWrite() { return false; }
+            public boolean delivery() { return false; }
+        };
     }
 
     // ── Happy path — one test per message type ───────────────────────────────

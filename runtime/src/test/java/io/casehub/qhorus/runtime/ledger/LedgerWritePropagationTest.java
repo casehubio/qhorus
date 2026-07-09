@@ -64,6 +64,14 @@ class LedgerWritePropagationTest {
         service.actorIdProvider = id -> id;
         service.attestationPolicy = (t, a, ctx) -> Optional.empty();
         service.objectMapper = new ObjectMapper();
+        service.tracingConfig = new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
+            public boolean enabled() { return false; }
+            public boolean dispatch() { return false; }
+            public boolean commitments() { return false; }
+            public boolean fanOut() { return false; }
+            public boolean ledgerWrite() { return false; }
+            public boolean delivery() { return false; }
+        };
     }
 
     // ── subjectId: Priority 1 (explicit caller value) ─────────────────────────

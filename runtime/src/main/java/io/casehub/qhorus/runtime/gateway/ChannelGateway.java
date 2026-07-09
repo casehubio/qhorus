@@ -6,15 +6,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import org.jboss.logging.Logger;
+
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.*;
@@ -24,6 +31,7 @@ import java.util.Objects;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
@@ -45,6 +53,8 @@ public class ChannelGateway {
     final Event<ChannelInitialisedEvent> channelInitialisedEvents;
     final DeliveryConfig deliveryConfig;
     final CrossTenantMessageStore crossTenantMessageStore;
+    Supplier<Tracer> tracerInstance;
+    QhorusTracingConfig tracingConfig;
 
     @Inject
     public ChannelGateway(AgentChannelBackend agentBackend,
@@ -54,7 +64,9 @@ public class ChannelGateway {
                           CrossTenantChannelStore crossTenantChannelStore,
                           Event<ChannelInitialisedEvent> channelInitialisedEvents,
                           DeliveryConfig deliveryConfig,
-                          CrossTenantMessageStore crossTenantMessageStore) {
+                          CrossTenantMessageStore crossTenantMessageStore,
+                          Instance<Tracer> tracerInstance,
+                          QhorusTracingConfig tracingConfig) {
         this.agentBackend = agentBackend;
         this.normaliser = normaliser;
         this.messageService = messageService;
@@ -63,6 +75,8 @@ public class ChannelGateway {
         this.channelInitialisedEvents = channelInitialisedEvents;
         this.deliveryConfig = deliveryConfig;
         this.crossTenantMessageStore = crossTenantMessageStore;
+        this.tracerInstance = tracerInstance.isResolvable() ? tracerInstance::get : null;
+        this.tracingConfig = tracingConfig;
     }
 
     /**
@@ -182,27 +196,71 @@ public class ChannelGateway {
      * @return {@code true} if at least one backend was skipped for tracked delivery
      */
     public boolean fanOut(UUID channelId, String channelName, OutboundMessage message) {
-        ChannelRef ref = new ChannelRef(channelId, Objects.requireNonNull(channelName, "channelName"));
-        List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
-        boolean hasTracked = false;
-        final boolean deliveryEnabled = deliveryConfig.enabled();
-        for (BackendEntry entry : List.copyOf(entries)) {
-            if (entry.backend() == agentBackend) continue;
-            ChannelBackend backend = entry.backend();
-            if (deliveryEnabled && backend.deliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE) {
-                hasTracked = true;
-                continue;
-            }
-            Thread.ofVirtual().start(() -> {
-                try {
-                    backend.post(ref, message);
-                } catch (Exception ex) {
-                    LOG.errorf(ex, "Backend %s failed on fanOut to channel %s",
-                            backend.backendId(), channelId);
-                }
-            });
+        Span span = null;
+        if (tracingConfig.enabled() && tracingConfig.fanOut() && tracerInstance != null) {
+            Tracer tracer = tracerInstance.get();
+            span = tracer.spanBuilder("qhorus.fanout")
+                    .setSpanKind(SpanKind.INTERNAL)
+                    .startSpan();
+            span.setAttribute("qhorus.channel.id", channelId.toString());
         }
-        return hasTracked;
+        try {
+            ChannelRef ref = new ChannelRef(channelId, Objects.requireNonNull(channelName, "channelName"));
+            List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
+            boolean hasTracked = false;
+            int backendCount = 0;
+            final boolean deliveryEnabled = deliveryConfig.enabled();
+            final Span parentSpan = span;
+            final io.opentelemetry.context.Context otelContext = io.opentelemetry.context.Context.current();
+
+            for (BackendEntry entry : List.copyOf(entries)) {
+                if (entry.backend() == agentBackend) continue;
+                ChannelBackend backend = entry.backend();
+                if (deliveryEnabled && backend.deliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE) {
+                    hasTracked = true;
+                    continue;
+                }
+                backendCount++;
+                Thread.ofVirtual().start(otelContext.wrap(() -> {
+                    Span childSpan = null;
+                    if (parentSpan != null) {
+                        Tracer tracer = tracerInstance.get();
+                        childSpan = tracer.spanBuilder("qhorus.fanout.backend")
+                                .setSpanKind(SpanKind.INTERNAL)
+                                .startSpan();
+                        childSpan.setAttribute("qhorus.fanout.backend_id", backend.backendId());
+                        childSpan.setAttribute("qhorus.fanout.delivery_guarantee",
+                                backend.deliveryGuarantee().name());
+                    }
+                    try {
+                        backend.post(ref, message);
+                    } catch (Exception ex) {
+                        if (childSpan != null) {
+                            childSpan.setStatus(StatusCode.ERROR);
+                            childSpan.recordException(ex);
+                        }
+                        LOG.errorf(ex, "Backend %s failed on fanOut to channel %s",
+                                backend.backendId(), channelId);
+                    } finally {
+                        if (childSpan != null) childSpan.end();
+                    }
+                }));
+            }
+
+            if (span != null) {
+                span.setAttribute("qhorus.fanout.backend_count", backendCount);
+                span.setAttribute("qhorus.fanout.has_tracked", hasTracked);
+            }
+            return hasTracked;
+        } catch (Exception e) {
+            if (span != null) {
+                span.setStatus(StatusCode.ERROR);
+                span.recordException(e);
+            }
+            throw e;
+        } finally {
+            if (span != null) span.end();
+        }
     }
 
     /** Inbound from HumanParticipatingChannelBackend. */
@@ -308,49 +366,94 @@ public class ChannelGateway {
      * @param messageId the message primary key
      */
     public void deliverRemote(UUID channelId, Long messageId) {
-        Message msg = crossTenantMessageStore.find(messageId).orElse(null);
-        if (msg == null) {
-            LOG.debugf("Remote delivery: message %d not found, skipping", messageId);
-            return;
+        Span span = null;
+        if (tracingConfig.enabled() && tracingConfig.fanOut() && tracerInstance != null) {
+            Tracer tracer = tracerInstance.get();
+            span = tracer.spanBuilder("qhorus.delivery.remote")
+                    .setNoParent()
+                    .setSpanKind(SpanKind.INTERNAL)
+                    .startSpan();
+            span.setAttribute("qhorus.channel.id", channelId.toString());
+            span.setAttribute("qhorus.delivery.message_id", messageId);
         }
-        Channel ch = crossTenantChannelStore.findById(channelId).orElse(null);
-        if (ch == null) {
-            LOG.debugf("Remote delivery: channel %s not found, skipping", channelId);
-            return;
-        }
-
-        // Lazy channel initialization: if this node has no registry entry,
-        // initialize the channel so backends can register via ChannelInitialisedEvent
-        // before delivery proceeds.
-        if (!registry.containsKey(channelId)) {
-            initChannel(channelId, new ChannelRef(channelId, ch.name()));
-        }
-
-        ChannelRef ref = new ChannelRef(channelId, ch.name());
-        OutboundMessage outbound = new OutboundMessage(
-                UUID.randomUUID(),
-                msg.sender(),
-                msg.messageType(),
-                msg.content(),
-                msg.correlationId(),
-                msg.inReplyTo(),
-                msg.actorType());
-
-        List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
-        for (BackendEntry entry : List.copyOf(entries)) {
-            if (entry.backend() == agentBackend) continue;
-            ChannelBackend backend = entry.backend();
-            if (backend.deliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE) {
-                continue; // pump handles these
+        try {
+            Message msg = crossTenantMessageStore.find(messageId).orElse(null);
+            if (msg == null) {
+                LOG.debugf("Remote delivery: message %d not found, skipping", messageId);
+                return;
             }
-            Thread.ofVirtual().start(() -> {
-                try {
-                    backend.post(ref, outbound);
-                } catch (Exception ex) {
-                    LOG.warnf("Remote delivery: backend %s failed on channel %s: %s",
-                            backend.backendId(), channelId, ex.getMessage());
+            Channel ch = crossTenantChannelStore.findById(channelId).orElse(null);
+            if (ch == null) {
+                LOG.debugf("Remote delivery: channel %s not found, skipping", channelId);
+                return;
+            }
+
+            // Lazy channel initialization: if this node has no registry entry,
+            // initialize the channel so backends can register via ChannelInitialisedEvent
+            // before delivery proceeds.
+            if (!registry.containsKey(channelId)) {
+                initChannel(channelId, new ChannelRef(channelId, ch.name()));
+            }
+
+            ChannelRef ref = new ChannelRef(channelId, ch.name());
+            OutboundMessage outbound = new OutboundMessage(
+                    UUID.randomUUID(),
+                    msg.sender(),
+                    msg.messageType(),
+                    msg.content(),
+                    msg.correlationId(),
+                    msg.inReplyTo(),
+                    msg.actorType());
+
+            List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
+            int backendCount = 0;
+            final Span parentSpan = span;
+            final io.opentelemetry.context.Context otelContext = io.opentelemetry.context.Context.current();
+
+            for (BackendEntry entry : List.copyOf(entries)) {
+                if (entry.backend() == agentBackend) continue;
+                ChannelBackend backend = entry.backend();
+                if (backend.deliveryGuarantee() == DeliveryGuarantee.AT_LEAST_ONCE) {
+                    continue; // pump handles these
                 }
-            });
+                backendCount++;
+                Thread.ofVirtual().start(otelContext.wrap(() -> {
+                    Span childSpan = null;
+                    if (parentSpan != null) {
+                        Tracer tracer = tracerInstance.get();
+                        childSpan = tracer.spanBuilder("qhorus.delivery.remote.backend")
+                                .setSpanKind(SpanKind.INTERNAL)
+                                .startSpan();
+                        childSpan.setAttribute("qhorus.delivery.backend_id", backend.backendId());
+                        childSpan.setAttribute("qhorus.delivery.delivery_guarantee",
+                                backend.deliveryGuarantee().name());
+                    }
+                    try {
+                        backend.post(ref, outbound);
+                    } catch (Exception ex) {
+                        if (childSpan != null) {
+                            childSpan.setStatus(StatusCode.ERROR);
+                            childSpan.recordException(ex);
+                        }
+                        LOG.warnf("Remote delivery: backend %s failed on channel %s: %s",
+                                backend.backendId(), channelId, ex.getMessage());
+                    } finally {
+                        if (childSpan != null) childSpan.end();
+                    }
+                }));
+            }
+
+            if (span != null) {
+                span.setAttribute("qhorus.delivery.backend_count", backendCount);
+            }
+        } catch (Exception e) {
+            if (span != null) {
+                span.setStatus(StatusCode.ERROR);
+                span.recordException(e);
+            }
+            throw e;
+        } finally {
+            if (span != null) span.end();
         }
     }
 

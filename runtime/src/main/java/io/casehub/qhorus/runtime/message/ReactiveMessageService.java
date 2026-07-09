@@ -122,6 +122,12 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
     @Inject
     ChannelActivityBroadcaster broadcaster;
 
+    @Inject
+    Instance<io.opentelemetry.api.trace.Tracer> tracerInstance;
+
+    @Inject
+    io.casehub.qhorus.runtime.config.QhorusTracingConfig tracingConfig;
+
     // ── TransactResult discriminated union (private inner types) ──────────────
 
     private sealed interface TransactResult permits OverwriteResult, FullResult {}
@@ -156,10 +162,47 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
     private Uni<DispatchResult> doDispatch(final MessageDispatch dispatch) {
         final AtomicReference<List<String>> advisoriesRef = new AtomicReference<>(List.of());
 
+        // ── Start tracing span ────────────────────────────────────────────────
+        io.opentelemetry.api.trace.Span span = null;
+        io.opentelemetry.context.Scope scope = null;
+        if (tracingConfig.enabled() && tracingConfig.dispatch() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder("qhorus.dispatch")
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .startSpan();
+            scope = span.makeCurrent();
+        }
+        final io.opentelemetry.api.trace.Span finalSpan = span;
+        final io.opentelemetry.context.Scope finalScope = scope;
+        final AtomicReference<String> effectiveTenancyIdRef = new AtomicReference<>(null);
+
         // Phase 1: Channel load (reactive)
         return reactiveChannelStore.find(dispatch.channelId())
                 .flatMap(chOpt -> {
                     final Channel ch = chOpt.orElse(null);
+
+                    // Set span attributes: message-level first, then channel-level
+                    if (finalSpan != null) {
+                        finalSpan.setAttribute("qhorus.message.type", dispatch.type().name());
+                        finalSpan.setAttribute("qhorus.message.sender", dispatch.sender());
+                        finalSpan.setAttribute("qhorus.actor.type", dispatch.actorType().name());
+                        if (dispatch.correlationId() != null) {
+                            finalSpan.setAttribute("qhorus.message.correlation_id", dispatch.correlationId());
+                        }
+                        if (dispatch.target() != null) {
+                            finalSpan.setAttribute("qhorus.message.target", dispatch.target());
+                        }
+
+                        if (ch != null) {
+                            final String effectiveTenancyId = dispatch.tenancyId() != null
+                                    ? dispatch.tenancyId()
+                                    : ch.tenancyId();
+                            effectiveTenancyIdRef.set(effectiveTenancyId);
+                            finalSpan.setAttribute("qhorus.channel.id", ch.id().toString());
+                            finalSpan.setAttribute("qhorus.channel.name", ch.name());
+                            finalSpan.setAttribute("qhorus.channel.semantic", ch.semantic().name());
+                            finalSpan.setAttribute("qhorus.tenancy.id", effectiveTenancyId);
+                        }
+                    }
 
                     // Phase 1a: Paused check (sync)
                     if (ch != null && ch.paused()) {
@@ -184,6 +227,9 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                         + ch.name()
                                                         + "'. Channel has an allowed_writers ACL.");
                                     }
+                                    if (finalSpan != null) {
+                                        finalSpan.addEvent("qhorus.enforcement.acl");
+                                    }
                                 })
                                 .replaceWithVoid();
                     } else {
@@ -200,6 +246,9 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                 ch.rateLimitPerChannel(), ch.rateLimitPerInstance());
                         if (rateLimitError != null) {
                             throw new IllegalStateException(rateLimitError);
+                        }
+                        if (finalSpan != null) {
+                            finalSpan.addEvent("qhorus.enforcement.rate_limit");
                         }
                     }
                 })
@@ -226,6 +275,9 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                 "COMMAND rejected: obligor '" + dispatch.target()
                                                         + "' did not meet the trust threshold");
                                     }
+                                    if (finalSpan != null) {
+                                        finalSpan.addEvent("qhorus.enforcement.trust");
+                                    }
                                     return ch;
                                 });
                     }
@@ -239,6 +291,9 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                         if (adv != null) {
                             LOG.warn(adv);
                             advisoriesRef.set(List.of(adv));
+                        }
+                        if (finalSpan != null) {
+                            finalSpan.addEvent("qhorus.enforcement.type_policy");
                         }
                     }
                 })
@@ -352,6 +407,10 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             syntheticMsg.tenancyId(),
                                             syntheticMsg, observers.handles(), null);
 
+                                    if (finalSpan != null) {
+                                        finalSpan.addEvent("qhorus.observer.dispatch");
+                                    }
+
                                     // Rate limit recording (skip EVENT)
                                     if (ch != null && dispatch.type() != MessageType.EVENT) {
                                         rateLimiter.recordSend(ch.id(), dispatch.sender(),
@@ -399,6 +458,17 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             advisoriesRef.get());
                                 });
                     });
+                })
+                // ── Span lifecycle: onFailure before onTermination ──────────────
+                .onFailure().invoke(t -> {
+                    if (finalSpan != null) {
+                        finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                        finalSpan.recordException(t);
+                    }
+                })
+                .onTermination().invoke(() -> {
+                    if (finalScope != null) finalScope.close();
+                    if (finalSpan != null) finalSpan.end();
                 });
     }
 

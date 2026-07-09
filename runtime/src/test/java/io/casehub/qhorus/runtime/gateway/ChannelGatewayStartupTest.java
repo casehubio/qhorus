@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.UUID;
 
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.Instance;
+
+import io.opentelemetry.api.trace.Tracer;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +21,7 @@ import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.quarkus.runtime.StartupEvent;
@@ -34,7 +38,9 @@ class ChannelGatewayStartupTest {
                 crossTenantChannelStore,
                 mock(Event.class),
                 mock(DeliveryConfig.class),
-                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class));
+                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
+                mock(Instance.class),
+                mock(QhorusTracingConfig.class));
     }
 
     private Channel channel(String name) {
@@ -91,7 +97,9 @@ class ChannelGatewayStartupTest {
                 crossTenantChannelStore,
                 throwingEvents,
                 mock(DeliveryConfig.class),
-                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class));
+                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
+                mock(Instance.class),
+                mock(QhorusTracingConfig.class));
 
         assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()),
                 "onStart must not propagate observer exceptions");

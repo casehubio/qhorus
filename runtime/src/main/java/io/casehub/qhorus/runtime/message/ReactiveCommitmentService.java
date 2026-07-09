@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.message.Commitment;
@@ -23,25 +24,31 @@ public class ReactiveCommitmentService {
     @Inject
     ReactiveCommitmentStore store;
 
+    @Inject
+    Instance<io.opentelemetry.api.trace.Tracer> tracerInstance;
+
+    @Inject
+    io.casehub.qhorus.runtime.config.QhorusTracingConfig tracingConfig;
+
     public Uni<Optional<Commitment>> acknowledge(final String correlationId) {
-        return transition(correlationId, CommitmentState.ACKNOWLEDGED, c ->
+        return transition(correlationId, CommitmentState.ACKNOWLEDGED, "qhorus.commitment.acknowledge", c ->
                 c.toBuilder().state(CommitmentState.ACKNOWLEDGED)
                         .acknowledgedAt(c.acknowledgedAt() == null ? Instant.now() : c.acknowledgedAt())
                         .build());
     }
 
     public Uni<Optional<Commitment>> fulfill(final String correlationId) {
-        return transition(correlationId, CommitmentState.FULFILLED, c ->
+        return transition(correlationId, CommitmentState.FULFILLED, "qhorus.commitment.fulfill", c ->
                 c.toBuilder().state(CommitmentState.FULFILLED).resolvedAt(Instant.now()).build());
     }
 
     public Uni<Optional<Commitment>> decline(final String correlationId) {
-        return transition(correlationId, CommitmentState.DECLINED, c ->
+        return transition(correlationId, CommitmentState.DECLINED, "qhorus.commitment.decline", c ->
                 c.toBuilder().state(CommitmentState.DECLINED).resolvedAt(Instant.now()).build());
     }
 
     public Uni<Optional<Commitment>> fail(final String correlationId) {
-        return transition(correlationId, CommitmentState.FAILED, c ->
+        return transition(correlationId, CommitmentState.FAILED, "qhorus.commitment.fail", c ->
                 c.toBuilder().state(CommitmentState.FAILED).resolvedAt(Instant.now()).build());
     }
 
@@ -50,12 +57,34 @@ public class ReactiveCommitmentService {
         if (correlationId == null || correlationId.isBlank()) {
             return Uni.createFrom().item(Optional.empty());
         }
+
+        // ── Start tracing span ────────────────────────────────────────────────
+        io.opentelemetry.api.trace.Span span = null;
+        io.opentelemetry.context.Scope scope = null;
+        if (tracingConfig.enabled() && tracingConfig.commitments() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder("qhorus.commitment.delegate")
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .startSpan();
+            scope = span.makeCurrent();
+        }
+        final io.opentelemetry.api.trace.Span finalSpan = span;
+        final io.opentelemetry.context.Scope finalScope = scope;
+
         return Panache.withTransaction("qhorus", () ->
             store.findByCorrelationId(correlationId).flatMap(opt -> {
                 if (opt.isEmpty() || opt.get().state().isTerminal()) {
                     return Uni.createFrom().item(Optional.<Commitment>empty());
                 }
                 final Commitment c = opt.get();
+                if (finalSpan != null) {
+                    finalSpan.setAttribute("qhorus.commitment.id", c.id().toString());
+                    finalSpan.setAttribute("qhorus.commitment.correlation_id", correlationId);
+                    finalSpan.setAttribute("qhorus.commitment.from_state", c.state().name());
+                    finalSpan.setAttribute("qhorus.commitment.to_state", "DELEGATED");
+                    finalSpan.setAttribute("qhorus.commitment.obligor", c.obligor() != null ? c.obligor() : "");
+                    finalSpan.setAttribute("qhorus.commitment.delegated_to", delegatedTo);
+                    finalSpan.setAttribute("qhorus.channel.id", c.channelId().toString());
+                }
                 Commitment delegated = c.toBuilder()
                         .state(CommitmentState.DELEGATED)
                         .delegatedTo(delegatedTo)
@@ -75,14 +104,40 @@ public class ReactiveCommitmentService {
                     return store.save(child).map(ignored -> Optional.of(saved));
                 });
             })
-        );
+        )
+        .onFailure().invoke(t -> {
+            if (finalSpan != null) {
+                finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                finalSpan.recordException(t);
+            }
+        })
+        .onTermination().invoke(() -> {
+            if (finalScope != null) finalScope.close();
+            if (finalSpan != null) finalSpan.end();
+        });
     }
 
     public Uni<Integer> expireOverdue() {
+        // ── Start tracing span (root span, no parent) ─────────────────────────
+        io.opentelemetry.api.trace.Span span = null;
+        io.opentelemetry.context.Scope scope = null;
+        if (tracingConfig.enabled() && tracingConfig.commitments() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder("qhorus.commitment.expire_overdue")
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .setNoParent()
+                    .startSpan();
+            scope = span.makeCurrent();
+        }
+        final io.opentelemetry.api.trace.Span finalSpan = span;
+        final io.opentelemetry.context.Scope finalScope = scope;
+
         return Panache.withTransaction("qhorus", () ->
             store.findExpiredBefore(Instant.now()).flatMap(overdue -> {
                 if (overdue.isEmpty()) {
                     return Uni.createFrom().item(0);
+                }
+                if (finalSpan != null) {
+                    finalSpan.setAttribute("qhorus.commitment.expired_count", overdue.size());
                 }
                 final List<Uni<Commitment>> saves = overdue.stream().map(c -> {
                     Commitment expired = c.toBuilder()
@@ -93,7 +148,17 @@ public class ReactiveCommitmentService {
                 }).toList();
                 return Uni.join().all(saves).andFailFast().map(List::size);
             })
-        );
+        )
+        .onFailure().invoke(t -> {
+            if (finalSpan != null) {
+                finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                finalSpan.recordException(t);
+            }
+        })
+        .onTermination().invoke(() -> {
+            if (finalScope != null) finalScope.close();
+            if (finalSpan != null) finalSpan.end();
+        });
     }
 
     public Uni<Optional<Commitment>> extendDeadline(final String correlationId,
@@ -101,15 +166,44 @@ public class ReactiveCommitmentService {
         if (correlationId == null || correlationId.isBlank()) {
             return Uni.createFrom().item(Optional.empty());
         }
+
+        // ── Start tracing span ────────────────────────────────────────────────
+        io.opentelemetry.api.trace.Span span = null;
+        io.opentelemetry.context.Scope scope = null;
+        if (tracingConfig.enabled() && tracingConfig.commitments() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder("qhorus.commitment.extend_deadline")
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .startSpan();
+            scope = span.makeCurrent();
+        }
+        final io.opentelemetry.api.trace.Span finalSpan = span;
+        final io.opentelemetry.context.Scope finalScope = scope;
+
         return Panache.withTransaction("qhorus", () ->
             store.findByCorrelationId(correlationId).flatMap(opt -> {
                 if (opt.isEmpty() || opt.get().state().isTerminal()) {
                     return Uni.createFrom().item(Optional.<Commitment>empty());
                 }
-                Commitment updated = opt.get().toBuilder().expiresAt(newDeadline).build();
+                final Commitment c = opt.get();
+                if (finalSpan != null) {
+                    finalSpan.setAttribute("qhorus.commitment.id", c.id().toString());
+                    finalSpan.setAttribute("qhorus.commitment.correlation_id", correlationId);
+                    finalSpan.setAttribute("qhorus.channel.id", c.channelId().toString());
+                }
+                Commitment updated = c.toBuilder().expiresAt(newDeadline).build();
                 return store.save(updated).map(Optional::of);
             })
-        );
+        )
+        .onFailure().invoke(t -> {
+            if (finalSpan != null) {
+                finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                finalSpan.recordException(t);
+            }
+        })
+        .onTermination().invoke(() -> {
+            if (finalScope != null) finalScope.close();
+            if (finalSpan != null) finalSpan.end();
+        });
     }
 
     public Uni<Optional<Commitment>> findByCorrelationId(final String correlationId) {
@@ -137,18 +231,51 @@ public class ReactiveCommitmentService {
 
     private Uni<Optional<Commitment>> transition(final String correlationId,
                                                  final CommitmentState target,
+                                                 final String spanName,
                                                  final java.util.function.UnaryOperator<Commitment> update) {
         if (correlationId == null || correlationId.isBlank()) {
             return Uni.createFrom().item(Optional.empty());
         }
+
+        // ── Start tracing span ────────────────────────────────────────────────
+        io.opentelemetry.api.trace.Span span = null;
+        io.opentelemetry.context.Scope scope = null;
+        if (tracingConfig.enabled() && tracingConfig.commitments() && tracerInstance.isResolvable()) {
+            span = tracerInstance.get().spanBuilder(spanName)
+                    .setSpanKind(io.opentelemetry.api.trace.SpanKind.INTERNAL)
+                    .startSpan();
+            scope = span.makeCurrent();
+        }
+        final io.opentelemetry.api.trace.Span finalSpan = span;
+        final io.opentelemetry.context.Scope finalScope = scope;
+
         return Panache.withTransaction("qhorus", () ->
             store.findByCorrelationId(correlationId).flatMap(opt -> {
                 if (opt.isEmpty() || opt.get().state().isTerminal()) {
                     return Uni.createFrom().item(Optional.<Commitment>empty());
                 }
-                Commitment updated = update.apply(opt.get());
+                final Commitment c = opt.get();
+                if (finalSpan != null) {
+                    finalSpan.setAttribute("qhorus.commitment.id", c.id().toString());
+                    finalSpan.setAttribute("qhorus.commitment.correlation_id", correlationId);
+                    finalSpan.setAttribute("qhorus.commitment.from_state", c.state().name());
+                    finalSpan.setAttribute("qhorus.commitment.to_state", target.name());
+                    finalSpan.setAttribute("qhorus.commitment.obligor", c.obligor() != null ? c.obligor() : "");
+                    finalSpan.setAttribute("qhorus.channel.id", c.channelId().toString());
+                }
+                Commitment updated = update.apply(c);
                 return store.save(updated).map(Optional::of);
             })
-        );
+        )
+        .onFailure().invoke(t -> {
+            if (finalSpan != null) {
+                finalSpan.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
+                finalSpan.recordException(t);
+            }
+        })
+        .onTermination().invoke(() -> {
+            if (finalScope != null) finalScope.close();
+            if (finalSpan != null) finalSpan.end();
+        });
     }
 }

@@ -13,12 +13,16 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import jakarta.enterprise.event.Event;
+import jakarta.enterprise.inject.Instance;
+
+import io.opentelemetry.api.trace.Tracer;
 
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.*;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 
@@ -69,7 +73,8 @@ class FanOutDeliveryGuaranteeTest {
         gateway = new ChannelGateway(agentBackend, new DefaultInboundNormaliser(),
                 mock(MessageService.class), mock(ChannelService.class),
                 mock(CrossTenantChannelStore.class), mock(Event.class), deliveryConfig,
-                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class));
+                mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
+                mock(Instance.class), mock(QhorusTracingConfig.class));
         channelId = UUID.randomUUID();
         gateway.initChannel(channelId, new ChannelRef(channelId, "test-channel"));
     }
