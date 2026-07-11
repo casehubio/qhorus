@@ -53,6 +53,7 @@ public class ChannelGateway {
     final Event<ChannelInitialisedEvent> channelInitialisedEvents;
     final DeliveryConfig deliveryConfig;
     final CrossTenantMessageStore crossTenantMessageStore;
+    final io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService;
     Supplier<Tracer> tracerInstance;
     QhorusTracingConfig tracingConfig;
 
@@ -65,6 +66,7 @@ public class ChannelGateway {
                           Event<ChannelInitialisedEvent> channelInitialisedEvents,
                           DeliveryConfig deliveryConfig,
                           CrossTenantMessageStore crossTenantMessageStore,
+                          io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService,
                           Instance<Tracer> tracerInstance,
                           QhorusTracingConfig tracingConfig) {
         this.agentBackend = agentBackend;
@@ -75,6 +77,7 @@ public class ChannelGateway {
         this.channelInitialisedEvents = channelInitialisedEvents;
         this.deliveryConfig = deliveryConfig;
         this.crossTenantMessageStore = crossTenantMessageStore;
+        this.membershipService = membershipService;
         this.tracerInstance = tracerInstance.isResolvable() ? tracerInstance::get : null;
         this.tracingConfig = tracingConfig;
     }
@@ -278,6 +281,17 @@ public class ChannelGateway {
                 : "default";
 
         NormalisedMessage n = effective.normalise(channel, raw);
+        // Lazy auto-membership: create PARTICIPANT on first human message
+        try {
+            String tenancyId = crossTenantChannelStore.findById(channel.id())
+                    .map(io.casehub.qhorus.api.channel.Channel::tenancyId)
+                    .orElse(io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
+            membershipService.join(channel.id(), n.senderInstanceId(),
+                    io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT, tenancyId);
+        } catch (Exception ex) {
+            LOG.debugf("Auto-membership skipped for %s on channel %s: %s",
+                    n.senderInstanceId(), channel.id(), ex.getMessage());
+        }
         // Uses canonical constructor to bypass builder protocol validation —
         // inbound human messages may carry reply types (DONE/RESPONSE/etc.) with inReplyTo
         // synthesised by the normaliser from human context.
@@ -329,6 +343,17 @@ public class ChannelGateway {
 
     /** Inbound from HumanObserverChannelBackend — always EVENT regardless of content. */
     public void receiveObserverSignal(ChannelRef channel, ObserverSignal signal) {
+        try {
+            String senderId = "human:" + signal.externalSenderId();
+            String tenancyId = crossTenantChannelStore.findById(channel.id())
+                    .map(io.casehub.qhorus.api.channel.Channel::tenancyId)
+                    .orElse(io.casehub.platform.api.identity.TenancyConstants.DEFAULT_TENANT_ID);
+            membershipService.join(channel.id(), senderId,
+                    io.casehub.qhorus.api.channel.MemberRole.OBSERVER, tenancyId);
+        } catch (Exception ex) {
+            LOG.debugf("Auto-membership skipped for observer on channel %s: %s",
+                    channel.id(), ex.getMessage());
+        }
         messageService.dispatch(MessageDispatch.builder()
                 .channelId(channel.id())
                 .sender("human:" + signal.externalSenderId())

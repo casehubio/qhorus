@@ -178,6 +178,11 @@ public abstract class QhorusMcpToolsBase {
             boolean removed) {
     }
 
+    public record MembershipSummary(
+            String channelId, String channelName, String memberId,
+            String role, String joinedAt, Long lastReadMessageId) {}
+
+
     public record MessagePreview(
             Long messageId,
             String sender,

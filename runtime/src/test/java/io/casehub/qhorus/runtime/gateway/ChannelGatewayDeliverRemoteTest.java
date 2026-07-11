@@ -51,7 +51,7 @@ class ChannelGatewayDeliverRemoteTest {
                 mock(Event.class),             // channelInitialisedEvents
                 new StubDeliveryConfig(),
                 messageStore,
-                mock(Instance.class),
+                null, mock(Instance.class),
                 mock(QhorusTracingConfig.class));
     }
 

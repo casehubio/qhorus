@@ -115,6 +115,7 @@ class FanOutTracingTest {
                 mockEvent,
                 deliveryConfig,
                 null, // crossTenantMessageStore not needed for fanOut tests
+                null, // membershipService not needed for fanOut tests
                 mockInstance,
                 tracingConfig);
 
@@ -235,6 +236,7 @@ class FanOutTracingTest {
                 mockEvent2,
                 enabledDeliveryConfig,
                 null,
+                null, // membershipService
                 mockInstance,
                 tracingConfig);
         gatewayWithDelivery.tracerInstance = () -> provider.get("qhorus-test");

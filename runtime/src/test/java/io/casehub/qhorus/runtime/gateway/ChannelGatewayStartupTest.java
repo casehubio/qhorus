@@ -39,7 +39,7 @@ class ChannelGatewayStartupTest {
                 mock(Event.class),
                 mock(DeliveryConfig.class),
                 mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                mock(Instance.class),
+                null, mock(Instance.class),
                 mock(QhorusTracingConfig.class));
     }
 
@@ -98,7 +98,7 @@ class ChannelGatewayStartupTest {
                 throwingEvents,
                 mock(DeliveryConfig.class),
                 mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                mock(Instance.class),
+                null, mock(Instance.class),
                 mock(QhorusTracingConfig.class));
 
         assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()),

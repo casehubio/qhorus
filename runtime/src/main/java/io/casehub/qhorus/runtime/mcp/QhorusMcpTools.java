@@ -131,6 +131,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     ReactionService reactionService;
+    @jakarta.inject.Inject
+    io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService;
+    @jakarta.inject.Inject
+    io.casehub.qhorus.api.store.ChannelMembershipStore         membershipStore;
+
 
     @Inject
     TopicStore topicStore;
@@ -443,6 +448,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "delete_channel");
+        membershipStore.deleteAll(ch.id());
         reactionStore.deleteByChannel(ch.id());
         commitmentStore.deleteAll(ch.id());
         topicStore.deleteAll(ch.id());
@@ -1873,6 +1879,64 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "message_id", description = "ID of the message") Long messageId) {
         return reactionService.getReactions(messageId);
     }
+
+    @Tool(name = "join_channel", description = "Join a channel as a member. Creates or updates membership with the specified role.")
+    @jakarta.transaction.Transactional
+    public MembershipSummary joinChannel(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "sender", description = "Instance ID of the joining member") String sender,
+            @ToolArg(name = "role", description = "Member role: PARTICIPANT, OBSERVER, or MODERATOR. Defaults to PARTICIPANT.", required = false) String role) {
+        io.casehub.qhorus.api.channel.Channel ch = resolveChannel(channel);
+        io.casehub.qhorus.api.channel.MemberRole memberRole = (role != null && !role.isBlank())
+                                                              ? io.casehub.qhorus.api.channel.MemberRole.valueOf(role.toUpperCase())
+                                                              : io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT;
+        io.casehub.qhorus.api.channel.ChannelMembership m = membershipService.join(
+                ch.id(), sender, memberRole, currentPrincipal.tenancyId());
+        return new MembershipSummary(ch.id().toString(), ch.name(), m.memberId(),
+                                     m.role().name(), m.joinedAt().toString(), m.lastReadMessageId());
+    }
+
+    @Tool(name = "leave_channel", description = "Leave a channel, removing membership.")
+    @jakarta.transaction.Transactional
+    public String leaveChannel(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "sender", description = "Instance ID of the leaving member") String sender) {
+        io.casehub.qhorus.api.channel.Channel ch = resolveChannel(channel);
+        membershipService.leave(ch.id(), sender);
+        return sender + " left " + ch.name();
+    }
+
+    @Tool(name = "list_members", description = "List all members of a channel with their roles.")
+    public java.util.List<MembershipSummary> listMembers(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        io.casehub.qhorus.api.channel.Channel ch = resolveChannel(channel);
+        return membershipService.listMembers(ch.id()).stream()
+                                .map(m -> new MembershipSummary(ch.id().toString(), ch.name(), m.memberId(),
+                                                                m.role().name(), m.joinedAt().toString(), m.lastReadMessageId()))
+                                .toList();
+    }
+
+    @Tool(name = "mark_channel_read", description = "Mark a channel as read up to a specific message ID. Null message_id marks up to the latest message.")
+    @jakarta.transaction.Transactional
+    public String markChannelRead(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "sender", description = "Instance ID of the member") String sender,
+            @ToolArg(name = "message_id", description = "Message ID to mark read up to. Null = latest.", required = false) Long messageId) {
+        io.casehub.qhorus.api.channel.Channel ch          = resolveChannel(channel);
+        Long                                  effectiveId = messageId;
+        if (effectiveId == null) {
+            effectiveId = messageStore.findLastMessage(ch.id()).map(io.casehub.qhorus.api.message.Message::id).orElse(0L);
+        }
+        membershipService.markRead(ch.id(), sender, effectiveId);
+        return "Marked " + ch.name() + " read up to message " + effectiveId;
+    }
+
+    @Tool(name = "get_unread_counts", description = "Get unread message counts across all channels for a member. Excludes own messages and EVENT messages.")
+    public java.util.List<io.casehub.qhorus.api.channel.UnreadCount> getUnreadCounts(
+            @ToolArg(name = "sender", description = "Instance ID of the member") String sender) {
+        return new java.util.ArrayList<>(membershipService.getUnreadCounts(sender, currentPrincipal.tenancyId()).values());
+    }
+
 
     // ---------------------------------------------------------------------------
     // Projection tools

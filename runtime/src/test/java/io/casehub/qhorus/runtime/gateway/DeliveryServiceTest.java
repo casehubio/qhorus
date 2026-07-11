@@ -787,6 +787,7 @@ class DeliveryServiceTest {
                 null, // channelInitialisedEvents — not used in these tests
                 deliveryConfig,
                 messageStore,
+                null, // membershipService — not used in these tests
                 mockTracerInstance,
                 null  // tracingConfig — not used when tracerInstance.isResolvable() == false
         ) {
