@@ -57,8 +57,9 @@ public class MessageEntity extends PanacheEntityBase {
     @Column(name = "reply_count", nullable = false)
     public int replyCount = 0;
 
-    @Column(name = "artefact_refs")
-    public String artefactRefs;
+    @jakarta.persistence.Convert(converter = ArtefactRefListConverter.class)
+    @Column(name = "artefact_refs", columnDefinition = "TEXT")
+    public java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs;
 
     /** Addressing target: null (broadcast), instance:<id>, capability:<tag>, or role:<name>. */
     @Column(name = "target")
@@ -107,7 +108,7 @@ public class MessageEntity extends PanacheEntityBase {
         e.correlationId  = msg.correlationId();
         e.inReplyTo      = msg.inReplyTo();
         e.replyCount     = msg.replyCount();
-        e.artefactRefs   = joinUuids(msg.artefactRefs());
+        e.artefactRefs   = msg.artefactRefs();
         e.target         = msg.target();
         e.topic          = msg.topic();
         e.commitmentId   = msg.commitmentId();
@@ -121,21 +122,7 @@ public class MessageEntity extends PanacheEntityBase {
         return new io.casehub.qhorus.api.message.Message(
                 id, channelId, sender, messageType, actorType, tenancyId,
                 content, correlationId, inReplyTo, replyCount,
-                parseUuids(artefactRefs), target, topic, commitmentId,
+                artefactRefs, target, topic, commitmentId,
                 deadline, acknowledgedAt, version, createdAt);}
 
-    private static String joinUuids(java.util.List<UUID> uuids) {
-        if (uuids == null) return null;
-        return uuids.stream()
-                .map(UUID::toString)
-                .collect(java.util.stream.Collectors.joining(","));
-    }
-
-    private static java.util.List<UUID> parseUuids(String csv) {
-        if (csv == null || csv.isBlank()) return null;
-        return java.util.Arrays.stream(csv.split(","))
-                .map(String::trim)
-                .map(UUID::fromString)
-                .toList();
-    }
 }

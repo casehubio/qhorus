@@ -1,9 +1,9 @@
 package io.casehub.qhorus.api.message;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 import java.util.UUID;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record DispatchResult(
@@ -13,16 +13,16 @@ public record DispatchResult(
         MessageType type,
         String correlationId,
         Long inReplyTo,
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<UUID> artefactRefs,
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<ArtefactRef> artefactRefs,
         String target,
-        UUID ledgerEntryId,     // null when ledger writes suppressed (e.g. LAST_WRITE overwrite)
-        UUID subjectId,         // resolved value actually written to ledger
-        UUID causedByEntryId,   // resolved value actually written to ledger
-        int parentReplyCount,   // updated reply count on the inReplyTo message; 0 when inReplyTo is null
+        UUID ledgerEntryId,
+        UUID subjectId,
+        UUID causedByEntryId,
+        int parentReplyCount,
         @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> advisories
 ) {
     public DispatchResult {
         artefactRefs = artefactRefs == null ? List.of() : List.copyOf(artefactRefs);
-        advisories   = advisories   == null ? List.of() : List.copyOf(advisories);
+        advisories   = advisories == null ? List.of() : List.copyOf(advisories);
     }
 }

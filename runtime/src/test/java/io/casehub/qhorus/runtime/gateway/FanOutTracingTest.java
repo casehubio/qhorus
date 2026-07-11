@@ -138,7 +138,7 @@ class FanOutTracingTest {
                 "test content",
                 null,
                 null,
-                ActorType.AGENT);
+                ActorType.AGENT, null);
 
         // Act
         boolean hasTracked = gateway.fanOut(channelId, "test-channel", outboundMessage);
@@ -178,7 +178,7 @@ class FanOutTracingTest {
                 "query content",
                 "test-corr-id",
                 null,
-                ActorType.AGENT);
+                ActorType.AGENT, null);
 
         // Act
         gateway.fanOut(channelId, "test-channel", outboundMessage);
@@ -252,7 +252,7 @@ class FanOutTracingTest {
                 "test",
                 null,
                 null,
-                ActorType.AGENT);
+                ActorType.AGENT, null);
 
         // Act
         boolean hasTracked = gatewayWithDelivery.fanOut(channelId, "test-channel", outboundMessage);
@@ -289,7 +289,7 @@ class FanOutTracingTest {
                 "test",
                 null,
                 null,
-                ActorType.AGENT);
+                ActorType.AGENT, null);
 
         // Act
         gateway.fanOut(channelId, "test-channel", outboundMessage);
@@ -332,7 +332,7 @@ class FanOutTracingTest {
                 "test",
                 null,
                 null,
-                ActorType.AGENT);
+                ActorType.AGENT, null);
 
         // Act
         gateway.fanOut(channelId, "test-channel", outboundMessage);

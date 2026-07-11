@@ -1,37 +1,34 @@
 package io.casehub.qhorus.runtime.gateway;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Supplier;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Inject;
-import jakarta.persistence.PersistenceException;
-import jakarta.transaction.Transactional;
-
-import org.jboss.logging.Logger;
-
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-
 import io.casehub.platform.api.identity.ActorTypeResolver;
+import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.gateway.ChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.DeliveryCursor;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.config.DeliveryConfig;
-import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
 import io.casehub.qhorus.api.store.DeliveryCursorStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.persistence.PersistenceException;
+import jakarta.transaction.Transactional;
+import org.jboss.logging.Logger;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Supplier;
 
 @ApplicationScoped
 class DeliveryBatchExecutor {
@@ -175,8 +172,8 @@ class DeliveryBatchExecutor {
                 m.content(),
                 m.correlationId(),
                 m.inReplyTo(),
-                ActorTypeResolver.resolve(m.sender()));
-    }
+                ActorTypeResolver.resolve(m.sender()),
+                m.artefactRefs());}
 
     interface HealthCallback {
         void recordFailure(String backendId);

@@ -1,18 +1,7 @@
 package io.casehub.qhorus.runtime;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.api.channel.ChannelDetail;
@@ -20,6 +9,15 @@ import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class QhorusEntityMapper {
@@ -62,12 +60,11 @@ public class QhorusEntityMapper {
                 msg.correlationId(),
                 msg.inReplyTo(),
                 msg.target(),
-                joinUuids(msg.artefactRefs()),
+                msg.artefactRefs(),
                 msg.actorType(),
                 msg.createdAt(),
                 msg.deadline(),
-                msg.replyCount());
-    }
+                msg.replyCount());}
 
     public Map<String, Object> toTimelineEntry(Message m) {
         return toTimelineEntry(m, null);
@@ -121,8 +118,4 @@ public class QhorusEntityMapper {
         return list == null || list.isEmpty() ? null : String.join(",", list);
     }
 
-    private static String joinUuids(List<UUID> uuids) {
-        if (uuids == null) return null;
-        return uuids.stream().map(UUID::toString).collect(Collectors.joining(","));
-    }
 }

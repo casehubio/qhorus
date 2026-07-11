@@ -2,15 +2,11 @@ package io.casehub.qhorus.api.gateway;
 
 import io.casehub.qhorus.api.message.MessageType;
 
-/**
- * senderInstanceId MUST use format "human:{externalSenderId}" so
- * ActorTypeResolver correctly stamps ActorType.HUMAN in the ledger.
- */
 public record NormalisedMessage(
         MessageType type,
         String content,
         String senderInstanceId,
         String correlationId,
         Long inReplyTo,
-        String artefactRefs,
+        java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
         String target) {}

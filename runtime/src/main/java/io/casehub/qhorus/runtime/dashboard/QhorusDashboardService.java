@@ -46,7 +46,7 @@ public class QhorusDashboardService {
     public record HumanMessageResult(
             Long messageId, String channelName, String sender, String messageType,
             String correlationId, Long inReplyTo, int parentReplyCount,
-            List<String> artefactRefs, String target) {}
+            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs, String target) {}
 
     // ── Public API ────────────────────────────────────────────────────────────
 
@@ -138,7 +138,7 @@ public class QhorusDashboardService {
                         result.type() != null ? result.type().name() : null,
                         result.correlationId(), result.inReplyTo(),
                         result.parentReplyCount(),
-                        result.artefactRefs().stream().map(UUID::toString).toList(),
+                        result.artefactRefs(),
                         result.target()));
     }
 

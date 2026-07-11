@@ -80,7 +80,7 @@ class EntityConversionTest {
                 .correlationId("corr-1")
                 .inReplyTo(null)
                 .replyCount(0)
-                .artefactRefs(List.of(UUID.randomUUID(), UUID.randomUUID()))
+                .artefactRefs(List.of(new io.casehub.qhorus.api.message.ArtefactRef(UUID.randomUUID().toString(), io.casehub.qhorus.api.message.ArtefactType.DOCUMENT, null, null), new io.casehub.qhorus.api.message.ArtefactRef(UUID.randomUUID().toString(), io.casehub.qhorus.api.message.ArtefactType.CODE, "Main.java", null)))
                 .target("role:specialist")
                 .commitmentId(UUID.randomUUID())
                 .deadline(Instant.parse("2026-06-30T13:00:00Z"))

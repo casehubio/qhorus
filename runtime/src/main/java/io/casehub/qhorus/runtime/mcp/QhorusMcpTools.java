@@ -1,6 +1,59 @@
 package io.casehub.qhorus.runtime.mcp;
 
-import java.util.Arrays;
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.ActorTypeResolver;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
+import io.casehub.qhorus.api.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.ChannelDetail;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.data.SharedData;
+import io.casehub.qhorus.api.gateway.ChannelRef;
+import io.casehub.qhorus.api.gateway.Senders;
+import io.casehub.qhorus.api.instance.Instance;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.message.DispatchResult;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.message.Reaction;
+import io.casehub.qhorus.api.message.ReactionGroup;
+import io.casehub.qhorus.api.message.Topic;
+import io.casehub.qhorus.api.message.TopicSummary;
+import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
+import io.casehub.qhorus.api.store.ChannelStore;
+import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.api.store.DataStore;
+import io.casehub.qhorus.api.store.InstanceStore;
+import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.ReactionStore;
+import io.casehub.qhorus.api.store.TopicStore;
+import io.casehub.qhorus.api.store.WatchdogStore;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.api.watchdog.Watchdog;
+import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.runtime.instance.CapabilityEntity;
+import io.casehub.qhorus.runtime.instance.InstanceService;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.runtime.message.ProjectionRegistry;
+import io.casehub.qhorus.runtime.message.ReactionService;
+import io.casehub.qhorus.runtime.message.TopicService;
+import io.quarkiverse.mcp.server.McpServer;
+import io.quarkiverse.mcp.server.Tool;
+import io.quarkiverse.mcp.server.ToolArg;
+import io.quarkiverse.mcp.server.WrapBusinessError;
+import io.quarkus.arc.properties.UnlessBuildProperty;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import org.jboss.logging.Logger;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -8,62 +61,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import io.casehub.qhorus.api.data.ArtefactClaim;
-import io.casehub.qhorus.api.data.SharedData;
-import io.casehub.qhorus.api.watchdog.Watchdog;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
-import org.jboss.logging.Logger;
-
-import io.quarkiverse.mcp.server.McpServer;
-import io.quarkiverse.mcp.server.Tool;
-import io.quarkiverse.mcp.server.ToolArg;
-import io.quarkiverse.mcp.server.WrapBusinessError;
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
-import io.casehub.qhorus.api.channel.ChannelDetail;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.instance.InstanceInfo;
-import io.casehub.qhorus.api.message.DispatchResult;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.gateway.ChannelRef;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
-import io.casehub.qhorus.api.channel.ChannelCreateRequest;
-import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.api.gateway.Senders;
-import io.casehub.qhorus.runtime.instance.CapabilityEntity;
-import io.casehub.qhorus.api.instance.Instance;
-import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.message.ProjectionRegistry;
-import io.casehub.qhorus.api.store.CommitmentStore;
-import io.casehub.qhorus.api.store.ChannelStore;
-import io.casehub.qhorus.api.store.DataStore;
-import io.casehub.qhorus.api.store.InstanceStore;
-import io.casehub.qhorus.api.store.MessageStore;
-import io.casehub.qhorus.api.store.TopicStore;
-import io.casehub.qhorus.api.store.ReactionStore;
-import io.casehub.qhorus.api.store.WatchdogStore;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
-import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.casehub.qhorus.api.message.Reaction;
-import io.casehub.qhorus.api.message.ReactionGroup;
-import io.casehub.qhorus.api.message.Topic;
-import io.casehub.qhorus.api.message.TopicSummary;
-import io.casehub.qhorus.runtime.message.TopicService;
-import io.casehub.qhorus.runtime.message.ReactionService;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 /**
  * All business logic exceptions ({@link IllegalArgumentException} and
  * {@link IllegalStateException}) thrown from any {@code @Tool} method are
@@ -653,43 +650,35 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         final UUID subjectIdUuid = parseOptionalUuid("subject_id", subjectId);
         final UUID causedByEntryIdUuid = parseOptionalUuid("caused_by_entry_id", causedByEntryId);
 
-        // Validate artefact refs — batch query to avoid N+1
+        // Build ArtefactRef list — selective validation: UUID refs validated against SharedData, non-UUID bypass
+        java.util.List<io.casehub.qhorus.api.message.ArtefactRef> refsList = null;
         if (artefactRefs != null && !artefactRefs.isEmpty()) {
-            List<java.util.UUID> refUuids = new java.util.ArrayList<>(artefactRefs.size());
-            for (int i = 0; i < artefactRefs.size(); i++) {
+            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> built = new java.util.ArrayList<>(artefactRefs.size());
+            java.util.List<java.util.UUID> uuidRefs = new java.util.ArrayList<>();
+            for (String ref : artefactRefs) {
                 try {
-                    refUuids.add(java.util.UUID.fromString(artefactRefs.get(i)));
+                    java.util.UUID parsed = java.util.UUID.fromString(ref);
+                    uuidRefs.add(parsed);
+                    built.add(new io.casehub.qhorus.api.message.ArtefactRef(ref, io.casehub.qhorus.api.message.ArtefactType.DOCUMENT, null, null));
                 } catch (IllegalArgumentException e) {
+                    built.add(new io.casehub.qhorus.api.message.ArtefactRef(ref, io.casehub.qhorus.api.message.ArtefactType.EXTERNAL, null, null));
+                }
+            }
+            if (!uuidRefs.isEmpty()) {
+                java.util.List<java.util.UUID> found = dataStore.findByIds(uuidRefs).stream().map(SharedData::id).toList();
+                java.util.List<java.util.UUID> unknown = uuidRefs.stream().filter(u -> !found.contains(u)).toList();
+                if (!unknown.isEmpty()) {
                     throw new IllegalArgumentException(
-                            "artefact_refs[" + i + "] is not a valid UUID: " + artefactRefs.get(i));
+                            "Unknown artefact ref(s): " + unknown.stream().map(java.util.UUID::toString).collect(java.util.stream.Collectors.joining(", ")));
                 }
+                instanceService.findByInstanceId(sender).ifPresent(inst -> {
+                    for (java.util.UUID uuid : uuidRefs) {
+                        dataService.claim(uuid, inst.id());
+                    }
+                });
             }
-            List<java.util.UUID> found = dataStore.findByIds(refUuids).stream()
-                    .map(SharedData::id)
-                    .toList();
-            List<java.util.UUID> unknown = refUuids.stream()
-                    .filter(u -> !found.contains(u))
-                    .toList();
-            if (!unknown.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Unknown artefact ref(s): " + unknown.stream()
-                                .map(java.util.UUID::toString)
-                                .collect(java.util.stream.Collectors.joining(", ")));
-            }
+            refsList = java.util.List.copyOf(built);
         }
-
-        // Auto-claim artefacts for the sender (idempotent — duplicate claims are no-ops).
-        if (artefactRefs != null && !artefactRefs.isEmpty()) {
-            instanceService.findByInstanceId(sender).ifPresent(inst -> {
-                for (String ref : artefactRefs) {
-                    dataService.claim(java.util.UUID.fromString(ref), inst.id());
-                }
-            });
-        }
-
-        String refsStr = (artefactRefs != null && !artefactRefs.isEmpty())
-                ? String.join(",", artefactRefs)
-                : null;
 
         // Validate and normalise target — null/blank → no addressing (broadcast)
         String normalisedTarget = (target == null || target.isBlank()) ? null : target.strip();
@@ -720,7 +709,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                         .content(content)
                         .correlationId(corrId)
                         .inReplyTo(inReplyTo)
-                        .artefactRefs(refsStr)
+                        .artefactRefs(refsList)
                         .target(normalisedTarget)
                         .subjectId(subjectIdUuid)
                         .causedByEntryId(causedByEntryIdUuid)
@@ -744,8 +733,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 messageService.findByCorrelationId(dispatchResult.correlationId()).ifPresent(original -> {
                     if (original.artefactRefs() != null && !original.artefactRefs().isEmpty()) {
                         instanceService.findByInstanceId(original.sender()).ifPresent(inst -> {
-                            for (UUID ref : original.artefactRefs()) {
-                                dataService.release(ref, inst.id());
+                            for (io.casehub.qhorus.api.message.ArtefactRef ref : original.artefactRefs()) {
+                                try { dataService.release(UUID.fromString(ref.uri()), inst.id()); }
+                                catch (IllegalArgumentException ignored) {}
                             }
                         });
                     }
@@ -1255,6 +1245,15 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
+    @Tool(name = "get_artefact_refs", description = "Get artefact references attached to a message.")
+    public java.util.List<io.casehub.qhorus.api.message.ArtefactRef> getArtefactRefs(
+            @ToolArg(name = "message_id", description = "Message ID") Long messageId) {
+        io.casehub.qhorus.api.message.Message msg = messageStore.find(messageId)
+                                                                .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+        return msg.artefactRefs() != null ? msg.artefactRefs() : java.util.List.of();
+    }
+
+
     @Tool(name = "list_artefacts", description = "List all artefacts with metadata.")
     public List<ArtefactDetail> listArtefacts() {
         return dataService.listAll().stream().map(this::toArtefactDetail).toList();
@@ -1414,7 +1413,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             senderBreakdown.merge(m.sender(), 1, Integer::sum);
             typeBreakdown.merge(m.messageType().name(), 1, Integer::sum);
             if (m.artefactRefs() != null && !m.artefactRefs().isEmpty()) {
-                m.artefactRefs().forEach(ref -> artefactUuids.add(ref.toString()));
+                m.artefactRefs().forEach(ref -> artefactUuids.add(ref.uri()));
             }
         }
 

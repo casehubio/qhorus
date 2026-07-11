@@ -40,10 +40,10 @@ class ArtefactRefsTest {
         CheckResult result = tools.checkMessages("arefs-ch-1", 0L, 10, null, null, null);
 
         assertEquals(1, result.messages().size());
-        List<String> refs = result.messages().get(0).artefactRefs();
+        var refs = result.messages().get(0).artefactRefs();
         assertEquals(2, refs.size());
-        assertTrue(refs.contains(uuid1));
-        assertTrue(refs.contains(uuid2));
+        assertTrue(refs.stream().anyMatch(r -> r.uri().equals(uuid1)));
+        assertTrue(refs.stream().anyMatch(r -> r.uri().equals(uuid2)));
     }
 
     @Test
@@ -55,7 +55,7 @@ class ArtefactRefsTest {
 
         CheckResult result = tools.checkMessages("arefs-ch-2", 0L, 10, null, null, null);
 
-        List<String> refs = result.messages().get(0).artefactRefs();
+        var refs = result.messages().get(0).artefactRefs();
         assertNotNull(refs, "artefactRefs must be an empty list, never null");
         assertTrue(refs.isEmpty());
     }
@@ -81,7 +81,7 @@ class ArtefactRefsTest {
 
         assertNotNull(result.artefactRefs());
         assertEquals(1, result.artefactRefs().size());
-        assertEquals(uuid, result.artefactRefs().get(0).toString());
+        assertEquals(uuid, result.artefactRefs().get(0).uri());
     }
 
     @Test
@@ -95,7 +95,7 @@ class ArtefactRefsTest {
         List<MessageSummary> replies = tools.getReplies(request.messageId(), null, null, null);
 
         assertEquals(1, replies.size());
-        assertTrue(replies.get(0).artefactRefs().contains(uuid));
+        assertTrue(replies.get(0).artefactRefs().stream().anyMatch(r -> r.uri().equals(uuid)));
     }
 
     @Test
@@ -108,7 +108,7 @@ class ArtefactRefsTest {
         List<MessageSummary> results = tools.searchMessages("analysis", null, 10, null);
 
         assertEquals(1, results.size());
-        assertTrue(results.get(0).artefactRefs().contains(uuid));
+        assertTrue(results.get(0).artefactRefs().stream().anyMatch(r -> r.uri().equals(uuid)));
     }
 
     @Test

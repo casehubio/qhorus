@@ -222,7 +222,7 @@ public class MessageService implements MessageDispatcher {
                             .messageType(dispatch.type())
                             .correlationId(dispatch.correlationId())
                             .inReplyTo(dispatch.inReplyTo())
-                            .artefactRefs(ArtefactRefParser.parse(dispatch.artefactRefs()))
+                            .artefactRefs(dispatch.artefactRefs())
                             .target(dispatch.target())
                             .topic(dispatch.topic())
                             .actorType(dispatch.actorType())
@@ -238,7 +238,8 @@ public class MessageService implements MessageDispatcher {
                                 UUID.randomUUID(), dispatch.sender(), dispatch.type(), dispatch.content(),
                                 dispatch.correlationId(),
                                 dispatch.inReplyTo(),
-                                dispatch.actorType()));
+                                dispatch.actorType(),
+                                dispatch.artefactRefs()));
                     } catch (final Exception e) {
                         // fanOut failures are non-fatal
                     }
@@ -279,7 +280,7 @@ public class MessageService implements MessageDispatcher {
                 .content(dispatch.content())
                 .correlationId(dispatch.correlationId())
                 .inReplyTo(dispatch.inReplyTo())
-                .artefactRefs(ArtefactRefParser.parse(dispatch.artefactRefs()))
+                .artefactRefs(dispatch.artefactRefs())
                 .target(dispatch.target())
                 .topic(dispatch.topic())
                 .deadline(dispatch.deadline())
@@ -353,7 +354,8 @@ public class MessageService implements MessageDispatcher {
                         UUID.randomUUID(), dispatch.sender(), dispatch.type(), dispatch.content(),
                         dispatch.correlationId(),
                         dispatch.inReplyTo(),
-                        dispatch.actorType()));
+                        dispatch.actorType(),
+                        dispatch.artefactRefs()));
             } catch (final Exception e) {
                 // fanOut failures are non-fatal
             }
@@ -384,7 +386,7 @@ public class MessageService implements MessageDispatcher {
                 dispatch.type(),
                 dispatch.correlationId(),
                 dispatch.inReplyTo(),
-                ArtefactRefParser.parse(dispatch.artefactRefs()),
+                dispatch.artefactRefs(),
                 dispatch.target(),
                 ledgerOutcome.entryId(),
                 ledgerOutcome.subjectId(),

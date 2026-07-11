@@ -317,7 +317,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                         .messageType(dispatch.type())
                                                         .correlationId(dispatch.correlationId())
                                                         .inReplyTo(dispatch.inReplyTo())
-                                                        .artefactRefs(ArtefactRefParser.parse(dispatch.artefactRefs()))
+                                                        .artefactRefs(dispatch.artefactRefs())
                                                         .target(dispatch.target())
                                                         .topic(dispatch.topic())
                                                         .actorType(dispatch.actorType())
@@ -369,7 +369,9 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             dispatch.content(),
                                             dispatch.correlationId(),
                                             dispatch.inReplyTo(),
-                                            dispatch.actorType()));
+                                            dispatch.actorType(),
+                                            dispatch.artefactRefs())
+);
                                 } catch (final Exception e) {
                                     // fanOut failures are non-fatal
                                 }
@@ -398,7 +400,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             .content(dispatch.content())
                                             .correlationId(dispatch.correlationId())
                                             .inReplyTo(dispatch.inReplyTo())
-                                            .artefactRefs(ArtefactRefParser.parse(dispatch.artefactRefs()))
+                                            .artefactRefs(dispatch.artefactRefs())
                                             .target(dispatch.target())
                                             .topic(dispatch.topic())
                                             .createdAt(ctx.occurredAt())
@@ -428,7 +430,8 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                     dispatch.type(), dispatch.content(),
                                                     dispatch.correlationId(),
                                                     dispatch.inReplyTo(),
-                                                    dispatch.actorType()));
+                                                    dispatch.actorType(),
+                                                    dispatch.artefactRefs()));
 
                                             // Post-commit delivery signal: this runs after the message-insert
                                             // transaction has committed, so the pump will see the committed message.
@@ -451,7 +454,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             dispatch.type(),
                                             dispatch.correlationId(),
                                             dispatch.inReplyTo(),
-                                            ArtefactRefParser.parse(dispatch.artefactRefs()),
+                                            dispatch.artefactRefs(),
                                             dispatch.target(),
                                             lo.entryId(),
                                             lo.subjectId(),
@@ -488,7 +491,7 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                 .content(dispatch.content())
                 .correlationId(dispatch.correlationId())
                 .inReplyTo(dispatch.inReplyTo())
-                .artefactRefs(ArtefactRefParser.parse(dispatch.artefactRefs()))
+                .artefactRefs(dispatch.artefactRefs())
                 .target(dispatch.target())
                 .topic(dispatch.topic())
                 .deadline(dispatch.deadline())

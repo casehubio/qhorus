@@ -1,31 +1,30 @@
 package io.casehub.qhorus.runtime.mcp;
 
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
+import io.casehub.qhorus.api.channel.ChannelDetail;
+import io.casehub.qhorus.api.channel.ChannelSlugValidator;
+import io.casehub.qhorus.api.data.SharedData;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.spi.ProjectionResult;
+import io.casehub.qhorus.api.spi.RenderableProjection;
+import io.casehub.qhorus.api.store.ChannelBindingStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.api.watchdog.Watchdog;
+import io.casehub.qhorus.runtime.QhorusEntityMapper;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import io.casehub.qhorus.runtime.message.ProjectionService;
+import jakarta.inject.Inject;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Supplier;
-
-import io.casehub.qhorus.api.message.Commitment;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.channel.ChannelDetail;
-import io.casehub.qhorus.api.instance.InstanceInfo;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.spi.ProjectionResult;
-import io.casehub.qhorus.api.spi.RenderableProjection;
-import io.casehub.qhorus.runtime.QhorusEntityMapper;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
-import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.api.channel.ChannelSlugValidator;
-import io.casehub.qhorus.api.data.SharedData;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.runtime.message.ProjectionService;
-import io.casehub.qhorus.api.store.ChannelBindingStore;
-import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.casehub.qhorus.api.watchdog.Watchdog;
 
 public abstract class QhorusMcpToolsBase {
 
@@ -58,7 +57,7 @@ public abstract class QhorusMcpToolsBase {
             String correlationId,
             Long inReplyTo,
             String createdAt,
-            List<String> artefactRefs,
+            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
             String target,
             String topic) {
     }
@@ -436,12 +435,9 @@ public abstract class QhorusMcpToolsBase {
     }
 
     protected MessageSummary toMessageSummary(Message m) {
-        List<String> refs = (m.artefactRefs() != null)
-                ? m.artefactRefs().stream().map(UUID::toString).toList()
-                : List.of();
+        java.util.List<io.casehub.qhorus.api.message.ArtefactRef> refs = m.artefactRefs() != null ? m.artefactRefs() : java.util.List.of();
         return new MessageSummary(m.id(), m.sender(), m.messageType().name(), m.content(),
-                m.correlationId(), m.inReplyTo(), m.createdAt().toString(), refs, m.target(), m.topic());
-    }
+                                  m.correlationId(), m.inReplyTo(), m.createdAt().toString(), refs, m.target(), m.topic());}
 
     /** Single-item path — looks up binding by channel ID. Used by all tool call sites except list_channels. */
     protected ChannelDetail toChannelDetail(Channel ch, long messageCount) {

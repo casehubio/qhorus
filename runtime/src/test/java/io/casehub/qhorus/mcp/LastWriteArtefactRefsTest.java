@@ -56,11 +56,11 @@ class LastWriteArtefactRefsTest {
         assertEquals(1, overwrite.artefactRefs().size(),
                 "LAST_WRITE overwrite must replace artefact refs, not accumulate; " +
                         "expected 1 ref (ref3) but got " + overwrite.artefactRefs().size());
-        assertTrue(overwrite.artefactRefs().contains(ref3.artefactId()),
+        assertTrue(overwrite.artefactRefs().stream().anyMatch(r -> r.uri().equals(ref3.artefactId().toString())),
                 "overwrite must contain ref3");
-        assertFalse(overwrite.artefactRefs().contains(ref1.artefactId()),
+        assertFalse(overwrite.artefactRefs().stream().anyMatch(r -> r.uri().equals(ref1.artefactId().toString())),
                 "ref1 from first write must be gone after overwrite");
-        assertFalse(overwrite.artefactRefs().contains(ref2.artefactId()),
+        assertFalse(overwrite.artefactRefs().stream().anyMatch(r -> r.uri().equals(ref2.artefactId().toString())),
                 "ref2 from first write must be gone after overwrite");
 
         // Confirm via checkMessages that the stored row has only ref3
@@ -69,7 +69,7 @@ class LastWriteArtefactRefsTest {
         assertEquals(1, check.messages().get(0).artefactRefs().size(),
                 "checkMessages must show only 1 artefact ref after LAST_WRITE overwrite");
         assertEquals(ref3.artefactId().toString(),
-                check.messages().get(0).artefactRefs().get(0));
+                check.messages().get(0).artefactRefs().get(0).uri());
     }
 
     /**

@@ -17,7 +17,7 @@ public record Message(
         String correlationId,
         Long inReplyTo,
         int replyCount,
-        List<UUID> artefactRefs,
+        List<ArtefactRef> artefactRefs,
         String target,
         String topic,
         UUID commitmentId,
@@ -45,116 +45,116 @@ public record Message(
     }
 
     public static final class Builder {
-        private Long        id;
-        private UUID        channelId;
-        private String      sender;
-        private MessageType messageType;
-        private ActorType   actorType;
-        private String      tenancyId;
-        private String      content;
-        private String      correlationId;
-        private Long        inReplyTo;
-        private int         replyCount;
-        private List<UUID>  artefactRefs;
-        private String      target;
-        private String      topic;
-        private UUID        commitmentId;
-        private Instant     deadline;
-        private Instant     acknowledgedAt;
-        private int         version;
-        private Instant     createdAt;
+        private Long              id;
+        private UUID              channelId;
+        private String            sender;
+        private MessageType       messageType;
+        private ActorType         actorType;
+        private String            tenancyId;
+        private String            content;
+        private String            correlationId;
+        private Long              inReplyTo;
+        private int               replyCount;
+        private List<ArtefactRef> artefactRefs;
+        private String            target;
+        private String            topic;
+        private UUID              commitmentId;
+        private Instant           deadline;
+        private Instant           acknowledgedAt;
+        private int               version;
+        private Instant           createdAt;
 
-        private Builder()                         {}
+        private Builder()                                {}
 
-        public Builder id(Long v)                 {
-                                                      this.id = v;
-                                                      return this;
-                                                  }
+        public Builder id(Long v)                        {
+                                                             this.id = v;
+                                                             return this;
+                                                         }
 
-        public Builder channelId(UUID v)          {
-                                                      this.channelId = v;
-                                                      return this;
-                                                  }
+        public Builder channelId(UUID v)                 {
+                                                             this.channelId = v;
+                                                             return this;
+                                                         }
 
-        public Builder sender(String v)           {
-                                                      this.sender = v;
-                                                      return this;
-                                                  }
+        public Builder sender(String v)                  {
+                                                             this.sender = v;
+                                                             return this;
+                                                         }
 
-        public Builder messageType(MessageType v) {
-                                                      this.messageType = v;
-                                                      return this;
-                                                  }
+        public Builder messageType(MessageType v)        {
+                                                             this.messageType = v;
+                                                             return this;
+                                                         }
 
-        public Builder actorType(ActorType v)     {
-                                                      this.actorType = v;
-                                                      return this;
-                                                  }
+        public Builder actorType(ActorType v)            {
+                                                             this.actorType = v;
+                                                             return this;
+                                                         }
 
-        public Builder tenancyId(String v)        {
-                                                      this.tenancyId = v;
-                                                      return this;
-                                                  }
+        public Builder tenancyId(String v)               {
+                                                             this.tenancyId = v;
+                                                             return this;
+                                                         }
 
-        public Builder content(String v)          {
-                                                      this.content = v;
-                                                      return this;
-                                                  }
+        public Builder content(String v)                 {
+                                                             this.content = v;
+                                                             return this;
+                                                         }
 
-        public Builder correlationId(String v)    {
-                                                      this.correlationId = v;
-                                                      return this;
-                                                  }
+        public Builder correlationId(String v)           {
+                                                             this.correlationId = v;
+                                                             return this;
+                                                         }
 
-        public Builder inReplyTo(Long v)          {
-                                                      this.inReplyTo = v;
-                                                      return this;
-                                                  }
+        public Builder inReplyTo(Long v)                 {
+                                                             this.inReplyTo = v;
+                                                             return this;
+                                                         }
 
-        public Builder replyCount(int v)          {
-                                                      this.replyCount = v;
-                                                      return this;
-                                                  }
+        public Builder replyCount(int v)                 {
+                                                             this.replyCount = v;
+                                                             return this;
+                                                         }
 
-        public Builder artefactRefs(List<UUID> v) {
-                                                      this.artefactRefs = v;
-                                                      return this;
-                                                  }
+        public Builder artefactRefs(List<ArtefactRef> v) {
+                                                             this.artefactRefs = v;
+                                                             return this;
+                                                         }
 
-        public Builder target(String v)           {
-                                                      this.target = v;
-                                                      return this;
-                                                  }
+        public Builder target(String v)                  {
+                                                             this.target = v;
+                                                             return this;
+                                                         }
 
-        public Builder topic(String v)            {
-                                                      this.topic = v;
-                                                      return this;
-                                                  }
+        public Builder topic(String v)                   {
+                                                             this.topic = v;
+                                                             return this;
+                                                         }
 
-        public Builder commitmentId(UUID v)       {
-                                                      this.commitmentId = v;
-                                                      return this;
-                                                  }
+        public Builder commitmentId(UUID v)              {
+                                                             this.commitmentId = v;
+                                                             return this;
+                                                         }
 
-        public Builder deadline(Instant v)        {
-                                                      this.deadline = v;
-                                                      return this;
-                                                  }
+        public Builder deadline(Instant v)               {
+                                                             this.deadline = v;
+                                                             return this;
+                                                         }
 
-        public Builder acknowledgedAt(Instant v)  {
-                                                      this.acknowledgedAt = v;
-                                                      return this;
-                                                  }
+        public Builder acknowledgedAt(Instant v)         {
+                                                             this.acknowledgedAt = v;
+                                                             return this;
+                                                         }
 
-        public Builder version(int v)             {
-                                                      this.version = v;
-                                                      return this;
-                                                  }
+        public Builder version(int v)                    {
+                                                             this.version = v;
+                                                             return this;
+                                                         }
 
-        public Builder createdAt(Instant v)       {
-                                                      this.createdAt = v;
-                                                      return this;
-                                                  }
+        public Builder createdAt(Instant v)              {
+                                                             this.createdAt = v;
+                                                             return this;
+                                                         }
 
         public Message build() {
             return new Message(id, channelId, sender, messageType, actorType,

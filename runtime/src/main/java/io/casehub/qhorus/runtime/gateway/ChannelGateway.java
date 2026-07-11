@@ -404,7 +404,8 @@ public class ChannelGateway {
                     msg.content(),
                     msg.correlationId(),
                     msg.inReplyTo(),
-                    msg.actorType());
+                    msg.actorType(),
+                    msg.artefactRefs());
 
             List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
             int backendCount = 0;
