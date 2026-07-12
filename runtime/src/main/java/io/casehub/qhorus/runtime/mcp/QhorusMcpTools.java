@@ -1880,6 +1880,19 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return reactionService.getReactions(messageId);
     }
 
+    @Tool(name = "get_reactions_batch", description = "Get reactions for multiple messages in one call, grouped by emoji with actor lists per message")
+    public Map<Long, List<ReactionGroup>> getReactionsBatch(
+            @ToolArg(name = "message_ids", description = "List of message IDs to fetch reactions for (max 200)") List<Long> messageIds) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            throw new IllegalArgumentException("message_ids must be non-null and non-empty");
+        }
+        if (messageIds.size() > 200) {
+            throw new IllegalArgumentException("message_ids cannot exceed 200 entries");
+        }
+        return reactionService.getReactionsBatch(messageIds);
+    }
+
+
     @Tool(name = "join_channel", description = "Join a channel as a member. Creates or updates membership with the specified role.")
     @jakarta.transaction.Transactional
     public MembershipSummary joinChannel(
