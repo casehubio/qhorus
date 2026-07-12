@@ -53,7 +53,7 @@ class ArtefactRefTest {
             var ref = new ArtefactRef("test:" + type.name(), type, null, null);
             assertThat(ref.type()).isEqualTo(type);
         }
-        assertThat(ArtefactType.values()).hasSize(7);
+        assertThat(ArtefactType.values()).hasSize(8);
     }
 
     @Test

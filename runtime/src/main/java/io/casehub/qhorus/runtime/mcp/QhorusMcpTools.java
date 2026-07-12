@@ -60,6 +60,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import io.casehub.qhorus.runtime.channel.PresenceService;
+import io.casehub.qhorus.api.channel.Presence;
+import io.casehub.qhorus.api.channel.PresenceStatus;
 
 /**
  * All business logic exceptions ({@link IllegalArgumentException} and
@@ -131,6 +134,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     ReactionService reactionService;
+
+    @Inject
+    PresenceService presenceService;
     @jakarta.inject.Inject
     io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService;
     @jakarta.inject.Inject
@@ -1953,6 +1959,31 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return reactionService.getReactionsBatch(messageIds);
     }
 
+
+
+    @Tool(name = "set_presence", description = "Report presence status (heartbeat). Accepted statuses: ONLINE, AVAILABLE, BUSY. AWAY and OFFLINE are computed from heartbeat absence.")
+    public Presence setPresence(
+            @ToolArg(name = "status", description = "Presence status: ONLINE, AVAILABLE, or BUSY") String status,
+            @ToolArg(name = "status_message", description = "Optional status message", required = false) String statusMessage,
+            @ToolArg(name = "member_id", description = "Member ID. Defaults to caller identity.", required = false) String memberId) {
+        String member = memberId != null ? memberId : currentPrincipal.actorId();
+        PresenceStatus ps = PresenceStatus.valueOf(status.toUpperCase());
+        presenceService.heartbeat(member, ps, statusMessage);
+        return presenceService.getPresence(member);
+    }
+
+    @Tool(name = "get_presence", description = "Get presence status for a member")
+    public Presence getPresenceTool(
+            @ToolArg(name = "member_id", description = "Member ID to query") String memberId) {
+        return presenceService.getPresence(memberId);
+    }
+
+    @Tool(name = "get_channel_presence", description = "Get presence status for all members of a channel")
+    public java.util.List<Presence> getChannelPresence(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        Channel ch = resolveChannel(channel);
+        return presenceService.getChannelPresence(ch.id());
+    }
 
     @Tool(name = "join_channel", description = "Join a channel as a member. Creates or updates membership with the specified role.")
     @jakarta.transaction.Transactional
