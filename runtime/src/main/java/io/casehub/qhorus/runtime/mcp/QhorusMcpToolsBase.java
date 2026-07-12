@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSlugValidator;
+import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.data.SharedData;
 import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.message.Commitment;
@@ -36,6 +37,9 @@ public abstract class QhorusMcpToolsBase {
 
     @Inject
     ChannelService channelService;
+    @Inject
+    io.casehub.qhorus.runtime.channel.SpaceService spaceService;
+
 
     @Inject
     ProjectionService projectionService;
@@ -165,6 +169,9 @@ public abstract class QhorusMcpToolsBase {
             long messagesDeleted,
             String status) {
     }
+
+    public record DeleteSpaceResult(String spaceId, boolean deleted) {}
+
 
     public record DeregisterResult(
             String instanceId,
@@ -324,6 +331,17 @@ public abstract class QhorusMcpToolsBase {
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel));
     }
 
+    Space resolveSpace(final String space) {
+        final UUID parsedUuid = ChannelSlugValidator.tryParseUuid(space);
+        if (parsedUuid != null) {
+            return spaceService.findById(parsedUuid)
+                               .orElseThrow(() -> new IllegalArgumentException("Space not found: " + space));
+        }
+        return spaceService.findByName(space)
+                           .orElseThrow(() -> new IllegalArgumentException("Space not found: " + space));
+    }
+
+
     /**
      * Captures the state type {@code <S>} to bridge the wildcard
      * {@code RenderableProjection<?>} from the registry to the typed
@@ -456,6 +474,25 @@ public abstract class QhorusMcpToolsBase {
         return entityMapper.toChannelDetail(ch, messageCount,
                 Optional.ofNullable(allBindings.get(ch.id())));
     }
+
+    protected Map<UUID, String> buildSpaceNameMap(List<Channel> channels) {
+        java.util.Set<UUID> spaceIds = channels.stream()
+                                               .map(Channel::spaceId)
+                                               .filter(java.util.Objects::nonNull)
+                                               .collect(java.util.stream.Collectors.toSet());
+        if (spaceIds.isEmpty()) {return Map.of();}
+        return spaceService.findByIds(spaceIds).stream()
+                           .collect(java.util.stream.Collectors.toMap(Space::id, Space::name));
+    }
+
+    protected ChannelDetail toChannelDetail(Channel ch, long messageCount,
+                                            Map<UUID, ChannelConnectorBinding> allBindings,
+                                            Map<UUID, String> spaceNames) {
+        return entityMapper.toChannelDetail(ch, messageCount,
+                                            Optional.ofNullable(allBindings.get(ch.id())),
+                                            ch.spaceId() != null ? spaceNames.get(ch.spaceId()) : null);
+    }
+
 
     protected WatchdogSummary toWatchdogSummary(Watchdog w) {
         return new WatchdogSummary(

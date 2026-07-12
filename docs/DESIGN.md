@@ -138,7 +138,7 @@ Also: `QhorusSystemCurrentPrincipal @ApplicationScoped @QhorusSystem` (from #260
 
 ## Domain Model
 
-Seven Panache entities across four packages. All use UUID primary keys set in
+Panache entities across four packages. All use UUID primary keys set in
 `@PrePersist`; timestamps set in `@PrePersist` / `@PreUpdate`.
 
 ### Channel (`runtime/channel/`)
@@ -147,6 +147,8 @@ Seven Panache entities across four packages. All use UUID primary keys set in
 |---|---|---|
 | `Channel` | `id UUID`, `name`, `semantic`, `barrierContributors`, `allowedWriters`, `adminInstances`, `rateLimitPerChannel`, `rateLimitPerInstance`, `allowedTypes`, `deniedTypes`, `createdAt`, `lastActivityAt` | Write ACL, management ACL, and rate limits are all nullable (null = unrestricted); `deniedTypes` wins over `allowedTypes` when both are set |
 | `ChannelSemantic` | `APPEND \| COLLECT \| BARRIER \| EPHEMERAL \| LAST_WRITE` | Enum; stored as STRING |
+| `Space` | `id UUID`, `name`, `description`, `parentSpaceId UUID FK(self)`, `tenancyId`, `createdAt` | Organizational container; recursive nesting via `parentSpaceId`; `Channel.spaceId` links channels to spaces |
+| `ChannelMembership` | `id BIGINT`, `channelId UUID FK`, `memberId`, `memberRole`, `tenancyId`, `joinedAt`, `lastReadMessageId` | User-facing membership (distinct from ACL); lazy auto-join on first human interaction |
 
 ### Message (`runtime/message/`)
 

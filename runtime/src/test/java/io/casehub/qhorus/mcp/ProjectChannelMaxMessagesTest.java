@@ -56,7 +56,7 @@ class ProjectChannelMaxMessagesTest {
     void maxMessages_limitsMessagesInFold() {
         String channelName = "fold-limit-" + System.nanoTime();
         tools.createChannel(channelName, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null);
         // Send 5 messages
         for (int i = 0; i < 5; i++) {
             tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
@@ -74,7 +74,7 @@ class ProjectChannelMaxMessagesTest {
     void nullMaxMessages_foldsAll() {
         String channelName = "fold-all-" + System.nanoTime();
         tools.createChannel(channelName, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null);
         for (int i = 0; i < 4; i++) {
             tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
                     null, null, null, null, null, null, null, null);
@@ -90,7 +90,7 @@ class ProjectChannelMaxMessagesTest {
     void nonPositiveMaxMessages_foldsAll() {
         String channelName = "fold-nonpos-" + System.nanoTime();
         tools.createChannel(channelName, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null);
         for (int i = 0; i < 3; i++) {
             tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
                     null, null, null, null, null, null, null, null);

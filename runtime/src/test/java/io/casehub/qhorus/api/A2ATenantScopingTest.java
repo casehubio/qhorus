@@ -48,7 +48,7 @@ class A2ATenantScopingTest {
         final String ch = channel;
         QuarkusTransaction.requiringNew().run(() ->
                 tools.createChannel(ch, "A2A tenant scoping test channel",
-                        "APPEND", null, null, null, null, null, null, null, null, null, null, null));
+                        "APPEND", null, null, null, null, null, null, null, null, null, null, null, null));
     }
 
     // ── test: no header → DEFAULT_TENANT_ID → channel found → 200 ─────────────

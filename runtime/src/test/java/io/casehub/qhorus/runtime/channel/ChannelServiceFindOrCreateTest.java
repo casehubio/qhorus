@@ -39,7 +39,7 @@ class ChannelServiceFindOrCreateTest {
                 "Auto-created on first contact",
                 ChannelSemantic.APPEND,
                 null, null, null, null, null, null, null,
-                InboundConnectorIds.TWILIO_SMS, senderPhone, TwilioSmsConnector.ID, senderPhone);
+                null, InboundConnectorIds.TWILIO_SMS, senderPhone, TwilioSmsConnector.ID, senderPhone);
     }
 
     private String uniquePhone() {

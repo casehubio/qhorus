@@ -1,9 +1,9 @@
 package io.casehub.qhorus.runtime.channel;
 
-import java.time.Instant;
-import java.util.UUID;
-
 import io.casehub.platform.api.identity.TenancyConstants;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageType;
+import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,9 +13,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
+import java.time.Instant;
+import java.util.UUID;
 
 @Entity(name = "Channel")
 @Table(name = "channel", uniqueConstraints = @UniqueConstraint(name = "uq_channel_name_tenancy", columnNames = { "tenancy_id", "name" }))
@@ -84,6 +83,9 @@ public class ChannelEntity extends PanacheEntityBase {
     /** True when this channel was auto-created by ConnectorChannelBackend on first contact. */
     @Column(name = "auto_created", nullable = false)
     public boolean autoCreated = false;
+    @Column(name = "space_id")
+    public UUID    spaceId;
+
 
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
@@ -111,24 +113,24 @@ public class ChannelEntity extends PanacheEntityBase {
 
     public static ChannelEntity fromDomain(io.casehub.qhorus.api.channel.Channel channel) {
         ChannelEntity e = new ChannelEntity();
-        e.id = channel.id();
-        e.name = channel.name();
-        e.description = channel.description();
-        e.semantic = channel.semantic();
-        e.barrierContributors = joinCsv(channel.barrierContributors());
-        e.allowedWriters = joinCsv(channel.allowedWriters());
-        e.adminInstances = joinCsv(channel.adminInstances());
-        e.rateLimitPerChannel = channel.rateLimitPerChannel();
+        e.id                   = channel.id();
+        e.name                 = channel.name();
+        e.description          = channel.description();
+        e.semantic             = channel.semantic();
+        e.barrierContributors  = joinCsv(channel.barrierContributors());
+        e.allowedWriters       = joinCsv(channel.allowedWriters());
+        e.adminInstances       = joinCsv(channel.adminInstances());
+        e.rateLimitPerChannel  = channel.rateLimitPerChannel();
         e.rateLimitPerInstance = channel.rateLimitPerInstance();
-        e.allowedTypes = MessageType.serializeTypes(channel.allowedTypes());
-        e.deniedTypes = MessageType.serializeTypes(channel.deniedTypes());
-        e.paused = channel.paused();
-        e.autoCreated = channel.autoCreated();
-        e.tenancyId = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
-        e.createdAt = channel.createdAt();
-        e.lastActivityAt = channel.lastActivityAt();
-        return e;
-    }
+        e.allowedTypes         = MessageType.serializeTypes(channel.allowedTypes());
+        e.deniedTypes          = MessageType.serializeTypes(channel.deniedTypes());
+        e.paused               = channel.paused();
+        e.autoCreated          = channel.autoCreated();
+        e.spaceId              = channel.spaceId();
+        e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
+        e.createdAt            = channel.createdAt();
+        e.lastActivityAt       = channel.lastActivityAt();
+        return e;}
 
     public io.casehub.qhorus.api.channel.Channel toDomain() {
         return new io.casehub.qhorus.api.channel.Channel(
@@ -139,8 +141,7 @@ public class ChannelEntity extends PanacheEntityBase {
                 rateLimitPerChannel, rateLimitPerInstance,
                 nullIfEmpty(MessageType.parseTypes(allowedTypes)),
                 nullIfEmpty(MessageType.parseTypes(deniedTypes)),
-                paused, autoCreated, tenancyId, createdAt, lastActivityAt);
-    }
+                paused, autoCreated, spaceId, tenancyId, createdAt, lastActivityAt);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);

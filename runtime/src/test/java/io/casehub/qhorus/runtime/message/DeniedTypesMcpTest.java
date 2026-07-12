@@ -25,7 +25,7 @@ class DeniedTypesMcpTest {
         ChannelDetail detail = tools.createChannel(
                 "oversight-mcp", "Oversight channel",
                 null, null, null, null, null, null,
-                null, "EVENT",
+                null, "EVENT", null,
                 null, null, null, null);
         assertThat(detail.deniedTypes()).isEqualTo("EVENT");
         assertThat(detail.allowedTypes()).isNull();
@@ -37,7 +37,7 @@ class DeniedTypesMcpTest {
         tools.createChannel(
                 "oversight-denied", "Oversight channel",
                 null, null, null, null, null, null,
-                null, "EVENT",
+                null, "EVENT", null,
                 null, null, null, null);
 
         // EVENT is not obligation-creating — dispatch succeeds with advisory
@@ -56,7 +56,7 @@ class DeniedTypesMcpTest {
         tools.createChannel(
                 "oversight-pass", "Oversight channel",
                 null, null, null, null, null, null,
-                null, "EVENT",
+                null, "EVENT", null,
                 null, null, null, null);
 
         // COMMAND is not denied — should pass
@@ -71,7 +71,7 @@ class DeniedTypesMcpTest {
                 tools.createChannel(
                         "bad-denied", "Bad channel",
                         null, null, null, null, null, null,
-                        null, "INVALID_TYPE",
+                        null, "INVALID_TYPE", null,
                         null, null, null, null))
                 .isInstanceOf(ToolCallException.class);
     }
@@ -83,7 +83,7 @@ class DeniedTypesMcpTest {
                 tools.createChannel(
                         "overlap-mcp", "Bad channel",
                         null, null, null, null, null, null,
-                        "QUERY,COMMAND", "QUERY",
+                        "QUERY,COMMAND", "QUERY", null,
                         null, null, null, null))
                 .isInstanceOf(ToolCallException.class)
                 .hasMessageContaining("QUERY");

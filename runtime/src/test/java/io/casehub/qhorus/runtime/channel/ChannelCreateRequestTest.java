@@ -22,7 +22,7 @@ class ChannelCreateRequestTest {
         final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 Set.of(MessageType.QUERY, MessageType.COMMAND), Set.of(MessageType.EVENT),
-                null, null, null, null);
+                null, null, null, null, null);
         assertThat(req.allowedTypes()).containsExactlyInAnyOrder(MessageType.QUERY, MessageType.COMMAND);
         assertThat(req.deniedTypes()).containsExactly(MessageType.EVENT);
     }
@@ -32,7 +32,7 @@ class ChannelCreateRequestTest {
         final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 null, Set.of(MessageType.EVENT),
-                null, null, null, null);
+                null, null, null, null, null);
         assertThat(req.deniedTypes()).containsExactly(MessageType.EVENT);
     }
 
@@ -41,7 +41,7 @@ class ChannelCreateRequestTest {
         final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 Set.of(MessageType.QUERY), null,
-                null, null, null, null);
+                null, null, null, null, null);
         assertThat(req.allowedTypes()).containsExactly(MessageType.QUERY);
     }
 
@@ -50,7 +50,7 @@ class ChannelCreateRequestTest {
         final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 null, null,
-                null, null, null, null);
+                null, null, null, null, null);
         assertThat(req.allowedTypes()).isNull();
         assertThat(req.deniedTypes()).isNull();
     }
@@ -67,7 +67,7 @@ class ChannelCreateRequestTest {
         mutable.add(MessageType.QUERY);
         final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
-                mutable, null, null, null, null, null);
+                mutable, null, null, null, null, null, null);
 
         mutable.add(MessageType.COMMAND); // mutate after construction
 
@@ -84,7 +84,7 @@ class ChannelCreateRequestTest {
         assertThatThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 Set.of(MessageType.QUERY, MessageType.COMMAND), Set.of(MessageType.QUERY),
-                null, null, null, null))
+                null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("QUERY");
     }
@@ -94,7 +94,7 @@ class ChannelCreateRequestTest {
         assertThatThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 Set.of(MessageType.EVENT), Set.of(MessageType.EVENT),
-                null, null, null, null))
+                null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("EVENT");
     }
@@ -108,7 +108,7 @@ class ChannelCreateRequestTest {
         assertThatThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "ch", null, ChannelSemantic.APPEND, null, null, null, null, null,
                 null, null,
-                "connector-id", null, null, null))
+                null, "connector-id", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Connector binding");
     }

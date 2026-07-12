@@ -1,21 +1,20 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.store.ChannelStore;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+import io.casehub.qhorus.runtime.channel.ChannelEntity;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
-import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelEntity;
-import io.casehub.qhorus.api.store.ChannelStore;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
 
 @ApplicationScoped
 public class JpaChannelStore implements ChannelStore {
@@ -52,8 +51,8 @@ public class JpaChannelStore implements ChannelStore {
 
     @Override
     public List<Channel> scan(ChannelQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM Channel WHERE tenancyId = ?1");
-        List<Object> params = new ArrayList<>();
+        StringBuilder jpql   = new StringBuilder("FROM Channel WHERE tenancyId = ?1");
+        List<Object>  params = new ArrayList<>();
         params.add(currentPrincipal.tenancyId());
         int idx = 2;
 
@@ -78,10 +77,16 @@ public class JpaChannelStore implements ChannelStore {
             params.add("%" + q.keyword().toLowerCase() + "%");
             idx++;
         }
+        if (q.spaceId() != null) {
+            jpql.append(" AND spaceId = ?").append(idx++);
+            params.add(q.spaceId());
+        }
+        if (q.topLevelOnly()) {
+            jpql.append(" AND spaceId IS NULL");
+        }
 
         List<ChannelEntity> entities = ChannelEntity.list(jpql.toString(), params.toArray());
-        return entities.stream().map(ChannelEntity::toDomain).toList();
-    }
+        return entities.stream().map(ChannelEntity::toDomain).toList();}
 
     @Override
     @Transactional
@@ -105,6 +110,14 @@ public class JpaChannelStore implements ChannelStore {
         List<ChannelEntity> entities = ChannelEntity.list("id IN ?1 AND tenancyId = ?2", new ArrayList<>(ids), currentPrincipal.tenancyId());
         return entities.stream().map(ChannelEntity::toDomain).toList();
     }
+
+    @Override
+    public boolean hasChannelsInSpace(UUID spaceId) {
+        if (spaceId == null) {return false;}
+        return ChannelEntity.count("spaceId = ?1 AND tenancyId = ?2",
+                                   spaceId, currentPrincipal.tenancyId()) > 0;
+    }
+
 
     private static String escapeLikePrefix(String prefix) {
         return prefix.replace("!", "!!").replace("%", "!%").replace("_", "!_");

@@ -8,6 +8,10 @@ import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelSlugValidator;
+import io.casehub.qhorus.api.channel.Presence;
+import io.casehub.qhorus.api.channel.PresenceStatus;
+import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.data.SharedData;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.Senders;
@@ -35,6 +39,7 @@ import io.casehub.qhorus.api.store.WatchdogStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.api.watchdog.Watchdog;
+import io.casehub.qhorus.runtime.channel.PresenceService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.instance.CapabilityEntity;
 import io.casehub.qhorus.runtime.instance.InstanceService;
@@ -60,9 +65,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import io.casehub.qhorus.runtime.channel.PresenceService;
-import io.casehub.qhorus.api.channel.Presence;
-import io.casehub.qhorus.api.channel.PresenceStatus;
 
 /**
  * All business logic exceptions ({@link IllegalArgumentException} and
@@ -242,20 +244,20 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // ---------------------------------------------------------------------------
 
     @Tool(name = "create_channel", description = "Create a named channel with declared semantic. "
-            + "Semantic defaults to APPEND if not specified. "
-            + "Use allowed_types to restrict which MessageType values may be sent to this channel "
-            + "(enforced at both MCP and service layers). "
-            + "Use denied_types to explicitly block specific types regardless of allowed_types — "
-            + "denial wins if a type appears in both. "
-            + "Example: denied_types=\"EVENT\" for an oversight channel open to all agent messages but not telemetry. "
-            + "Optionally attach a connector binding by supplying all four connector fields together.")
+                                                 + "Semantic defaults to APPEND if not specified. "
+                                                 + "Use allowed_types to restrict which MessageType values may be sent to this channel "
+                                                 + "(enforced at both MCP and service layers). "
+                                                 + "Use denied_types to explicitly block specific types regardless of allowed_types — "
+                                                 + "denial wins if a type appears in both. "
+                                                 + "Example: denied_types=\"EVENT\" for an oversight channel open to all agent messages but not telemetry. "
+                                                 + "Optionally attach a connector binding by supplying all four connector fields together.")
     @Transactional
     public ChannelDetail createChannel(
             @ToolArg(name = "name", description = "Unique channel name. Each /-delimited segment must match " +
-                    "[a-z][a-z0-9]*(-[a-z0-9]+)* — lowercase letters and digits, hyphens only between " +
-                    "alphanumeric groups. No leading, trailing, or consecutive hyphens. Max 80 chars per " +
-                    "segment, 200 chars total. UUID-shaped names are rejected. " +
-                    "Examples: \"billing-output\", \"case-abc/work\".") String name,
+                                                  "[a-z][a-z0-9]*(-[a-z0-9]+)* — lowercase letters and digits, hyphens only between " +
+                                                  "alphanumeric groups. No leading, trailing, or consecutive hyphens. Max 80 chars per " +
+                                                  "segment, 200 chars total. UUID-shaped names are rejected. " +
+                                                  "Examples: \"billing-output\", \"case-abc/work\".") String name,
             @ToolArg(name = "description", description = "Channel purpose description") String description,
             @ToolArg(name = "semantic", description = "Channel semantic: APPEND (default), COLLECT, BARRIER, EPHEMERAL, LAST_WRITE", required = false) String semantic,
             @ToolArg(name = "barrier_contributors", description = "Comma-separated contributor names (BARRIER channels only)", required = false) String barrierContributors,
@@ -263,12 +265,13 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel (pause/resume/force_release/clear). Null = open to any caller.", required = false) String adminInstances,
             @ToolArg(name = "rate_limit_per_channel", description = "Max messages per minute across all senders. Null = unlimited.", required = false) Integer rateLimitPerChannel,
             @ToolArg(name = "rate_limit_per_instance", description = "Max messages per minute from a single sender. Null = unlimited.", required = false) Integer rateLimitPerInstance,
-            @ToolArg(name = "allowed_types", description = "Comma-separated MessageType names permitted on this channel. Null = all types permitted. Example: \"EVENT\" for a telemetry-only observe channel; \"QUERY,COMMAND\" for a governance channel.", required = false) String allowedTypes,
-            @ToolArg(name = "denied_types", description = "Comma-separated MessageType names explicitly denied on this channel. Denial wins if a type appears in both allowed_types and denied_types. Example: \"EVENT\" for an oversight channel open to all agent messages but not telemetry.", required = false) String deniedTypes,
-            @ToolArg(name = "inbound_connector_id", description = "Inbound connector type identifier (e.g. 'twilio-sms-inbound'). All four connector fields must be set together or left null.", required = false) String inboundConnectorId,
-            @ToolArg(name = "external_key", description = "Connector-specific lookup key (e.g. sender phone number or channel reference).", required = false) String externalKey,
-            @ToolArg(name = "outbound_connector_id", description = "Outbound connector type identifier (e.g. 'twilio-sms-outbound').", required = false) String outboundConnectorId,
-            @ToolArg(name = "outbound_destination", description = "Outbound destination address (e.g. phone number, webhook URL).", required = false) String outboundDestination) {
+            @ToolArg(name = "allowed_types", description = "Comma-separated MessageType names permitted on this channel. Null = all types permitted.", required = false) String allowedTypes,
+            @ToolArg(name = "denied_types", description = "Comma-separated MessageType names explicitly denied on this channel. Denial wins if a type appears in both.", required = false) String deniedTypes,
+            @ToolArg(name = "space_id", description = "Space UUID to place this channel in. Null = top-level channel.", required = false) String spaceId,
+            @ToolArg(name = "inbound_connector_id", description = "Inbound connector type identifier. All four connector fields must be set together or left null.", required = false) String inboundConnectorId,
+            @ToolArg(name = "external_key", description = "Connector-specific lookup key.", required = false) String externalKey,
+            @ToolArg(name = "outbound_connector_id", description = "Outbound connector type identifier.", required = false) String outboundConnectorId,
+            @ToolArg(name = "outbound_destination", description = "Outbound destination address.", required = false) String outboundDestination) {
         ChannelSemantic sem;
         if (semantic == null || semantic.isBlank()) {
             sem = ChannelSemantic.APPEND;
@@ -281,21 +284,21 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             }
         }
         Channel ch = channelService.create(ChannelCreateRequest.builder(name)
-                                                                     .description(description)
-                                                                     .semantic(sem)
-                                                                     .barrierContributors(splitCsv(barrierContributors))
-                                                                     .allowedWriters(splitCsv(allowedWriters))
-                                                                     .adminInstances(splitCsv(adminInstances))
-                                                                     .rateLimitPerChannel(rateLimitPerChannel)
-                                                                     .rateLimitPerInstance(rateLimitPerInstance)
-                                                                     .allowedTypes(MessageType.parseTypes(allowedTypes))
-                                                                     .deniedTypes(MessageType.parseTypes(deniedTypes))
-                                                                     .inboundConnectorId(inboundConnectorId)
-                                                                     .externalKey(externalKey)
-                                                                     .outboundConnectorId(outboundConnectorId)
-                                                                     .outboundDestination(outboundDestination)
-                                                                     .build());
-        // initChannel() is now called by ChannelService.create() — no duplicate call needed.
+                                                               .description(description)
+                                                               .semantic(sem)
+                                                               .barrierContributors(splitCsv(barrierContributors))
+                                                               .allowedWriters(splitCsv(allowedWriters))
+                                                               .adminInstances(splitCsv(adminInstances))
+                                                               .rateLimitPerChannel(rateLimitPerChannel)
+                                                               .rateLimitPerInstance(rateLimitPerInstance)
+                                                               .allowedTypes(MessageType.parseTypes(allowedTypes))
+                                                               .deniedTypes(MessageType.parseTypes(deniedTypes))
+                                                               .spaceId(spaceId != null ? resolveSpace(spaceId).id() : null)
+                                                               .inboundConnectorId(inboundConnectorId)
+                                                               .externalKey(externalKey)
+                                                               .outboundConnectorId(outboundConnectorId)
+                                                               .outboundDestination(outboundDestination)
+                                                               .build());
         return toChannelDetail(ch, 0L);
     }
 
@@ -383,12 +386,12 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         if (channels.isEmpty()) {
             return List.of();
         }
-        Map<UUID, Long> countByChannel = messageStore.countAllByChannel();
-        Map<UUID, ChannelConnectorBinding> allBindings = bindingStore.findAll();
+        Map<UUID, Long>                    countByChannel = messageStore.countAllByChannel();
+        Map<UUID, ChannelConnectorBinding> allBindings    = bindingStore.findAll();
+        Map<UUID, String>                  spaceNames     = buildSpaceNameMap(channels);
         return channels.stream()
-                .map(ch -> toChannelDetail(ch, countByChannel.getOrDefault(ch.id(), 0L), allBindings))
-                .toList();
-    }
+                       .map(ch -> toChannelDetail(ch, countByChannel.getOrDefault(ch.id(), 0L), allBindings, spaceNames))
+                       .toList();}
 
     @Tool(name = "find_channel", description = "Search channels by keyword in name or description.")
     public List<ChannelDetail> findChannel(
@@ -2040,6 +2043,88 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public java.util.List<io.casehub.qhorus.api.channel.UnreadCount> getUnreadCounts(
             @ToolArg(name = "sender", description = "Instance ID of the member") String sender) {
         return new java.util.ArrayList<>(membershipService.getUnreadCounts(sender, currentPrincipal.tenancyId()).values());
+    }
+
+    @Tool(name = "create_space", description = "Create an organizational space to group related channels. "
+                                               + "Spaces can nest recursively (project → case → channels). "
+                                               + "Channels are assigned to spaces via create_channel(space_id) or move_channel_to_space.")
+    @Transactional
+    public Space createSpace(
+            @ToolArg(name = "name", description = "Space name (free-form text, max 200 chars)") String name,
+            @ToolArg(name = "description", description = "Space purpose description", required = false) String description,
+            @ToolArg(name = "parent_space_id", description = "Parent space UUID for nesting. Null = root space.", required = false) String parentSpaceId) {
+        UUID parentId = ChannelSlugValidator.tryParseUuid(parentSpaceId);
+        return spaceService.create(new io.casehub.qhorus.api.channel.SpaceCreateRequest(name, description, parentId));
+    }
+
+    @Tool(name = "list_spaces", description = "List spaces. Without parent_space_id, returns root spaces. "
+                                              + "With parent_space_id, returns direct children of that space.")
+    public List<Space> listSpaces(
+            @ToolArg(name = "parent_space_id", description = "Parent space UUID or name. Null = list root spaces.", required = false) String parentSpaceId) {
+        if (parentSpaceId == null) {return spaceService.listRoots();}
+        return spaceService.listChildren(resolveSpace(parentSpaceId).id());
+    }
+
+    @Tool(name = "list_space_channels", description = "List all channels belonging to a space.")
+    public List<ChannelDetail> listSpaceChannels(
+            @ToolArg(name = "space", description = "Space UUID or name") String space) {
+        UUID          sid      = resolveSpace(space).id();
+        List<Channel> channels = spaceService.listChannels(sid);
+        return channels.stream().map(ch -> toChannelDetail(ch, messageStore.count(
+                MessageQuery.builder().channelId(ch.id()).build()))).toList();
+    }
+
+    @Tool(name = "delete_space", description = "Delete a space. Fails if the space contains channels or child spaces.")
+    @Transactional
+    public DeleteSpaceResult deleteSpace(
+            @ToolArg(name = "space", description = "Space UUID or name to delete") String space) {
+        Space s = resolveSpace(space);
+        spaceService.delete(s.id());
+        return new DeleteSpaceResult(s.id().toString(), true);
+    }
+
+    @Tool(name = "get_space", description = "Get a space by UUID or name.")
+    public Space getSpace(
+            @ToolArg(name = "space", description = "Space UUID or name") String space) {
+        return resolveSpace(space);
+    }
+
+    @Tool(name = "rename_space", description = "Rename a space.")
+    @Transactional
+    public Space renameSpace(
+            @ToolArg(name = "space", description = "Space UUID or name") String space,
+            @ToolArg(name = "new_name", description = "New space name") String newName) {
+        return spaceService.rename(resolveSpace(space).id(), newName);
+    }
+
+    @Tool(name = "update_space_description", description = "Update a space's description. Null clears the description.")
+    @Transactional
+    public Space updateSpaceDescription(
+            @ToolArg(name = "space", description = "Space UUID or name") String space,
+            @ToolArg(name = "description", description = "New description. Null clears it.", required = false) String description) {
+        return spaceService.updateDescription(resolveSpace(space).id(), description);
+    }
+
+    @Tool(name = "move_space", description = "Move a space to a new parent. Null parent_space_id makes it a root space. "
+                                             + "Fails if the move would create a cycle or exceed the maximum nesting depth.")
+    @Transactional
+    public Space moveSpace(
+            @ToolArg(name = "space", description = "Space UUID or name to move") String space,
+            @ToolArg(name = "parent_space_id", description = "New parent space UUID or name. Null = make root.", required = false) String parentSpaceId) {
+        UUID parentId = parentSpaceId != null ? resolveSpace(parentSpaceId).id() : null;
+        return spaceService.moveSpace(resolveSpace(space).id(), parentId);
+    }
+
+    @Tool(name = "move_channel_to_space", description = "Move a channel into a space. Null space_id removes the channel from its space (makes it top-level). "
+                                                        + "Channel and space must be in the same tenancy.")
+    @Transactional
+    public ChannelDetail moveChannelToSpace(
+            @ToolArg(name = "channel", description = "Channel UUID or name") String channel,
+            @ToolArg(name = "space_id", description = "Target space UUID or name. Null = remove from space.", required = false) String spaceId) {
+        UUID    sid     = spaceId != null ? resolveSpace(spaceId).id() : null;
+        Channel updated = spaceService.moveChannelToSpace(resolveChannel(channel).id(), sid);
+        return toChannelDetail(updated, messageStore.count(
+                MessageQuery.builder().channelId(updated.id()).build()));
     }
 
 

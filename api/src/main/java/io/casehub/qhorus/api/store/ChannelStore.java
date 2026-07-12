@@ -1,12 +1,12 @@
 package io.casehub.qhorus.api.store;
 
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
 
 public interface ChannelStore {
     Channel put(Channel channel);
@@ -29,4 +29,10 @@ public interface ChannelStore {
                 .map(Optional::get)
                 .toList();
     }
+
+    default boolean hasChannelsInSpace(UUID spaceId) {
+        if (spaceId == null) {return false;}
+        return !scan(io.casehub.qhorus.api.store.query.ChannelQuery.bySpaceId(spaceId)).isEmpty();
+    }
+
 }

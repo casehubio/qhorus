@@ -24,7 +24,7 @@ class ChannelCreateRequestSlugTest {
         assertThatIllegalArgumentException()
             .isThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "Billing Output", null, ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null))
+                null, null, null, null, null, null, null, null, null, null, null, null))
             .withMessageContaining("Billing Output");
     }
 
@@ -33,7 +33,7 @@ class ChannelCreateRequestSlugTest {
         assertThatIllegalArgumentException()
             .isThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "a81b4c6d-1234-5678-abcd-ef0123456789", null, ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null))
+                null, null, null, null, null, null, null, null, null, null, null, null))
             .withMessageContaining("UUID-shaped");
     }
 
@@ -42,7 +42,7 @@ class ChannelCreateRequestSlugTest {
         assertThatIllegalArgumentException()
             .isThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
                 "connector/twilio-sms-inbound/+14155552671", null, ChannelSemantic.APPEND,
-                null, null, null, null, null, null, null, null, null, null, null))
+                null, null, null, null, null, null, null, null, null, null, null, null))
             .withMessageContaining("+14155552671");
     }
 
@@ -50,7 +50,7 @@ class ChannelCreateRequestSlugTest {
     void compactConstructor_acceptsValidHierarchicalSlug() {
         assertThatNoException().isThrownBy(() -> new io.casehub.qhorus.api.channel.ChannelCreateRequest(
             "connector/twilio-sms-inbound/id-14155552671-3fa2b100", null, ChannelSemantic.APPEND,
-            null, null, null, null, null, null, null, null, null, null, null));
+            null, null, null, null, null, null, null, null, null, null, null, null));
     }
 
     @Test
@@ -62,7 +62,7 @@ class ChannelCreateRequestSlugTest {
                 null, null, null, null, null,
                 java.util.Set.of(io.casehub.qhorus.api.message.MessageType.EVENT),
                 java.util.Set.of(io.casehub.qhorus.api.message.MessageType.EVENT),
-                null, null, null, null))
+                null, null, null, null, null))
             .withMessageContaining("Invalid Name");
     }
 }

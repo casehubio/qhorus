@@ -1,23 +1,22 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.store.ReactiveChannelStore;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+import io.casehub.qhorus.runtime.channel.ChannelEntity;
+import io.quarkus.arc.properties.IfBuildProperty;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.quarkus.panache.common.Parameters;
+import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelEntity;
-import io.casehub.qhorus.api.store.ReactiveChannelStore;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
-import io.quarkus.arc.properties.IfBuildProperty;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
-import io.quarkus.panache.common.Parameters;
-import io.smallrye.mutiny.Uni;
 
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
@@ -46,9 +45,9 @@ public class ReactiveJpaChannelStore implements ReactiveChannelStore {
 
     @Override
     public Uni<List<Channel>> scan(ChannelQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM Channel WHERE 1=1");
-        List<Object> params = new ArrayList<>();
-        int idx = 1;
+        StringBuilder jpql   = new StringBuilder("FROM Channel WHERE 1=1");
+        List<Object>  params = new ArrayList<>();
+        int           idx    = 1;
 
         if (q.paused() != null) {
             jpql.append(" AND paused = ?").append(idx++);
@@ -66,10 +65,16 @@ public class ReactiveJpaChannelStore implements ReactiveChannelStore {
             jpql.append(" AND name LIKE ?").append(idx++).append(" ESCAPE '!'");
             params.add(escapeLikePrefix(q.namePrefix()) + "%");
         }
+        if (q.spaceId() != null) {
+            jpql.append(" AND spaceId = ?").append(idx++);
+            params.add(q.spaceId());
+        }
+        if (q.topLevelOnly()) {
+            jpql.append(" AND spaceId IS NULL");
+        }
 
         return repo.<ChannelEntity>list(jpql.toString(), params.toArray())
-                .map(list -> list.stream().map(ChannelEntity::toDomain).toList());
-    }
+                   .map(list -> list.stream().map(ChannelEntity::toDomain).toList());}
 
     @Override
     @WithTransaction

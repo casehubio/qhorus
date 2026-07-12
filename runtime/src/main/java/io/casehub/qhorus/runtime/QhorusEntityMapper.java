@@ -16,8 +16,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class QhorusEntityMapper {
@@ -33,11 +31,17 @@ public class QhorusEntityMapper {
 
     public ChannelDetail toChannelDetail(Channel ch, long messageCount,
                                          Optional<ChannelConnectorBinding> binding) {
+        return toChannelDetail(ch, messageCount, binding, null);
+    }
+
+    public ChannelDetail toChannelDetail(Channel ch, long messageCount,
+                                         Optional<ChannelConnectorBinding> binding,
+                                         String spaceName) {
         ChannelDetail.ConnectorBinding detailBinding = binding
-                .map(b -> new ChannelDetail.ConnectorBinding(
-                        b.inboundConnectorId(), b.externalKey(),
-                        b.outboundConnectorId(), b.outboundDestination()))
-                .orElse(null);
+                                                               .map(b -> new ChannelDetail.ConnectorBinding(
+                                                                       b.inboundConnectorId(), b.externalKey(),
+                                                                       b.outboundConnectorId(), b.outboundDestination()))
+                                                               .orElse(null);
         return new ChannelDetail(
                 ch.id(), ch.name(), ch.description(),
                 ch.semantic() != null ? ch.semantic().name() : null,
@@ -47,6 +51,8 @@ public class QhorusEntityMapper {
                 ch.rateLimitPerChannel(), ch.rateLimitPerInstance(),
                 ch.allowedTypes() != null ? MessageType.serializeTypes(ch.allowedTypes()) : null,
                 ch.deniedTypes() != null ? MessageType.serializeTypes(ch.deniedTypes()) : null,
+                ch.spaceId(),
+                spaceName,
                 detailBinding);
     }
 

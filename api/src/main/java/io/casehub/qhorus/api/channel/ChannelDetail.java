@@ -11,22 +11,16 @@ public record ChannelDetail(
         long messageCount,
         String lastActivityAt,
         boolean paused,
-        /** Comma-separated allowed-writer entries, or null if the channel is open to all writers. */
         String allowedWriters,
-        /** Comma-separated admin instance IDs, or null if management is open to any caller. */
         String adminInstances,
-        /** Max messages per minute across all senders. Null = unlimited. */
         Integer rateLimitPerChannel,
-        /** Max messages per minute from a single sender. Null = unlimited. */
         Integer rateLimitPerInstance,
-        /** Comma-separated permitted MessageType names, or null if open to all types. */
         String allowedTypes,
-        /** Comma-separated denied MessageType names, or null if no types are denied. Denial wins when a type appears in both allowedTypes and deniedTypes. */
         String deniedTypes,
-        /** Connector binding for inbound/outbound routing. Null when no binding is configured. */
+        UUID spaceId,
+        String spaceName,
         ConnectorBinding connectorBinding) {
 
-    /** API-level connector binding descriptor. Null when no binding is configured. */
     public record ConnectorBinding(
             String inboundConnectorId,
             String externalKey,
