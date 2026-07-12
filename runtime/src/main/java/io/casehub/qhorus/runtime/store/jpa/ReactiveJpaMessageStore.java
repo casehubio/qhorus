@@ -1,23 +1,22 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.ReactiveMessageStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.message.MessageEntity;
+import io.quarkus.arc.properties.IfBuildProperty;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.runtime.message.MessageEntity;
-import io.casehub.qhorus.api.store.ReactiveMessageStore;
-import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.quarkus.arc.properties.IfBuildProperty;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
 
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
@@ -141,4 +140,16 @@ public class ReactiveJpaMessageStore implements ReactiveMessageStore {
                         .setParameter("oldTopic", oldTopic)
                         .executeUpdate());
     }
+
+    @Override
+    public Uni<Integer> updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId) {
+        return repo.getSession().flatMap(session ->
+                                                 session.createMutationQuery(
+                                                                "UPDATE Message SET channelId = :target WHERE channelId = :source AND LOWER(topic) = LOWER(:topic)")
+                                                        .setParameter("target", targetChannelId)
+                                                        .setParameter("source", sourceChannelId)
+                                                        .setParameter("topic", topic)
+                                                        .executeUpdate());
+    }
+
 }

@@ -1,12 +1,5 @@
 package io.casehub.qhorus.runtime.message;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ReactiveMessageStore;
@@ -14,6 +7,12 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.quarkus.arc.DefaultBean;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Test stub satisfying the {@link ReactiveMessageStore} CDI dependency in
@@ -53,4 +52,8 @@ class StubReactiveMessageStore implements ReactiveMessageStore {
     @Override public Uni<Optional<Message>> findLastMessage(final UUID channelId) { throw stub(); }
     @Override public Multi<Message> stream(final MessageQuery query)              { throw stub(); }
     @Override public Uni<Integer> updateTopicName(final UUID channelId, final String oldTopic, final String newTopic) { throw stub(); }
+
+    @Override
+    public Uni<Integer> updateChannelId(UUID src, String topic, UUID tgt)                                             {throw stub();}
+
 }

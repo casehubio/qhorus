@@ -1,17 +1,16 @@
 package io.casehub.qhorus.runtime.message;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.store.ReactiveCommitmentStore;
 import io.quarkus.arc.DefaultBean;
 import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * Test stub satisfying the ReactiveCommitmentStore CDI dependency in @QuarkusTest runs
@@ -43,6 +42,12 @@ class StubReactiveCommitmentStore implements ReactiveCommitmentStore {
     public Uni<Optional<Commitment>> findByCorrelationId(final String correlationId) {
         throw new UnsupportedOperationException("reactive CommitmentStore not available — stub only");
     }
+
+    @Override
+    public Uni<List<Commitment>> findByIds(java.util.Collection<UUID> ids) {
+        throw new UnsupportedOperationException("stub");
+    }
+
 
     @Override
     public Uni<List<Commitment>> findOpenByObligor(final String obligor, final UUID channelId) {

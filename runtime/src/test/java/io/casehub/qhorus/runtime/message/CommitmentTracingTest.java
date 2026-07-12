@@ -1,33 +1,29 @@
 package io.casehub.qhorus.runtime.message;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.lang.annotation.Annotation;
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.CompletionStage;
-
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
+import io.casehub.qhorus.api.message.CommitmentExpiredEvent;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.data.SpanData;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
-import io.casehub.qhorus.api.message.CommitmentExpiredEvent;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.store.CommitmentStore;
-import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.NotificationOptions;
 import jakarta.enterprise.util.TypeLiteral;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.lang.annotation.Annotation;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class CommitmentTracingTest {
 
@@ -50,6 +46,12 @@ class CommitmentTracingTest {
         public java.util.Optional<Commitment> findByCorrelationId(String correlationId) {
             return java.util.Optional.ofNullable(byCorrelationId.get(correlationId));
         }
+
+        @Override
+        public java.util.List<Commitment> findByIds(java.util.Collection<UUID> ids) {
+            return ids.stream().map(byId::get).filter(java.util.Objects::nonNull).toList();
+        }
+
 
         @Override
         public java.util.Optional<Commitment> findById(UUID id) {

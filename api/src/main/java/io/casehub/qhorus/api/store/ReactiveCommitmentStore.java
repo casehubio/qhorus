@@ -1,13 +1,14 @@
 package io.casehub.qhorus.api.store;
 
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.smallrye.mutiny.Uni;
+
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.Commitment;
-import io.smallrye.mutiny.Uni;
 
 public interface ReactiveCommitmentStore {
 
@@ -16,6 +17,8 @@ public interface ReactiveCommitmentStore {
     Uni<Optional<Commitment>> findById(UUID commitmentId);
 
     Uni<Optional<Commitment>> findByCorrelationId(String correlationId);
+
+    Uni<List<Commitment>> findByIds(Collection<UUID> ids);
 
     Uni<List<Commitment>> findOpenByObligor(String obligor, UUID channelId);
 

@@ -3,6 +3,7 @@ package io.casehub.qhorus.runtime.message;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.message.TopicSummary;
+import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
@@ -13,6 +14,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @ApplicationScoped
 public class TopicService {
@@ -24,6 +26,9 @@ public class TopicService {
 
     @Inject
     public MessageStore messageStore;
+
+    @Inject
+    public CommitmentStore commitmentStore;
 
     public Topic ensureExists(UUID channelId, String topicName, String tenancyId) {
         String name = normalise(topicName);
@@ -104,6 +109,45 @@ public class TopicService {
         return new MergeResult(normalSource, normalTarget, messagesUpdated);
     }
 
+    public MoveResult move(UUID sourceChannelId, String topicName, UUID targetChannelId, String actorId) {
+        String normalTopic = normalise(topicName);
+        if (DEFAULT_TOPIC.equalsIgnoreCase(normalTopic)) {
+            throw new IllegalArgumentException("Cannot move the default topic 'general'");
+        }
+        if (topicStore.find(sourceChannelId, normalTopic).isEmpty()) {
+            throw new IllegalArgumentException("Topic '" + normalTopic + "' not found in source channel");
+        }
+
+        var messages = messageStore.scan(
+                MessageQuery.builder().channelId(sourceChannelId).topic(normalTopic).build());
+        var commitmentIds = messages.stream()
+                .map(Message::commitmentId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (!commitmentIds.isEmpty()) {
+            var commitments = commitmentStore.findByIds(commitmentIds);
+            var openCommitments = commitments.stream()
+                    .filter(c -> c.state().isActive())
+                    .toList();
+            if (!openCommitments.isEmpty()) {
+                String blocking = openCommitments.stream()
+                        .map(io.casehub.qhorus.api.message.Commitment::correlationId)
+                        .collect(Collectors.joining(", "));
+                throw new IllegalStateException(
+                        "Cannot move topic — open commitments exist: " + blocking);
+            }
+        }
+
+        int moved = messageStore.updateChannelId(sourceChannelId, normalTopic, targetChannelId);
+
+        if (topicStore.find(targetChannelId, normalTopic).isEmpty()) {
+            topicStore.put(new Topic(null, targetChannelId, normalTopic, false, null, null, Instant.now(), null));
+        }
+        topicStore.delete(sourceChannelId, normalTopic);
+
+        return new MoveResult(normalTopic, sourceChannelId, targetChannelId, moved);
+    }
 
     static String normalise(String topicName) {
         if (topicName == null || topicName.isBlank()) return DEFAULT_TOPIC;
@@ -117,5 +161,7 @@ public class TopicService {
     public record RenameResult(String oldName, String newName, int messagesUpdated) {}
 
     public record MergeResult(String sourceTopic, String targetTopic, int messagesUpdated) {}
+
+    public record MoveResult(String topicName, UUID sourceChannelId, UUID targetChannelId, int messagesUpdated) {}
 
 }

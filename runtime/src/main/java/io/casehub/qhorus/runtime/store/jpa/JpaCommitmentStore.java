@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,6 +55,14 @@ public class JpaCommitmentStore implements CommitmentStore {
                 .findFirst();
         return active.or(() -> all.stream().findFirst())
                 .map(CommitmentEntity::toDomain);
+    }
+
+    @Override
+    public List<Commitment> findByIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return repo.find("id IN ?1", List.copyOf(ids))
+                .<CommitmentEntity>list()
+                .stream().map(CommitmentEntity::toDomain).toList();
     }
 
     @Override

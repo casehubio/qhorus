@@ -126,4 +126,12 @@ public class JpaMessageStore implements MessageStore {
                 newTopic, channelId, oldTopic, currentPrincipal.tenancyId());
     }
 
+    @Override
+    public int updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId) {
+        return (int) MessageEntity.update(
+                "channelId = ?1 WHERE channelId = ?2 AND LOWER(topic) = LOWER(?3) AND tenancyId = ?4",
+                targetChannelId, sourceChannelId, topic, currentPrincipal.tenancyId());
+    }
+
+
 }

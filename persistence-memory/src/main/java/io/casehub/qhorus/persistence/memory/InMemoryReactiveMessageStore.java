@@ -1,21 +1,20 @@
 package io.casehub.qhorus.persistence.memory;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
-
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ReactiveMessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @Alternative
 @Priority(1)
@@ -94,6 +93,12 @@ public class InMemoryReactiveMessageStore implements ReactiveMessageStore {
     public Uni<Integer> updateTopicName(java.util.UUID channelId, String oldTopic, String newTopic) {
         return Uni.createFrom().item(blocking.updateTopicName(channelId, oldTopic, newTopic));
     }
+
+    @Override
+    public Uni<Integer> updateChannelId(java.util.UUID sourceChannelId, String topic, java.util.UUID targetChannelId) {
+        return Uni.createFrom().item(blocking.updateChannelId(sourceChannelId, topic, targetChannelId));
+    }
+
 
     public void clear() {
         blocking.clear();

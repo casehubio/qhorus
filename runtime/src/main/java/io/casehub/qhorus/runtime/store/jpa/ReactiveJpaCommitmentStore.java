@@ -1,20 +1,19 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.store.ReactiveCommitmentStore;
+import io.casehub.qhorus.runtime.message.CommitmentEntity;
+import io.quarkus.arc.properties.IfBuildProperty;
+import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
+import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.runtime.message.CommitmentEntity;
-import io.casehub.qhorus.api.store.ReactiveCommitmentStore;
-import io.quarkus.arc.properties.IfBuildProperty;
-import io.quarkus.hibernate.reactive.panache.common.WithTransaction;
-import io.smallrye.mutiny.Uni;
 
 /**
  * Reactive JPA implementation of {@link ReactiveCommitmentStore}.
@@ -65,6 +64,15 @@ public class ReactiveJpaCommitmentStore implements ReactiveCommitmentStore {
                             .or(() -> domains.stream().findFirst());
                 });
     }
+
+    @Override
+    public Uni<List<Commitment>> findByIds(java.util.Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {return Uni.createFrom().item(List.of());}
+        return repo.find("id IN ?1", List.copyOf(ids))
+                   .list()
+                   .map(list -> list.stream().map(CommitmentEntity::toDomain).toList());
+    }
+
 
     @Override
     public Uni<List<Commitment>> findOpenByObligor(String obligor, UUID channelId) {

@@ -1,18 +1,17 @@
 package io.casehub.qhorus.persistence.memory;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.store.ReactiveCommitmentStore;
 import io.smallrye.mutiny.Uni;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Alternative
 @Priority(1)
@@ -35,6 +34,12 @@ public class InMemoryReactiveCommitmentStore implements ReactiveCommitmentStore 
     public Uni<Optional<Commitment>> findByCorrelationId(String correlationId) {
         return Uni.createFrom().item(delegate.findByCorrelationId(correlationId));
     }
+
+    @Override
+    public Uni<List<Commitment>> findByIds(java.util.Collection<java.util.UUID> ids) {
+        return Uni.createFrom().item(delegate.findByIds(ids));
+    }
+
 
     @Override
     public Uni<List<Commitment>> findOpenByObligor(String obligor, UUID channelId) {

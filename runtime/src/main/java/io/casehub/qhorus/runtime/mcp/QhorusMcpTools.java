@@ -627,6 +627,44 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return result;
     }
 
+    @Tool(name = "move_topic", description = "Move all messages in a topic from one channel to another. Blocks if open commitments exist. Emits audit EVENTs in both channels.")
+    @Transactional
+    public TopicService.MoveResult moveTopic(
+            @ToolArg(name = "source_channel", description = "Source channel name or UUID") String sourceChannel,
+            @ToolArg(name = "topic_name", description = "Topic to move") String topicName,
+            @ToolArg(name = "target_channel", description = "Target channel name or UUID") String targetChannel,
+            @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller", required = false) String callerInstanceId) {
+        Channel src = resolveChannel(sourceChannel);
+        Channel tgt = resolveChannel(targetChannel);
+        if (src.id().equals(tgt.id())) {
+            throw new IllegalArgumentException("Source and target channels must be different");
+        }
+        if (!java.util.Objects.equals(src.tenancyId(), tgt.tenancyId())) {
+            throw new IllegalArgumentException("Source and target channels must share the same tenancy");
+        }
+        io.casehub.qhorus.api.channel.ChannelSemantic semantic = tgt.semantic();
+        if (semantic != io.casehub.qhorus.api.channel.ChannelSemantic.APPEND
+                && semantic != io.casehub.qhorus.api.channel.ChannelSemantic.COLLECT) {
+            throw new IllegalArgumentException("Target channel semantic must be APPEND or COLLECT, not " + semantic);
+        }
+        String actorId = callerInstanceId != null ? callerInstanceId : "anonymous";
+        TopicService.MoveResult result = topicService.move(src.id(), topicName, tgt.id(), actorId);
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(src.id()).sender("system:topic-service").type(MessageType.EVENT)
+                .telemetry("{\"action\":\"topic-moved-out\",\"topic\":\"" + result.topicName()
+                        + "\",\"target_channel\":\"" + tgt.name()
+                        + "\",\"messages_moved\":" + result.messagesUpdated() + "}")
+                .actorType(ActorType.SYSTEM).build());
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(tgt.id()).sender("system:topic-service").type(MessageType.EVENT)
+                .telemetry("{\"action\":\"topic-moved-in\",\"topic\":\"" + result.topicName()
+                        + "\",\"source_channel\":\"" + src.name()
+                        + "\",\"messages_moved\":" + result.messagesUpdated() + "}")
+                .actorType(ActorType.SYSTEM).build());
+        return result;
+    }
+
+
 
     // ---------------------------------------------------------------------------
     // Messaging tools

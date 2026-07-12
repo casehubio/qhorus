@@ -1,12 +1,13 @@
 package io.casehub.qhorus.api.store;
 
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.Commitment;
 
 public interface CommitmentStore {
 
@@ -15,6 +16,8 @@ public interface CommitmentStore {
     Optional<Commitment> findById(UUID commitmentId);
 
     Optional<Commitment> findByCorrelationId(String correlationId);
+
+    List<Commitment> findByIds(Collection<UUID> ids);
 
     /** All non-terminal commitments where this agent is the obligor (what do I owe?). */
     List<Commitment> findOpenByObligor(String obligor, UUID channelId);

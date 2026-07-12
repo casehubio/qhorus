@@ -1,9 +1,11 @@
 package io.casehub.qhorus.persistence.memory;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -43,7 +45,6 @@ public class InMemoryCommitmentStore implements CommitmentStore {
 
     @Override
     public Optional<Commitment> findByCorrelationId(String correlationId) {
-        // Prefer active (non-terminal) commitment — supports delegation chains.
         return byId.values().stream()
                 .filter(c -> correlationId.equals(c.correlationId()))
                 .filter(c -> c.state().isActive())
@@ -51,6 +52,14 @@ public class InMemoryCommitmentStore implements CommitmentStore {
                 .or(() -> byId.values().stream()
                         .filter(c -> correlationId.equals(c.correlationId()))
                         .findFirst());
+    }
+
+    @Override
+    public List<Commitment> findByIds(Collection<UUID> ids) {
+        return ids.stream()
+                .map(byId::get)
+                .filter(Objects::nonNull)
+                .toList();
     }
 
     @Override

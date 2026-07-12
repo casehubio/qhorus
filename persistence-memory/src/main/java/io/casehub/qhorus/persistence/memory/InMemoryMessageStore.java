@@ -135,6 +135,20 @@ public int updateTopicName(UUID channelId, String oldTopic, String newTopic) {
     return count;
 }
 
+    @Override
+    public int updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId) {
+        int count = 0;
+        for (Map.Entry<Long, Message> entry : store.entrySet()) {
+            Message m = entry.getValue();
+            if (sourceChannelId.equals(m.channelId()) && topic.equalsIgnoreCase(m.topic())) {
+                store.put(entry.getKey(), m.toBuilder().channelId(targetChannelId).build());
+                count++;
+            }
+        }
+        return count;
+    }
+
+
     /** Call in @BeforeEach for test isolation. */
     public void clear() {
         store.clear();

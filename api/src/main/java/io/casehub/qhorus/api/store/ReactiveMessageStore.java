@@ -1,15 +1,15 @@
 package io.casehub.qhorus.api.store;
 
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.smallrye.mutiny.Multi;
+import io.smallrye.mutiny.Uni;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.smallrye.mutiny.Multi;
-import io.smallrye.mutiny.Uni;
 
 public interface ReactiveMessageStore {
     Uni<Message> put(Message message);
@@ -62,4 +62,7 @@ public interface ReactiveMessageStore {
     Multi<Message> stream(MessageQuery query);
 
     Uni<Integer> updateTopicName(UUID channelId, String oldTopic, String newTopic);
+
+    Uni<Integer> updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId);
+
 }

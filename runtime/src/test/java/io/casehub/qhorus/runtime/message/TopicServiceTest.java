@@ -1,17 +1,5 @@
 package io.casehub.qhorus.runtime.message;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
@@ -20,8 +8,19 @@ import io.casehub.qhorus.api.message.TopicSummary;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import static org.assertj.core.api.Assertions.*;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TopicServiceTest {
 
@@ -274,6 +273,20 @@ class TopicServiceTest {
             }
             return count;
         }
+
+        @Override
+        public int updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId) {
+            int count = 0;
+            for (Map.Entry<Long, Message> entry : store.entrySet()) {
+                Message m = entry.getValue();
+                if (sourceChannelId.equals(m.channelId()) && topic.equalsIgnoreCase(m.topic())) {
+                    store.put(entry.getKey(), m.toBuilder().channelId(targetChannelId).build());
+                    count++;
+                }
+            }
+            return count;
+        }
+
 
         @Override public Optional<Message> find(Long id) { return Optional.ofNullable(store.get(id)); }
         @Override public void deleteAll(UUID channelId) {}

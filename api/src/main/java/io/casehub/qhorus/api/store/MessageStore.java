@@ -43,4 +43,7 @@ public interface MessageStore {
 
     int updateTopicName(UUID channelId, String oldTopic, String newTopic);
 
+    int updateChannelId(UUID sourceChannelId, String topic, UUID targetChannelId);
+
+
 }
