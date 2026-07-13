@@ -353,10 +353,31 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                         return doNormalInsert(dispatch, ch, commitmentId);
                     })
                     // Phase 3: Pattern-match TransactResult
-                    // LAST_WRITE OverwriteResult: fanOut + broadcast fire, but MessageObserverDispatcher
-                    // is intentionally excluded — an overwrite is a content update, not a new message event.
+                    // LAST_WRITE OverwriteResult
                     .flatMap(result -> {
                         if (result instanceof OverwriteResult or) {
+                            // Observer dispatch for LAST_WRITE overwrites
+                            if (ch != null) {
+                                final Message overwriteMsg = Message.builder()
+                                        .id(or.result().messageId())
+                                        .channelId(dispatch.channelId())
+                                        .sender(dispatch.sender())
+                                        .messageType(dispatch.type())
+                                        .actorType(dispatch.actorType())
+                                        .content(dispatch.content())
+                                        .correlationId(dispatch.correlationId())
+                                        .inReplyTo(dispatch.inReplyTo())
+                                        .artefactRefs(dispatch.artefactRefs())
+                                        .target(dispatch.target())
+                                        .topic(dispatch.topic())
+                                        .createdAt(Instant.now())
+                                        .tenancyId(dispatch.tenancyId())
+                                        .build();
+                                MessageObserverDispatcher.dispatch(
+                                        ch.name(), dispatch.channelId(),
+                                        overwriteMsg.tenancyId(),
+                                        overwriteMsg, observers.handles(), null);
+                            }
                             // Record rate limit for overwrites, skip Phase 3 + 4
                             if (ch != null && dispatch.type() != MessageType.EVENT) {
                                 rateLimiter.recordSend(ch.id(), dispatch.sender(),

@@ -27,6 +27,7 @@ import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.casehub.qhorus.runtime.message.MessageService;
 
 class ChannelGatewayDeliverRemoteTest {
 
@@ -45,7 +46,7 @@ class ChannelGatewayDeliverRemoteTest {
         gateway = new ChannelGateway(
                 new StubAgentBackend(),       // agentBackend
                 null,                          // normaliser (unused)
-                null,                          // messageService (unused)
+                mock(MessageService.class),    // messageService — dispatchClusterObservers called by deliverRemote
                 null,                          // channelService (unused)
                 new StubCrossTenantChannelStore(),
                 mock(Event.class),             // channelInitialisedEvents

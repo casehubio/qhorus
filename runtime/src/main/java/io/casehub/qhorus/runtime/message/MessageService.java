@@ -210,8 +210,7 @@ public class MessageService implements MessageDispatcher {
             }
         }
 
-        // LAST_WRITE overwrite path: fanOut + broadcast fire, but MessageObserverDispatcher
-        // is intentionally excluded — an overwrite is a content update, not a new message event.
+        // LAST_WRITE overwrite path
         if (ch != null && ch.semantic() == ChannelSemantic.LAST_WRITE) {
             final Optional<Message> existingOpt = messageStore.findLastMessage(ch.id());
             if (existingOpt.isPresent()) {
@@ -231,6 +230,11 @@ public class MessageService implements MessageDispatcher {
                             .build();
                     Message saved = messageStore.put(updated);
                     channelService.updateLastActivity(ch.id(), ch.tenancyId());
+
+                    MessageObserverDispatcher.dispatch(
+                            ch.name(), ch.id(), ch.tenancyId(),
+                            saved, observers.handles(), tsr);
+
                     rateLimiter.recordSend(ch.id(), dispatch.sender(),
                             ch.rateLimitPerChannel(), ch.rateLimitPerInstance());
                     try {
@@ -404,6 +408,13 @@ public class MessageService implements MessageDispatcher {
             }
         }
     }
+
+    public void dispatchClusterObservers(String channelName, UUID channelId,
+                                         String tenancyId, Message message) {
+        MessageObserverDispatcher.dispatchClusterOnly(
+                channelName, channelId, tenancyId, message, observers.handles());
+    }
+
 
     public Optional<Message> findById(final Long id) {
         return messageStore.find(id);

@@ -152,10 +152,11 @@ and cluster-wide consumers (propagated across nodes). The scope declaration on
 
 ![MessageObserver transport scope — LOCAL (CDI, in-JVM) vs CLUSTER (Kafka, WebSocket, Webhook)](assets/messaging/transport-scope.svg)
 
-The left side ships today. The right side is plugged in when the deployment topology
-requires it — no changes to qhorus core, no changes to harness observers. A
-`KafkaMessageBus` registered as an additional `@ApplicationScoped` bean fires
-alongside the CDI bus. Both run. Kafka consumers and CDI observers coexist.
+Both sides now ship. `Scope.LOCAL` fires on the dispatching node only; `Scope.CLUSTER`
+fires on all nodes in the cluster (dispatching node via `MessageObserverDispatcher`,
+remote nodes via `ChannelGateway.deliverRemote()`). Transport modules are optional —
+add `casehub-qhorus-kafka-observer`, `casehub-qhorus-websocket-observer`, or
+`casehub-qhorus-webhook-observer` to the classpath. All run alongside the CDI bus.
 
 Multiple observers of the same scope can coexist. `Instance<MessageObserver>` iterates
 all of them. There is no "replace the CDI bus with Kafka" — you add the Kafka bus
@@ -343,7 +344,10 @@ The broadcaster displaces the no-op default automatically.
 | A2A protocol bridge (`A2AChannelBackend`, actor resolution) | ✅ live |
 | `MessageReceivedEvent` record, `MessageObserver` SPI | 🔧 qhorus#153 |
 | `InProcessMessageBus` (CDI default, `Scope.LOCAL`) | 🔧 qhorus#153 |
-| `KafkaMessageBus`, `WebSocketMessageBus`, webhook impl | ⬜ future |
+| `KafkaMessageObserver` (Kafka topic, `Scope.LOCAL`) | 🔧 qhorus#163 |
+| `WebSocketMessageObserver` (real-time push, `Scope.CLUSTER`) | 🔧 qhorus#163 |
+| `WebhookMessageObserver` (HTTP POST callbacks, `Scope.CLUSTER`) | 🔧 qhorus#163 |
+| `Scope.CLUSTER` dispatch — `deliverRemote()` fires CLUSTER observers | 🔧 qhorus#163 |
 | SmallRye / MicroProfile Reactive Messaging bridge | ⬜ future |
 | Cross-node delivery in multi-node embedded fleet | ✅ live (casehub-qhorus-postgres-broadcaster) |
 

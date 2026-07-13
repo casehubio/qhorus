@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>io.casehub</groupId>
+    <artifactId>casehub-qhorus-parent</artifactId>
+    <version>0.2-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>casehub-qhorus-kafka-observer</artifactId>
+  <name>CaseHub Qhorus - Kafka Observer</name>
+  <description>Publishes MessageReceivedEvents to a Kafka topic as CloudEvents.
+Activated by classpath presence — add this dependency to receive all channel
+messages on a configurable Kafka topic.</description>
+
+  <dependencies>
+
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-messaging-kafka</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-arc</artifactId>
+    </dependency>
+
+    <!-- Testing -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-junit5</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>io.smallrye</groupId>
+        <artifactId>jandex-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>jandex</id>
+            <phase>process-classes</phase>
+            <goals><goal>jandex</goal></goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+</project>

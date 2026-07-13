@@ -1,7 +1,15 @@
 package io.casehub.qhorus.runtime.message;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import io.casehub.qhorus.api.gateway.MessageObserver;
+import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.quarkus.arc.InstanceHandle;
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.TransactionSynchronizationRegistry;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -9,19 +17,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-import jakarta.transaction.Status;
-import jakarta.transaction.Synchronization;
-import jakarta.transaction.TransactionSynchronizationRegistry;
-
-import org.mockito.ArgumentCaptor;
-
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.gateway.MessageObserver;
-import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.arc.InstanceHandle;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 class MessageObserverDispatcherTest {
 
@@ -377,5 +381,108 @@ class MessageObserverDispatcherTest {
         assertDoesNotThrow(() ->
             new io.casehub.qhorus.api.gateway.MessageReceivedEvent(
                 channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, Instant.now(), null, null));
+    }
+
+// ── CLUSTER scope filtering ───────────────────────────────────────────
+
+    @Test
+    void dispatchClusterOnly_skipsLocalObserver() {
+        final List<MessageReceivedEvent> captured = new ArrayList<>();
+        final MessageObserver            local    = captured::add;
+        final MessageObserver cluster = new MessageObserver() {
+            @Override
+            public void onMessage(MessageReceivedEvent e) {captured.add(e);}
+
+            @Override
+            public Scope scope()                          {return Scope.CLUSTER;}
+        };
+
+        MessageObserverDispatcher.dispatchClusterOnly(channelName, channelId,
+                                                      TEST_TENANCY_ID,
+                                                      message(MessageType.STATUS, "hello", null),
+                                                      List.of(handle(local), handle(cluster)));
+
+        assertEquals(1, captured.size(), "only CLUSTER observer should fire");
+    }
+
+    @Test
+    void dispatchClusterOnly_appliesChannelFilter() {
+        final List<MessageReceivedEvent> captured = new ArrayList<>();
+        final MessageObserver cluster = new MessageObserver() {
+            @Override
+            public void onMessage(MessageReceivedEvent e) {captured.add(e);}
+
+            @Override
+            public Scope scope()                          {return Scope.CLUSTER;}
+
+            @Override
+            public Set<String> channels()                 {return Set.of("other-channel");}
+        };
+
+        MessageObserverDispatcher.dispatchClusterOnly(channelName, channelId,
+                                                      TEST_TENANCY_ID,
+                                                      message(MessageType.STATUS, "hello", null),
+                                                      List.of(handle(cluster)));
+
+        assertTrue(captured.isEmpty(), "channel filter must apply to CLUSTER observers too");
+    }
+
+    @Test
+    void dispatchClusterOnly_nullsEventContent() {
+        final List<MessageReceivedEvent> captured = new ArrayList<>();
+        final MessageObserver cluster = new MessageObserver() {
+            @Override
+            public void onMessage(MessageReceivedEvent e) {captured.add(e);}
+
+            @Override
+            public Scope scope()                          {return Scope.CLUSTER;}
+        };
+
+        MessageObserverDispatcher.dispatchClusterOnly(channelName, channelId,
+                                                      TEST_TENANCY_ID,
+                                                      message(MessageType.EVENT, "{\"tool\":\"test\"}", null),
+                                                      List.of(handle(cluster)));
+
+        assertEquals(1, captured.size());
+        assertNull(captured.get(0).content(), "EVENT content must be null");
+    }
+
+    @Test
+    void dispatchClusterOnly_closesHandlesForSkippedLocalObservers() {
+        final List<Boolean> closed = new ArrayList<>();
+        final InstanceHandle<MessageObserver> localHandle = new InstanceHandle<>() {
+            @Override
+            public MessageObserver get() {return e -> {};}
+
+            @Override
+            public void close()          {closed.add(true);}
+        };
+
+        MessageObserverDispatcher.dispatchClusterOnly(channelName, channelId,
+                                                      TEST_TENANCY_ID,
+                                                      message(MessageType.STATUS, "hello", null),
+                                                      List.of(localHandle));
+
+        assertEquals(1, closed.size(), "handle for skipped LOCAL observer must be closed");
+    }
+
+    @Test
+    void dispatch_firesAllObserversRegardlessOfScope() {
+        final List<MessageReceivedEvent> captured = new ArrayList<>();
+        final MessageObserver            local    = captured::add;
+        final MessageObserver cluster = new MessageObserver() {
+            @Override
+            public void onMessage(MessageReceivedEvent e) {captured.add(e);}
+
+            @Override
+            public Scope scope()                          {return Scope.CLUSTER;}
+        };
+
+        MessageObserverDispatcher.dispatch(channelName, channelId,
+                                           TEST_TENANCY_ID,
+                                           message(MessageType.STATUS, "hello", null),
+                                           List.of(handle(local), handle(cluster)));
+
+        assertEquals(2, captured.size(), "dispatch() must fire both LOCAL and CLUSTER observers");
     }
 }

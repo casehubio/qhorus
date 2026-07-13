@@ -1,23 +1,13 @@
 package io.casehub.qhorus.runtime.gateway;
 
-import java.net.URI;
-import java.time.ZoneOffset;
-import java.util.Locale;
-import java.util.UUID;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
+import io.cloudevents.CloudEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.ObservesAsync;
 import jakarta.inject.Inject;
-
 import org.jboss.logging.Logger;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
-import io.cloudevents.CloudEvent;
-import io.cloudevents.core.builder.CloudEventBuilder;
 
 /**
  * CDI adapter that bridges {@link MessageReceivedEvent} to the CloudEvents ecosystem.
@@ -63,31 +53,6 @@ public class QhorusCloudEventAdapter {
     }
 
     private CloudEvent toCloudEvent(MessageReceivedEvent event) {
-        String type = "io.casehub.qhorus.message." + event.messageType().name().toLowerCase(Locale.ROOT);
-        URI source = URI.create("/casehub-qhorus/channel/" + event.channelId());
-
-        byte[] data;
-        try {
-            data = objectMapper.writeValueAsBytes(event);
-        } catch (JsonProcessingException e) {
-            LOG.warnf(e, "Failed to serialise MessageReceivedEvent for CloudEvent data — channel=%s type=%s",
-                    event.channelId(), event.messageType());
-            data = new byte[0];
-        }
-
-        CloudEventBuilder builder = CloudEventBuilder.v1()
-                .withId(UUID.randomUUID().toString())
-                .withType(type)
-                .withSource(source)
-                .withSubject("channel/" + event.channelId())
-                .withTime(event.occurredAt().atOffset(ZoneOffset.UTC))
-                .withDataContentType("application/json")
-                .withData(data);
-
-        if (event.tenancyId() != null) {
-            builder = builder.withExtension("tenancyid", event.tenancyId());
-        }
-
-        return builder.build();
+        return CloudEventMapper.toCloudEvent(event, objectMapper);
     }
 }

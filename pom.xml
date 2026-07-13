@@ -21,6 +21,9 @@
     <module>slack-channel</module>
     <module>deployment</module>
     <module>postgres-broadcaster</module>
+    <module>kafka-observer</module>
+    <module>websocket-observer</module>
+    <module>webhook-observer</module>
     <module>persistence-memory</module>
     <module>testing</module>
     <module>examples</module>

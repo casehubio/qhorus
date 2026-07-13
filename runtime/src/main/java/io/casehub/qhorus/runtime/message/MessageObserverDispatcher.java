@@ -1,21 +1,19 @@
 package io.casehub.qhorus.runtime.message;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
-
-import jakarta.enterprise.inject.Instance;
-import jakarta.transaction.Status;
-import jakarta.transaction.Synchronization;
-import jakarta.transaction.TransactionSynchronizationRegistry;
-
-import org.jboss.logging.Logger;
-
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
+import jakarta.enterprise.inject.Instance;
+import jakarta.transaction.Status;
+import jakarta.transaction.Synchronization;
+import jakarta.transaction.TransactionSynchronizationRegistry;
+import org.jboss.logging.Logger;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 /**
  * Shared dispatch logic for blocking and reactive message services.
@@ -124,6 +122,49 @@ final class MessageObserverDispatcher {
             }
         });
     }
+
+    static void dispatchClusterOnly(final String channelName, final UUID channelId,
+                                    final String tenancyId,
+                                    final Message message,
+                                    final Iterable<? extends Instance.Handle<MessageObserver>> handles) {
+        final String content = message.messageType() == MessageType.EVENT
+                               ? null : message.content();
+        final Instant occurredAt = message.createdAt() != null
+                                   ? message.createdAt() : Instant.now();
+        final MessageReceivedEvent event = new MessageReceivedEvent(
+                channelName, channelId, tenancyId,
+                message.messageType(), message.sender(),
+                message.correlationId(), occurredAt, content,
+                message.topic());
+
+        final List<Instance.Handle<MessageObserver>> active = new ArrayList<>();
+        for (final Instance.Handle<MessageObserver> handle : handles) {
+            try {
+                MessageObserver observer = handle.get();
+                if (observer.scope() != MessageObserver.Scope.CLUSTER) {
+                    handle.close();
+                    continue;
+                }
+                final java.util.Set<String> filter = observer.channels();
+                if (!filter.isEmpty() && !filter.contains(channelName)) {
+                    handle.close();
+                    continue;
+                }
+                active.add(handle);
+            } catch (Exception e) {
+                LOG.warnf("MessageObserver handle.get() failed for channel '%s': %s",
+                          channelName, e.getMessage());
+                handle.close();
+            }
+        }
+
+        if (active.isEmpty()) {
+            return;
+        }
+
+        dispatchToHandles(channelName, message.messageType(), event, active);
+    }
+
 
     private static void dispatchToHandles(final String channelName, final MessageType messageType,
             final MessageReceivedEvent event,

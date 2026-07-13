@@ -470,6 +470,8 @@ public class ChannelGateway {
                 }));
             }
 
+            messageService.dispatchClusterObservers(ch.name(), channelId, msg.tenancyId(), msg);
+
             if (span != null) {
                 span.setAttribute("qhorus.delivery.backend_count", backendCount);
             }
