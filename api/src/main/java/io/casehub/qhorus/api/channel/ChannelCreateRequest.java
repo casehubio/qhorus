@@ -54,6 +54,28 @@ public record ChannelCreateRequest(
         }
     }
 
+
+    public ChannelCreateRequest(
+            String name,
+            String description,
+            ChannelSemantic semantic,
+            List<String> barrierContributors,
+            List<String> allowedWriters,
+            List<String> adminInstances,
+            Integer rateLimitPerChannel,
+            Integer rateLimitPerInstance,
+            Set<MessageType> allowedTypes,
+            Set<MessageType> deniedTypes,
+            String inboundConnectorId,
+            String externalKey,
+            String outboundConnectorId,
+            String outboundDestination) {
+        this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
+             rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
+             null,
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
+    }
+
     public boolean hasConnectorBinding() {
         return inboundConnectorId != null;
     }

@@ -1,15 +1,14 @@
 package io.casehub.qhorus.runtime.channel;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageType;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.message.MessageType;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ChannelCreateRequestTest {
 
@@ -111,5 +110,17 @@ class ChannelCreateRequestTest {
                 null, "connector-id", null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Connector binding");
+    }
+
+    @Test
+    void compatConstructor_14params_defaultsSpaceIdToNull() {
+        final io.casehub.qhorus.api.channel.ChannelCreateRequest req = new io.casehub.qhorus.api.channel.ChannelCreateRequest(
+                "compat-ch", "desc", ChannelSemantic.APPEND, null, null, null, null, null,
+                Set.of(MessageType.QUERY), null,
+                null, null, null, null);
+        assertThat(req.spaceId()).isNull();
+        assertThat(req.name()).isEqualTo("compat-ch");
+        assertThat(req.description()).isEqualTo("desc");
+        assertThat(req.allowedTypes()).containsExactly(MessageType.QUERY);
     }
 }
