@@ -2,7 +2,7 @@ package io.casehub.qhorus.persistence.memory;
 
 import java.time.Instant;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,7 +22,7 @@ import io.casehub.qhorus.api.store.CommitmentStore;
 @ApplicationScoped
 public class InMemoryCommitmentStore implements CommitmentStore {
 
-    private final Map<UUID, Commitment> byId = new LinkedHashMap<>();
+    private final Map<UUID, Commitment> byId = new ConcurrentHashMap<>();
 
     @Override
     public Commitment save(Commitment c) {

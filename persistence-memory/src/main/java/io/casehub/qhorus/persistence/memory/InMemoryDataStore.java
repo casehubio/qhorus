@@ -2,7 +2,7 @@ package io.casehub.qhorus.persistence.memory;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +22,7 @@ import io.casehub.qhorus.api.store.query.DataQuery;
 @ApplicationScoped
 public class InMemoryDataStore implements DataStore {
 
-    private final Map<UUID, SharedData> store  = new LinkedHashMap<>();
+    private final Map<UUID, SharedData> store  = new ConcurrentHashMap<>();
     private final List<ArtefactClaim>   claims = new ArrayList<>();
 
     @Override

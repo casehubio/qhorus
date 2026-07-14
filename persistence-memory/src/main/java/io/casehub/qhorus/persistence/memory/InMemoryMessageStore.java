@@ -9,13 +9,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -25,7 +24,7 @@ import java.util.stream.Stream;
 @ApplicationScoped
 public class InMemoryMessageStore implements MessageStore {
 
-    private final Map<Long, Message> store     = new LinkedHashMap<>();
+    private final Map<Long, Message> store     = new ConcurrentHashMap<>();
     private final AtomicLong         idCounter = new AtomicLong(1);
 
     @Override
@@ -50,21 +49,17 @@ public class InMemoryMessageStore implements MessageStore {
     @Override
     public List<Message> scan(MessageQuery query) {
         Stream<Message> stream = store.values().stream()
-                                            .filter(query::matches);
-
-        if (query.descending()) {
-            List<Message> all = stream.collect(Collectors.toCollection(ArrayList::new));
-            java.util.Collections.reverse(all);
-            stream = all.stream();
-        }
+                                      .filter(query::matches)
+                                      .sorted(query.descending()
+                                              ? Comparator.comparingLong(Message::id).reversed()
+                                              : Comparator.comparingLong(Message::id));
 
         List<Message> results = stream.toList();
 
         if (query.limit() != null && results.size() > query.limit()) {
             return results.subList(0, query.limit());
         }
-        return results;
-    }
+        return results;}
 
     @Override
     public void deleteAll(UUID channelId) {

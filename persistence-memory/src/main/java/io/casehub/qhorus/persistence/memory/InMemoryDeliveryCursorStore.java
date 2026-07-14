@@ -1,7 +1,7 @@
 package io.casehub.qhorus.persistence.memory;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,7 +19,7 @@ import io.casehub.qhorus.api.store.DeliveryCursorStore;
 @ApplicationScoped
 public class InMemoryDeliveryCursorStore implements DeliveryCursorStore {
 
-    private final Map<UUID, DeliveryCursor> byId = new LinkedHashMap<>();
+    private final Map<UUID, DeliveryCursor> byId = new ConcurrentHashMap<>();
 
     @Override
     public DeliveryCursor save(DeliveryCursor c) {

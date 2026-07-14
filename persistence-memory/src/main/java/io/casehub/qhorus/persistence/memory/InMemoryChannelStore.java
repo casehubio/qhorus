@@ -1,28 +1,28 @@
 package io.casehub.qhorus.persistence.memory;
 
-import java.time.Instant;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 @Alternative
 @Priority(1)
 @ApplicationScoped
 public class InMemoryChannelStore implements ChannelStore {
 
-    private final Map<UUID, Channel> store = new LinkedHashMap<>();
+    private final Map<UUID, Channel> store = new ConcurrentHashMap<>();
 
     @Override
     public Channel put(Channel channel) {

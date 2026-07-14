@@ -1,7 +1,7 @@
 package io.casehub.qhorus.persistence.memory;
 
 import java.time.Instant;
-import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,7 +20,7 @@ import io.casehub.qhorus.api.watchdog.Watchdog;
 @ApplicationScoped
 public class InMemoryWatchdogStore implements WatchdogStore {
 
-    private final Map<UUID, Watchdog> store = new LinkedHashMap<>();
+    private final Map<UUID, Watchdog> store = new ConcurrentHashMap<>();
 
     @Override
     public Watchdog put(Watchdog watchdog) {

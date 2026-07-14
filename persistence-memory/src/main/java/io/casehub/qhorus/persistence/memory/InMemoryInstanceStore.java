@@ -2,7 +2,7 @@ package io.casehub.qhorus.persistence.memory;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -21,8 +21,8 @@ import io.casehub.qhorus.api.store.query.InstanceQuery;
 @ApplicationScoped
 public class InMemoryInstanceStore implements InstanceStore {
 
-    private final Map<UUID, Instance>    store        = new LinkedHashMap<>();
-    private final Map<UUID, List<String>> capabilities = new LinkedHashMap<>();
+    private final Map<UUID, Instance>    store        = new ConcurrentHashMap<>();
+    private final Map<UUID, List<String>> capabilities = new ConcurrentHashMap<>();
 
     @Override
     public Instance put(Instance instance) {
