@@ -50,6 +50,7 @@ class ChannelGatewayDeliverRemoteTest {
                 null,                          // channelService (unused)
                 new StubCrossTenantChannelStore(),
                 mock(Event.class),             // channelInitialisedEvents
+                mock(Event.class),             // channelClosedEvents
                 new StubDeliveryConfig(),
                 messageStore,
                 null, mock(Instance.class),

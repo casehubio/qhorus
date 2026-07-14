@@ -1,9 +1,6 @@
 package io.casehub.qhorus.webhook;
 
-import java.util.Collection;
-import java.util.Map;
-import java.util.UUID;
-
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -13,13 +10,20 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Response;
 
+import java.util.Collection;
+import java.util.Map;
+import java.util.UUID;
+
 @Path("/qhorus/webhooks")
 public class WebhookRegistryResource {
 
     @Inject
     WebhookRegistry registry;
 
-    public record RegisterRequest(UUID channelId, String url, String secret, Map<String, String> headers) {}
+    @Inject
+    CurrentPrincipal currentPrincipal;
+
+    public record RegisterRequest(UUID channelId, String url, String secretRef, Map<String, String> headers) {}
 
     @POST
     public Response register(RegisterRequest request) {
@@ -27,7 +31,8 @@ public class WebhookRegistryResource {
             return Response.status(400).entity("url is required").build();
         }
         WebhookRegistration reg = registry.register(
-                request.channelId(), request.url(), request.secret(),
+                request.channelId(), currentPrincipal.tenancyId(),
+                request.url(), request.secretRef(),
                 request.headers() != null ? request.headers() : Map.of());
         return Response.status(201).entity(reg).build();
     }
@@ -46,6 +51,6 @@ public class WebhookRegistryResource {
         if (channelId != null) {
             return registry.findByChannelId(channelId);
         }
-        return registry.listAll();
+        return registry.listAll(currentPrincipal.tenancyId());
     }
 }

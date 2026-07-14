@@ -113,6 +113,7 @@ class FanOutTracingTest {
                 null, // channelService not needed for fanOut tests
                 null, // crossTenantChannelStore not needed for fanOut tests
                 mockEvent,
+                null, // channelClosedEvents not needed for fanOut tests
                 deliveryConfig,
                 null, // crossTenantMessageStore not needed for fanOut tests
                 null, // membershipService not needed for fanOut tests
@@ -234,6 +235,7 @@ class FanOutTracingTest {
                 null,
                 null,
                 mockEvent2,
+                null, // channelClosedEvents
                 enabledDeliveryConfig,
                 null,
                 null, // membershipService

@@ -1,6 +1,14 @@
 package io.casehub.qhorus.webhook;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import io.casehub.platform.api.credentials.CredentialPropertyKeys;
+import io.casehub.platform.api.credentials.CredentialResolver;
+import io.casehub.qhorus.api.gateway.MessageObserver;
+import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
+import io.casehub.qhorus.api.message.MessageType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -8,30 +16,33 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-
-import io.casehub.qhorus.api.gateway.MessageObserver;
-import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
-import io.casehub.qhorus.api.message.MessageType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class WebhookMessageObserverTest {
 
     record PostRecord(String url, String body, String secret, Map<String, String> headers) {}
 
-    private WebhookRegistry registry;
-    private WebhookMessageObserver observer;
-    private final List<PostRecord> posts = new ArrayList<>();
+    private static final String                 TENANT = "t1";
+    private              WebhookRegistry        registry;
+    private              WebhookMessageObserver observer;
+    private final        List<PostRecord>       posts  = new ArrayList<>();
+
+    private final CredentialResolver credentialResolver = ref -> {
+        if ("valid-cred".equals(ref)) {
+            return Map.of(CredentialPropertyKeys.SIGNING_SECRET, "resolved-signing-secret");
+        }
+        if ("no-signing-key".equals(ref)) {
+            return Map.of(CredentialPropertyKeys.BEARER_TOKEN, "some-token");
+        }
+        throw new java.util.NoSuchElementException("Unknown credential: " + ref);
+    };
 
     @BeforeEach
     void setUp() {
         ObjectMapper mapper = new ObjectMapper().registerModule(new JavaTimeModule());
         registry = new WebhookRegistry();
-        observer = new WebhookMessageObserver(mapper, registry,
-                (url, body, secret, headers) -> posts.add(new PostRecord(url, body, secret, headers)));
+        observer = new WebhookMessageObserver(mapper, registry, credentialResolver,
+                                              (url, body, secret, headers) -> posts.add(new PostRecord(url, body, secret, headers)));
     }
 
     @Test
@@ -42,12 +53,9 @@ class WebhookMessageObserverTest {
     @Test
     void postsToRegisteredWebhook() {
         UUID channelId = UUID.randomUUID();
-        registry.register(channelId, "https://example.com/hook", null, Map.of());
+        registry.registerInMemory(channelId, TENANT, "https://example.com/hook", null, Map.of());
 
-        observer.onMessage(new MessageReceivedEvent(
-                "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
-                Instant.now(), "hello", null));
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
 
         assertThat(posts).hasSize(1);
         assertThat(posts.get(0).url()).isEqualTo("https://example.com/hook");
@@ -55,38 +63,71 @@ class WebhookMessageObserverTest {
     }
 
     @Test
-    void postsToGlobalWebhookForAnyChannel() {
-        registry.register(null, "https://example.com/global", null, Map.of());
+    void postsToGlobalWebhookForSameTenant() {
+        registry.registerInMemory(null, TENANT, "https://example.com/global", null, Map.of());
 
         UUID channelId = UUID.randomUUID();
-        observer.onMessage(new MessageReceivedEvent(
-                "test-channel", channelId, "t1",
-                MessageType.QUERY, "agent-1", null,
-                Instant.now(), "q", null));
+        observer.onMessage(event(channelId, MessageType.QUERY, "q"));
 
         assertThat(posts).hasSize(1);
     }
 
     @Test
-    void passesSecretToPoster() {
+    void globalWebhookDoesNotFireForDifferentTenant() {
+        registry.registerInMemory(null, "other-tenant", "https://example.com/global", null, Map.of());
+
         UUID channelId = UUID.randomUUID();
-        registry.register(channelId, "https://example.com/hook", "my-secret", Map.of());
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
 
-        observer.onMessage(new MessageReceivedEvent(
-                "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
-                Instant.now(), "hello", null));
+        assertThat(posts).isEmpty();
+    }
 
-        assertThat(posts.get(0).secret()).isEqualTo("my-secret");
+    @Test
+    void secretRefResolvesViaCredentialResolver() {
+        UUID channelId = UUID.randomUUID();
+        registry.registerInMemory(channelId, TENANT, "https://example.com/hook", "valid-cred", Map.of());
+
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
+
+        assertThat(posts).hasSize(1);
+        assertThat(posts.get(0).secret()).isEqualTo("resolved-signing-secret");
+    }
+
+    @Test
+    void missingCredentialSkipsPost() {
+        UUID channelId = UUID.randomUUID();
+        registry.registerInMemory(channelId, TENANT, "https://example.com/hook", "missing-cred", Map.of());
+
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
+
+        assertThat(posts).isEmpty();
+    }
+
+    @Test
+    void credentialWithoutSigningSecretKeySkipsPost() {
+        UUID channelId = UUID.randomUUID();
+        registry.registerInMemory(channelId, TENANT, "https://example.com/hook", "no-signing-key", Map.of());
+
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
+
+        assertThat(posts).isEmpty();
+    }
+
+    @Test
+    void noSecretRefPostsWithoutSignature() {
+        UUID channelId = UUID.randomUUID();
+        registry.registerInMemory(channelId, TENANT, "https://example.com/hook", null, Map.of());
+
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
+
+        assertThat(posts).hasSize(1);
+        assertThat(posts.get(0).secret()).isNull();
     }
 
     @Test
     void noPostWhenNoRegistrations() {
         UUID channelId = UUID.randomUUID();
-        observer.onMessage(new MessageReceivedEvent(
-                "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
-                Instant.now(), "hello", null));
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
 
         assertThat(posts).isEmpty();
     }
@@ -109,15 +150,31 @@ class WebhookMessageObserverTest {
     @Test
     void postsToMultipleHooks() {
         UUID channelId = UUID.randomUUID();
-        registry.register(channelId, "https://a.com/hook", null, Map.of());
-        registry.register(channelId, "https://b.com/hook", null, Map.of());
-        registry.register(null, "https://global.com/hook", null, Map.of());
+        registry.registerInMemory(channelId, TENANT, "https://a.com/hook", null, Map.of());
+        registry.registerInMemory(channelId, TENANT, "https://b.com/hook", null, Map.of());
+        registry.registerInMemory(null, TENANT, "https://global.com/hook", null, Map.of());
 
-        observer.onMessage(new MessageReceivedEvent(
-                "test-channel", channelId, "t1",
-                MessageType.DONE, "agent-1", null,
-                Instant.now(), "done", null));
+        observer.onMessage(event(channelId, MessageType.DONE, "done"));
 
         assertThat(posts).hasSize(3);
+    }
+
+    @Test
+    void failedCredentialDoesNotBlockOtherHooks() {
+        UUID channelId = UUID.randomUUID();
+        registry.registerInMemory(channelId, TENANT, "https://a.com/hook", "missing-cred", Map.of());
+        registry.registerInMemory(channelId, TENANT, "https://b.com/hook", null, Map.of());
+
+        observer.onMessage(event(channelId, MessageType.STATUS, "hello"));
+
+        assertThat(posts).hasSize(1);
+        assertThat(posts.get(0).url()).isEqualTo("https://b.com/hook");
+    }
+
+    private MessageReceivedEvent event(UUID channelId, MessageType type, String content) {
+        return new MessageReceivedEvent(
+                "test-channel", channelId, TENANT,
+                type, "agent-1", null,
+                Instant.now(), content, null);
     }
 }

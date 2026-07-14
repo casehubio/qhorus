@@ -1,59 +1,64 @@
 package io.casehub.qhorus.runtime.gateway;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Supplier;
-
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.gateway.AgentChannelBackend;
+import io.casehub.qhorus.api.gateway.ChannelBackend;
+import io.casehub.qhorus.api.gateway.ChannelClosedEvent;
+import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
+import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
-
+import io.casehub.qhorus.api.gateway.HumanParticipatingChannelBackend;
+import io.casehub.qhorus.api.gateway.InboundHumanMessage;
+import io.casehub.qhorus.api.gateway.InboundNormaliser;
+import io.casehub.qhorus.api.gateway.NormalisedMessage;
+import io.casehub.qhorus.api.gateway.ObserverSignal;
+import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
+import io.casehub.qhorus.api.store.CrossTenantMessageStore;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.casehub.qhorus.runtime.message.MessageService;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-
 import org.jboss.logging.Logger;
 
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.gateway.*;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageType;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.config.DeliveryConfig;
-import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
-import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.api.store.CrossTenantChannelStore;
-import io.casehub.qhorus.api.store.CrossTenantMessageStore;
-import io.casehub.qhorus.api.message.Message;
-import io.quarkus.runtime.StartupEvent;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 @ApplicationScoped
 public class ChannelGateway {
 
     private static final Logger LOG = Logger.getLogger(ChannelGateway.class);
-
-    private final ConcurrentHashMap<UUID, List<BackendEntry>> registry = new ConcurrentHashMap<>();
-
     final AgentChannelBackend agentBackend;
     final InboundNormaliser normaliser;
     final MessageService messageService;
     final ChannelService channelService;
     final CrossTenantChannelStore crossTenantChannelStore;
     final Event<ChannelInitialisedEvent> channelInitialisedEvents;
+    final Event<ChannelClosedEvent>      channelClosedEvents;
     final DeliveryConfig deliveryConfig;
     final CrossTenantMessageStore crossTenantMessageStore;
     final io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService;
+    private final ConcurrentHashMap<UUID, List<BackendEntry>> registry = new ConcurrentHashMap<>();
     Supplier<Tracer> tracerInstance;
     QhorusTracingConfig tracingConfig;
 
@@ -64,6 +69,7 @@ public class ChannelGateway {
                           ChannelService channelService,
                           CrossTenantChannelStore crossTenantChannelStore,
                           Event<ChannelInitialisedEvent> channelInitialisedEvents,
+                          Event<ChannelClosedEvent> channelClosedEvents,
                           DeliveryConfig deliveryConfig,
                           CrossTenantMessageStore crossTenantMessageStore,
                           io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService,
@@ -75,11 +81,21 @@ public class ChannelGateway {
         this.channelService = channelService;
         this.crossTenantChannelStore = crossTenantChannelStore;
         this.channelInitialisedEvents = channelInitialisedEvents;
+        this.channelClosedEvents = channelClosedEvents;
         this.deliveryConfig = deliveryConfig;
         this.crossTenantMessageStore = crossTenantMessageStore;
         this.membershipService = membershipService;
         this.tracerInstance = tracerInstance.isResolvable() ? tracerInstance::get : null;
         this.tracingConfig = tracingConfig;
+    }
+
+    private static boolean isValidMessageTypeMetadata(String value) {
+        if (value == null || value.isBlank()) return false;
+        try {
+            return MessageType.valueOf(value.toUpperCase()) != MessageType.HANDOFF;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
@@ -135,10 +151,11 @@ public class ChannelGateway {
                     e.backend().close(ref);
                 } catch (Exception ex) {
                     LOG.errorf(ex, "Error closing backend %s on channel %s",
-                            e.backend().backendId(), channelId);
+                               e.backend().backendId(), channelId);
                 }
             }
         }
+        channelClosedEvents.fire(new ChannelClosedEvent(channelId, ref.name()));
     }
 
     public void registerBackend(UUID channelId, ChannelBackend backend, String backendType) {
@@ -330,15 +347,6 @@ public class ChannelGateway {
                 .telemetry(telemetryContent)
                 .actorType(ActorType.SYSTEM)
                 .build());
-    }
-
-    private static boolean isValidMessageTypeMetadata(String value) {
-        if (value == null || value.isBlank()) return false;
-        try {
-            return MessageType.valueOf(value.toUpperCase()) != MessageType.HANDOFF;
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
     }
 
     /** Inbound from HumanObserverChannelBackend — always EVENT regardless of content. */

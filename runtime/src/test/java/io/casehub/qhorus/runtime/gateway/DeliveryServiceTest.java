@@ -785,6 +785,7 @@ class DeliveryServiceTest {
                 null, // channelService — not used in these tests
                 channelStore,
                 null, // channelInitialisedEvents — not used in these tests
+                null, // channelClosedEvents — not used in these tests
                 deliveryConfig,
                 messageStore,
                 null, // membershipService — not used in these tests

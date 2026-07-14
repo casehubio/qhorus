@@ -1,14 +1,17 @@
 package io.casehub.qhorus.webhook;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
 public record WebhookRegistration(
         UUID id,
         UUID channelId,
+        String tenancyId,
         String url,
-        String secret,
-        Map<String, String> headers) {
+        String secretRef,
+        Map<String, String> headers,
+        Instant createdAt) {
 
     public WebhookRegistration {
         if (url == null || url.isBlank()) {
