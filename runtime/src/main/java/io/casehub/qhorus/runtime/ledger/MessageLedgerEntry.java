@@ -1,14 +1,13 @@
 package io.casehub.qhorus.runtime.ledger;
 
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
-
+import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 
-import io.casehub.ledger.runtime.model.jpa.JpaLedgerEntry;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
 
 /**
  * A ledger entry recording any agent-to-agent message as a speech act.
@@ -84,6 +83,9 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
 
     @Column(name = "source_entity", columnDefinition = "TEXT")
     public String sourceEntity;
+    @Column(name = "context_window_pct")
+    public Integer contextWindowPct;
+
 
     @Override
     protected byte[] domainContentBytes() {
@@ -99,8 +101,9 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
             toolName      != null ? toolName                 : "",
             durationMs    != null ? durationMs.toString()    : "",
             tokenCount    != null ? tokenCount.toString()    : "",
-            contextRefs   != null ? contextRefs              : "",
-            sourceEntity  != null ? sourceEntity             : ""
+            contextRefs      != null ? contextRefs                 : "",
+            sourceEntity     != null ? sourceEntity                : "",
+            contextWindowPct != null ? contextWindowPct.toString() : ""
         );
         return canonical.getBytes(StandardCharsets.UTF_8);
     }

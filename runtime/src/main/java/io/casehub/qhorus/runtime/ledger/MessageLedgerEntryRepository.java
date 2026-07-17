@@ -1,5 +1,12 @@
 package io.casehub.qhorus.runtime.ledger;
 
+import io.casehub.platform.api.identity.TenancyConstants;
+import io.quarkus.hibernate.orm.PersistenceUnit;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.TypedQuery;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,14 +14,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.TypedQuery;
-
-import io.casehub.platform.api.identity.TenancyConstants;
-import io.quarkus.hibernate.orm.PersistenceUnit;
 
 /**
  * Blocking JPA repository for {@link MessageLedgerEntry} — qhorus-scoped queries only.
@@ -371,5 +370,19 @@ public class MessageLedgerEntryRepository {
 
     private static String tenancyId(final String tenancyId) {
         return tenancyId != null ? tenancyId : TenancyConstants.DEFAULT_TENANT_ID;
+    }
+
+    public List<MessageLedgerEntry> findLatestContextPressure(final UUID channelId, final String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = :cid AND e.tenancyId = :tid" +
+                         " AND e.messageType = 'EVENT' AND e.contextWindowPct IS NOT NULL" +
+                         " AND e.sequenceNumber = (SELECT MAX(e2.sequenceNumber) FROM MessageLedgerEntry e2" +
+                         " WHERE e2.subjectId = :cid AND e2.tenancyId = :tid" +
+                         " AND e2.messageType = 'EVENT' AND e2.contextWindowPct IS NOT NULL" +
+                         " AND e2.actorId = e.actorId)",
+                         MessageLedgerEntry.class)
+                 .setParameter("cid", channelId)
+                 .setParameter("tid", tenancyId(tenancyId))
+                 .getResultList();
     }
 }

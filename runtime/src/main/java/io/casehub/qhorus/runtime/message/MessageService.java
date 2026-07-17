@@ -218,7 +218,7 @@ public class MessageService implements MessageDispatcher {
                 for (String ca : correlationAdvisories) {
                     LOG.warn(ca);
                 }
-                advisories = new java.util.ArrayList<>(advisories);
+                advisories = new ArrayList<>(advisories);
                 advisories.addAll(correlationAdvisories);
             }
             if (span != null) {

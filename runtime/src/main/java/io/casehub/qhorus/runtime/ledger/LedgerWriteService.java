@@ -386,6 +386,10 @@ public class LedgerWriteService {
                             entry.messageId);
                 }
             }
+            final JsonNode cwp = root.get("context_window_pct");
+            if (cwp != null && cwp.isNumber()) {
+                entry.contextWindowPct = cwp.asInt();
+            }
         } catch (final Exception e) {
             LOG.warnf("Could not parse EVENT content as JSON for message %d — telemetry fields will be null",
                     entry.messageId);
