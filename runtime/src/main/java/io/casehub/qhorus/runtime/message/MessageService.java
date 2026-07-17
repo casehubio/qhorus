@@ -98,6 +98,8 @@ public class MessageService implements MessageDispatcher {
     DeliverySignalQueue deliverySignalQueue;
     @Inject
     TopicService        topicService;
+    @Inject
+    CorrelationIntegrityChecker correlationIntegrityChecker;
 
 
     @Inject
@@ -210,6 +212,20 @@ public class MessageService implements MessageDispatcher {
             }
         }
 
+        if (ch != null) {
+            List<String> correlationAdvisories = correlationIntegrityChecker.check(dispatch, ch.id());
+            if (!correlationAdvisories.isEmpty()) {
+                for (String ca : correlationAdvisories) {
+                    LOG.warn(ca);
+                }
+                advisories = new java.util.ArrayList<>(advisories);
+                advisories.addAll(correlationAdvisories);
+            }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.correlation_integrity");
+            }
+        }
+
         // LAST_WRITE overwrite path
         if (ch != null && ch.semantic() == ChannelSemantic.LAST_WRITE) {
             final Optional<Message> existingOpt = messageStore.findLastMessage(ch.id());
@@ -302,10 +318,19 @@ public class MessageService implements MessageDispatcher {
 
         if (dispatch.correlationId() != null) {
             switch (dispatch.type()) {
-                case QUERY, COMMAND -> commitmentService.open(
-                        storedCommitmentId,
-                        dispatch.correlationId(), dispatch.channelId(), dispatch.type(),
-                        dispatch.sender(), dispatch.target(), saved.deadline());
+                case QUERY, COMMAND -> {
+                    Instant effectiveDeadline = saved.deadline();
+                    if (effectiveDeadline == null && dispatch.type() == MessageType.QUERY) {
+                        var defaultDl = config.commitment().defaultQueryDeadline();
+                        if (defaultDl.isPresent()) {
+                            effectiveDeadline = Instant.now().plus(defaultDl.get());
+                        }
+                    }
+                    commitmentService.open(
+                            storedCommitmentId,
+                            dispatch.correlationId(), dispatch.channelId(), dispatch.type(),
+                            dispatch.sender(), dispatch.target(), effectiveDeadline);
+                }
                 case STATUS -> commitmentService.acknowledge(dispatch.correlationId());
                 case RESPONSE, DONE -> commitmentService.fulfill(dispatch.correlationId());
                 case DECLINE -> commitmentService.decline(dispatch.correlationId());
