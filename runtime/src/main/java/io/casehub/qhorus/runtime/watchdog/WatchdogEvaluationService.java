@@ -1,32 +1,12 @@
 package io.casehub.qhorus.runtime.watchdog;
 
-import java.time.Instant;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
 import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.watchdog.AgentStaleContext;
-import io.casehub.qhorus.api.watchdog.AlertContext;
-import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
-import io.casehub.qhorus.api.watchdog.BarrierStuckContext;
-import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
-import io.casehub.qhorus.api.watchdog.QueueDepthContext;
-import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.watchdog.Watchdog;
-import io.casehub.qhorus.runtime.config.QhorusConfig;
-import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
@@ -35,6 +15,27 @@ import io.casehub.qhorus.api.store.InstanceStore;
 import io.casehub.qhorus.api.store.WatchdogStore;
 import io.casehub.qhorus.api.store.query.InstanceQuery;
 import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.api.watchdog.AgentStaleContext;
+import io.casehub.qhorus.api.watchdog.AlertContext;
+import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
+import io.casehub.qhorus.api.watchdog.BarrierStuckContext;
+import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
+import io.casehub.qhorus.api.watchdog.ContextPressureContext;
+import io.casehub.qhorus.api.watchdog.QueueDepthContext;
+import io.casehub.qhorus.api.watchdog.Watchdog;
+import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
+import io.casehub.qhorus.runtime.config.QhorusConfig;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import io.casehub.qhorus.runtime.message.MessageService;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Evaluates all registered watchdog conditions and fires alert messages
@@ -77,6 +78,9 @@ public class WatchdogEvaluationService {
 
     @Inject
     Event<WatchdogAlertEvent> alertEvents;
+    @Inject
+    MessageLedgerEntryRepository messageRepo;
+
 
     /** Evaluate all registered watchdogs and fire alerts for met conditions. */
     @Transactional
@@ -98,6 +102,7 @@ public class WatchdogEvaluationService {
                 case "AGENT_STALE" -> evaluateAgentStale(w, now);
                 case "CHANNEL_IDLE" -> evaluateChannelIdle(w, now);
                 case "QUEUE_DEPTH" -> evaluateQueueDepth(w, now);
+                case "CONTEXT_PRESSURE" -> evaluateContextPressure(w, now);
                 default -> false;
             };
             if (fired) {
@@ -274,5 +279,30 @@ public class WatchdogEvaluationService {
                 .actorType(ActorType.SYSTEM)
                 .tenancyId(w.tenancyId())
                 .build());
+    }
+
+    private boolean evaluateContextPressure(Watchdog w, Instant now) {
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 80;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                                                        .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                                                        .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            var entries = messageRepo.findLatestContextPressure(ch.id(), w.tenancyId());
+            for (var entry : entries) {
+                if (entry.contextWindowPct != null && entry.contextWindowPct >= threshold) {
+                    String summary = "CONTEXT_PRESSURE: agent='" + entry.actorId
+                                     + "' at " + entry.contextWindowPct + "% on channel='" + ch.name() + "'";
+                    fireAlert(w, summary,
+                              new ContextPressureContext(ch.id(), ch.name(),
+                                                         entry.actorId, entry.contextWindowPct),
+                              now);
+                    fired = true;
+                }
+            }
+        }
+        return fired;
     }
 }

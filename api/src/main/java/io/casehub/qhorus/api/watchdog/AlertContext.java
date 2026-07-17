@@ -2,7 +2,8 @@ package io.casehub.qhorus.api.watchdog;
 
 public sealed interface AlertContext
         permits BarrierStuckContext, ApprovalPendingContext,
-                AgentStaleContext, ChannelIdleContext, QueueDepthContext {
+                AgentStaleContext, ChannelIdleContext, QueueDepthContext,
+                ContextPressureContext {
 
     WatchdogConditionType conditionType();
 }
