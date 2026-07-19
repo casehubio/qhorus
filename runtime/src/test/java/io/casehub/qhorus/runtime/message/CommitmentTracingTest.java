@@ -82,6 +82,12 @@ class CommitmentTracingTest {
         }
 
         @Override
+        public List<Commitment> findByChannel(UUID channelId) {
+            throw new UnsupportedOperationException();
+        }
+
+
+        @Override
         public List<Commitment> findAllOpen() {
             throw new UnsupportedOperationException();
         }

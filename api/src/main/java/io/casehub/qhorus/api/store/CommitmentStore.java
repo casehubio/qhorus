@@ -28,6 +28,12 @@ public interface CommitmentStore {
     /** All commitments in a given state on a channel. */
     List<Commitment> findByState(CommitmentState state, UUID channelId);
 
+    /**
+     * All commitments for a channel, regardless of state.
+     */
+    List<Commitment> findByChannel(UUID channelId);
+
+
     /** All OPEN or ACKNOWLEDGED commitments whose expiresAt is strictly before the cutoff. */
     List<Commitment> findExpiredBefore(Instant cutoff);
 

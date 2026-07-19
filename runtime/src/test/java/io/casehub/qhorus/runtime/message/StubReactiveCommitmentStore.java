@@ -65,6 +65,12 @@ class StubReactiveCommitmentStore implements ReactiveCommitmentStore {
     }
 
     @Override
+    public Uni<List<Commitment>> findByChannel(final UUID channelId) {
+        throw new UnsupportedOperationException("reactive CommitmentStore not available — stub only");
+    }
+
+
+    @Override
     public Uni<List<Commitment>> findExpiredBefore(final Instant cutoff) {
         throw new UnsupportedOperationException("reactive CommitmentStore not available — stub only");
     }

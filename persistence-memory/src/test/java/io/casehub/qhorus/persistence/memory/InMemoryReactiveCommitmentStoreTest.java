@@ -1,13 +1,13 @@
 package io.casehub.qhorus.persistence.memory;
 
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.persistence.memory.contract.CommitmentStoreContractTest;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.persistence.memory.contract.CommitmentStoreContractTest;
 
 class InMemoryReactiveCommitmentStoreTest extends CommitmentStoreContractTest {
 
@@ -29,6 +29,10 @@ class InMemoryReactiveCommitmentStoreTest extends CommitmentStoreContractTest {
     @Override protected List<Commitment> findExpiredBefore(Instant t) { return store.findExpiredBefore(t).await().indefinitely(); }
     @Override protected void deleteById(UUID id) { store.deleteById(id).await().indefinitely(); }
     @Override protected long deleteAll(UUID channelId) { return blocking.deleteAll(channelId); }
+
+    @Override
+    protected List<Commitment> findByChannel(UUID ch)  {return store.findByChannel(ch).await().indefinitely();}
+
     @Override protected long deleteExpiredBefore(Instant t) { return store.deleteExpiredBefore(t).await().indefinitely(); }
     @Override protected void reset() { blocking.clear(); }
 }

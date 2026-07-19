@@ -213,7 +213,7 @@ class QhorusDashboardServiceTest {
         when(channelService.findByName("ghost")).thenReturn(Uni.createFrom().item(Optional.empty()));
 
         Exception ex = assertThrows(Exception.class, () ->
-                service.sendHumanMessage("ghost", "human:alice", MessageType.STATUS, "hello")
+                service.sendHumanMessage("ghost", "human:alice", MessageType.STATUS, "hello", null, null, null, null, null, null)
                         .await().atMost(Duration.ofSeconds(1)));
         assertTrue(ex instanceof IllegalArgumentException
                 || (ex.getCause() instanceof IllegalArgumentException),
@@ -232,7 +232,7 @@ class QhorusDashboardServiceTest {
                         new IllegalStateException("Channel 'oversight' is paused")));
 
         Exception ex = assertThrows(Exception.class, () ->
-                service.sendHumanMessage("oversight", "human:alice", MessageType.STATUS, "hello")
+                service.sendHumanMessage("oversight", "human:alice", MessageType.STATUS, "hello", null, null, null, null, null, null)
                         .await().atMost(Duration.ofSeconds(1)));
         assertTrue(ex instanceof IllegalStateException
                 || (ex.getCause() instanceof IllegalStateException),
@@ -251,7 +251,7 @@ class QhorusDashboardServiceTest {
                 .thenReturn(Uni.createFrom().item(dr));
 
         QhorusDashboardService.HumanMessageResult result =
-                service.sendHumanMessage("work", "human:alice", MessageType.STATUS, "please prioritise security")
+                service.sendHumanMessage("work", "human:alice", MessageType.STATUS, "please prioritise security", null, null, null, null, null, null)
                         .await().atMost(Duration.ofSeconds(1));
 
         assertEquals(42L, result.messageId());

@@ -1,19 +1,22 @@
 package io.casehub.qhorus.persistence.memory.contract;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.message.MessageType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class CommitmentStoreContractTest {
 
@@ -38,6 +41,9 @@ public abstract class CommitmentStoreContractTest {
     protected abstract long deleteAll(UUID channelId);
 
     protected abstract long deleteExpiredBefore(Instant cutoff);
+
+    protected abstract List<Commitment> findByChannel(UUID channelId);
+
 
     protected abstract void reset();
 
@@ -270,6 +276,29 @@ public abstract class CommitmentStoreContractTest {
     void findOpenByObligor_emptyStore_returnsEmpty() {
         assertThat(findOpenByObligor("agent-x")).isEmpty();
     }
+
+    @Test
+    void findByChannel_returnsAllStatesForChannel() {
+        UUID channelId    = UUID.randomUUID();
+        UUID otherChannel = UUID.randomUUID();
+        save(openCommitment("c1", "alice", "bob", channelId));
+        Commitment fulfilled = save(Commitment.builder()
+                                              .correlationId("c2").channelId(channelId)
+                                              .messageType(MessageType.COMMAND).requester("alice").obligor("bob")
+                                              .state(CommitmentState.FULFILLED).build());
+        save(openCommitment("c3", "alice", "bob", otherChannel));
+
+        List<Commitment> result = findByChannel(channelId);
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(Commitment::correlationId)
+                          .containsExactlyInAnyOrder("c1", "c2");
+    }
+
+    @Test
+    void findByChannel_emptyChannel_returnsEmpty() {
+        assertThat(findByChannel(UUID.randomUUID())).isEmpty();
+    }
+
 
     protected Commitment openCommitment(String correlationId, String requester, String obligor) {
         return openCommitment(correlationId, requester, obligor, UUID.randomUUID());

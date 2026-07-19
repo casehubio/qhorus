@@ -1,30 +1,27 @@
 package io.casehub.qhorus.runtime.dashboard;
 
+import io.casehub.qhorus.api.channel.ChannelDetail;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.ChannelBindingStore;
+import io.casehub.qhorus.api.store.ReactiveMessageStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.channel.ReactiveChannelService;
+import io.casehub.qhorus.runtime.instance.ReactiveInstanceService;
+import io.casehub.qhorus.runtime.message.ReactiveMessageService;
+import io.quarkus.arc.properties.IfBuildProperty;
+import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import io.quarkus.arc.properties.IfBuildProperty;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.channel.ChannelDetail;
-import io.casehub.qhorus.api.instance.InstanceInfo;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.runtime.channel.ReactiveChannelService;
-import io.casehub.qhorus.runtime.instance.ReactiveInstanceService;
-import io.casehub.qhorus.runtime.message.ReactiveMessageService;
-import io.casehub.qhorus.api.store.ChannelBindingStore;
-import io.casehub.qhorus.api.store.ReactiveMessageStore;
-import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.smallrye.mutiny.Uni;
-import io.smallrye.mutiny.infrastructure.Infrastructure;
 
 
 @IfBuildProperty(name = "quarkus.datasource.qhorus.reactive", stringValue = "true")
@@ -106,40 +103,35 @@ public class QhorusDashboardService {
         });
     }
 
-    /**
-     * Post a message from an authenticated human operator.
-     *
-     * <p>Throws {@link IllegalArgumentException} if the channel is not found.
-     * Paused check is enforced inside {@link ReactiveMessageService#dispatch} —
-     * it throws {@link IllegalStateException} when the channel is paused.
-     *
-     * <p><b>Design note (Refs #198):</b> This method fetches the channel by name to obtain
-     * {@code ch.id()}, and {@code dispatch()} fetches it a second time for the paused check.
-     * This double-read is the known cost of the enforcement-gate pattern — the channel fetch
-     * cannot be eliminated from either side without exposing implementation details across the
-     * boundary. The cost is negligible at current scale. Full enforcement consolidation is
-     * deferred to #193 (ReactiveMessageService enforcement parity).
-     */
     public Uni<HumanMessageResult> sendHumanMessage(
-            String channelName, String sender, MessageType type, String content) {
+            String channelName, String sender, MessageType type, String content,
+            Long inReplyTo, String correlationId,
+            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
+            String target, java.time.Instant deadline, String topic) {
         return channelService.findByName(channelName)
-                .map(opt -> opt.orElseThrow(
-                        () -> new IllegalArgumentException("Channel not found: " + channelName)))
-                .flatMap(ch -> messageService.dispatch(
-                        MessageDispatch.builder()
-                                .channelId(ch.id())
-                                .sender(sender)
-                                .type(type)
-                                .content(content)
-                                .actorType(ActorType.HUMAN)
-                                .build()))
-                .map(result -> new HumanMessageResult(
-                        result.messageId(), channelName, result.sender(),
-                        result.type() != null ? result.type().name() : null,
-                        result.correlationId(), result.inReplyTo(),
-                        result.parentReplyCount(),
-                        result.artefactRefs(),
-                        result.target()));
+                             .map(opt -> opt.orElseThrow(
+                                     () -> new IllegalArgumentException("Channel not found: " + channelName)))
+                             .flatMap(ch -> messageService.dispatch(
+                                     MessageDispatch.builder()
+                                                    .channelId(ch.id())
+                                                    .sender(sender)
+                                                    .type(type)
+                                                    .content(content)
+                                                    .actorType(io.casehub.platform.api.identity.ActorType.HUMAN)
+                                                    .inReplyTo(inReplyTo)
+                                                    .correlationId(correlationId)
+                                                    .artefactRefs(artefactRefs)
+                                                    .target(target)
+                                                    .deadline(deadline)
+                                                    .topic(topic)
+                                                    .build()))
+                             .map(result -> new HumanMessageResult(
+                                     result.messageId(), channelName, result.sender(),
+                                     result.type() != null ? result.type().name() : null,
+                                     result.correlationId(), result.inReplyTo(),
+                                     result.parentReplyCount(),
+                                     result.artefactRefs(),
+                                     result.target()));
     }
 
 }

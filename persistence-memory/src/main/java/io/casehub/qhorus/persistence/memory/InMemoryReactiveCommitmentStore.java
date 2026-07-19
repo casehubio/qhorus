@@ -5,6 +5,7 @@ import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.store.ReactiveCommitmentStore;
 import io.smallrye.mutiny.Uni;
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Alternative;
 
@@ -18,6 +19,7 @@ import java.util.UUID;
 @ApplicationScoped
 public class InMemoryReactiveCommitmentStore implements ReactiveCommitmentStore {
 
+    @Inject
     InMemoryCommitmentStore delegate;
 
     @Override
@@ -60,6 +62,12 @@ public class InMemoryReactiveCommitmentStore implements ReactiveCommitmentStore 
     public Uni<List<Commitment>> findByState(CommitmentState state, UUID channelId) {
         return Uni.createFrom().item(delegate.findByState(state, channelId));
     }
+
+    @Override
+    public Uni<List<Commitment>> findByChannel(UUID channelId) {
+        return Uni.createFrom().item(delegate.findByChannel(channelId));
+    }
+
 
     @Override
     public Uni<List<Commitment>> findExpiredBefore(Instant cutoff) {

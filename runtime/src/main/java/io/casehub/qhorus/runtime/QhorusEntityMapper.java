@@ -86,23 +86,23 @@ public class QhorusEntityMapper {
             entry.put("occurred_at", m.createdAt() != null ? m.createdAt().toString() : null);
             entry.put("agent_id", m.sender());
             entry.put("message_type", null);
-            String toolName = null;
-            Long durationMs = null;
-            Long tokenCount = null;
+            String toolName   = null;
+            Long   durationMs = null;
+            Long   tokenCount = null;
             if (ledgerEntry != null) {
-                toolName = ledgerEntry.toolName;
+                toolName   = ledgerEntry.toolName;
                 durationMs = ledgerEntry.durationMs;
                 tokenCount = ledgerEntry.tokenCount;
             }
             if (toolName == null && durationMs == null && tokenCount == null && m.content() != null) {
                 try {
                     JsonNode node = mapper.readTree(m.content());
-                    JsonNode tn = node.get("tool_name");
-                    if (tn != null && tn.isTextual()) toolName = tn.asText();
+                    JsonNode tn   = node.get("tool_name");
+                    if (tn != null && tn.isTextual()) {toolName = tn.asText();}
                     JsonNode dm = node.get("duration_ms");
-                    if (dm != null && dm.isNumber()) durationMs = dm.asLong();
+                    if (dm != null && dm.isNumber()) {durationMs = dm.asLong();}
                     JsonNode tc = node.get("token_count");
-                    if (tc != null && tc.isNumber()) tokenCount = tc.asLong();
+                    if (tc != null && tc.isNumber()) {tokenCount = tc.asLong();}
                 } catch (Exception ignored) {
                 }
             }
@@ -116,10 +116,16 @@ public class QhorusEntityMapper {
             entry.put("message_type", m.messageType() != null ? m.messageType().name().toLowerCase() : null);
             entry.put("content", m.content());
             entry.put("correlation_id", m.correlationId());
+            entry.put("in_reply_to", m.inReplyTo());
+            entry.put("target", m.target());
+            entry.put("reply_count", m.replyCount());
+            entry.put("topic", m.topic());
+            entry.put("deadline", m.deadline() != null ? m.deadline().toString() : null);
+            entry.put("artefact_refs", m.artefactRefs() != null && !m.artefactRefs().isEmpty()
+                                       ? m.artefactRefs() : null);
             entry.put("tool_name", null);
         }
-        return entry;
-    }
+        return entry;}
 
     private static String joinCsv(List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);

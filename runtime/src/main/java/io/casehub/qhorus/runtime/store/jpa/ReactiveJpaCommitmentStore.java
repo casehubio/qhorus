@@ -105,6 +105,13 @@ public class ReactiveJpaCommitmentStore implements ReactiveCommitmentStore {
     }
 
     @Override
+    public Uni<List<Commitment>> findByChannel(UUID channelId) {
+        return repo.<CommitmentEntity>list("channelId = ?1 ORDER BY createdAt ASC", channelId)
+                   .map(list -> list.stream().map(CommitmentEntity::toDomain).toList());
+    }
+
+
+    @Override
     public Uni<List<Commitment>> findExpiredBefore(Instant cutoff) {
         return repo.<CommitmentEntity>list(
                 "expiresAt < ?1 AND state NOT IN ?2",
