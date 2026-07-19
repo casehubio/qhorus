@@ -48,6 +48,9 @@ public class ChannelEntity extends PanacheEntityBase {
      */
     @Column(name = "admin_instances", columnDefinition = "TEXT")
     public String adminInstances;
+    @Column(name = "reviewer_instances", columnDefinition = "TEXT")
+    public String reviewerInstances;
+
 
     /** Max messages per minute across all senders on this channel. Null = unlimited. */
     @Column(name = "rate_limit_per_channel")
@@ -120,6 +123,7 @@ public class ChannelEntity extends PanacheEntityBase {
         e.barrierContributors  = joinCsv(channel.barrierContributors());
         e.allowedWriters       = joinCsv(channel.allowedWriters());
         e.adminInstances       = joinCsv(channel.adminInstances());
+        e.reviewerInstances    = joinCsv(channel.reviewerInstances());
         e.rateLimitPerChannel  = channel.rateLimitPerChannel();
         e.rateLimitPerInstance = channel.rateLimitPerInstance();
         e.allowedTypes         = MessageType.serializeTypes(channel.allowedTypes());
@@ -141,7 +145,9 @@ public class ChannelEntity extends PanacheEntityBase {
                 rateLimitPerChannel, rateLimitPerInstance,
                 nullIfEmpty(MessageType.parseTypes(allowedTypes)),
                 nullIfEmpty(MessageType.parseTypes(deniedTypes)),
-                paused, autoCreated, spaceId, tenancyId, createdAt, lastActivityAt);}
+                paused, autoCreated, spaceId,
+                splitCsv(reviewerInstances),
+                tenancyId, createdAt, lastActivityAt);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);

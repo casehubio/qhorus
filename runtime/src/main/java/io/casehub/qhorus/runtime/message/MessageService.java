@@ -259,7 +259,8 @@ public class MessageService implements MessageDispatcher {
                                 dispatch.correlationId(),
                                 dispatch.inReplyTo(),
                                 dispatch.actorType(),
-                                dispatch.artefactRefs()));
+                                dispatch.artefactRefs(),
+                                dispatch.target()));
                     } catch (final Exception e) {
                         // fanOut failures are non-fatal
                     }
@@ -384,7 +385,8 @@ public class MessageService implements MessageDispatcher {
                         dispatch.correlationId(),
                         dispatch.inReplyTo(),
                         dispatch.actorType(),
-                        dispatch.artefactRefs()));
+                        dispatch.artefactRefs(),
+                        dispatch.target()));
             } catch (final Exception e) {
                 // fanOut failures are non-fatal
             }

@@ -22,11 +22,7 @@ class DeniedTypesMcpTest {
     @Test
     @TestTransaction
     void createChannel_withDeniedTypes_storesDeniedTypesInDetail() {
-        ChannelDetail detail = tools.createChannel(
-                "oversight-mcp", "Oversight channel",
-                null, null, null, null, null, null,
-                null, "EVENT", null,
-                null, null, null, null);
+        ChannelDetail detail = tools.createChannel("oversight-mcp", "Oversight channel", null, null, null, null, null, null, null, "EVENT", null, null, null, null, null, null);
         assertThat(detail.deniedTypes()).isEqualTo("EVENT");
         assertThat(detail.allowedTypes()).isNull();
     }
@@ -34,11 +30,7 @@ class DeniedTypesMcpTest {
     @Test
     @TestTransaction
     void sendMessage_deniedType_returnsAdvisory() {
-        tools.createChannel(
-                "oversight-denied", "Oversight channel",
-                null, null, null, null, null, null,
-                null, "EVENT", null,
-                null, null, null, null);
+        tools.createChannel("oversight-denied", "Oversight channel", null, null, null, null, null, null, null, "EVENT", null, null, null, null, null, null);
 
         // EVENT is not obligation-creating — dispatch succeeds with advisory
         io.casehub.qhorus.api.message.DispatchResult result = tools.sendMessage("oversight-denied", "telemetry-agent", "event",
@@ -53,11 +45,7 @@ class DeniedTypesMcpTest {
     @Test
     @TestTransaction
     void sendMessage_nonDeniedType_passesOnDeniedChannel() {
-        tools.createChannel(
-                "oversight-pass", "Oversight channel",
-                null, null, null, null, null, null,
-                null, "EVENT", null,
-                null, null, null, null);
+        tools.createChannel("oversight-pass", "Oversight channel", null, null, null, null, null, null, null, "EVENT", null, null, null, null, null, null);
 
         // COMMAND is not denied — should pass
         tools.sendMessage("oversight-pass", "overseer", "command",
@@ -68,11 +56,7 @@ class DeniedTypesMcpTest {
     @TestTransaction
     void createChannel_withInvalidDeniedType_throwsToolCallException() {
         assertThatThrownBy(() ->
-                tools.createChannel(
-                        "bad-denied", "Bad channel",
-                        null, null, null, null, null, null,
-                        null, "INVALID_TYPE", null,
-                        null, null, null, null))
+                tools.createChannel("bad-denied", "Bad channel", null, null, null, null, null, null, null, "INVALID_TYPE", null, null, null, null, null, null))
                 .isInstanceOf(ToolCallException.class);
     }
 
@@ -83,7 +67,7 @@ class DeniedTypesMcpTest {
                 tools.createChannel(
                         "overlap-mcp", "Bad channel",
                         null, null, null, null, null, null,
-                        "QUERY,COMMAND", "QUERY", null,
+                        "QUERY,COMMAND", "QUERY", null, null,
                         null, null, null, null))
                 .isInstanceOf(ToolCallException.class)
                 .hasMessageContaining("QUERY");

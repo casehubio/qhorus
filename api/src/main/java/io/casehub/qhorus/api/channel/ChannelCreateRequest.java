@@ -19,6 +19,7 @@ public record ChannelCreateRequest(
         Set<MessageType> allowedTypes,
         Set<MessageType> deniedTypes,
         UUID spaceId,
+        List<String> reviewerInstances,
         // Connector binding — all four non-null together, or all null
         String inboundConnectorId,
         String externalKey,
@@ -40,6 +41,7 @@ public record ChannelCreateRequest(
         barrierContributors = barrierContributors != null ? List.copyOf(barrierContributors) : List.of();
         allowedWriters      = allowedWriters != null ? List.copyOf(allowedWriters) : List.of();
         adminInstances      = adminInstances != null ? List.copyOf(adminInstances) : List.of();
+        reviewerInstances   = reviewerInstances != null ? List.copyOf(reviewerInstances) : List.of();
         allowedTypes        = allowedTypes != null ? Set.copyOf(allowedTypes) : null;
         deniedTypes         = deniedTypes != null ? Set.copyOf(deniedTypes) : null;
 
@@ -54,6 +56,27 @@ public record ChannelCreateRequest(
         }
     }
 
+    public ChannelCreateRequest(
+            String name,
+            String description,
+            ChannelSemantic semantic,
+            List<String> barrierContributors,
+            List<String> allowedWriters,
+            List<String> adminInstances,
+            Integer rateLimitPerChannel,
+            Integer rateLimitPerInstance,
+            Set<MessageType> allowedTypes,
+            Set<MessageType> deniedTypes,
+            UUID spaceId,
+            String inboundConnectorId,
+            String externalKey,
+            String outboundConnectorId,
+            String outboundDestination) {
+        this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
+             rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
+             spaceId, null,
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
+    }
 
     public ChannelCreateRequest(
             String name,
@@ -72,7 +95,7 @@ public record ChannelCreateRequest(
             String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             null,
+             null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
     }
 
@@ -96,6 +119,7 @@ public record ChannelCreateRequest(
         private       Set<MessageType> allowedTypes;
         private       Set<MessageType> deniedTypes;
         private       UUID             spaceId;
+        private       List<String>     reviewerInstances;
         private       String           inboundConnectorId;
         private       String           externalKey;
         private       String           outboundConnectorId;
@@ -105,82 +129,87 @@ public record ChannelCreateRequest(
             this.name = name;
         }
 
-        public Builder description(String description)                       {
-                                                                                 this.description = description;
-                                                                                 return this;
-                                                                             }
+        public Builder description(String description) {
+            this.description = description;
+            return this;
+        }
 
-        public Builder semantic(ChannelSemantic semantic)                    {
-                                                                                 this.semantic = semantic;
-                                                                                 return this;
-                                                                             }
+        public Builder semantic(ChannelSemantic semantic) {
+            this.semantic = semantic;
+            return this;
+        }
 
         public Builder barrierContributors(List<String> barrierContributors) {
-                                                                                 this.barrierContributors = barrierContributors;
-                                                                                 return this;
-                                                                             }
+            this.barrierContributors = barrierContributors;
+            return this;
+        }
 
-        public Builder allowedWriters(List<String> allowedWriters)           {
-                                                                                 this.allowedWriters = allowedWriters;
-                                                                                 return this;
-                                                                             }
+        public Builder allowedWriters(List<String> allowedWriters) {
+            this.allowedWriters = allowedWriters;
+            return this;
+        }
 
-        public Builder adminInstances(List<String> adminInstances)           {
-                                                                                 this.adminInstances = adminInstances;
-                                                                                 return this;
-                                                                             }
+        public Builder adminInstances(List<String> adminInstances) {
+            this.adminInstances = adminInstances;
+            return this;
+        }
 
-        public Builder rateLimitPerChannel(Integer rateLimitPerChannel)      {
-                                                                                 this.rateLimitPerChannel = rateLimitPerChannel;
-                                                                                 return this;
-                                                                             }
+        public Builder rateLimitPerChannel(Integer rateLimitPerChannel) {
+            this.rateLimitPerChannel = rateLimitPerChannel;
+            return this;
+        }
 
-        public Builder rateLimitPerInstance(Integer rateLimitPerInstance)    {
-                                                                                 this.rateLimitPerInstance = rateLimitPerInstance;
-                                                                                 return this;
-                                                                             }
+        public Builder rateLimitPerInstance(Integer rateLimitPerInstance) {
+            this.rateLimitPerInstance = rateLimitPerInstance;
+            return this;
+        }
 
-        public Builder allowedTypes(Set<MessageType> allowedTypes)           {
-                                                                                 this.allowedTypes = allowedTypes;
-                                                                                 return this;
-                                                                             }
+        public Builder allowedTypes(Set<MessageType> allowedTypes) {
+            this.allowedTypes = allowedTypes;
+            return this;
+        }
 
-        public Builder deniedTypes(Set<MessageType> deniedTypes)             {
-                                                                                 this.deniedTypes = deniedTypes;
-                                                                                 return this;
-                                                                             }
+        public Builder deniedTypes(Set<MessageType> deniedTypes) {
+            this.deniedTypes = deniedTypes;
+            return this;
+        }
 
-        public Builder spaceId(UUID spaceId)                                 {
-                                                                                 this.spaceId = spaceId;
-                                                                                 return this;
-                                                                             }
+        public Builder spaceId(UUID spaceId) {
+            this.spaceId = spaceId;
+            return this;
+        }
 
-        public Builder inboundConnectorId(String inboundConnectorId)         {
-                                                                                 this.inboundConnectorId = inboundConnectorId;
-                                                                                 return this;
-                                                                             }
+        public Builder reviewerInstances(List<String> reviewerInstances) {
+            this.reviewerInstances = reviewerInstances;
+            return this;
+        }
 
-        public Builder externalKey(String externalKey)                       {
-                                                                                 this.externalKey = externalKey;
-                                                                                 return this;
-                                                                             }
+        public Builder inboundConnectorId(String inboundConnectorId) {
+            this.inboundConnectorId = inboundConnectorId;
+            return this;
+        }
 
-        public Builder outboundConnectorId(String outboundConnectorId)       {
-                                                                                 this.outboundConnectorId = outboundConnectorId;
-                                                                                 return this;
-                                                                             }
+        public Builder externalKey(String externalKey) {
+            this.externalKey = externalKey;
+            return this;
+        }
 
-        public Builder outboundDestination(String outboundDestination)       {
-                                                                                 this.outboundDestination = outboundDestination;
-                                                                                 return this;
-                                                                             }
+        public Builder outboundConnectorId(String outboundConnectorId) {
+            this.outboundConnectorId = outboundConnectorId;
+            return this;
+        }
+
+        public Builder outboundDestination(String outboundDestination) {
+            this.outboundDestination = outboundDestination;
+            return this;
+        }
 
         public ChannelCreateRequest build() {
             return new ChannelCreateRequest(name, description, semantic,
                                             barrierContributors, allowedWriters, adminInstances,
                                             rateLimitPerChannel, rateLimitPerInstance,
                                             allowedTypes, deniedTypes,
-                                            spaceId,
+                                            spaceId, reviewerInstances,
                                             inboundConnectorId, externalKey,
                                             outboundConnectorId, outboundDestination);
         }

@@ -53,8 +53,8 @@ public class QhorusEntityMapper {
                 ch.deniedTypes() != null ? MessageType.serializeTypes(ch.deniedTypes()) : null,
                 ch.spaceId(),
                 spaceName,
-                detailBinding);
-    }
+                joinCsv(ch.reviewerInstances()),
+                detailBinding);}
 
     public MessageView toMessageView(final Message msg) {
         return new MessageView(

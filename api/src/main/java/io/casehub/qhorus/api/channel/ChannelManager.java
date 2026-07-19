@@ -1,10 +1,10 @@
 package io.casehub.qhorus.api.channel;
 
+import io.casehub.qhorus.api.message.MessageType;
+
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import io.casehub.qhorus.api.message.MessageType;
 
 public interface ChannelManager {
     Channel create(ChannelCreateRequest request);
@@ -17,4 +17,7 @@ public interface ChannelManager {
     Channel setRateLimits(UUID channelId, Integer perChannel, Integer perInstance);
     Channel setAllowedWriters(UUID channelId, List<String> allowedWriters);
     Channel setAdminInstances(UUID channelId, List<String> adminInstances);
+
+    Channel setReviewerInstances(UUID channelId, List<String> reviewerInstances);
+
 }

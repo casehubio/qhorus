@@ -1,16 +1,5 @@
 package io.casehub.qhorus.runtime.channel;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import jakarta.persistence.PersistenceException;
-
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
@@ -28,6 +17,15 @@ import io.quarkus.arc.properties.IfBuildProperty;
 import io.quarkus.hibernate.reactive.panache.Panache;
 import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.PersistenceException;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @IfBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true")
 @ApplicationScoped
@@ -151,6 +149,15 @@ public class ReactiveChannelService implements ReactiveChannelManager {
                 .flatMap(ch -> channelStore.put(ch.toBuilder()
                         .adminInstances(adminInstances).build())));
     }
+
+    @Override
+    public Uni<Channel> setReviewerInstances(UUID channelId, List<String> reviewerInstances) {
+        return Panache.withTransaction("qhorus", () -> channelStore.find(channelId)
+                                                                   .map(opt -> opt.orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId)))
+                                                                   .flatMap(ch -> channelStore.put(ch.toBuilder()
+                                                                                                     .reviewerInstances(reviewerInstances).build())));
+    }
+
 
     @Override
     public Uni<Channel> setTypeConstraints(final UUID channelId,

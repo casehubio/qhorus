@@ -169,36 +169,39 @@ public interface QhorusConfig {
 
     interface Attestation {
         /**
-         * Confidence score (0.0–1.0) for the SOUND attestation written when a DONE message
-         * closes a COMMAND commitment. Default: 0.7.
+         * Confidence for SOUND attestation on DONE. Default: 0.7.
          */
         @WithDefault("0.7")
         double doneConfidence();
 
         /**
-         * Confidence score (0.0–1.0) for the FLAGGED attestation written when a FAILURE
-         * message closes a COMMAND commitment. Default: 0.6.
+         * Confidence for FLAGGED attestation on FAILURE. Default: 0.6.
          */
         @WithDefault("0.6")
         double failureConfidence();
 
         /**
-         * Confidence score (0.0–1.0) for the FLAGGED attestation written when a DECLINE
-         * message closes a COMMAND commitment. Default: 0.4.
+         * Confidence for FLAGGED attestation on DECLINE. Default: 0.4.
          */
         @WithDefault("0.4")
         double declineConfidence();
 
         /**
-         * Confidence score (0.0–1.0) for the FLAGGED attestation written when a RESPONSE
-         * message closes a COMMAND commitment (wrong vocabulary). Default: 0.3.
-         *
-         * <p>RESPONSE is query-fulfillment vocabulary — semantically wrong for a COMMAND
-         * obligation. Low confidence reflects that the agent may not have understood the
-         * vocabulary requirement rather than being deliberately deceptive.
-         * See PP-20260623-fd69f3.
+         * Confidence for FLAGGED attestation on RESPONSE (wrong vocabulary). Default: 0.3.
          */
         @WithDefault("0.3")
         double responseConfidence();
+
+        /**
+         * Confidence for peer ENDORSED attestation. Default: 0.4.
+         */
+        @WithDefault("0.4")
+        double peerEndorsedConfidence();
+
+        /**
+         * Confidence for peer CHALLENGED attestation. Default: 0.5.
+         */
+        @WithDefault("0.5")
+        double peerChallengedConfidence();
     }
 }

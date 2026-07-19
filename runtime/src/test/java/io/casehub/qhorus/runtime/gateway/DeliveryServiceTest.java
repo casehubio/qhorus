@@ -1,7 +1,24 @@
 package io.casehub.qhorus.runtime.gateway;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.gateway.ChannelBackend;
+import io.casehub.qhorus.api.gateway.ChannelRef;
+import io.casehub.qhorus.api.gateway.DeliveryCursor;
+import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
+import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
+import io.casehub.qhorus.api.store.CrossTenantMessageStore;
+import io.casehub.qhorus.api.store.DeliveryCursorStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.config.DeliveryConfig;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -14,28 +31,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.gateway.ChannelBackend;
-import io.casehub.qhorus.api.gateway.ChannelRef;
-import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
-import io.casehub.qhorus.api.gateway.OutboundMessage;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.config.DeliveryConfig;
-import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
-import io.casehub.qhorus.api.gateway.DeliveryCursor;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.api.store.CrossTenantChannelStore;
-import io.casehub.qhorus.api.store.CrossTenantMessageStore;
-import io.casehub.qhorus.api.store.DeliveryCursorStore;
-import io.casehub.qhorus.api.store.query.MessageQuery;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * CDI-free unit tests for {@link DeliveryService} and {@link DeliveryBatchExecutor}.
@@ -657,6 +655,16 @@ class DeliveryServiceTest {
         OutboundMessage out = DeliveryBatchExecutor.toOutbound(m);
         assertThat(out.correlationId()).isNull();
     }
+
+    @Test
+    void toOutbound_carriesTarget() {
+        Message m = Message.builder().id(1L).channelId(UUID.randomUUID()).sender("agent-a")
+                           .messageType(MessageType.COMMAND).actorType(ActorType.AGENT)
+                           .content("do it").target("researcher").build();
+        OutboundMessage out = DeliveryBatchExecutor.toOutbound(m);
+        assertThat(out.target()).isEqualTo("researcher");
+    }
+
 
     // ── LAST_WRITE version-aware delivery tests ────────────────────────────────
 

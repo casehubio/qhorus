@@ -26,8 +26,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void setDeniedTypes_updatesChannel() {
         String name = "oversight-" + System.nanoTime();
-        tools.createChannel(name, "governance", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.createChannel(name, "governance", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         ChannelDetail updated = tools.setChannelTypeConstraints(name, null, "EVENT");
 
@@ -39,8 +38,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void setAllowedTypes_updatesChannel() {
         String name = "observe-" + System.nanoTime();
-        tools.createChannel(name, "telemetry", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.createChannel(name, "telemetry", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         ChannelDetail updated = tools.setChannelTypeConstraints(name, "EVENT", null);
 
@@ -52,8 +50,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void nullForBoth_clearsConstraints() {
         String name = "constrained-" + System.nanoTime();
-        tools.createChannel(name, "was constrained", "APPEND",
-                null, null, null, null, null, "EVENT", "QUERY", null, null, null, null, null);
+        tools.createChannel(name, "was constrained", "APPEND", null, null, null, null, null, "EVENT", "QUERY", null, null, null, null, null, null);
 
         ChannelDetail updated = tools.setChannelTypeConstraints(name, null, null);
 
@@ -65,8 +62,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void overlappingTypes_throws() {
         String name = "channel-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "EVENT,QUERY", "EVENT"))
                 .isInstanceOf(ToolCallException.class)
@@ -79,8 +75,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void unknownTypeName_throws() {
         String name = "channel-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "BOGUS_TYPE", null))
                 .isInstanceOf(ToolCallException.class)
@@ -92,8 +87,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void isFullReplacement_nullClearsExistingConstraint() {
         String name = "replace-test-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND",
-                null, null, null, null, null, null, "QUERY", null, null, null, null, null);
+        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, "QUERY", null, null, null, null, null, null);
 
         // Pass denied_types=EVENT but omit allowed_types → should clear allowed_types
         ChannelDetail updated = tools.setChannelTypeConstraints(name, null, "EVENT");
@@ -116,8 +110,7 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void setConstraints_channelDetailReflectsUpdate() {
         String name = "detail-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND",
-                null, null, null, null, null, null, null, null, null, null, null, null);
+        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // Pass unsorted input "RESPONSE,COMMAND" — asserts canonical sorted output "COMMAND,RESPONSE"
         ChannelDetail updated = tools.setChannelTypeConstraints(name, "RESPONSE,COMMAND", "EVENT");

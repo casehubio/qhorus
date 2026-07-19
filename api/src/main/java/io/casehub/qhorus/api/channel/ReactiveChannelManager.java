@@ -1,11 +1,11 @@
 package io.casehub.qhorus.api.channel;
 
+import io.casehub.qhorus.api.message.MessageType;
+import io.smallrye.mutiny.Uni;
+
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-
-import io.smallrye.mutiny.Uni;
-import io.casehub.qhorus.api.message.MessageType;
 
 public interface ReactiveChannelManager {
     Uni<Channel> create(ChannelCreateRequest request);
@@ -18,4 +18,7 @@ public interface ReactiveChannelManager {
     Uni<Channel> setRateLimits(UUID channelId, Integer perChannel, Integer perInstance);
     Uni<Channel> setAllowedWriters(UUID channelId, List<String> allowedWriters);
     Uni<Channel> setAdminInstances(UUID channelId, List<String> adminInstances);
+
+    Uni<Channel> setReviewerInstances(UUID channelId, List<String> reviewerInstances);
+
 }

@@ -19,6 +19,7 @@ public record ChannelDetail(
         String deniedTypes,
         UUID spaceId,
         String spaceName,
+        String reviewerInstances,
         ConnectorBinding connectorBinding) {
 
     public record ConnectorBinding(

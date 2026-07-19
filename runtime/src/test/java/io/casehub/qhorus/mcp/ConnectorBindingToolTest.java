@@ -31,9 +31,7 @@ class ConnectorBindingToolTest {
     void createChannel_withBinding_populatesConnectorBindingInDetail() {
         String name = "ch-with-binding-" + UUID.randomUUID();
 
-        ChannelDetail detail = tools.createChannel(
-                name,  "desc",  null,  null,  null,  null,  null,  null,  null,  null, null, 
-                "twilio",  "+44123456789",  "twilio-out",  "+44123456789");
+        ChannelDetail detail = tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", "twilio-out", "+44123456789");
 
         assertNotNull(detail.connectorBinding(),
                 "connectorBinding must be non-null when binding params are provided");
@@ -48,9 +46,7 @@ class ConnectorBindingToolTest {
     void createChannel_withoutBinding_hasNullConnectorBinding() {
         String name = "ch-no-binding-" + UUID.randomUUID();
 
-        ChannelDetail detail = tools.createChannel(
-                name,  "desc",  null,  null,  null,  null,  null,  null,  null,  null, null, 
-                null,  null,  null,  null);
+        ChannelDetail detail = tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertNull(detail.connectorBinding());
     }
@@ -61,9 +57,7 @@ class ConnectorBindingToolTest {
         String name = "ch-partial-binding-" + UUID.randomUUID();
 
         ToolCallException ex = assertThrows(ToolCallException.class, () ->
-                tools.createChannel(
-                        name,  "desc",  null,  null,  null,  null,  null,  null,  null,  null, null, 
-                        "twilio",  "+44123456789",  null,  null));
+                tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", null, null));
         assertInstanceOf(IllegalArgumentException.class, ex.getCause());
     }
 
@@ -73,8 +67,7 @@ class ConnectorBindingToolTest {
     @TestTransaction
     void updateChannelBinding_updatesOutboundFieldsAndReturnsDetail() {
         String name = "ch-upd-binding-" + UUID.randomUUID();
-        tools.createChannel(name,  "desc",  null,  null,  null,  null,  null,  null,  null,  null, null, 
-                "twilio",  "+44111222333",  "twilio-out",  "+44111222333");
+        tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, "twilio", "+44111222333", "twilio-out", "+44111222333");
 
         ChannelDetail updated = tools.updateChannelBinding(name, "vonage-out", "+447999888777");
 
@@ -88,8 +81,7 @@ class ConnectorBindingToolTest {
     @TestTransaction
     void updateChannelBinding_onChannelWithNoBinding_throwsToolCallException() {
         String name = "ch-nobind-upd-" + UUID.randomUUID();
-        tools.createChannel(name,  "desc",  null,  null,  null,  null,  null,  null,  null,  null, null, 
-                null,  null,  null,  null);
+        tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         ToolCallException ex = assertThrows(ToolCallException.class, () ->
                 tools.updateChannelBinding(name, "vonage-out", "+447999888777"));

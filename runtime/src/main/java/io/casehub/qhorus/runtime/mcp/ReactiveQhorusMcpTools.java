@@ -154,6 +154,15 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     ProjectionRegistry projectionRegistry;
+    @Inject
+    io.casehub.ledger.api.spi.LedgerEntryRepository ledgerEntryRepository;
+
+    @Inject
+    io.casehub.qhorus.runtime.ledger.PeerAttestationWriter peerAttestationWriter;
+
+    @Inject
+    io.casehub.qhorus.runtime.ledger.ReviewerResolver reviewerResolver;
+
 
     // ---------------------------------------------------------------------------
     // Private reactive helper — resolves channel by UUID or name
@@ -234,6 +243,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "allowed_types", description = "Comma-separated permitted MessageType names.", required = false) String allowedTypes,
             @ToolArg(name = "denied_types", description = "Comma-separated denied MessageType names.", required = false) String deniedTypes,
             @ToolArg(name = "space_id", description = "Space UUID to place this channel in. Null = top-level channel.", required = false) String spaceId,
+            @ToolArg(name = "reviewer_ids", description = "Comma-separated reviewer instance IDs for automatic peer review after DONE. Null = no auto-review.", required = false) String reviewerIds,
             @ToolArg(name = "inbound_connector_id", description = "Inbound connector type identifier.", required = false) String inboundConnectorId,
             @ToolArg(name = "external_key", description = "Connector-specific lookup key.", required = false) String externalKey,
             @ToolArg(name = "outbound_connector_id", description = "Outbound connector type identifier.", required = false) String outboundConnectorId,
@@ -260,6 +270,7 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                                                        .allowedTypes(MessageType.parseTypes(allowedTypes))
                                                        .deniedTypes(MessageType.parseTypes(deniedTypes))
                                                        .spaceId(spaceId != null ? resolveSpace(spaceId).id() : null)
+                                                       .reviewerInstances(splitCsv(reviewerIds))
                                                        .inboundConnectorId(inboundConnectorId)
                                                        .externalKey(externalKey)
                                                        .outboundConnectorId(outboundConnectorId)
@@ -325,6 +336,115 @@ public class ReactiveQhorusMcpTools extends QhorusMcpToolsBase {
                 .flatMap(ch -> messageStore.countByChannel(ch.id())
                         .map(count -> toChannelDetail(ch, count.longValue())));
     }
+
+    @Tool(name = "set_channel_reviewers", description = "Update the reviewer list on an existing channel. "
+                                                        + "Reviewers receive automatic peer review QUERYs after DONE messages. "
+                                                        + "Pass null or blank to disable auto-review.")
+    @Blocking
+    public ChannelDetail setChannelReviewers(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "reviewer_ids", description = "Comma-separated reviewer instance IDs. Null = disable auto-review.", required = false) String reviewerIds) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch       = blockingChannelService.setReviewerInstances(resolved.id(), splitCsv(reviewerIds));
+        return toChannelDetail(ch, blockingMessageStore.countByChannel(ch.id()));
+    }
+
+    @Tool(name = "attest", description = "Record a peer attestation (ENDORSED or CHALLENGED) "
+                                         + "on a COMMAND or HANDOFF ledger entry. Self-attestation is rejected.")
+    @Blocking
+    public Map<String, Object> attest(
+            @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
+            @ToolArg(name = "verdict", description = "ENDORSED or CHALLENGED") String verdict,
+            @ToolArg(name = "evidence", description = "Free-text evidence for the attestation", required = false) String evidence) {
+        UUID id = UUID.fromString(entryId);
+        io.casehub.ledger.api.model.AttestationVerdict v =
+                io.casehub.ledger.api.model.AttestationVerdict.valueOf(verdict.toUpperCase());
+        String tenancyId   = currentPrincipal.tenancyId();
+        String attestorId  = currentPrincipal.actorId();
+        var    attestation = peerAttestationWriter.write(id, v, evidence, attestorId, tenancyId);
+        return Map.of("attestation_id", attestation.id,
+                      "entry_id", id, "verdict", v.name(), "attestor_id", attestorId);
+    }
+
+    @Tool(name = "list_attestations", description = "List all attestations (policy and peer) on a ledger entry.")
+    @Blocking
+    public List<Map<String, Object>> listAttestations(
+            @ToolArg(name = "entry_id", description = "UUID of the ledger entry") String entryId) {
+        UUID   id        = UUID.fromString(entryId);
+        String tenancyId = currentPrincipal.tenancyId();
+        return ledgerEntryRepository.findAttestationsByEntryId(id, tenancyId).stream()
+                                    .map(a -> {
+                                        var map = new java.util.LinkedHashMap<String, Object>();
+                                        map.put("attestation_id", a.id);
+                                        map.put("verdict", a.verdict.name());
+                                        map.put("attestor_id", a.attestorId);
+                                        map.put("attestor_role", a.attestorRole != null ? a.attestorRole : "policy");
+                                        map.put("evidence", a.evidence != null ? a.evidence : "");
+                                        map.put("confidence", a.confidence);
+                                        map.put("occurred_at", a.occurredAt != null ? a.occurredAt.toString() : "");
+                                        return (Map<String, Object>) map;
+                                    })
+                                    .toList();
+    }
+
+    @Tool(name = "request_peer_review", description = "Send peer review QUERYs to reviewers for a COMMAND/HANDOFF entry.")
+    @Blocking
+    public Map<String, Object> requestPeerReview(
+            @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
+            @ToolArg(name = "reviewer_ids", description = "Comma-separated reviewer instance IDs. Resolved automatically if omitted.", required = false) String reviewerIds,
+            @ToolArg(name = "channel", description = "Channel for the review QUERYs. Defaults to the entry's channel.", required = false) String channel) {
+        UUID   id        = UUID.fromString(entryId);
+        String tenancyId = currentPrincipal.tenancyId();
+        var entry = (io.casehub.qhorus.runtime.ledger.MessageLedgerEntry) ledgerEntryRepository
+                                                                                  .findEntryById(id, tenancyId)
+                                                                                  .orElseThrow(() -> new IllegalArgumentException("Ledger entry not found: " + id));
+        if (!"COMMAND".equals(entry.messageType) && !"HANDOFF".equals(entry.messageType)) {
+            throw new IllegalArgumentException("Entry must be COMMAND or HANDOFF, not " + entry.messageType);
+        }
+
+        UUID         channelId = channel != null ? resolveChannel(channel).id() : entry.channelId;
+        List<String> reviewers = reviewerResolver.resolve(channelId, splitCsv(reviewerIds), id, tenancyId);
+        if (reviewers.isEmpty()) {
+            return Map.of("reviewers_sent", 0, "advisory", "No reviewers resolved.");
+        }
+
+        String completionContent = null;
+        if (entry.correlationId != null) {
+            var terminalEntry = ledgerRepo.findLatestByCorrelationId(entry.channelId, entry.correlationId, tenancyId);
+            if (terminalEntry.isPresent()) {
+                completionContent = terminalEntry.get().content;
+            }
+        }
+
+        var sentReviews = new java.util.ArrayList<Map<String, String>>();
+        for (String reviewerId : reviewers) {
+            try {
+                var peerReview = mapper.createObjectNode();
+                peerReview.put("ledger_entry_id", id.toString());
+                peerReview.put("original_command", entry.content);
+                peerReview.put("completion_content", completionContent);
+                var content = mapper.createObjectNode();
+                content.set("peer_review", peerReview);
+
+                String corrId = UUID.randomUUID().toString();
+                blockingMessageService.dispatch(MessageDispatch.builder()
+                                                               .channelId(channelId)
+                                                               .sender(currentPrincipal.actorId())
+                                                               .type(MessageType.QUERY)
+                                                               .content(mapper.writeValueAsString(content))
+                                                               .correlationId(corrId)
+                                                               .target(reviewerId)
+                                                               .actorType(ActorType.SYSTEM)
+                                                               .tenancyId(tenancyId)
+                                                               .build());
+                sentReviews.add(Map.of("reviewer_id", reviewerId, "correlation_id", corrId));
+            } catch (Exception e) {
+                LOG.warnf(e, "Failed to send peer review QUERY to %s for entry %s", reviewerId, id);
+            }
+        }
+        return Map.of("reviewers_sent", sentReviews.size(), "reviews", sentReviews);
+    }
+
 
     @Tool(name = "set_channel_type_constraints",
             description = "Replace the allowed_types and denied_types constraints on an existing channel. "

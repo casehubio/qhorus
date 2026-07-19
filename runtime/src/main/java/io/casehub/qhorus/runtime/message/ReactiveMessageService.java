@@ -391,8 +391,8 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                             dispatch.correlationId(),
                                             dispatch.inReplyTo(),
                                             dispatch.actorType(),
-                                            dispatch.artefactRefs())
-);
+                                            dispatch.artefactRefs(),
+                                            dispatch.target()));
                                 } catch (final Exception e) {
                                     // fanOut failures are non-fatal
                                 }
@@ -452,7 +452,8 @@ public class ReactiveMessageService implements ReactiveMessageDispatcher {
                                                     dispatch.correlationId(),
                                                     dispatch.inReplyTo(),
                                                     dispatch.actorType(),
-                                                    dispatch.artefactRefs()));
+                                                    dispatch.artefactRefs(),
+                                                    dispatch.target()));
 
                                             // Post-commit delivery signal: this runs after the message-insert
                                             // transaction has committed, so the pump will see the committed message.

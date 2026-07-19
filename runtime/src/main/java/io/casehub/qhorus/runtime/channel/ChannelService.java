@@ -1,16 +1,5 @@
 package io.casehub.qhorus.runtime.channel;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.persistence.PersistenceException;
-import jakarta.transaction.Transactional;
-
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
@@ -19,11 +8,21 @@ import io.casehub.qhorus.api.channel.ChannelManager;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
+import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.PersistenceException;
+import jakarta.transaction.Transactional;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 @ApplicationScoped
 public class ChannelService implements ChannelManager {
@@ -141,6 +140,15 @@ public class ChannelService implements ChannelManager {
         return channelStore.put(ch.toBuilder()
                 .adminInstances(adminInstances).build());
     }
+
+    @Override
+    @Transactional
+    public Channel setReviewerInstances(UUID channelId, List<String> reviewerInstances) {
+        Channel ch = channelStore.find(channelId).orElseThrow(() ->
+                                                                      new IllegalArgumentException("Channel not found: " + channelId));
+        return channelStore.put(ch.toBuilder().reviewerInstances(reviewerInstances).build());
+    }
+
 
     @Override
     @Transactional
