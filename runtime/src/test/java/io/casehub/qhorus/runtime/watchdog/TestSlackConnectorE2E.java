@@ -23,8 +23,7 @@ public class TestSlackConnectorE2E implements Connector {
     }
 
     @Override
-    public boolean send(ConnectorMessage message) {
+    public void send(ConnectorMessage message) {
         sent.add(message);
-        return true;
     }
 }
