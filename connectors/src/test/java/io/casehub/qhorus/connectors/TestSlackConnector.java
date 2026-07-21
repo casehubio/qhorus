@@ -23,7 +23,8 @@ public class TestSlackConnector implements Connector {
     }
 
     @Override
-    public void send(ConnectorMessage message) {
+    public boolean send(ConnectorMessage message) {
         sent.add(message);
+        return true;
     }
 }
