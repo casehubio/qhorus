@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
@@ -13,6 +14,7 @@ import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -89,26 +91,28 @@ public class ChannelSummaryService {
         }
 
         Channel ch = channelService.findById(channelId)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+                                   .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
 
-        long messagesSince = countMessagesSince(channelId, existing.lastUpdatedMessageId());
+        long          messagesSince = countMessagesSince(channelId, existing.lastUpdatedMessageId());
+        List<Message> recent        = fetchMessagesSince(channelId, existing.lastUpdatedMessageId());
 
         String updated = hook.update(new SummaryUpdateContext(
                 channelId, ch.name(), ch.tenancyId(),
-                existing.content(), existing.lastUpdatedMessageId(), messagesSince));
+                existing.content(), existing.lastUpdatedMessageId(), messagesSince,
+                recent,
+                q -> messageStore.scan(q.toBuilder().channelId(channelId).build())));
 
         Long maxMessageId = currentMaxMessageId(channelId);
 
         ChannelSummary saved = summaryStore.save(existing.toBuilder()
-                .content(updated)
-                .updatedAt(Instant.now())
-                .updatedBy("system:summary-scheduler")
-                .lastUpdatedMessageId(maxMessageId)
-                .build());
+                                                         .content(updated)
+                                                         .updatedAt(Instant.now())
+                                                         .updatedBy("system:summary-scheduler")
+                                                         .lastUpdatedMessageId(maxMessageId)
+                                                         .build());
 
         summaryEvents.fireAsync(new ChannelSummaryUpdatedEvent(channelId, ch.name(), "system:summary-scheduler"));
-        return Optional.of(saved);
-    }
+        return Optional.of(saved);}
 
     public void deleteSummary(UUID channelId) {
         summaryStore.deleteByChannelId(channelId);
@@ -120,6 +124,15 @@ public class ChannelSummaryService {
         }
         return messageStore.count(MessageQuery.builder().channelId(channelId).afterId(afterId).build());
     }
+
+    private List<Message> fetchMessagesSince(UUID channelId, Long afterId) {
+        MessageQuery.Builder qb = MessageQuery.builder().channelId(channelId);
+        if (afterId != null) {
+            qb.afterId(afterId);
+        }
+        return messageStore.scan(qb.build());
+    }
+
 
     Long currentMaxMessageId(UUID channelId) {
         var msgs = messageStore.scan(MessageQuery.builder()
