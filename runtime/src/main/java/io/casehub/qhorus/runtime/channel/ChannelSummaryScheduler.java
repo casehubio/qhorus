@@ -1,20 +1,21 @@
 package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.casehub.qhorus.api.store.ChannelSummaryStore;
-import io.casehub.qhorus.api.store.CrossTenantChannelSummaryStore;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
+import io.casehub.qhorus.api.store.CrossTenantChannelSummaryStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
+import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import io.quarkus.scheduler.Scheduled;
 import org.jboss.logging.Logger;
 
 import java.time.Instant;
@@ -88,31 +89,34 @@ public class ChannelSummaryScheduler {
 
     void updateSummary(ChannelSummary s) {
         Channel ch = crossTenantChannelStore.listAll().stream()
-                .filter(c -> c.id().equals(s.channelId()))
-                .findFirst()
-                .orElse(null);
+                                            .filter(c -> c.id().equals(s.channelId()))
+                                            .findFirst()
+                                            .orElse(null);
         if (ch == null) {
             LOG.warnf("Channel not found for summary update: %s", s.channelId());
             return;
         }
 
-        long messagesSince = countMessagesSince(s.channelId(), s.lastUpdatedMessageId());
+        long          messagesSince = countMessagesSince(s.channelId(), s.lastUpdatedMessageId());
+        List<Message> recent        = fetchMessagesSince(s.channelId(), s.lastUpdatedMessageId());
 
         String updated = hook.update(new SummaryUpdateContext(
                 s.channelId(), ch.name(), ch.tenancyId(),
-                s.content(), s.lastUpdatedMessageId(), messagesSince));
+                s.content(), s.lastUpdatedMessageId(), messagesSince,
+                recent,
+                q -> crossTenantMessageStore.scan(
+                        q.toBuilder().channelId(s.channelId()).build())));
 
         Long maxMessageId = currentMaxMessageId(s.channelId());
 
         summaryStore.save(s.toBuilder()
-                .content(updated)
-                .updatedAt(Instant.now())
-                .updatedBy("system:summary-scheduler")
-                .lastUpdatedMessageId(maxMessageId)
-                .build());
+                           .content(updated)
+                           .updatedAt(Instant.now())
+                           .updatedBy("system:summary-scheduler")
+                           .lastUpdatedMessageId(maxMessageId)
+                           .build());
 
-        summaryEvents.fireAsync(new ChannelSummaryUpdatedEvent(s.channelId(), ch.name(), "system:summary-scheduler"));
-    }
+        summaryEvents.fireAsync(new ChannelSummaryUpdatedEvent(s.channelId(), ch.name(), "system:summary-scheduler"));}
 
     private long countMessagesSince(java.util.UUID channelId, Long afterId) {
         if (afterId == null) {
@@ -121,6 +125,15 @@ public class ChannelSummaryScheduler {
         return crossTenantMessageStore.count(
                 MessageQuery.builder().channelId(channelId).afterId(afterId).build());
     }
+
+    private List<Message> fetchMessagesSince(java.util.UUID channelId, Long afterId) {
+        MessageQuery.Builder qb = MessageQuery.builder().channelId(channelId);
+        if (afterId != null) {
+            qb.afterId(afterId);
+        }
+        return crossTenantMessageStore.scan(qb.build());
+    }
+
 
     private Long currentMaxMessageId(java.util.UUID channelId) {
         var msgs = crossTenantMessageStore.scan(
