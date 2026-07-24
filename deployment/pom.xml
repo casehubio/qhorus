@@ -123,11 +123,6 @@
       <artifactId>quarkus-tls-registry-deployment</artifactId>
     </dependency>
 
-    <!-- Reactive / async -->
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-mutiny-deployment</artifactId>
-    </dependency>
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-context-propagation-deployment</artifactId>
