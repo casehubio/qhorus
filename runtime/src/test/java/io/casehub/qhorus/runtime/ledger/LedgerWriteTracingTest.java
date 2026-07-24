@@ -59,7 +59,6 @@ class LedgerWriteTracingTest {
         service.config = new LedgerConfig() {
             @Override public boolean enabled() { return true; }
             @Override public java.util.Optional<String> datasource() { return java.util.Optional.empty(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.ReactiveConfig reactive() { throw new UnsupportedOperationException(); }
             @Override public io.casehub.ledger.runtime.config.LedgerConfig.HashChainConfig hashChain() { throw new UnsupportedOperationException(); }
             @Override public io.casehub.ledger.runtime.config.LedgerConfig.DecisionContextConfig decisionContext() { throw new UnsupportedOperationException(); }
             @Override public io.casehub.ledger.runtime.config.LedgerConfig.EvidenceConfig evidence() { throw new UnsupportedOperationException(); }

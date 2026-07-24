@@ -1,6 +1,8 @@
 package io.casehub.qhorus.mcp;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.quarkiverse.mcp.server.Tool;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -9,11 +11,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.ReactiveQhorusMcpTools;
-import io.quarkiverse.mcp.server.Tool;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Verifies that no public non-@Tool method shares a name with a @Tool-annotated method
@@ -25,11 +23,6 @@ class ToolOverloadDiscoverabilityTest {
     @Test
     void qhorusMcpTools_noPublicNonToolOverloadsOfToolMethods() {
         assertNoPublicNonToolOverloads(QhorusMcpTools.class);
-    }
-
-    @Test
-    void reactiveQhorusMcpTools_noPublicNonToolOverloadsOfToolMethods() {
-        assertNoPublicNonToolOverloads(ReactiveQhorusMcpTools.class);
     }
 
     private void assertNoPublicNonToolOverloads(Class<?> clazz) {
