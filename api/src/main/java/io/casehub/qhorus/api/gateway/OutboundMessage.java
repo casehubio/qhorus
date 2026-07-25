@@ -15,13 +15,22 @@ public record OutboundMessage(
         Long inReplyTo,
         ActorType senderActorType,
         java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
-        String target) {
+        String target,
+        String topic) {
+
+    public OutboundMessage(UUID messageId, String sender, MessageType type, String content,
+                           String correlationId, Long inReplyTo, ActorType senderActorType,
+                           java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
+                           String target, String topic) {
+        this(messageId, null, sender, type, content, correlationId, inReplyTo,
+             senderActorType, artefactRefs, target, topic);
+    }
 
     public OutboundMessage(UUID messageId, String sender, MessageType type, String content,
                            String correlationId, Long inReplyTo, ActorType senderActorType,
                            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
                            String target) {
         this(messageId, null, sender, type, content, correlationId, inReplyTo,
-             senderActorType, artefactRefs, target);
+             senderActorType, artefactRefs, target, null);
     }
 }
