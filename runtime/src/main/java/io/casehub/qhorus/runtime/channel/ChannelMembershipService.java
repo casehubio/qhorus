@@ -1,15 +1,7 @@
 package io.casehub.qhorus.runtime.channel;
 
-import java.time.Instant;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
 import io.casehub.qhorus.api.channel.ChannelMembership;
+import io.casehub.qhorus.api.channel.MembershipManager;
 import io.casehub.qhorus.api.channel.MemberRole;
 import io.casehub.qhorus.api.channel.UnreadCount;
 import io.casehub.qhorus.api.message.Message;
@@ -17,15 +9,46 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelMembershipStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @ApplicationScoped
-public class ChannelMembershipService {
+public class ChannelMembershipService implements MembershipManager {
 
     @Inject
     ChannelMembershipStore membershipStore;
 
     @Inject
     MessageStore messageStore;
+    @jakarta.inject.Inject
+    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+
+    @Override
+    public ChannelMembership join(UUID channelId, String memberId) {
+        return join(channelId, memberId, MemberRole.PARTICIPANT, currentPrincipal.tenancyId());
+    }
+
+    @Override
+    public void leave(UUID channelId, String memberId) {
+        membershipStore.delete(channelId, memberId);
+    }
+
+    @Override
+    public void setRole(UUID channelId, String memberId, MemberRole role) {
+        membershipStore.updateRole(channelId, memberId, role);
+    }
+
+    @Override
+    public void updateLastReadMessageId(UUID channelId, String memberId, Long messageId) {
+        membershipStore.updateLastReadMessageId(channelId, memberId, messageId);
+    }
+
 
     public ChannelMembership join(UUID channelId, String memberId, MemberRole role, String tenancyId) {
         var existing = membershipStore.find(channelId, memberId);
@@ -38,10 +61,6 @@ public class ChannelMembershipService {
         Long maxId = messageStore.findLastMessage(channelId).map(Message::id).orElse(0L);
         return membershipStore.put(new ChannelMembership(
                 null, channelId, memberId, role, tenancyId, Instant.now(), maxId));
-    }
-
-    public void leave(UUID channelId, String memberId) {
-        membershipStore.delete(channelId, memberId);
     }
 
     public List<ChannelMembership> listMembers(UUID channelId) {

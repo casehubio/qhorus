@@ -97,7 +97,7 @@ class ChannelGatewayTest {
 
     @Test
     void listBackends_includesQhorusInternalByDefault() {
-        List<ChannelGateway.BackendRegistration> backends = gateway.listBackends(channelId);
+        List<io.casehub.qhorus.api.gateway.BackendRegistration> backends = gateway.listBackends(channelId);
         assertEquals(1, backends.size());
         assertEquals("qhorus-internal", backends.get(0).backendId());
         assertEquals("agent", backends.get(0).backendType());

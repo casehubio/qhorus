@@ -7,10 +7,10 @@ import io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster;
 import io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster.ChannelActivityEvent;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
@@ -45,7 +45,7 @@ import static jakarta.transaction.Status.STATUS_ACTIVE;
 import static jakarta.transaction.Status.STATUS_COMMITTED;
 
 @ApplicationScoped
-public class MessageService implements MessageDispatcher {
+public class MessageService implements ConsumerMessaging {
 
     private static final Logger LOG = Logger.getLogger(MessageService.class);
 
@@ -292,7 +292,8 @@ public class MessageService implements MessageDispatcher {
                                 dispatch.inReplyTo(),
                                 dispatch.actorType(),
                                 dispatch.artefactRefs(),
-                                dispatch.target()));
+                                dispatch.target(),
+                                dispatch.topic()));
                     } catch (final Exception e) {
                         // fanOut failures are non-fatal
                     }
@@ -418,7 +419,8 @@ public class MessageService implements MessageDispatcher {
                         dispatch.inReplyTo(),
                         dispatch.actorType(),
                         dispatch.artefactRefs(),
-                        dispatch.target()));
+                        dispatch.target(),
+                        dispatch.topic()));
             } catch (final Exception e) {
                 // fanOut failures are non-fatal
             }
@@ -548,5 +550,22 @@ public class MessageService implements MessageDispatcher {
                                                               .build());
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
+
+    @Override
+    public List<Message> history(UUID channelId, long afterId, int limit) {
+        return pollAfter(channelId, afterId, limit);
+    }
+
+    @Override
+    public List<Message> history(UUID channelId, long afterId, int limit, boolean includeEvents) {
+        return pollAfter(channelId, afterId, limit, includeEvents);
+    }
+
+    @Override
+    public List<Message> historyBySender(UUID channelId, long afterId, int limit,
+                                         String sender, boolean includeEvents) {
+        return pollAfterBySender(channelId, afterId, limit, sender, includeEvents);
+    }
+
 
 }

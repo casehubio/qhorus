@@ -5,6 +5,7 @@ import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelConnectorBinding;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.ChannelReader;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.MessageType;
@@ -25,7 +26,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @ApplicationScoped
-public class ChannelService implements ChannelManager {
+public class ChannelService implements ChannelManager, ChannelReader {
 
     @Inject
     CurrentPrincipal currentPrincipal;
@@ -224,6 +225,17 @@ public class ChannelService implements ChannelManager {
     public List<Channel> listAll() {
         return channelStore.scan(ChannelQuery.all());
     }
+
+    @Override
+    public List<Channel> scan(ChannelQuery query) {
+        return channelStore.scan(query);
+    }
+
+    @Override
+    public List<Channel> findByIds(java.util.Collection<UUID> ids) {
+        return channelStore.findByIds(ids);
+    }
+
 
     @Override
     @Transactional

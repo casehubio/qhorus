@@ -1,27 +1,40 @@
 package io.casehub.qhorus.runtime.message;
 
+import io.casehub.qhorus.api.channel.ReactionManager;
+import io.casehub.qhorus.api.message.Reaction;
+import io.casehub.qhorus.api.message.ReactionChangedEvent;
+import io.casehub.qhorus.api.message.ReactionGroup;
+import io.casehub.qhorus.api.store.ReactionStore;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.message.Reaction;
-import io.casehub.qhorus.api.message.ReactionChangedEvent;
-import io.casehub.qhorus.api.message.ReactionGroup;
-import io.casehub.qhorus.api.store.ReactionStore;
-
 @ApplicationScoped
-public class ReactionService {
+public class ReactionService implements ReactionManager {
 
     @Inject
     public ReactionStore reactionStore;
 
     @Inject
     public Event<ReactionChangedEvent> reactionEvent;
+    @jakarta.inject.Inject
+    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+
+    @Override
+    public Reaction react(Long messageId, String emoji) {
+        return react(messageId, emoji, currentPrincipal.actorId(), currentPrincipal.tenancyId());
+    }
+
+    @Override
+    public boolean unreact(Long messageId, String emoji) {
+        return unreact(messageId, emoji, currentPrincipal.actorId());
+    }
+
 
     public Reaction react(Long messageId, String emoji, String actorId, String tenancyId) {
         String trimmed = validateEmoji(emoji);

@@ -189,7 +189,8 @@ class DeliveryBatchExecutor {
                 m.inReplyTo(),
                 ActorTypeResolver.resolve(m.sender()),
                 m.artefactRefs(),
-                m.target());
+                m.target(),
+                m.topic());
     }
 
     interface HealthCallback {

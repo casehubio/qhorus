@@ -772,14 +772,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Tool(name = "rename_topic", description = "Rename a topic — updates all messages in the topic and emits an audit EVENT in the ledger")
     @Transactional
-    public TopicService.RenameResult renameTopic(
+    public io.casehub.qhorus.api.channel.TopicManager.RenameResult renameTopic(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "old_name", description = "Current topic name") String oldName,
             @ToolArg(name = "new_name", description = "New topic name") String newName,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller", required = false) String callerInstanceId) {
         Channel                   ch      = resolveChannel(channel);
         String                    actorId = callerInstanceId != null ? callerInstanceId : "anonymous";
-        TopicService.RenameResult result  = topicService.rename(ch.id(), oldName, newName, actorId);
+        io.casehub.qhorus.api.channel.TopicManager.RenameResult result  = topicService.rename(ch.id(), oldName, newName, actorId);
         messageService.dispatch(MessageDispatch.builder()
                                                .channelId(ch.id())
                                                .sender("system:topic-service")
@@ -794,14 +794,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Tool(name = "merge_topics", description = "Merge a source topic into a target topic — moves all messages and deletes the source topic. Emits an audit EVENT.")
     @Transactional
-    public TopicService.MergeResult mergeTopics(
+    public io.casehub.qhorus.api.channel.TopicManager.MergeResult mergeTopics(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "source_topic", description = "Topic to merge from (will be deleted)") String sourceTopic,
             @ToolArg(name = "target_topic", description = "Topic to merge into (will receive messages)") String targetTopic,
             @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller", required = false) String callerInstanceId) {
         Channel                  ch      = resolveChannel(channel);
         String                   actorId = callerInstanceId != null ? callerInstanceId : "anonymous";
-        TopicService.MergeResult result  = topicService.merge(ch.id(), sourceTopic, targetTopic, actorId);
+        io.casehub.qhorus.api.channel.TopicManager.MergeResult result  = topicService.merge(ch.id(), sourceTopic, targetTopic, actorId);
         messageService.dispatch(MessageDispatch.builder()
                                                .channelId(ch.id())
                                                .sender("system:topic-service")

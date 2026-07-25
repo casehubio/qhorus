@@ -13,7 +13,7 @@ public interface ConsumerMessaging extends MessageDispatcher {
     List<Message> historyBySender(UUID channelId, long afterId, int limit,
                                    String sender, boolean includeEvents);
 
-    Optional<Message> findById(long messageId);
+    Optional<Message> findById(Long messageId);
 
     Optional<Message> findByCorrelationId(String correlationId);
 

@@ -54,7 +54,7 @@ class ChannelGatewayDedupTest {
         gateway.registerBackend(ch.id(), stub, "agent");
         gateway.registerBackend(ch.id(), stub, "agent");  // second call — must be no-op
 
-        List<ChannelGateway.BackendRegistration> backends = gateway.listBackends(ch.id());
+        List<io.casehub.qhorus.api.gateway.BackendRegistration> backends = gateway.listBackends(ch.id());
         long dedupCount = backends.stream()
                 .filter(b -> testBackendId.equals(b.backendId()))
                 .count();
@@ -77,7 +77,7 @@ class ChannelGatewayDedupTest {
         gateway.registerBackend(ch.id(), stubA, "agent");
         gateway.registerBackend(ch.id(), stubB, "agent");
 
-        List<ChannelGateway.BackendRegistration> backends = gateway.listBackends(ch.id());
+        List<io.casehub.qhorus.api.gateway.BackendRegistration> backends = gateway.listBackends(ch.id());
         // qhorus-internal + backend-a + backend-b = 3 entries
         assertEquals(3, backends.size(),
                 "Different backendIds should both be registered");

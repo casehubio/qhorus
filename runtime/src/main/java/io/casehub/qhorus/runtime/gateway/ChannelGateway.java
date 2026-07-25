@@ -3,6 +3,8 @@ package io.casehub.qhorus.runtime.gateway;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.gateway.AgentChannelBackend;
+import io.casehub.qhorus.api.gateway.BackendRegistration;
+import io.casehub.qhorus.api.gateway.BackendRegistry;
 import io.casehub.qhorus.api.gateway.ChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelClosedEvent;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
@@ -45,7 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 @ApplicationScoped
-public class ChannelGateway {
+public class ChannelGateway implements BackendRegistry {
 
     private static final Logger LOG = Logger.getLogger(ChannelGateway.class);
     final AgentChannelBackend agentBackend;
@@ -158,6 +160,7 @@ public class ChannelGateway {
         channelClosedEvents.fire(new ChannelClosedEvent(channelId, ref.name()));
     }
 
+    @Override
     public void registerBackend(UUID channelId, ChannelBackend backend, String backendType) {
         List<BackendEntry> entries = registry.computeIfAbsent(channelId,
                 id -> Collections.synchronizedList(new ArrayList<>()));
@@ -181,6 +184,7 @@ public class ChannelGateway {
         }
     }
 
+    @Override
     public void deregisterBackend(UUID channelId, String backendId) {
         if ("qhorus-internal".equals(backendId)) {
             throw new IllegalArgumentException("Cannot deregister the qhorus-internal backend.");
@@ -191,7 +195,8 @@ public class ChannelGateway {
         }
     }
 
-    public List<BackendRegistration> listBackends(UUID channelId) {
+    @Override
+    public List<io.casehub.qhorus.api.gateway.BackendRegistration> listBackends(UUID channelId) {
         List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
         return entries.stream()
                 .map(e -> new BackendRegistration(
@@ -440,7 +445,8 @@ public class ChannelGateway {
                     msg.inReplyTo(),
                     msg.actorType(),
                     msg.artefactRefs(),
-                    msg.target());
+                    msg.target(),
+                    msg.topic());
 
             List<BackendEntry> entries = registry.getOrDefault(channelId, List.of());
             int backendCount = 0;
@@ -498,5 +504,5 @@ public class ChannelGateway {
 
     record BackendEntry(ChannelBackend backend, String backendType, InboundNormaliser normaliser) {}
 
-    public record BackendRegistration(String backendId, String backendType, ActorType actorType) {}
+    // BackendRegistration moved to io.casehub.qhorus.api.gateway.BackendRegistration
 }

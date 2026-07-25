@@ -1,22 +1,21 @@
 package io.casehub.qhorus.runtime.channel;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import io.casehub.qhorus.api.channel.Presence;
+import io.casehub.qhorus.api.channel.PresenceTracker;
+import io.casehub.qhorus.api.channel.PresenceStatus;
+import io.casehub.qhorus.runtime.config.PresenceConfig;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
-import io.casehub.qhorus.api.channel.Presence;
-import io.casehub.qhorus.api.channel.PresenceStatus;
-import io.casehub.qhorus.runtime.config.PresenceConfig;
-
 @ApplicationScoped
-public class PresenceService {
+public class PresenceService implements PresenceTracker {
 
     private final Cache<String, PresenceEntry> cache;
     private final PresenceConfig config;
@@ -80,4 +79,17 @@ public class PresenceService {
 
     @Inject
     public ChannelMembershipService membershipService;
+    @jakarta.inject.Inject
+    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+
+    @Override
+    public void heartbeat(PresenceStatus status, String statusMessage) {
+        heartbeat(currentPrincipal.actorId(), status, statusMessage);
+    }
+
+    @Override
+    public void setOffline() {
+        setOffline(currentPrincipal.actorId());
+    }
+
 }

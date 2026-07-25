@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.message;
 
 import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.channel.TopicManager;
 import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.message.TopicSummary;
 import io.casehub.qhorus.api.store.CommitmentStore;
@@ -17,7 +18,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
-public class TopicService {
+public class TopicService implements TopicManager {
 
     static final String DEFAULT_TOPIC = "general";
 
@@ -29,6 +30,29 @@ public class TopicService {
 
     @Inject
     public CommitmentStore commitmentStore;
+    @Inject
+    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+
+    @Override
+    public Topic create(UUID channelId, String name) {
+        return ensureExists(channelId, name, currentPrincipal.tenancyId());
+    }
+
+    @Override
+    public Topic resolve(UUID channelId, String topicName) {
+        return resolve(channelId, topicName, currentPrincipal.actorId());
+    }
+
+    @Override
+    public TopicManager.RenameResult rename(UUID channelId, String oldName, String newName) {
+        return rename(channelId, oldName, newName, currentPrincipal.actorId());
+    }
+
+    @Override
+    public TopicManager.MergeResult merge(UUID channelId, String sourceTopic, String targetTopic) {
+        return merge(channelId, sourceTopic, targetTopic, currentPrincipal.actorId());
+    }
+
 
     public Topic ensureExists(UUID channelId, String topicName, String tenancyId) {
         String name = normalise(topicName);
@@ -74,7 +98,7 @@ public class TopicService {
         return topicStore.put(unresolved);
     }
 
-    public RenameResult rename(UUID channelId, String oldName, String newName, String actorId) {
+    public TopicManager.RenameResult rename(UUID channelId, String oldName, String newName, String actorId) {
         String normalOld = normalise(oldName);
         String normalNew = normalise(newName);
         if (DEFAULT_TOPIC.equalsIgnoreCase(normalOld)) {
@@ -88,10 +112,10 @@ public class TopicService {
             throw new IllegalArgumentException("Topic '" + normalOld + "' not found");
         }
         int messagesUpdated = messageStore.updateTopicName(channelId, normalOld, normalNew);
-        return new RenameResult(normalOld, normalNew, messagesUpdated);
+        return new TopicManager.RenameResult(normalOld, normalNew, messagesUpdated);
     }
 
-    public MergeResult merge(UUID channelId, String sourceTopic, String targetTopic, String actorId) {
+    public TopicManager.MergeResult merge(UUID channelId, String sourceTopic, String targetTopic, String actorId) {
         String normalSource = normalise(sourceTopic);
         String normalTarget = normalise(targetTopic);
         if (DEFAULT_TOPIC.equalsIgnoreCase(normalSource)) {
@@ -108,7 +132,7 @@ public class TopicService {
         }
         int messagesUpdated = messageStore.updateTopicName(channelId, normalSource, normalTarget);
         topicStore.delete(channelId, normalSource);
-        return new MergeResult(normalSource, normalTarget, messagesUpdated);
+        return new TopicManager.MergeResult(normalSource, normalTarget, messagesUpdated);
     }
 
     public MoveResult move(UUID sourceChannelId, String topicName, UUID targetChannelId, String actorId) {
@@ -160,9 +184,9 @@ public class TopicService {
         return trimmed;
     }
 
-    public record RenameResult(String oldName, String newName, int messagesUpdated) {}
+    // RenameResult moved to TopicManager in qhorus-api
 
-    public record MergeResult(String sourceTopic, String targetTopic, int messagesUpdated) {}
+    // MergeResult moved to TopicManager in qhorus-api
 
     public record MoveResult(String topicName, UUID sourceChannelId, UUID targetChannelId, int messagesUpdated) {}
 
