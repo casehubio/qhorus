@@ -8,7 +8,6 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.platform.api.identity.ActorType;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
@@ -17,7 +16,6 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 class PeerReviewAutoTrigger implements MessageObserver {
 
     private static final Logger LOG = Logger.getLogger(PeerReviewAutoTrigger.class);

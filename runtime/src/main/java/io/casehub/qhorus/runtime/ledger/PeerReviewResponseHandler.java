@@ -6,7 +6,6 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
@@ -14,7 +13,6 @@ import org.jboss.logging.Logger;
 import java.util.UUID;
 
 @ApplicationScoped
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 class PeerReviewResponseHandler implements MessageObserver {
 
     private static final Logger LOG = Logger.getLogger(PeerReviewResponseHandler.class);

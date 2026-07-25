@@ -10,7 +10,6 @@ import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.message.CommitmentService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -58,7 +57,6 @@ import java.util.function.Consumer;
  *
  * @see <a href="https://google.github.io/A2A/">Google A2A Protocol</a>
  */
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @Path("/a2a")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)

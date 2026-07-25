@@ -54,7 +54,6 @@ import io.quarkiverse.mcp.server.McpServer;
 import io.quarkiverse.mcp.server.Tool;
 import io.quarkiverse.mcp.server.ToolArg;
 import io.quarkiverse.mcp.server.WrapBusinessError;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -77,7 +76,6 @@ import java.util.stream.Collectors;
  * structured-return tools. See ADR-0001.
  */
 @McpServer("qhorus")
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @ApplicationScoped
 public class QhorusMcpTools extends QhorusMcpToolsBase {

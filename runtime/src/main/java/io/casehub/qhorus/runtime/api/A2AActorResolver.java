@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 /**
  * Resolves {@link ActorType} for inbound A2A messages.
  *
@@ -17,7 +16,6 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
  * explicit header, instance registry, agent card URL,
  * ActorTypeResolver on agentId (covers persona + system), default HUMAN.
  */
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
 public class A2AActorResolver {
 

@@ -27,7 +27,6 @@ import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.quarkus.arc.properties.UnlessBuildProperty;
 
 /**
  * Protocol bridge backend that registers A2A as a first-class gateway participant.
@@ -61,7 +60,6 @@ import io.quarkus.arc.properties.UnlessBuildProperty;
  *
  * <p>Refs #135, #147.
  */
-@UnlessBuildProperty(name = "casehub.qhorus.reactive.enabled", stringValue = "true", enableIfMissing = true)
 @ApplicationScoped
 public class A2AChannelBackend implements ChannelBackend {
 
