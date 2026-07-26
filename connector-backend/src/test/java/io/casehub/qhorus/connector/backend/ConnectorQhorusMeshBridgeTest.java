@@ -1,5 +1,23 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.message.DispatchResult;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.config.QhorusConfig;
+import io.casehub.qhorus.runtime.message.MessageService;
+import org.eclipse.microprofile.context.ManagedExecutor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,24 +28,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.eclipse.microprofile.context.ManagedExecutor;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.message.DispatchResult;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.message.MessageService;
 
 class ConnectorQhorusMeshBridgeTest {
 
@@ -42,10 +42,10 @@ class ConnectorQhorusMeshBridgeTest {
 
     @BeforeEach
     void setUp() {
-        channelService = mock(ChannelService.class);
-        messageService = mock(MessageService.class);
+        channelService   = mock(ChannelService.class);
+        messageService   = mock(MessageService.class);
         currentPrincipal = mock(CurrentPrincipal.class);
-        executor = mock(ManagedExecutor.class);
+        executor         = mock(ManagedExecutor.class);
 
         // Synchronous executor — runs the Runnable inline before returning.
         // Eliminates the async race without needing Awaitility.
@@ -54,8 +54,8 @@ class ConnectorQhorusMeshBridgeTest {
             return null;
         }).when(executor).execute(any());
 
-        bridge = new ConnectorQhorusMeshBridge(channelService, messageService, currentPrincipal, executor);
-        bridge.deliveryChannelName = "connector-audit";
+        bridge = new ConnectorQhorusMeshBridge(channelService, messageService, currentPrincipal, executor,
+                                               configWith("connector-audit"));
 
         lenient().when(currentPrincipal.tenancyId()).thenReturn(DEFAULT_TENANCY);
         lenient().when(messageService.dispatch(any())).thenReturn(dummyResult());
@@ -72,7 +72,8 @@ class ConnectorQhorusMeshBridgeTest {
 
     @Test
     void blankDeliveryChannelName_noOp() {
-        bridge.deliveryChannelName = "";
+        bridge = new ConnectorQhorusMeshBridge(channelService, messageService, currentPrincipal, executor,
+                                               configWith(""));
 
         bridge.notifyDelivered("slack", "https://hooks.slack.com/services/x", "Hello");
 
@@ -211,6 +212,16 @@ class ConnectorQhorusMeshBridgeTest {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+
+    private static QhorusConfig configWith(String channelName) {
+        final QhorusConfig                  config = mock(QhorusConfig.class);
+        final QhorusConfig.ConnectorBackend cb     = mock(QhorusConfig.ConnectorBackend.class);
+        when(cb.deliveryChannel()).thenReturn(
+                channelName.isBlank() ? Optional.empty() : Optional.of(channelName));
+        when(config.connectorBackend()).thenReturn(cb);
+        return config;
+    }
 
     private Channel channel() {
         return Channel.builder("connector-audit").id(CHANNEL_ID).build();

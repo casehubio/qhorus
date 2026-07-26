@@ -37,6 +37,18 @@ public interface QhorusConfig {
     /** Channel protocol enforcement settings. */
     Protocol protocol();
 
+    /**
+     * Connector backend settings (optional module).
+     */
+    ConnectorBackend connectorBackend();
+
+    interface ConnectorBackend {
+        /**
+         * Channel name for delivery audit notifications. Empty = disabled.
+         */
+        Optional<String> deliveryChannel();
+    }
+
 
     interface Summary {
         /** When true, enables the channel summary scheduler. Default: true. */
