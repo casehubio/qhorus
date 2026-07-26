@@ -56,26 +56,9 @@ class LedgerWriteTracingTest {
         service = new LedgerWriteService();
         service.ledger = new StubLedgerEntryRepository(entries);
         service.messageRepo = new StubMessageLedgerEntryRepository(entries);
-        service.config = new LedgerConfig() {
-            @Override public boolean enabled() { return true; }
-            @Override public java.util.Optional<String> datasource() { return java.util.Optional.empty(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.HashChainConfig hashChain() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.DecisionContextConfig decisionContext() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.EvidenceConfig evidence() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.AttestationConfig attestations() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.TrustScoreConfig trustScore() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.RetentionConfig retention() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.MerkleConfig merkle() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.IdentityConfig identity() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.DecayConfig decay() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.HealthConfig health() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.AgentSigningConfig agentSigning() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.OutcomeConfig outcome() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.ErasureReceiptConfig erasureReceipt() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.AgentIdentityConfig agentIdentity() { throw new UnsupportedOperationException(); }
-            @Override public io.casehub.ledger.runtime.config.LedgerConfig.MetadataConfig metadata() { throw new UnsupportedOperationException(); }
-
-        };
+        LedgerConfig ledgerConfig = org.mockito.Mockito.mock(LedgerConfig.class);
+        org.mockito.Mockito.when(ledgerConfig.enabled()).thenReturn(true);
+        service.config = ledgerConfig;
         service.actorIdProvider = sender -> sender; // identity mapping
         service.attestationPolicy = new StubCommitmentAttestationPolicy();
         service.objectMapper = new ObjectMapper();
