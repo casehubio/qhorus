@@ -1,38 +1,34 @@
 package io.casehub.qhorus.notification.bridge;
 
-import io.casehub.platform.api.notification.NotificationInput;
-import io.casehub.platform.api.notification.NotificationSeverity;
-import io.casehub.platform.api.notification.NotificationSource;
-import io.casehub.platform.api.notification.NotificationStore;
+import io.casehub.platform.api.datasource.DataSource;
+import io.casehub.platform.api.datasource.DataSourceRegistry;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CommitmentStore;
-
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
 import org.jboss.logging.Logger;
 
 import java.util.Optional;
-import java.util.UUID;
 
-import static io.casehub.qhorus.notification.bridge.NotificationCategories.*;
+import static io.casehub.platform.api.identity.TenancyConstants.PLATFORM_TENANT_ID;
+import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
 
 @ApplicationScoped
 public class NotificationBridgeObserver implements MessageObserver {
 
-    private static final Logger LOG = Logger.getLogger(NotificationBridgeObserver.class);
+    private static final Logger LOG                = Logger.getLogger(NotificationBridgeObserver.class);
+    private static final int    MAX_CONTENT_LENGTH = 200;
 
-    private final CommitmentStore commitmentStore;
-    private final NotificationStore notificationStore;
+    private final CommitmentStore    commitmentStore;
+    private final DataSourceRegistry dataSourceRegistry;
 
     @Inject
     public NotificationBridgeObserver(CommitmentStore commitmentStore,
-                                      NotificationStore notificationStore) {
-        this.commitmentStore = commitmentStore;
-        this.notificationStore = notificationStore;
+                                      DataSourceRegistry dataSourceRegistry) {
+        this.commitmentStore    = commitmentStore;
+        this.dataSourceRegistry = dataSourceRegistry;
     }
 
     @Override
@@ -41,10 +37,10 @@ public class NotificationBridgeObserver implements MessageObserver {
             return;
         }
         switch (event.messageType()) {
-            case COMMAND -> notifyObligorAssigned(event);
-            case DONE    -> notifyRequesterResolved(event, OBLIGATION_FULFILLED, "Request completed");
-            case FAILURE -> notifyRequesterResolved(event, OBLIGATION_FAILED, "Request failed");
-            default -> { /* STATUS, RESPONSE, QUERY, EVENT, HANDOFF, DECLINE — no notification */ }
+            case COMMAND -> fireAssigned(event);
+            case DONE -> fireResolved(event, QhorusObligationEvent.Kind.FULFILLED);
+            case FAILURE -> fireResolved(event, QhorusObligationEvent.Kind.FAILED);
+            default -> {}
         }
     }
 
@@ -53,7 +49,7 @@ public class NotificationBridgeObserver implements MessageObserver {
         return Scope.LOCAL;
     }
 
-    private void notifyObligorAssigned(MessageReceivedEvent event) {
+    private void fireAssigned(MessageReceivedEvent event) {
         Optional<Commitment> commitment = commitmentStore.findByCorrelationId(event.correlationId());
         if (commitment.isEmpty()) {
             LOG.debugf("No commitment for correlationId=%s — skipping COMMAND notification", event.correlationId());
@@ -63,18 +59,19 @@ public class NotificationBridgeObserver implements MessageObserver {
         if (obligor == null || obligor.isBlank()) {
             return;
         }
-        store(obligor,
-              event.tenancyId(),
-              "Obligation assigned in #" + event.channelName(),
-              truncate(event.content(), 200),
-              OBLIGATION_ASSIGNED,
-              NotificationSeverity.INFO,
-              event.channelId(),
-              event.senderId(),
-              event.correlationId());
+        fire(new QhorusObligationEvent(
+                QhorusObligationEvent.Kind.ASSIGNED,
+                event.tenancyId(),
+                obligor,
+                commitment.get().requester(),
+                event.channelId(),
+                event.channelName(),
+                event.senderId(),
+                event.correlationId(),
+                truncate(event.content(), MAX_CONTENT_LENGTH)));
     }
 
-    private void notifyRequesterResolved(MessageReceivedEvent event, String category, String titlePrefix) {
+    private void fireResolved(MessageReceivedEvent event, QhorusObligationEvent.Kind kind) {
         Optional<Commitment> commitment = commitmentStore.findByCorrelationId(event.correlationId());
         if (commitment.isEmpty()) {
             return;
@@ -86,45 +83,36 @@ public class NotificationBridgeObserver implements MessageObserver {
         if (requester.equals(event.senderId())) {
             return;
         }
-        NotificationSeverity severity = OBLIGATION_FAILED.equals(category)
-                ? NotificationSeverity.WARNING
-                : NotificationSeverity.INFO;
-        store(requester,
-              event.tenancyId(),
-              titlePrefix + " in #" + event.channelName(),
-              truncate(event.content(), 200),
-              category,
-              severity,
-              event.channelId(),
-              event.senderId(),
-              event.correlationId());
+        fire(new QhorusObligationEvent(
+                kind,
+                event.tenancyId(),
+                commitment.get().obligor(),
+                requester,
+                event.channelId(),
+                event.channelName(),
+                event.senderId(),
+                event.correlationId(),
+                truncate(event.content(), MAX_CONTENT_LENGTH)));
     }
 
-    private void store(String userId, String tenancyId, String title, String body,
-                       String category, NotificationSeverity severity,
-                       UUID channelId, String actorId, String correlationId) {
+    private void fire(QhorusObligationEvent event) {
         try {
-            notificationStore.store(new NotificationInput(
-                    userId,
-                    tenancyId,
-                    title,
-                    body,
-                    category,
-                    severity,
-                    null,
-                    new NotificationSource(
-                            correlationId,
-                            ENTITY_TYPE,
-                            channelId.toString(),
-                            actorId)));
+            Optional<DataSource<?>> ds = dataSourceRegistry.resolveSource(
+                    NOTIFICATION_DATASOURCE_PATH, PLATFORM_TENANT_ID);
+            if (ds.isEmpty()) {
+                LOG.warnf("Notification DataSource not available — dropping %s event", event.kind());
+                return;
+            }
+            @SuppressWarnings("unchecked")
+            DataSource<Object> source = (DataSource<Object>) ds.get();
+            source.add(event);
         } catch (Exception e) {
-            LOG.warnf("Failed to store notification for user=%s category=%s: %s",
-                      userId, category, e.getMessage());
+            LOG.warnf("Failed to fire obligation event %s: %s", event.kind(), e.getMessage());
         }
     }
 
     static String truncate(String s, int max) {
-        if (s == null) return null;
+        if (s == null) {return null;}
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 }
