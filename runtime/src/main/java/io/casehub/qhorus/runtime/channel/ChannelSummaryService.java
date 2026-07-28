@@ -1,9 +1,10 @@
 package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.casehub.qhorus.api.store.ChannelSummaryStore;
@@ -96,16 +97,21 @@ public class ChannelSummaryService {
         long          messagesSince = countMessagesSince(channelId, existing.lastUpdatedMessageId());
         List<Message> recent        = fetchMessagesSince(channelId, existing.lastUpdatedMessageId());
 
-        String updated = hook.update(new SummaryUpdateContext(
-                channelId, ch.name(), ch.tenancyId(),
-                existing.content(), existing.lastUpdatedMessageId(), messagesSince,
+        SummaryResult previousResult = existing.content() != null
+                                       ? new SummaryResult(existing.content(), existing.annotations())
+                                       : null;
+
+        SummaryResult updated = hook.update(new SummaryUpdateContext(
+                channelId, ch.name(), ch.tenancyId(), previousResult,
+                existing.lastUpdatedMessageId(), messagesSince,
                 recent,
                 q -> messageStore.scan(q.toBuilder().channelId(channelId).build())));
 
         Long maxMessageId = currentMaxMessageId(channelId);
 
         ChannelSummary saved = summaryStore.save(existing.toBuilder()
-                                                         .content(updated)
+                                                         .content(updated.text())
+                                                         .annotations(updated.annotations())
                                                          .updatedAt(Instant.now())
                                                          .updatedBy("system:summary-scheduler")
                                                          .lastUpdatedMessageId(maxMessageId)

@@ -11,8 +11,13 @@ public record SummaryUpdateContext(
         UUID channelId,
         String channelName,
         String tenancyId,
-        String currentSummary,
+        SummaryResult previousResult,
         Long lastUpdatedMessageId,
         long messagesSinceLastUpdate,
         List<Message> recentMessages,
-        Function<MessageQuery, List<Message>> messageQuery) {}
+        Function<MessageQuery, List<Message>> messageQuery) {
+
+    public String currentSummary() {
+        return previousResult != null ? previousResult.text() : null;
+    }
+}

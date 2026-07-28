@@ -317,8 +317,10 @@ public abstract class QhorusMcpToolsBase {
             boolean resolved,
             String resolvedAt) {}
 
-    record ChannelSummaryResult(String channelName, String content, String updatedAt,
-                                String updatedBy, Integer updateAfterMessages, Integer updateAfterSeconds) {}
+    record ChannelSummaryResult(String channelName, String content,
+                                Map<String, String> annotations, String updatedAt,
+                                String updatedBy, Integer updateAfterMessages,
+                                Integer updateAfterSeconds) {}
 
 
     /**

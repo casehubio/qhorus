@@ -2355,17 +2355,17 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public ChannelSummaryResult get_channel_summary(String channel) {
         Channel ch = resolveChannel(channel);
         return channelSummaryService.getSummary(ch.id())
-                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(),
+                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
                                                                        s.updatedAt() != null ? s.updatedAt().toString() : null,
                                                                        s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds()))
-                                    .orElse(new ChannelSummaryResult(ch.name(), null, null, null, null, null));
+                                    .orElse(new ChannelSummaryResult(ch.name(), null, Map.of(), null, null, null, null));
     }
 
     @Tool(description = "Set or update a channel's summary text (manual override, bypasses hook)")
     public ChannelSummaryResult update_channel_summary(String channel, String summary) {
         Channel ch = resolveChannel(channel);
         var     s  = channelSummaryService.setSummary(ch.id(), summary, currentPrincipal.actorId());
-        return new ChannelSummaryResult(ch.name(), s.content(),
+        return new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
                                         s.updatedAt() != null ? s.updatedAt().toString() : null,
                                         s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds());
     }
@@ -2375,7 +2375,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                                                           Integer update_after_messages, Integer update_after_seconds) {
         Channel ch = resolveChannel(channel);
         var     s  = channelSummaryService.configureSummary(ch.id(), update_after_messages, update_after_seconds);
-        return new ChannelSummaryResult(ch.name(), s.content(),
+        return new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
                                         s.updatedAt() != null ? s.updatedAt().toString() : null,
                                         s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds());
     }
@@ -2384,7 +2384,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public ChannelSummaryResult trigger_channel_summary_update(String channel) {
         Channel ch = resolveChannel(channel);
         return channelSummaryService.triggerUpdate(ch.id())
-                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(),
+                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
                                                                        s.updatedAt() != null ? s.updatedAt().toString() : null,
                                                                        s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds()))
                                     .orElseThrow(() -> new IllegalArgumentException(

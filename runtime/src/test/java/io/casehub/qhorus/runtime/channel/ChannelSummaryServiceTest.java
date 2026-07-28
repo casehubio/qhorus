@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.store.MessageStore;
 import org.mockito.Mockito;
 import jakarta.enterprise.event.Event;
@@ -35,7 +36,7 @@ class ChannelSummaryServiceTest {
         service.summaryStore   = summaryStore;
         service.channelService = channelService;
         service.messageStore   = messageStore;
-        service.hook           = ctx -> "generated summary for " + ctx.channelName();
+        service.hook           = ctx -> SummaryResult.ofText("generated summary for " + ctx.channelName());
         service.summaryEvents  = Mockito.mock(Event.class);
     }
 

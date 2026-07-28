@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
+import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.casehub.qhorus.api.store.ChannelSummaryStore;
@@ -100,9 +101,13 @@ public class ChannelSummaryScheduler {
         long          messagesSince = countMessagesSince(s.channelId(), s.lastUpdatedMessageId());
         List<Message> recent        = fetchMessagesSince(s.channelId(), s.lastUpdatedMessageId());
 
-        String updated = hook.update(new SummaryUpdateContext(
+        SummaryResult previousResult = s.content() != null
+                ? new SummaryResult(s.content(), s.annotations())
+                : null;
+
+        SummaryResult updated = hook.update(new SummaryUpdateContext(
                 s.channelId(), ch.name(), ch.tenancyId(),
-                s.content(), s.lastUpdatedMessageId(), messagesSince,
+                previousResult, s.lastUpdatedMessageId(), messagesSince,
                 recent,
                 q -> crossTenantMessageStore.scan(
                         q.toBuilder().channelId(s.channelId()).build())));
@@ -110,7 +115,8 @@ public class ChannelSummaryScheduler {
         Long maxMessageId = currentMaxMessageId(s.channelId());
 
         summaryStore.save(s.toBuilder()
-                           .content(updated)
+                           .content(updated.text())
+                           .annotations(updated.annotations())
                            .updatedAt(Instant.now())
                            .updatedBy("system:summary-scheduler")
                            .lastUpdatedMessageId(maxMessageId)

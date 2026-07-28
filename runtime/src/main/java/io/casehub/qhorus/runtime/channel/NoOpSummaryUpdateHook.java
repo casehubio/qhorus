@@ -1,5 +1,6 @@
 package io.casehub.qhorus.runtime.channel;
 
+import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.quarkus.arc.DefaultBean;
@@ -9,7 +10,9 @@ import jakarta.enterprise.context.ApplicationScoped;
 @ApplicationScoped
 public class NoOpSummaryUpdateHook implements SummaryUpdateHook {
     @Override
-    public String update(SummaryUpdateContext context) {
-        return context.currentSummary();
+    public SummaryResult update(SummaryUpdateContext context) {
+        return context.previousResult() != null
+               ? context.previousResult()
+               : SummaryResult.ofText("");
     }
 }
