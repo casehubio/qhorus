@@ -28,3 +28,4 @@ wksp
 .claude/scheduled_tasks.lock
 .claude
 package-lock.json
+proj
