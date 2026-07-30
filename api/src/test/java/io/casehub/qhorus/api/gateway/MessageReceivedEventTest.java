@@ -1,5 +1,6 @@
 package io.casehub.qhorus.api.gateway;
 
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,7 @@ class MessageReceivedEventTest {
                              .id(42L).channelId(channelId).sender("agent-1")
                              .messageType(MessageType.COMMAND).tenancyId("t1")
                              .content("do it").correlationId("corr-1")
-                             .target("role:worker").topic("general")
+                             .target("role:worker").actorType(ActorType.AGENT).topic("general")
                              .createdAt(now).build();
 
         MessageReceivedEvent event = MessageReceivedEvent.fromMessage(msg, "ops-channel");
@@ -31,6 +32,8 @@ class MessageReceivedEventTest {
         assertEquals("t1", event.tenancyId());
         assertEquals(MessageType.COMMAND, event.messageType());
         assertEquals("agent-1", event.senderId());
+        assertEquals("role:worker", event.target());
+        assertEquals(ActorType.AGENT, event.actorType());
         assertEquals("corr-1", event.correlationId());
         assertEquals(now, event.occurredAt());
         assertEquals("do it", event.content());

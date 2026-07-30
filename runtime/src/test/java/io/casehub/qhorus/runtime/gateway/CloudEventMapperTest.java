@@ -22,7 +22,7 @@ class CloudEventMapperTest {
         Instant now = Instant.now();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "test-channel", channelId, "tenant-1",
-                MessageType.STATUS, "agent-1", "corr-1", now, "hello", "general");
+                MessageType.STATUS, "agent-1", null, null, "corr-1", now, "hello", "general");
 
         CloudEvent ce = CloudEventMapper.toCloudEvent(event, mapper);
 
@@ -40,7 +40,7 @@ class CloudEventMapperTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "test-channel", channelId, null,
-                MessageType.QUERY, "agent-1", null, Instant.now(), "q", null);
+                MessageType.QUERY, "agent-1", null, null, null, Instant.now(), "q", null);
 
         CloudEvent ce = CloudEventMapper.toCloudEvent(event, mapper);
 
@@ -52,7 +52,7 @@ class CloudEventMapperTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
-                MessageType.EVENT, "agent-1", null, Instant.now(), null, null);
+                MessageType.EVENT, "agent-1", null, null, null, Instant.now(), null, null);
 
         CloudEvent ce = CloudEventMapper.toCloudEvent(event, mapper);
 
@@ -65,7 +65,7 @@ class CloudEventMapperTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 42L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null, Instant.now(), "hello", null);
+                MessageType.STATUS, "agent-1", null, null, null, Instant.now(), "hello", null);
 
         CloudEvent ce = CloudEventMapper.toCloudEvent(event, mapper);
 
@@ -77,7 +77,7 @@ class CloudEventMapperTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 null, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null, Instant.now(), "hello", null);
+                MessageType.STATUS, "agent-1", null, null, null, Instant.now(), "hello", null);
 
         CloudEvent ce = CloudEventMapper.toCloudEvent(event, mapper);
 

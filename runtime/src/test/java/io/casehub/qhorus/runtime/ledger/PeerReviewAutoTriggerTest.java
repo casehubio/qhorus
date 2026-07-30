@@ -163,6 +163,5 @@ class PeerReviewAutoTriggerTest {
     private MessageReceivedEvent event(MessageType type, UUID channelId,
                                        String corrId, String content) {
         return new MessageReceivedEvent(1L, "test-ch", channelId, TENANT,
-                type, "obligor", corrId, Instant.now(), content, null);
-    }
+                                        type, "obligor", null, null, corrId, Instant.now(), content, null);}
 }

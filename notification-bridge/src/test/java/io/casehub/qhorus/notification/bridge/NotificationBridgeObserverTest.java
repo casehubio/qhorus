@@ -16,8 +16,8 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
-import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
 import static io.casehub.platform.api.identity.TenancyConstants.PLATFORM_TENANT_ID;
+import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -143,7 +143,7 @@ class NotificationBridgeObserverTest {
     void event_message_skips() {
         var evt = new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
-                MessageType.EVENT, "system:telemetry", CORRELATION_ID,
+                MessageType.EVENT, "system:telemetry", null, null, CORRELATION_ID,
                 Instant.now(), null, null);
 
         observer.onMessage(evt);
@@ -156,7 +156,7 @@ class NotificationBridgeObserverTest {
     void null_correlationId_skips_all_processing() {
         var evt = new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
-                MessageType.COMMAND, REQUESTER, null,
+                MessageType.COMMAND, REQUESTER, null, null, null,
                 Instant.now(), "Do this", null);
 
         observer.onMessage(evt);
@@ -217,9 +217,8 @@ class NotificationBridgeObserverTest {
     private MessageReceivedEvent event(MessageType type, String sender, String content) {
         return new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
-                type, sender, CORRELATION_ID,
-                Instant.now(), content, null);
-    }
+                type, sender, null, null, CORRELATION_ID,
+                Instant.now(), content, null);}
 
     private Commitment commitment(String requester, String obligor) {
         return Commitment.builder()

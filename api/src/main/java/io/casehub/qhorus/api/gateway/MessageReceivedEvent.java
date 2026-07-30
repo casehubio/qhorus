@@ -1,5 +1,6 @@
 package io.casehub.qhorus.api.gateway;
 
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 
@@ -14,6 +15,8 @@ public record MessageReceivedEvent(
         String tenancyId,
         MessageType messageType,
         String senderId,
+        String target,
+        ActorType actorType,
         String correlationId,
         Instant occurredAt,
         String content,
@@ -32,7 +35,8 @@ public record MessageReceivedEvent(
         Instant occurredAt = message.createdAt() != null ? message.createdAt() : Instant.now();
         return new MessageReceivedEvent(
                 message.id(), channelName, message.channelId(), message.tenancyId(),
-                message.messageType(), message.sender(), message.correlationId(),
+                message.messageType(), message.sender(), message.target(), message.actorType(),
+                message.correlationId(),
                 occurredAt, content, message.topic());
     }
 }
