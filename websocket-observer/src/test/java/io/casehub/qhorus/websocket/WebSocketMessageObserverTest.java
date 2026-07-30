@@ -44,7 +44,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
+                MessageType.STATUS, "agent-1", null, null, null,
                 Instant.now(), "hello", null));
 
         verify(conn).sendTextAndAwait(anyString());
@@ -56,7 +56,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
+                MessageType.STATUS, "agent-1", null, null, null,
                 Instant.now(), "hello", null));
         // No exception, no crash
     }
@@ -69,7 +69,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
-                MessageType.COMMAND, "agent-1", "corr-1",
+                MessageType.COMMAND, "agent-1", null, null, "corr-1",
                 Instant.now(), "do it", "general"));
 
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
@@ -92,7 +92,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
+                MessageType.STATUS, "agent-1", null, null, null,
                 Instant.now(), "hello", null));
 
         verify(good).sendTextAndAwait(anyString());
@@ -107,7 +107,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 5L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
+                MessageType.STATUS, "agent-1", null, null, null,
                 Instant.now(), "hello", null));
 
         verify(conn, never()).sendTextAndAwait(anyString());
@@ -127,7 +127,7 @@ class WebSocketMessageObserverTest {
 
         observer.onMessage(new MessageReceivedEvent(
                 6L, "test-channel", channelId, "t1",
-                MessageType.STATUS, "agent-1", null,
+                MessageType.STATUS, "agent-1", null, null, null,
                 Instant.now(), "hello", null));
 
         verify(live).sendTextAndAwait(anyString());
