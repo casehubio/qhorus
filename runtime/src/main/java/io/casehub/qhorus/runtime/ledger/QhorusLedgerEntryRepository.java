@@ -20,7 +20,7 @@ import io.casehub.ledger.api.model.LedgerEntry;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
-import io.casehub.ledger.runtime.privacy.DecisionContextSanitiser;
+import io.casehub.ledger.runtime.privacy.ContentSanitiser;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
@@ -70,7 +70,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
     ActorIdentityProvider actorIdentityProvider;
 
     @Inject
-    DecisionContextSanitiser decisionContextSanitiser;
+    ContentSanitiser decisionContextSanitiser;
 
     @Inject
     Event<AttestationRecordedEvent> attestationRecordedEvent;

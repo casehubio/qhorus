@@ -485,7 +485,11 @@
       "Bash(GIT_SEQUENCE_EDITOR=\"sed -i '' '2,\\\\$s/^pick/fixup/'\" git *)",
       "Bash(JAVA_HOME=$\\(/usr/libexec/java_home -v 26\\) git -C /Users/mdproctor/claude/casehub/qhorus rebase -i --autosquash HEAD~10 --exec \"echo done\")",
       "Bash(git -C /Users/mdproctor/claude/casehub/qhorus diff)",
-      "Bash(git -C /Users/mdproctor/claude/casehub/qhorus diff --cached)"
+      "Bash(git -C /Users/mdproctor/claude/casehub/qhorus diff --cached)",
+      "Bash(GIT_SEQUENCE_EDITOR='sed -i \"\" \"2,\\\\$s/^pick/fixup/\"' git *)",
+      "Bash(GIT_SEQUENCE_EDITOR='sed -i \"\" \"2,$s/^pick/fixup/\"' git -C /Users/mdproctor/claude/casehub/qhorus rebase -i 0ee9e02091494e6c655c2fa06a482513a6264220)",
+      "Bash(osascript *)",
+      "mcp__hortora__gardenSearch"
     ]
   }
 }
