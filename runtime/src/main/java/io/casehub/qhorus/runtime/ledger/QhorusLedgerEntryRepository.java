@@ -3,9 +3,7 @@ package io.casehub.qhorus.runtime.ledger;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -27,7 +25,6 @@ import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.platform.api.identity.TenancyConstants;
-import io.quarkus.hibernate.orm.PersistenceUnit;
 
 /**
  * Qhorus's default {@link LedgerEntryRepository} bean.
@@ -70,7 +67,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
     ActorIdentityProvider actorIdentityProvider;
 
     @Inject
-    ContentSanitiser decisionContextSanitiser;
+    ContentSanitiser contentSanitiser;
 
     @Inject
     Event<AttestationRecordedEvent> attestationRecordedEvent;
@@ -100,7 +97,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
         }
         entry.compliance().ifPresent(cs -> {
             if (cs.decisionContext != null) {
-                cs.decisionContext = decisionContextSanitiser.sanitise(cs.decisionContext);
+                cs.decisionContext = contentSanitiser.sanitise(cs.decisionContext);
                 entry.refreshSupplementJson();
             }
         });
