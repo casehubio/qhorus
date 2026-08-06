@@ -59,6 +59,9 @@ class WatchdogEvaluationServiceTest {
     @Inject
     MessageStore messageStore;
 
+    @Inject
+    io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+
     // -------------------------------------------------------------------------
     // evaluateApprovalPending — CommitmentStore seam
     // -------------------------------------------------------------------------
@@ -717,5 +720,137 @@ class WatchdogEvaluationServiceTest {
 
         List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
         assertTrue(alerts.isEmpty(), "Should not fire with only one similar cross-sender pair");
+    }
+
+    // -------------------------------------------------------------------------
+    // evaluateDeliveryLag — ChannelMembershipStore seam
+    // -------------------------------------------------------------------------
+
+    @Test
+    @TestTransaction
+    void evaluateDeliveryLag_fires_whenMemberBehindThreshold() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Channel ch = channelStore.put(Channel.builder("lag-fire-" + suffix)
+                .semantic(ChannelSemantic.APPEND).trackDelivery(true).build());
+        Channel notifCh = channelStore.put(Channel.builder("notif-lag-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+
+        watchdogStore.put(Watchdog.builder(WatchdogConditionType.DELIVERY_LAG, ch.name())
+                .thresholdCount(5).notificationChannel(notifCh.name()).createdBy("test").build());
+
+        for (int i = 0; i < 10; i++) {
+            messageStore.put(Message.builder().channelId(ch.id()).sender("agent-a")
+                    .messageType(MessageType.STATUS).actorType(ActorType.AGENT).content("msg-" + i).build());
+        }
+
+        channelMembershipStore.put(new io.casehub.qhorus.api.channel.ChannelMembership(
+                null, ch.id(), "observer-1", io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT,
+                null, Instant.now(), null, 3L));
+
+        watchdogService.evaluateAll();
+
+        List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
+        assertFalse(alerts.isEmpty(), "DELIVERY_LAG should fire when member is behind threshold");
+        assertTrue(alerts.get(0).content().contains("DELIVERY_LAG"));
+    }
+
+    @Test
+    @TestTransaction
+    void evaluateDeliveryLag_noFire_whenAllCaughtUp() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Channel ch = channelStore.put(Channel.builder("lag-ok-" + suffix)
+                .semantic(ChannelSemantic.APPEND).trackDelivery(true).build());
+        Channel notifCh = channelStore.put(Channel.builder("notif-lag-ok-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+
+        watchdogStore.put(Watchdog.builder(WatchdogConditionType.DELIVERY_LAG, ch.name())
+                .thresholdCount(5).notificationChannel(notifCh.name()).createdBy("test").build());
+
+        for (int i = 0; i < 10; i++) {
+            messageStore.put(Message.builder().channelId(ch.id()).sender("agent-a")
+                    .messageType(MessageType.STATUS).actorType(ActorType.AGENT).content("msg-" + i).build());
+        }
+
+        Long latestId = messageStore.findLastMessage(ch.id()).map(Message::id).orElseThrow();
+        channelMembershipStore.put(new io.casehub.qhorus.api.channel.ChannelMembership(
+                null, ch.id(), "observer-1", io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT,
+                null, Instant.now(), null, latestId));
+
+        watchdogService.evaluateAll();
+
+        List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
+        assertTrue(alerts.isEmpty(), "DELIVERY_LAG should not fire when member is caught up");
+    }
+
+    @Test
+    @TestTransaction
+    void evaluateDeliveryLag_skips_whenTrackingDisabled() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Channel ch = channelStore.put(Channel.builder("lag-notrack-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+        Channel notifCh = channelStore.put(Channel.builder("notif-lag-notrack-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+
+        watchdogStore.put(Watchdog.builder(WatchdogConditionType.DELIVERY_LAG, ch.name())
+                .thresholdCount(5).notificationChannel(notifCh.name()).createdBy("test").build());
+
+        for (int i = 0; i < 10; i++) {
+            messageStore.put(Message.builder().channelId(ch.id()).sender("agent-a")
+                    .messageType(MessageType.STATUS).actorType(ActorType.AGENT).content("msg-" + i).build());
+        }
+
+        watchdogService.evaluateAll();
+
+        List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
+        assertTrue(alerts.isEmpty(), "DELIVERY_LAG should skip channels without delivery tracking");
+    }
+
+    @Test
+    @TestTransaction
+    void evaluateDeliveryLag_fires_whenCursorNull() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Channel ch = channelStore.put(Channel.builder("lag-null-" + suffix)
+                .semantic(ChannelSemantic.APPEND).trackDelivery(true).build());
+        Channel notifCh = channelStore.put(Channel.builder("notif-lag-null-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+
+        watchdogStore.put(Watchdog.builder(WatchdogConditionType.DELIVERY_LAG, ch.name())
+                .thresholdCount(5).notificationChannel(notifCh.name()).createdBy("test").build());
+
+        for (int i = 0; i < 10; i++) {
+            messageStore.put(Message.builder().channelId(ch.id()).sender("agent-a")
+                    .messageType(MessageType.STATUS).actorType(ActorType.AGENT).content("msg-" + i).build());
+        }
+
+        channelMembershipStore.put(new io.casehub.qhorus.api.channel.ChannelMembership(
+                null, ch.id(), "observer-1", io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT,
+                null, Instant.now(), null, null));
+
+        watchdogService.evaluateAll();
+
+        List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
+        assertFalse(alerts.isEmpty(), "DELIVERY_LAG should fire when cursor is null (never delivered)");
+    }
+
+    @Test
+    @TestTransaction
+    void evaluateDeliveryLag_noFire_whenChannelEmpty() {
+        String suffix = UUID.randomUUID().toString().substring(0, 8);
+        Channel ch = channelStore.put(Channel.builder("lag-empty-" + suffix)
+                .semantic(ChannelSemantic.APPEND).trackDelivery(true).build());
+        Channel notifCh = channelStore.put(Channel.builder("notif-lag-empty-" + suffix)
+                .semantic(ChannelSemantic.APPEND).build());
+
+        watchdogStore.put(Watchdog.builder(WatchdogConditionType.DELIVERY_LAG, ch.name())
+                .thresholdCount(5).notificationChannel(notifCh.name()).createdBy("test").build());
+
+        channelMembershipStore.put(new io.casehub.qhorus.api.channel.ChannelMembership(
+                null, ch.id(), "observer-1", io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT,
+                null, Instant.now(), null, null));
+
+        watchdogService.evaluateAll();
+
+        List<Message> alerts = messageStore.scan(MessageQuery.forChannel(notifCh.id()));
+        assertTrue(alerts.isEmpty(), "DELIVERY_LAG should not fire on empty channel");
     }
 }

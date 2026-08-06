@@ -4,7 +4,8 @@ public enum WatchdogConditionType {
     BARRIER_STUCK, APPROVAL_PENDING, AGENT_STALE, CHANNEL_IDLE, QUEUE_DEPTH,
     CONTEXT_PRESSURE,
     LOOP_DETECTED, OBLIGATION_FAN_OUT, CONVERSATION_STALL, ECHO_CHAMBER,
-    CIRCULAR_DELEGATION;
+    CIRCULAR_DELEGATION,
+    DELIVERY_LAG;
 
     public static java.util.Optional<WatchdogConditionType> fromString(String value) {
         try {

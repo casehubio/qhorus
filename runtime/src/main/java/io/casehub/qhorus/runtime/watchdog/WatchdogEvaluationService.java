@@ -22,6 +22,7 @@ import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
 import io.casehub.qhorus.api.watchdog.BarrierStuckContext;
 import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
 import io.casehub.qhorus.api.watchdog.CircularDelegationContext;
+import io.casehub.qhorus.api.watchdog.DeliveryLagContext;
 import io.casehub.qhorus.api.watchdog.ContextPressureContext;
 import io.casehub.qhorus.api.watchdog.ConversationStallContext;
 import io.casehub.qhorus.api.watchdog.EchoChamberContext;
@@ -120,6 +121,7 @@ public class WatchdogEvaluationService {
                 case CONVERSATION_STALL -> evaluateConversationStall(w, now);
                 case ECHO_CHAMBER -> evaluateEchoChamber(w, now);
                 case CIRCULAR_DELEGATION -> evaluateCircularDelegation(w, now);
+                case DELIVERY_LAG -> evaluateDeliveryLag(w, now);
             };
             if (fired) {
                 Watchdog updated = w.toBuilder().lastFiredAt(now).build();
@@ -612,5 +614,41 @@ public class WatchdogEvaluationService {
         return fired;
     }
 
+    private boolean evaluateDeliveryLag(Watchdog w, Instant now) {
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 50;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(ch))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            Optional<Message> head = crossTenantMessageStore.findLastMessage(ch.id());
+            if (head.isEmpty()) { continue; }
+            long latestId = head.get().id();
+
+            List<io.casehub.qhorus.api.channel.ChannelMembership> members =
+                    channelMembershipStore.findByChannel(ch.id());
+
+            List<DeliveryLagContext.LagDetail> lagging = members.stream()
+                    .map(m -> {
+                        long delivered = m.lastDeliveredMessageId() != null ? m.lastDeliveredMessageId() : 0L;
+                        long lag = latestId - delivered;
+                        return new DeliveryLagContext.LagDetail(m.memberId(), delivered, lag);
+                    })
+                    .filter(d -> d.lag() >= threshold)
+                    .toList();
+
+            if (!lagging.isEmpty()) {
+                String summary = "DELIVERY_LAG: " + lagging.size()
+                        + " participant(s) lagging on '" + ch.name() + "'";
+                fireAlert(w, summary,
+                        new DeliveryLagContext(ch.id(), ch.name(), lagging, latestId), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
 
 }

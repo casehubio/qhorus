@@ -2082,11 +2082,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Tool(name = "register_watchdog", description = "Register a watchdog condition that fires alert events to a notification channel "
                                                     + "when the condition is met. Condition types: BARRIER_STUCK, APPROVAL_PENDING, AGENT_STALE, CHANNEL_IDLE, QUEUE_DEPTH, "
-                                                    + "CONTEXT_PRESSURE, LOOP_DETECTED, OBLIGATION_FAN_OUT, CONVERSATION_STALL, ECHO_CHAMBER. "
+                                                    + "CONTEXT_PRESSURE, LOOP_DETECTED, OBLIGATION_FAN_OUT, CONVERSATION_STALL, ECHO_CHAMBER, DELIVERY_LAG. "
                                                     + "Requires casehub.qhorus.watchdog.enabled=true.")
     @Transactional
     public WatchdogSummary registerWatchdog(
-            @ToolArg(name = "condition_type", description = "BARRIER_STUCK | APPROVAL_PENDING | AGENT_STALE | CHANNEL_IDLE | QUEUE_DEPTH | CONTEXT_PRESSURE | LOOP_DETECTED | OBLIGATION_FAN_OUT | CONVERSATION_STALL | ECHO_CHAMBER") String conditionType,
+            @ToolArg(name = "condition_type", description = "BARRIER_STUCK | APPROVAL_PENDING | AGENT_STALE | CHANNEL_IDLE | QUEUE_DEPTH | CONTEXT_PRESSURE | LOOP_DETECTED | OBLIGATION_FAN_OUT | CONVERSATION_STALL | ECHO_CHAMBER | DELIVERY_LAG") String conditionType,
             @ToolArg(name = "target_name", description = "Channel name, instance_id, or '*' for all") String targetName,
             @ToolArg(name = "threshold_seconds", description = "Time threshold in seconds (for time-based conditions)", required = false) Integer thresholdSeconds,
             @ToolArg(name = "threshold_count", description = "Count threshold (for QUEUE_DEPTH, LOOP_DETECTED repetitions, ECHO_CHAMBER min agents)", required = false) Integer thresholdCount,

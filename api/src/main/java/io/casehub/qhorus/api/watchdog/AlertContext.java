@@ -6,7 +6,7 @@ public sealed interface AlertContext
                 ContextPressureContext,
                 LoopDetectedContext, ObligationFanOutContext,
                 ConversationStallContext, EchoChamberContext,
-                CircularDelegationContext {
+                CircularDelegationContext, DeliveryLagContext {
 
     WatchdogConditionType conditionType();
 }

@@ -73,4 +73,26 @@ class ConnectorAlertBridgeTest {
 
         assertThat(TestSlackConnector.sent).isEmpty();
     }
+
+    @Test
+    void onAlert_deliveryLag_formatsBody() {
+        var context = new io.casehub.qhorus.api.watchdog.DeliveryLagContext(
+                UUID.randomUUID(), "test-channel",
+                List.of(new io.casehub.qhorus.api.watchdog.DeliveryLagContext.LagDetail("agent-a", 100L, 50L),
+                        new io.casehub.qhorus.api.watchdog.DeliveryLagContext.LagDetail("agent-b", 80L, 70L)),
+                150L);
+        WatchdogAlertEvent event = new WatchdogAlertEvent(
+                UUID.randomUUID(), "test-channel", "alerts",
+                "DELIVERY_LAG: 2 participant(s) lagging on 'test-channel'",
+                Instant.now(), context);
+
+        bridge.onAlert(event);
+
+        assertThat(TestSlackConnector.sent).hasSize(1);
+        var msg = TestSlackConnector.sent.get(0);
+        assertThat(msg.body()).contains("DELIVERY_LAG");
+        assertThat(msg.body()).contains("agent-a (lag: 50)");
+        assertThat(msg.body()).contains("agent-b (lag: 70)");
+        assertThat(msg.body()).contains("Channel head: 150");
+    }
 }
