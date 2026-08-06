@@ -615,10 +615,11 @@ public class WatchdogEvaluationService {
     }
 
     private boolean evaluateDeliveryLag(Watchdog w, Instant now) {
-        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 50;
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 10;
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
                 .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> !ch.name().equals(w.notificationChannel()))
                 .filter(ch -> io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(ch))
                 .toList();
 
@@ -632,10 +633,12 @@ public class WatchdogEvaluationService {
                     channelMembershipStore.findByChannel(ch.id());
 
             List<DeliveryLagContext.LagDetail> lagging = members.stream()
+                    .filter(m -> m.lastDeliveredMessageId() != null)
                     .map(m -> {
-                        long delivered = m.lastDeliveredMessageId() != null ? m.lastDeliveredMessageId() : 0L;
-                        long lag = latestId - delivered;
-                        return new DeliveryLagContext.LagDetail(m.memberId(), delivered, lag);
+                        long undelivered = crossTenantMessageStore.count(
+                                MessageQuery.builder().channelId(ch.id())
+                                        .afterId(m.lastDeliveredMessageId()).build());
+                        return new DeliveryLagContext.LagDetail(m.memberId(), m.lastDeliveredMessageId(), undelivered);
                     })
                     .filter(d -> d.lag() >= threshold)
                     .toList();

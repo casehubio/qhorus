@@ -1,148 +1,62 @@
-# DELIVERY_LAG Watchdog Condition — Design Spec
+# DELIVERY_LAG Watchdog Condition — Bug Fixes
 
 **Issue:** casehubio/qhorus#381
 **Date:** 2026-08-06
-**Status:** Approved
+**Status:** Approved (revised — feature already implemented, fixing bugs found by design review)
 
-## Problem
+## Situation
 
-Existing watchdog conditions (BARRIER_STUCK, CONVERSATION_STALL) fire after
-coordination has already stalled. There is no early warning for delivery
-infrastructure failures — a crashed webhook endpoint, a disconnected SSE
-stream, or a dead agent — that would allow intervention before coordination
-breaks down.
+DELIVERY_LAG is already implemented on main. A light design review surfaced
+four bugs in the existing implementation. This spec captures the fixes.
 
-## Solution
+## Bugs
 
-Add `DELIVERY_LAG` as a new watchdog condition type. It fires when any
-channel member's `lastDeliveredMessageId` cursor falls behind the channel's
-latest message ID by a configurable message-count threshold.
+### 1. Lag arithmetic uses sequence ID distance, not message count (HIGH)
 
-## Design Decisions
+`evaluateDeliveryLag()` computes `lag = latestId - delivered` where both
+values are global PostgreSQL sequence IDs (`allocationSize=50`, shared
+across all channels and tenancies). The difference is not a message count.
 
-### Threshold: count-only
+A channel with 3 undelivered messages could show lag=5200 if other channels
+consumed sequence values in between. With threshold=50 (current default),
+this fires incorrectly.
 
-Uses `Watchdog.thresholdCount()` (default 50). "Fire when any participant
-is >= N messages behind the channel head."
+**Fix:** Count actual undelivered messages per member using
+`crossTenantMessageStore.count(MessageQuery.builder().channelId(chId).afterId(cursorId).build())`.
+This gives the real message count, not a sequence gap.
 
-Time-based lag was rejected: it conflates channel inactivity (no new
-messages) with delivery failure (messages exist but aren't delivered).
-Time-based coordination problems are already covered by CONVERSATION_STALL
-and BARRIER_STUCK.
+### 2. Null cursor produces false positives (HIGH)
 
-### Alert shape: per-channel aggregate
+New members have null `lastDeliveredMessageId`. The code treats null as
+`0L`, producing `lag = latestId` — tens of thousands on active systems.
+Every new member triggers DELIVERY_LAG immediately.
 
-One alert per channel, carrying the full list of lagging members with
-individual lag counts. Matches the BARRIER_STUCK pattern (one alert with
-`missingContributors`). Avoids alert storms when multiple participants lag
-on the same channel simultaneously.
+**Fix:** Skip members with null `lastDeliveredMessageId`. Their lag is
+undefined (no delivery confirmed yet), not infinite.
 
-### Tracking gate: skip silently
+### 3. Debounce effectively disabled (HIGH)
 
-Channels without delivery tracking enabled (`isDeliveryTrackingEnabled(ch)`
-returns false) are skipped silently. No advisory alert for misconfiguration.
-Consistent with how BARRIER_STUCK gates its delivery enrichment.
+DELIVERY_LAG uses `thresholdCount` only. `thresholdSeconds` is null, so
+`isDebounced()` falls through to a 1-second window. The condition fires
+every evaluation cycle (~30s) while any member is lagging.
 
-### No cross-condition suppression
+**Fix:** Use `thresholdSeconds` as the debounce window with a default of
+300s. The dual-purpose pattern matches LOOP_DETECTED (which uses
+`thresholdCount` for repetitions and `thresholdSeconds` for time window).
 
-DELIVERY_LAG fires independently of BARRIER_STUCK and CONVERSATION_STALL.
-Both firing simultaneously is diagnostic signal: "the barrier is stuck
-*because* delivery is lagging, not because the agent is ignoring the
-message." No other conditions suppress each other today.
+### 4. Self-referential loop with wildcard (MEDIUM)
 
-## Components
+`targetName="*"` evaluates the notification channel. Each alert creates a
+new message, advancing the head, creating more lag on the notification
+channel — a feedback loop.
 
-### 1. WatchdogConditionType.DELIVERY_LAG
+**Fix:** Exclude channels matching `w.notificationChannel()` from evaluation.
 
-New enum value in `api/src/main/java/.../watchdog/WatchdogConditionType.java`.
+## Files Changed
 
-### 2. DeliveryLagContext
-
-New sealed record in `api/src/main/java/.../watchdog/`:
-
-```java
-public record DeliveryLagContext(
-        UUID channelId,
-        String channelName,
-        List<LagDetail> laggingMembers,
-        long latestMessageId
-) implements AlertContext {
-
-    public record LagDetail(String memberId, long lastDeliveredId, long lag) {}
-
-    @Override
-    public WatchdogConditionType conditionType() {
-        return WatchdogConditionType.DELIVERY_LAG;
-    }
-}
-```
-
-Fields:
-- `channelId` / `channelName` — which channel has lagging participants
-- `laggingMembers` — list of members exceeding the threshold, each with
-  their current cursor position and computed lag
-- `latestMessageId` — the channel head at evaluation time (reference point)
-
-`LagDetail.lastDeliveredId` is 0 when `lastDeliveredMessageId` is null
-(member has never received any delivery).
-
-### 3. WatchdogEvaluationService.evaluateDeliveryLag()
-
-Evaluation logic:
-
-1. Filter channels by `targetName` match (or `*`) and
-   `ChannelService.isDeliveryTrackingEnabled(ch)`. Skip if tracking disabled.
-2. Get latest message ID via `crossTenantMessageStore.findLastMessage(ch.id())`.
-   Skip if channel is empty.
-3. Get all members via `channelMembershipStore.findByChannel(ch.id())`.
-4. For each member: compute `lag = latestId - lastDeliveredId` (null cursor
-   treated as 0 — lag = latestId). Collect members where `lag >= threshold`.
-5. If any lagging members: fire one alert per channel.
-
-Default threshold: 50 messages (via `thresholdCount`, consistent with
-QUEUE_DEPTH pattern).
-
-### 4. ConnectorAlertBridge.buildBody()
-
-New switch case for `DeliveryLagContext`:
-
-```
-DELIVERY_LAG: N participant(s) lagging on 'channel-name'
-Channel: channel-name
-Lagging members: member-a (lag: 120), member-b (lag: 85)
-Channel head: 1542
-```
-
-### 5. register_watchdog MCP tool
-
-Add `DELIVERY_LAG` to the condition_type description and enum validation
-string. No new parameters — uses existing `thresholdCount`.
-
-### 6. CLAUDE.md
-
-Document the new condition type in the watchdog section.
-
-## Testing Strategy
-
-CDI-free unit tests in `WatchdogEvaluationServiceTest`:
-
-1. **Happy path** — channel with tracking enabled, two members, one behind
-   threshold, one ahead. Assert: fires with correct lagging member.
-2. **All caught up** — all members within threshold. Assert: does not fire.
-3. **Tracking disabled** — channel without tracking. Assert: skipped silently.
-4. **Null cursor** — member with null `lastDeliveredMessageId`. Assert:
-   treated as lag = latestId (never delivered).
-5. **Empty channel** — no messages. Assert: does not fire.
-6. **Wildcard target** — `*` matches all channels. Assert: evaluates all
-   channels with tracking enabled.
-7. **Debounce** — `lastFiredAt` within threshold window. Assert: skipped.
-
-ConnectorAlertBridge test:
-8. **Body formatting** — verify `buildBody()` output for DeliveryLagContext.
-
-## Not In Scope
-
-- Time-based lag threshold (rejected — see Design Decisions)
-- Cross-condition suppression with BARRIER_STUCK
-- Reactive parity (tracked separately, all reactive watchdog work deferred)
-- Per-participant retry (#380 — separate issue)
+| File | Change |
+|------|--------|
+| `runtime/.../watchdog/WatchdogEvaluationService.java` | Fix all 4 bugs in `evaluateDeliveryLag()` |
+| `runtime/.../watchdog/WatchdogEvaluationServiceTest.java` | Add regression tests for each bug |
+| `connectors/.../ConnectorAlertBridgeTest.java` | Update if `DeliveryLagContext` shape changes |
+| `api/.../watchdog/DeliveryLagContext.java` | Update `LagDetail` — remove `lastDeliveredId` (sequence ID), replace with `undeliveredCount` (actual count) |
