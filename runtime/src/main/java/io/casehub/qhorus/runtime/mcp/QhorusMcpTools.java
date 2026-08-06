@@ -2263,6 +2263,24 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return new java.util.ArrayList<>(membershipService.getUnreadCounts(sender, currentPrincipal.tenancyId()).values());
     }
 
+    @Tool(name = "get_message_delivery_status", description = "Check which channel members have received a specific message. "
+                                                              + "Compares the message's sequence ID against each member's lastDeliveredMessageId cursor. "
+                                                              + "Requires delivery tracking to be enabled on the channel.")
+    public java.util.List<MessageDeliveryStatus> getMessageDeliveryStatus(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "message_id", description = "Message ID to check delivery status for") Long messageId) {
+        io.casehub.qhorus.api.channel.Channel ch = resolveChannel(channel);
+        if (!io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(ch)) {
+            throw new IllegalStateException("Delivery tracking is not enabled on channel " + ch.name());
+        }
+        return membershipService.listMembers(ch.id()).stream()
+                .map(m -> new MessageDeliveryStatus(
+                        m.memberId(),
+                        m.lastDeliveredMessageId() != null && m.lastDeliveredMessageId() >= messageId,
+                        m.lastDeliveredMessageId()))
+                .toList();
+    }
+
     @Tool(name = "create_space", description = "Create an organizational space to group related channels. "
                                                + "Spaces can nest recursively (project → case → channels). "
                                                + "Channels are assigned to spaces via create_channel(space_id) or move_channel_to_space.")

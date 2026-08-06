@@ -187,7 +187,7 @@ class DeliveryBatchExecutor {
                 m.content(),
                 m.correlationId(),
                 m.inReplyTo(),
-                ActorTypeResolver.resolve(m.sender()),
+                m.actorType(),
                 m.artefactRefs(),
                 m.target(),
                 m.topic());

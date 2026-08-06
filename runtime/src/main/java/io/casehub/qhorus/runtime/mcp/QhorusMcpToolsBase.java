@@ -192,6 +192,8 @@ public abstract class QhorusMcpToolsBase {
             String channelId, String channelName, String memberId,
             String role, String joinedAt, Long lastReadMessageId) {}
 
+    public record MessageDeliveryStatus(
+            String memberId, boolean delivered, Long lastDeliveredMessageId) {}
 
     public record MessagePreview(
             Long messageId,

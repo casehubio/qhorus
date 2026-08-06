@@ -96,4 +96,41 @@ class DeliveryTrackingPullTest {
         assertNotNull(membership.lastDeliveredMessageId());
         assertTrue(membership.lastDeliveredMessageId() > 0);
     }
+
+    @Test
+    @TestTransaction
+    void getMessageDeliveryStatus_showsDeliveredAndUndelivered() {
+        String suffix = Long.toHexString(System.nanoTime());
+        var ch = channelService.create(ChannelCreateRequest.builder("status-dt-" + suffix)
+                .semantic(ChannelSemantic.APPEND)
+                .trackDelivery(true)
+                .build());
+        String deliveredReader = "delivered-" + suffix;
+        String undeliveredReader = "undelivered-" + suffix;
+        tools.register(deliveredReader, "delivered reader", null, null, null);
+        tools.register(undeliveredReader, "undelivered reader", null, null, null);
+        membershipStore.put(new ChannelMembership(null, ch.id(), deliveredReader,
+                MemberRole.PARTICIPANT, null, Instant.now(), null));
+        membershipStore.put(new ChannelMembership(null, ch.id(), undeliveredReader,
+                MemberRole.PARTICIPANT, null, Instant.now(), null));
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello",
+                null, null, null, null, null, null, null, null);
+        tools.checkMessages(ch.name(), 0L, null, null, deliveredReader, null);
+        var statuses = tools.getMessageDeliveryStatus(ch.name(), 1L);
+        var delivered = statuses.stream().filter(s -> s.memberId().equals(deliveredReader)).findFirst().orElseThrow();
+        var undelivered = statuses.stream().filter(s -> s.memberId().equals(undeliveredReader)).findFirst().orElseThrow();
+        assertTrue(delivered.delivered());
+        assertFalse(undelivered.delivered());
+    }
+
+    @Test
+    @TestTransaction
+    void getMessageDeliveryStatus_throwsWhenTrackingDisabled() {
+        String suffix = Long.toHexString(System.nanoTime());
+        var ch = channelService.create(ChannelCreateRequest.builder("notrack-dt-" + suffix)
+                .semantic(ChannelSemantic.APPEND)
+                .build());
+        assertThrows(io.quarkiverse.mcp.server.ToolCallException.class,
+                () -> tools.getMessageDeliveryStatus(ch.name(), 1L));
+    }
 }

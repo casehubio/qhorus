@@ -17,3 +17,6 @@
 | 0013 | [A2AChannelBackend lazy registration — restart survivability requires persistent A2A channel participation](0013-a2a-backend-lazy-registration-restart-limitation.md) | Accepted | 2026-06-13 |
 | 0014 | [A2AChannelBackend SSE registry uses Consumer callbacks, not SseEventSink directly](0014-sse-consumer-registry-pattern.md) | Accepted | 2026-06-13 |
 | 0015 | [ReactiveMessageService trust gate uses worker-pool delegation, not a new ReactiveObligorTrustPolicy SPI](0015-reactive-obligor-trust-policy-worker-pool.md) | Accepted | 2026-06-13 |
+| 0016 | [Hybrid Channel Type Enforcement](0016-hybrid-channel-type-enforcement.md) | Accepted | 2026-06-15 |
+| 0017 | [Shared Database as Multi-Node Prerequisite](0017-shared-database-multi-node-prerequisite.md) | Accepted | 2026-07-06 |
+| 0018 | [Platform Delivery SPI Shape Mismatch](0018-platform-delivery-spi-shape-mismatch.md) | Accepted | 2026-08-06 |

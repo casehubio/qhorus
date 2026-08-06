@@ -663,6 +663,16 @@ class DeliveryServiceTest {
                            .content("do it").target("researcher").build();
         OutboundMessage out = DeliveryBatchExecutor.toOutbound(m);
         assertThat(out.target()).isEqualTo("researcher");
+        assertThat(out.senderActorType()).isEqualTo(ActorType.AGENT);
+    }
+
+    @Test
+    void toOutbound_usesPersistedActorType_notResolver() {
+        Message m = Message.builder().id(1L).channelId(UUID.randomUUID()).sender("agent-x")
+                           .messageType(MessageType.STATUS).actorType(ActorType.HUMAN)
+                           .content("status").build();
+        OutboundMessage out = DeliveryBatchExecutor.toOutbound(m);
+        assertThat(out.senderActorType()).isEqualTo(ActorType.HUMAN);
     }
 
 
