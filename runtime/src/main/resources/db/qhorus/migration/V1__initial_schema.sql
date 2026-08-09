@@ -324,3 +324,30 @@ CREATE TABLE IF NOT EXISTS slack_thread_cache (
     CONSTRAINT uq_slack_thread_ts UNIQUE (channel_id, thread_ts)
 );
 
+-- -------------------------------------------------------------------------
+-- Message Ledger Entry (cross-project: FK to ledger_entry from casehub-ledger)
+-- CONSTRAINT fk_message_ledger_entry FOREIGN KEY (id) REFERENCES ledger_entry (id)
+-- -------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS message_ledger_entry (
+    id                 UUID         NOT NULL,
+    channel_id         UUID         NOT NULL,
+    message_id         BIGINT       NOT NULL,
+    message_type       VARCHAR(50)  NOT NULL,
+    target             VARCHAR(255),
+    content            TEXT,
+    correlation_id     VARCHAR(255),
+    commitment_id      UUID,
+    tool_name          VARCHAR(255),
+    duration_ms        BIGINT,
+    token_count        BIGINT,
+    context_refs       TEXT,
+    source_entity      TEXT,
+    topic              VARCHAR(200),
+    context_window_pct SMALLINT,
+    CONSTRAINT pk_message_ledger_entry PRIMARY KEY (id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mle_channel ON message_ledger_entry (channel_id);
+CREATE INDEX IF NOT EXISTS idx_mle_message_id ON message_ledger_entry (message_id);
+CREATE INDEX IF NOT EXISTS idx_mle_correlation ON message_ledger_entry (correlation_id);
+
