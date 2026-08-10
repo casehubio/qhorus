@@ -238,8 +238,8 @@ public class LedgerWriteService {
             final boolean hasAttestation = ATTESTATION_TYPES.contains(dispatch.type())
                     && resolvedCausedByEntryId != null;
             if (hasAttestation) {
-                writeAttestation(resolvedSubjectId, resolvedCausedByEntryId, dispatch.type(),
-                        resolvedActorId, tenancyId, commitmentId,
+                writeAttestation(resolvedSubjectId, resolvedCausedByEntryId, entry.id,
+                        dispatch.type(), resolvedActorId, tenancyId, commitmentId,
                         dispatch.content(), dispatch.artefactRefs());
             }
 
@@ -267,6 +267,7 @@ public class LedgerWriteService {
     }
 
     private void writeAttestation(final UUID subjectId, final UUID causedByEntryId,
+                                  final UUID terminalEntryId,
                                   final MessageType terminalType, final String resolvedActorId, final String tenancyId,
                                   final UUID commitmentId, final String terminalContent,
                                   final java.util.List<io.casehub.qhorus.api.message.ArtefactRef> terminalArtefactRefs) {
@@ -296,6 +297,22 @@ public class LedgerWriteService {
                                                 + " (correlationId='%s', capability='%s')",
                                                 attestation.verdict, priorMsg.id,
                                                 priorMsg.correlationId, attestation.capabilityTag);
+
+                                     if (!resolvedActorId.equals(priorMsg.actorId)) {
+                                         final LedgerAttestation obligorAttestation = new LedgerAttestation();
+                                         obligorAttestation.ledgerEntryId = terminalEntryId;
+                                         obligorAttestation.subjectId     = subjectId;
+                                         obligorAttestation.attestorId    = outcome.attestorId();
+                                         obligorAttestation.attestorType  = outcome.attestorType();
+                                         obligorAttestation.verdict       = outcome.verdict();
+                                         obligorAttestation.confidence    = outcome.confidence();
+                                         obligorAttestation.capabilityTag = ctx.capabilityTag();
+                                         ledger.saveAttestation(obligorAttestation, tenancyId);
+                                         LOG.debugf("LedgerAttestation %s written for terminal entry %s"
+                                                    + " (obligor='%s', capability='%s')",
+                                                    obligorAttestation.verdict, terminalEntryId,
+                                                    resolvedActorId, obligorAttestation.capabilityTag);
+                                     }
                                  });
             });
         } catch (final Exception e) {

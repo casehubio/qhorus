@@ -1,27 +1,13 @@
 package io.casehub.qhorus.ledger;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.api.model.LedgerEntryType;
-import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
@@ -32,6 +18,24 @@ import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.StubLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.StubMessageLedgerEntryRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * Pure unit tests for {@link LedgerWriteService#record} — no Quarkus runtime.
@@ -396,7 +400,7 @@ class LedgerWriteServiceTest {
 
         recordWithReplyTo("DONE", "Done!", "agent-b", "corr-attest-done", null, ch, cmdEntry.messageId);
 
-        assertEquals(1, ledgerStub.savedAttestations.size());
+        assertEquals(2, ledgerStub.savedAttestations.size());
         LedgerAttestation a = ledgerStub.savedAttestations.get(0);
         assertEquals(cmdEntry.id, a.ledgerEntryId);
         assertEquals(channelId, a.subjectId);
@@ -423,7 +427,7 @@ class LedgerWriteServiceTest {
 
         recordWithReplyTo("FAILURE", "Timed out", "agent-b", "corr-attest-fail", null, ch, cmdEntry.messageId);
 
-        assertEquals(1, ledgerStub.savedAttestations.size());
+        assertEquals(2, ledgerStub.savedAttestations.size());
         LedgerAttestation a = ledgerStub.savedAttestations.get(0);
         assertEquals(AttestationVerdict.FLAGGED, a.verdict);
         assertEquals(0.6, a.confidence, 1e-9);
@@ -456,7 +460,7 @@ class LedgerWriteServiceTest {
 
         recordWithReplyTo("DECLINE", "Out of scope", "agent-b", "corr-dec", null, ch, cmdEntry.messageId);
 
-        assertEquals(1, ledgerStub.savedAttestations.size());
+        assertEquals(2, ledgerStub.savedAttestations.size());
         LedgerAttestation a = ledgerStub.savedAttestations.get(0);
         assertEquals(AttestationVerdict.FLAGGED, a.verdict);
         assertEquals(0.4, a.confidence, 1e-9);
@@ -483,7 +487,7 @@ class LedgerWriteServiceTest {
         recordWithReplyTo("RESPONSE", "I will look into this shortly", "agent-b",
                 "corr-response-cmd", null, ch, cmdEntry.messageId);
 
-        assertEquals(1, ledgerStub.savedAttestations.size());
+        assertEquals(2, ledgerStub.savedAttestations.size());
         LedgerAttestation a = ledgerStub.savedAttestations.get(0);
         assertEquals(cmdEntry.id, a.ledgerEntryId);
         assertEquals(channelId, a.subjectId);
@@ -575,6 +579,67 @@ class LedgerWriteServiceTest {
         record("DONE", "Done", "agent-b", null, null, channel());
         assertTrue(ledgerStub.savedAttestations.isEmpty());
     }
+// ── Obligor trust attribution — dual attestation — Refs #373 ────────────
+
+    @Test
+    void record_done_writesDualAttestation_commandAndTerminalEntries() {
+        UUID          channelId = UUID.randomUUID();
+        ChannelEntity ch        = channel(channelId);
+
+        MessageLedgerEntry cmdEntry = new MessageLedgerEntry();
+        cmdEntry.id             = UUID.randomUUID();
+        cmdEntry.messageId      = 80L;
+        cmdEntry.subjectId      = channelId;
+        cmdEntry.channelId      = channelId;
+        cmdEntry.messageType    = "COMMAND";
+        cmdEntry.actorId        = "requester-a";
+        cmdEntry.correlationId  = "corr-dual-attest";
+        cmdEntry.sequenceNumber = 1;
+        sharedEntries.add(cmdEntry);
+
+        recordWithReplyTo("DONE", "Report delivered", "obligor-b",
+                          "corr-dual-attest", null, ch, cmdEntry.messageId);
+
+        assertEquals(2, ledgerStub.savedAttestations.size(),
+                     "Expected 2 attestations: one on COMMAND entry, one on terminal DONE entry");
+
+        LedgerAttestation cmdAttestation = ledgerStub.savedAttestations.get(0);
+        assertEquals(cmdEntry.id, cmdAttestation.ledgerEntryId,
+                     "First attestation should target the COMMAND entry");
+        assertEquals(AttestationVerdict.SOUND, cmdAttestation.verdict);
+
+        LedgerAttestation terminalAttestation = ledgerStub.savedAttestations.get(1);
+        assertNotEquals(cmdEntry.id, terminalAttestation.ledgerEntryId,
+                        "Second attestation should target the terminal entry, not the COMMAND");
+        assertEquals(AttestationVerdict.SOUND, terminalAttestation.verdict);
+        assertEquals(0.7, terminalAttestation.confidence, 1e-9);
+        assertEquals(channelId, terminalAttestation.subjectId);
+    }
+
+    @Test
+    void record_done_sameSenderAsCommand_writesOnlyOneAttestation() {
+        UUID          channelId = UUID.randomUUID();
+        ChannelEntity ch        = channel(channelId);
+
+        MessageLedgerEntry cmdEntry = new MessageLedgerEntry();
+        cmdEntry.id             = UUID.randomUUID();
+        cmdEntry.messageId      = 81L;
+        cmdEntry.subjectId      = channelId;
+        cmdEntry.channelId      = channelId;
+        cmdEntry.messageType    = "COMMAND";
+        cmdEntry.actorId        = "same-agent";
+        cmdEntry.correlationId  = "corr-self-attest";
+        cmdEntry.sequenceNumber = 1;
+        sharedEntries.add(cmdEntry);
+
+        recordWithReplyTo("DONE", "Self-completed", "same-agent",
+                          "corr-self-attest", null, ch, cmdEntry.messageId);
+
+        assertEquals(1, ledgerStub.savedAttestations.size(),
+                     "Self-attestation guard: same actor on COMMAND and DONE → only COMMAND attestation");
+        assertEquals(cmdEntry.id, ledgerStub.savedAttestations.get(0).ledgerEntryId);
+    }
+
 
     @Test
     void record_actorId_resolvedViaProvider() {
