@@ -6,20 +6,17 @@
 |----------|---------|------------|
 | [qhorus-flyway-consumer-versioning.md](qhorus-flyway-consumer-versioning.md) | Consumer migrations start at V2000; V1000–V1999 reserved for casehub-ledger | db/qhorus/migration/ |
 
-## Reactive Stack
+## Reactive Patterns
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
-| [qhorus-reactive-gating.md](qhorus-reactive-gating.md) | Use @IfBuildProperty per-bean (not ExcludedTypeBuildItem) for reactive stack gating | Runtime reactive beans, QhorusProcessor |
-| [reactive-blocking-spi-worker-pool.md](reactive-blocking-spi-worker-pool.md) | Reactive services calling blocking SPI must shift to Infrastructure.getDefaultWorkerPool() via runSubscriptionOn | runtime/ reactive services invoking blocking SPI (ObligorTrustPolicy, etc.) |
-| [reactive-inmemory-store-selected-alternatives.md](reactive-inmemory-store-selected-alternatives.md) | Consumers with reactive.enabled=true + casehub-qhorus-persistence-memory must list InMemoryReactive*Store in quarkus.arc.selected-alternatives | @QuarkusTest consumers enabling the reactive stack |
 | [reactive-otel-span-operator-ordering.md](reactive-otel-span-operator-ordering.md) | Chain onFailure before onTermination in reactive OTel span lifecycle — reversed order silently loses errors | Any Mutiny chain managing OTel span lifecycle manually |
 
 ## Channels
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
-| [channel-dual-identity.md](channel-dual-identity.md) | Every channel has UUID (machine, immutable) + slug (semantic, immutable after creation); MCP tools accept either, resolve at boundary, always return both | QhorusMcpTools, ReactiveQhorusMcpTools, ChannelService, all cross-repo channel references |
+| [channel-dual-identity.md](channel-dual-identity.md) | Every channel has UUID (machine, immutable) + slug (semantic, immutable after creation); MCP tools accept either, resolve at boundary, always return both | QhorusMcpTools, ChannelService, all cross-repo channel references |
 
 ## Gateway / Channel Lifecycle
 
@@ -39,7 +36,7 @@
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
-| [jpa-like-prefix-metachar-escaping.md](jpa-like-prefix-metachar-escaping.md) | LIKE prefix branches must escape !, %, _ and declare ESCAPE '!' — in-memory path uses startsWith() (exact) and JPA must match | JpaChannelStore.scan(), ReactiveJpaChannelStore.scan() |
+| [jpa-like-prefix-metachar-escaping.md](jpa-like-prefix-metachar-escaping.md) | LIKE prefix branches must escape !, %, _ and declare ESCAPE '!' — in-memory path uses startsWith() (exact) and JPA must match | JpaChannelStore.scan() |
 | [scheduled-service-cross-tenant-stores.md](scheduled-service-cross-tenant-stores.md) | @Scheduled / no-request-context services must use CrossTenant*Store interfaces + explicit tenancyId param — never inject CurrentPrincipal | @Scheduled, @Observes StartupEvent, async observers touching entity stores |
 | [optional-module-jpa-package-registration.md](optional-module-jpa-package-registration.md) | Consumers adding an optional qhorus module with JPA entities must register its package in quarkus.hibernate-orm.qhorus.packages | Consumers of casehub-qhorus-slack-channel and future optional modules |
 
@@ -47,7 +44,7 @@
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
-| [ledger-entry-repository-cross-dtype-jpql.md](ledger-entry-repository-cross-dtype-jpql.md) | LedgerEntryRepository implementations must use FROM LedgerEntry (not a subtype) in all JPQL | LedgerEntryJpaRepository, ReactiveLedgerEntryJpaRepository |
+| [ledger-entry-repository-cross-dtype-jpql.md](ledger-entry-repository-cross-dtype-jpql.md) | LedgerEntryRepository implementations must use FROM LedgerEntry (not a subtype) in all JPQL | LedgerEntryJpaRepository |
 | [ledger-sequence-table-test-init.md](ledger-sequence-table-test-init.md) | Modules with casehub.ledger.enabled=true + Flyway disabled must provide import-qhorus-test.sql and sql-load-script | runtime/src/test, examples/*/src/test |
 | [ledger-no-credentials-or-pii-in-content.md](ledger-no-credentials-or-pii-in-content.md) | Credentials (webhook URLs, API keys) and PII (phone, email) must never appear in MessageDispatch.content — the immutable ledger cannot be redacted | All MessageService.dispatch() callers handling external delivery destinations; ConnectorMeshBridge implementations |
 
@@ -55,7 +52,7 @@
 
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
-| [mcp-tool-channel-resolution-boundary.md](mcp-tool-channel-resolution-boundary.md) | Resolve channel at @Tool boundary; UUID-first service methods receive ch.id; private helpers get ch.name for read-only only | QhorusMcpTools, ReactiveQhorusMcpTools |
+| [mcp-tool-channel-resolution-boundary.md](mcp-tool-channel-resolution-boundary.md) | Resolve channel at @Tool boundary; UUID-first service methods receive ch.id; private helpers get ch.name for read-only only | QhorusMcpTools |
 
 ## Message Dispatch / Attestation
 
@@ -79,4 +76,4 @@
 | Protocol | Summary | Applies to |
 |----------|---------|------------|
 | [observer-test-transaction-discipline.md](observer-test-transaction-discipline.md) | Tests asserting MessageObserver invocation must use QuarkusTransaction.requiringNew(), not @TestTransaction | @QuarkusTest classes dispatching messages and asserting observer state |
-| [inmemory-store-no-entity-mutation-in-session.md](inmemory-store-no-entity-mutation-in-session.md) | InMemory store methods must not mutate PanacheEntity fields within Panache.withSession() scope — use no-op or side-map | casehub-qhorus-persistence-memory — all InMemory*Store and InMemoryReactive*Store implementations |
+| [inmemory-store-no-entity-mutation-in-session.md](inmemory-store-no-entity-mutation-in-session.md) | InMemory store methods must not mutate PanacheEntity fields within Panache.withSession() scope — use no-op or side-map | casehub-qhorus-persistence-memory — all InMemory*Store implementations |

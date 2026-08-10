@@ -2,7 +2,7 @@
 
 **Summary:** System senders (sender contains `:`) bypass ObligorTrustPolicy when target is set on COMMANDs
 
-**Applies to:** `MessageService.dispatch()`, `ReactiveMessageService.doDispatch()` — the ObligorTrustPolicy enforcement gate
+**Applies to:** `MessageService.dispatch()` — the ObligorTrustPolicy enforcement gate
 
 ## Rule
 
@@ -28,6 +28,6 @@ The `:` delimiter in sender strings is the discriminator:
 - `system:watchdog` → system sender → exempt
 - `agent-alpha` → peer agent (no `:`) → trust-gated
 
-Both `MessageService` and `ReactiveMessageService` must apply this exemption identically.
+`MessageService` must apply this exemption.
 
 Refs: openclaw#70, GE-20260719-44e9d9

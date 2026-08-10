@@ -3,7 +3,7 @@ id: PP-20260612-ch-dual-id
 title: "Channel dual identity — UUID (machine) + slug (semantic)"
 type: rule
 scope: repo
-applies_to: "QhorusMcpTools, ReactiveQhorusMcpTools, ChannelService, all call sites that reference channels"
+applies_to: "QhorusMcpTools, ChannelService, all call sites that reference channels"
 severity: important
 refs:
   - runtime/src/main/java/io/casehub/qhorus/runtime/mcp/QhorusMcpToolsBase.java
@@ -33,7 +33,7 @@ Slugs follow `[a-z][a-z0-9-]{0,79}` — enforced by the `chk_channel_name_slug` 
 
 ## MCP tool resolution — accept either, resolve at the boundary
 
-All `@Tool`-annotated methods that take a `channel` parameter call `resolveChannel(String)` (or `resolveChannelAsync` in the reactive stack) at the tool boundary before passing anything to the service layer.
+All `@Tool`-annotated methods that take a `channel` parameter call `resolveChannel(String)` at the tool boundary before passing anything to the service layer.
 
 `resolveChannel` implements two-phase parsing:
 1. Try to parse the input as a UUID (`tryParseUuid`). If it succeeds, look up by ID.

@@ -3,11 +3,11 @@ id: PP-20260522-71db6a
 title: "JPA scan() LIKE prefix branches must escape metacharacters and declare ESCAPE '!'"
 type: rule
 scope: repo
-applies_to: "JpaChannelStore.scan(), ReactiveJpaChannelStore.scan(), and any future JPA store scan() method that adds a prefix filter"
+applies_to: "JpaChannelStore.scan() and any future JPA store scan() method that adds a prefix filter"
 severity: important
 refs:
   - runtime/src/main/java/io/casehub/qhorus/runtime/store/jpa/JpaChannelStore.java
-  - runtime/src/main/java/io/casehub/qhorus/runtime/store/jpa/ReactiveJpaChannelStore.java
+
 violation_hint: "LIKE appended without ESCAPE clause — prefix containing _ matches any single character instead of a literal underscore, producing wrong results with no error"
 created: 2026-05-22
 ---
