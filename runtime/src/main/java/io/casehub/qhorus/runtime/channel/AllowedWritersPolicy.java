@@ -3,9 +3,6 @@ package io.casehub.qhorus.runtime.channel;
 import java.util.List;
 import java.util.function.Supplier;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
-@ApplicationScoped
 public class AllowedWritersPolicy {
 
     public boolean isAllowedWriter(final String sender, final List<String> allowedWriters,

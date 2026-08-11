@@ -73,8 +73,7 @@ public class MessageService implements ConsumerMessaging {
     @Inject
     LedgerWriteService ledgerWriteService;
 
-    @Inject
-    AllowedWritersPolicy allowedWritersPolicy;
+    final AllowedWritersPolicy allowedWritersPolicy = new AllowedWritersPolicy();
 
     @Inject
     RateLimiter rateLimiter;
