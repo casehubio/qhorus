@@ -858,18 +858,18 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
 
     @Tool(name = "send_message", description = "Post a typed message to a channel. "
-            + "For QUERY and COMMAND types, correlation_id is auto-generated if not supplied.")
+            + "For QUERY, COMMAND, and PROPOSE types, correlation_id is auto-generated if not supplied.")
     @Transactional
     public DispatchResult sendMessage(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
             @ToolArg(name = "sender", description = "Sender identifier") String sender,
-            @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), EVENT (telemetry only, not delivered to agents)") String type,
+            @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), PROPOSE (offering conditional commitment — sender binds to action contingent on receiver's acceptance; RESPONSE does not auto-fulfill, only DONE accepts), EVENT (telemetry only, not delivered to agents)") String type,
             @ToolArg(name = "content", description = "Message content") String content,
-            @ToolArg(name = "correlation_id", description = "Correlation ID (auto-generated for QUERY and COMMAND if omitted)", required = false) String correlationId,
+            @ToolArg(name = "correlation_id", description = "Correlation ID (auto-generated for QUERY, COMMAND, and PROPOSE if omitted)", required = false) String correlationId,
             @ToolArg(name = "in_reply_to", description = "ID of the message being replied to", required = false) Long inReplyTo,
             @ToolArg(name = "artefact_refs", description = "UUIDs of shared artefacts to attach. Auto-claims each artefact for the sender; auto-released on commitment resolution (RESPONSE/DONE/DECLINE/FAILURE).", required = false) List<String> artefactRefs,
             @ToolArg(name = "target", description = "Addressing target: instance:<id>, capability:<tag>, or role:<name>. Null/omitted = broadcast to all.", required = false) String target,
-            @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY and COMMAND. Defaults to channel config when not provided.", required = false) String deadline,
+            @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY, COMMAND, and PROPOSE. Defaults to channel config when not provided.", required = false) String deadline,
             @ToolArg(name = "subject_id", description = "Optional UUID of the domain aggregate this message concerns (for ledger indexing).", required = false) String subjectId,
             @ToolArg(name = "caused_by_entry_id", description = "Optional UUID of the ledger entry that triggered this dispatch (for causal chain tracing).", required = false) String causedByEntryId,
             @ToolArg(name = "topic", description = "Topic name for this message. Groups messages into named sub-conversations within the channel. Defaults to 'general' if omitted.", required = false) String topic) {
@@ -977,11 +977,18 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     .deadline(java.time.Instant.now().plus(java.time.Duration.parse(deadline))).build());
         }
 
-        // Auto-release artefact claims when a commitment resolves (RESPONSE/DONE/DECLINE/FAILURE).
-        // Find the original QUERY/COMMAND message by correlationId and release the requester's claims.
+        // Auto-release artefact claims when a commitment resolves (DONE/DECLINE/FAILURE, or RESPONSE on non-PROPOSE).
+        // Find the original QUERY/COMMAND/PROPOSE message by correlationId and release the requester's claims.
         // HANDOFF delegates obligation — claims stay until the delegate resolves.
-        if (dispatchResult.correlationId() != null && (msgType == MessageType.RESPONSE || msgType == MessageType.DONE
-                || msgType == MessageType.DECLINE || msgType == MessageType.FAILURE)) {
+        // RESPONSE on PROPOSE is non-fulfilling — claims must NOT be released.
+        boolean isCommitmentResolving = msgType == MessageType.DONE
+                || msgType == MessageType.DECLINE || msgType == MessageType.FAILURE;
+        if (!isCommitmentResolving && msgType == MessageType.RESPONSE && dispatchResult.correlationId() != null) {
+            var commitment = commitmentStore.findByCorrelationId(dispatchResult.correlationId());
+            isCommitmentResolving = commitment.isEmpty()
+                    || commitment.get().messageType() != MessageType.PROPOSE;
+        }
+        if (dispatchResult.correlationId() != null && isCommitmentResolving) {
             try {
                 messageService.findByCorrelationId(dispatchResult.correlationId()).ifPresent(original -> {
                     if (original.artefactRefs() != null && !original.artefactRefs().isEmpty()) {

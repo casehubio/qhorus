@@ -45,6 +45,8 @@ public class QhorusSubscriptionBootstrap {
 
         register(existing, "assigned", "obligor",
                 "Obligation assigned in {channelName}", NotificationSeverity.INFO);
+        register(existing, "proposed", "obligor",
+                "Proposal received in {channelName}", NotificationSeverity.INFO);
         register(existing, "fulfilled", "requester",
                 "Request completed in {channelName}", NotificationSeverity.INFO);
         register(existing, "failed", "requester",

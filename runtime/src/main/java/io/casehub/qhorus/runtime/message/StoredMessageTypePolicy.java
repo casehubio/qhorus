@@ -11,7 +11,7 @@ public class StoredMessageTypePolicy implements MessageTypePolicy {
 
     @Override
     public void validate(Channel channel, MessageType type) {
-        if (type != MessageType.COMMAND && type != MessageType.QUERY) return;
+        if (type != MessageType.COMMAND && type != MessageType.QUERY && type != MessageType.PROPOSE) return;
         if (channel.deniedTypes() != null && channel.deniedTypes().contains(type)) {
             throw MessageTypeViolationException.denied(channel.name(), type,
                     MessageType.serializeTypes(channel.deniedTypes()));
@@ -25,7 +25,7 @@ public class StoredMessageTypePolicy implements MessageTypePolicy {
 
     @Override
     public String advisory(Channel channel, MessageType type) {
-        if (type == MessageType.COMMAND || type == MessageType.QUERY) return null;
+        if (type == MessageType.COMMAND || type == MessageType.QUERY || type == MessageType.PROPOSE) return null;
         if (channel.deniedTypes() != null && channel.deniedTypes().contains(type)) {
             return "Type advisory: channel '" + channel.name()
                     + "' explicitly denies " + type

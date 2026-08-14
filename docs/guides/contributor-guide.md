@@ -46,8 +46,8 @@ All channel writes flow through `MessageService.dispatch(MessageDispatch)`. Pipe
 1. **Paused check** -- `channel.paused()` rejects all writes
 2. **`AllowedWritersPolicy`** ACL -- checks `channel.allowedWriters()`
 3. **`RateLimiter`** -- per-channel and per-instance limits via in-memory counters
-4. **`ObligorTrustPolicy` SPI** -- invoked for COMMAND messages with named targets; bypassed for role/capability-prefixed targets
-5. **`MessageTypePolicy`** (via `StoredMessageTypePolicy`) -- enforces `allowedTypes`/`deniedTypes` from channel config
+4. **`ObligorTrustPolicy` SPI** -- invoked for COMMAND messages with named targets only; bypassed for PROPOSE (commissive, not directive), role/capability-prefixed targets, and system senders
+5. **`MessageTypePolicy`** (via `StoredMessageTypePolicy`) -- hard-enforces `allowedTypes`/`deniedTypes` for COMMAND, QUERY, and PROPOSE (obligation-creating types); advisory-only for all others
 6. **`CorrelationIntegrityChecker`** (advisory) -- validates `inReplyTo` references exist and `correlationId` matches; adds advisories to `DispatchResult`
 7. **`ProtocolEvaluation`** (advisory via `ProtocolRegistry`) -- evaluates channel protocols against recent message history
 8. **LAST_WRITE overwrite** -- for `LAST_WRITE` channels, replaces the previous value (version-aware)

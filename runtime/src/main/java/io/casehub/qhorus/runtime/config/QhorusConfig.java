@@ -125,6 +125,13 @@ public interface QhorusConfig {
          * Absent by default — QUERYs without an explicit deadline have no expiration.
          */
         Optional<java.time.Duration> defaultQueryDeadline();
+
+        /**
+         * Default deadline for PROPOSE obligations when the sender does not set one explicitly.
+         * Prevents orphan accumulation during iterated counter-proposal exchange.
+         * Absent by default — PROPOSEs without an explicit deadline have no expiration.
+         */
+        Optional<java.time.Duration> defaultProposeDeadline();
     }
 
     interface Watchdog {

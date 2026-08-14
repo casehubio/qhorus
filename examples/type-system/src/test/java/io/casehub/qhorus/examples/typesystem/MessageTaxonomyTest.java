@@ -15,7 +15,7 @@ import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Regression tests for the 9-type speech-act message taxonomy.
+ * Regression tests for the 10-type speech-act message taxonomy.
  *
  * <p>
  * Runs in CI with no LLM or model download. Verifies that the deontic
@@ -37,8 +37,8 @@ class MessageTaxonomyTest {
     // --- Enum structure ---
 
     @Test
-    void taxonomyHasNineTypes() {
-        assertThat(MessageType.values()).hasSize(9);
+    void taxonomyHasTenTypes() {
+        assertThat(MessageType.values()).hasSize(10);
     }
 
     @Test
@@ -53,11 +53,12 @@ class MessageTaxonomyTest {
     }
 
     @Test
-    void onlyQueryAndCommandRequireCorrelationId() {
+    void queryCommandAndProposeRequireCorrelationId() {
         assertThat(MessageType.QUERY.requiresCorrelationId()).isTrue();
         assertThat(MessageType.COMMAND.requiresCorrelationId()).isTrue();
+        assertThat(MessageType.PROPOSE.requiresCorrelationId()).isTrue();
         for (MessageType t : MessageType.values()) {
-            if (t != MessageType.QUERY && t != MessageType.COMMAND) {
+            if (t != MessageType.QUERY && t != MessageType.COMMAND && t != MessageType.PROPOSE) {
                 assertThat(t.requiresCorrelationId())
                         .as("%s should not require correlationId", t).isFalse();
             }
@@ -65,11 +66,12 @@ class MessageTaxonomyTest {
     }
 
     @Test
-    void onlyDeclineAndFailureRequireContent() {
+    void declineFailureAndProposeRequireContent() {
         assertThat(MessageType.DECLINE.requiresContent()).isTrue();
         assertThat(MessageType.FAILURE.requiresContent()).isTrue();
+        assertThat(MessageType.PROPOSE.requiresContent()).isTrue();
         for (MessageType t : MessageType.values()) {
-            if (t != MessageType.DECLINE && t != MessageType.FAILURE) {
+            if (t != MessageType.DECLINE && t != MessageType.FAILURE && t != MessageType.PROPOSE) {
                 assertThat(t.requiresContent())
                         .as("%s should not require content", t).isFalse();
             }
@@ -159,6 +161,25 @@ class MessageTaxonomyTest {
                 "this task is outside my capabilities as a code review agent",
                 "corr-decline-ok", cmd.messageId(), null, null, null, null, null, null);
         assertThat(result).isNotNull();
+    }
+
+    @Test
+    void proposeMethodImplementations() {
+        assertThat(MessageType.PROPOSE.isAgentVisible()).isTrue();
+        assertThat(MessageType.PROPOSE.requiresCorrelationId()).isTrue();
+        assertThat(MessageType.PROPOSE.requiresContent()).isTrue();
+        assertThat(MessageType.PROPOSE.requiresTarget()).isFalse();
+        assertThat(MessageType.PROPOSE.isTerminal()).isFalse();
+    }
+
+    @Test
+    @TestTransaction
+    void proposeAutoGeneratesCorrelationId() {
+        tools.createChannel("ts-propose-corr", "PROPOSE correlation", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        DispatchResult result = tools.sendMessage("ts-propose-corr", "proposer", "propose",
+                "I will do X if you agree", null, null, null, null, null, null, null, null);
+        assertThat(result).isNotNull();
+        assertThat(result.correlationId()).as("PROPOSE must auto-generate a correlationId").isNotBlank();
     }
 
     @Test

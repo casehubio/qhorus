@@ -35,7 +35,7 @@ class QhorusSubscriptionBootstrapTest {
     void registers_five_default_subscriptions_when_none_exist() {
         bootstrap.onStartup(null);
 
-        verify(subscriptionStore, times(5)).store(any(SubscriptionInput.class));
+        verify(subscriptionStore, times(6)).store(any(SubscriptionInput.class));
     }
 
     @Test
@@ -52,7 +52,7 @@ class QhorusSubscriptionBootstrapTest {
         when(subscriptionStore.findAllEnabled()).thenReturn(Stream.of(existing));
         bootstrap.onStartup(null);
 
-        verify(subscriptionStore, times(4)).store(any(SubscriptionInput.class));
+        verify(subscriptionStore, times(5)).store(any(SubscriptionInput.class));
     }
 
     @Test
@@ -60,7 +60,7 @@ class QhorusSubscriptionBootstrapTest {
         bootstrap.onStartup(null);
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
-        verify(subscriptionStore, times(5)).store(captor.capture());
+        verify(subscriptionStore, times(6)).store(captor.capture());
 
         var assigned = captor.getAllValues().stream()
                 .filter(i -> i.eventType().endsWith(".assigned"))
@@ -77,7 +77,7 @@ class QhorusSubscriptionBootstrapTest {
         bootstrap.onStartup(null);
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
-        verify(subscriptionStore, times(5)).store(captor.capture());
+        verify(subscriptionStore, times(6)).store(captor.capture());
 
         var fulfilled = captor.getAllValues().stream()
                 .filter(i -> i.eventType().endsWith(".fulfilled"))
@@ -92,7 +92,7 @@ class QhorusSubscriptionBootstrapTest {
         bootstrap.onStartup(null);
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
-        verify(subscriptionStore, times(5)).store(captor.capture());
+        verify(subscriptionStore, times(6)).store(captor.capture());
 
         var failed = captor.getAllValues().stream()
                 .filter(i -> i.eventType().endsWith(".failed"))

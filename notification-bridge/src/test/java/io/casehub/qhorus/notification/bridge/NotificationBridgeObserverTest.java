@@ -166,6 +166,24 @@ class NotificationBridgeObserverTest {
     }
 
     @Test
+    void propose_fires_proposed_event() {
+        when(commitmentStore.findByCorrelationId(CORRELATION_ID))
+                .thenReturn(Optional.of(commitment(REQUESTER, OBLIGOR)));
+
+        observer.onMessage(event(MessageType.PROPOSE, REQUESTER, "I will do X if you agree"));
+
+        var captor = ArgumentCaptor.forClass(Object.class);
+        verify(dataSource).add(captor.capture());
+        var fired = (QhorusObligationEvent) captor.getValue();
+
+        assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.PROPOSED);
+        assertThat(fired.tenancyId()).isEqualTo(TENANCY_ID);
+        assertThat(fired.obligor()).isEqualTo(OBLIGOR);
+        assertThat(fired.requester()).isEqualTo(REQUESTER);
+        assertThat(fired.content()).isEqualTo("I will do X if you agree");
+    }
+
+    @Test
     void scope_is_local() {
         assertThat(observer.scope()).isEqualTo(MessageObserver.Scope.LOCAL);
     }

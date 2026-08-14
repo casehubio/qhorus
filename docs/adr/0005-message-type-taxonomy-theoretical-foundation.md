@@ -62,7 +62,7 @@ Searle's five illocutionary categories provide the classification grid:
 
 - **Directives**: getting someone to act or inform (QUERY, COMMAND)
 - **Assertives**: committing to truth of something (RESPONSE, DECLINE, STATUS)
-- **Commissives**: committing to a future action (STATUS)
+- **Commissives**: committing to a future action conditional on agreement (PROPOSE)
 - **Declarations**: changing state by saying it (HANDOFF, DONE, FAILURE)
 - **Expressives**: psychological states — not relevant for machine agents
 
@@ -136,7 +136,8 @@ infrastructure, not by another LLM's judgment.
 | `QUERY` | Directive (epistemic) | Creates: receiver obligated to inform or DECLINE | Creates `C(receiver→sender, inform_result)` |
 | `COMMAND` | Directive (action) | Creates: receiver obligated to execute or DECLINE | Creates `C(receiver→sender, execute_and_report)` |
 | `RESPONSE` | Assertive | Discharges: QUERY obligation | Discharges `C` matching `correlationId` |
-| `STATUS` | Commissive | Extends: open COMMAND obligation window | No new commitment; extends deadline |
+| `STATUS` | Assertive | Extends: open COMMAND obligation window | No new commitment; extends deadline |
+| `PROPOSE` | Commissive | Creates: conditional sender-obligation; receiver must respond | Creates `C(receiver→sender, respond_accept_or_reject)` — RESPONSE does not discharge |
 | `DECLINE` | Assertive (negative) | Discharges: obligation by refusal; creates secondary: explain_reason | Cancels `C`; creates `C(receiver→sender, explain_reason)` |
 | `HANDOFF` | Declarative (constitutive) | Transfers: obligation to named target; original discharged | Delegates `C`; new `C(target→creditor)` created |
 | `DONE` | Declarative (success) | Discharges: COMMAND obligation — successful | Fulfils `C` — terminal |
@@ -206,12 +207,13 @@ preserves EVENTs permanently with SHA-256 tamper evidence.
 
 ## Completeness Argument
 
-The 9-type taxonomy is complete over the obligation lifecycle state space. The
+The 10-type taxonomy is complete over the obligation lifecycle state space. The
 possible states of an obligation `C(debtor, creditor, antecedent, consequent)` are:
 
-1. **Created** — by QUERY or COMMAND
+1. **Created (directive)** — by QUERY or COMMAND (receiver obligated)
+1b. **Created (commissive)** — by PROPOSE (conditional sender-obligation; receiver must respond)
 2. **Extended** — by STATUS (renews the deadline without discharging)
-3. **Fulfilled** — by RESPONSE (for QUERY) or DONE (for COMMAND)
+3. **Fulfilled** — by RESPONSE (for QUERY) or DONE (for COMMAND/PROPOSE)
 4. **Refused** — by DECLINE (never accepted; triggers explain obligation)
 5. **Failed** — by FAILURE (accepted but not completed; triggers explain obligation)
 6. **Delegated** — by HANDOFF (transferred to a new debtor)
@@ -220,6 +222,27 @@ possible states of an obligation `C(debtor, creditor, antecedent, consequent)` a
 Every message type maps to exactly one lifecycle transition. No transition is
 unrepresented. No type covers two transitions. The taxonomy is both complete and
 non-overlapping over the obligation lifecycle.
+
+PROPOSE is a new entry point into the same 7-state lifecycle. It differs from
+COMMAND in fulfillment semantics: RESPONSE does not auto-fulfill a PROPOSE
+commitment (enabling counter-proposal exchange without premature closure).
+Only DONE (explicit acceptance) fulfills.
+
+### Stopping Criterion
+
+A new type is justified only when it occupies a unique cell in the
+Searle-category × deontic-effect matrix:
+
+| Searle category | Type | Deontic effect |
+|---|---|---|
+| Directive (epistemic) | QUERY | Receiver obligation to inform |
+| Directive (action) | COMMAND | Receiver obligation to execute |
+| Assertive | RESPONSE, DECLINE, STATUS | Truth commitment / obligation extension |
+| Commissive | PROPOSE | Conditional sender-obligation; receiver responds |
+| Declaration | HANDOFF, DONE, FAILURE | Institutional reality change |
+| Perlocutionary | EVENT | No deontic footprint |
+
+Future candidates must demonstrate an empty cell in this matrix.
 
 ---
 
@@ -359,7 +382,7 @@ These properties map to EU AI Act requirements for high-risk AI systems:
 
 ## Consequences
 
-- `MessageType` enum has 9 values with formal Javadoc encoding the deontic semantics
+- `MessageType` enum has 10 values with formal Javadoc encoding the deontic semantics
 - `Message` entity carries `commitmentId`, `deadline`, `acknowledgedAt` as envelope fields
 - MCP tools validate `requiresContent()` (DECLINE, FAILURE) and `requiresTarget()` (HANDOFF) at call time
 - `CommitmentStore` tracks the full obligation lifecycle using Singh's model

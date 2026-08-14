@@ -322,7 +322,8 @@ public class MessageService implements ConsumerMessaging {
         }
 
         final UUID commitmentId = (dispatch.correlationId() != null &&
-                (dispatch.type() == MessageType.COMMAND || dispatch.type() == MessageType.QUERY))
+                (dispatch.type() == MessageType.COMMAND || dispatch.type() == MessageType.QUERY
+                 || dispatch.type() == MessageType.PROPOSE))
                 ? UUID.randomUUID() : null;
 
         Message message = Message.builder()
@@ -351,10 +352,16 @@ public class MessageService implements ConsumerMessaging {
 
         if (dispatch.correlationId() != null) {
             switch (dispatch.type()) {
-                case QUERY, COMMAND -> {
+                case QUERY, COMMAND, PROPOSE -> {
                     Instant effectiveDeadline = saved.deadline();
                     if (effectiveDeadline == null && dispatch.type() == MessageType.QUERY) {
                         var defaultDl = config.commitment().defaultQueryDeadline();
+                        if (defaultDl.isPresent()) {
+                            effectiveDeadline = Instant.now().plus(defaultDl.get());
+                        }
+                    }
+                    if (effectiveDeadline == null && dispatch.type() == MessageType.PROPOSE) {
+                        var defaultDl = config.commitment().defaultProposeDeadline();
                         if (defaultDl.isPresent()) {
                             effectiveDeadline = Instant.now().plus(defaultDl.get());
                         }
@@ -365,7 +372,13 @@ public class MessageService implements ConsumerMessaging {
                             dispatch.sender(), dispatch.target(), effectiveDeadline);
                 }
                 case STATUS -> commitmentService.acknowledge(dispatch.correlationId());
-                case RESPONSE, DONE -> commitmentService.fulfill(dispatch.correlationId());
+                case DONE -> commitmentService.fulfill(dispatch.correlationId());
+                case RESPONSE -> {
+                    var commitment = commitmentStore.findByCorrelationId(dispatch.correlationId());
+                    if (commitment.isPresent() && commitment.get().messageType() != MessageType.PROPOSE) {
+                        commitmentService.fulfill(dispatch.correlationId());
+                    }
+                }
                 case DECLINE -> commitmentService.decline(dispatch.correlationId());
                 case FAILURE -> commitmentService.fail(dispatch.correlationId());
                 case HANDOFF -> commitmentService.delegate(dispatch.correlationId(), dispatch.target());

@@ -38,6 +38,7 @@ public class NotificationBridgeObserver implements MessageObserver {
         }
         switch (event.messageType()) {
             case COMMAND -> fireAssigned(event);
+            case PROPOSE -> fireProposed(event);
             case DONE -> fireResolved(event, QhorusObligationEvent.Kind.FULFILLED);
             case FAILURE -> fireResolved(event, QhorusObligationEvent.Kind.FAILED);
             default -> {}
@@ -61,6 +62,28 @@ public class NotificationBridgeObserver implements MessageObserver {
         }
         fire(new QhorusObligationEvent(
                 QhorusObligationEvent.Kind.ASSIGNED,
+                event.tenancyId(),
+                obligor,
+                commitment.get().requester(),
+                event.channelId(),
+                event.channelName(),
+                event.senderId(),
+                event.correlationId(),
+                truncate(event.content(), MAX_CONTENT_LENGTH)));
+    }
+
+    private void fireProposed(MessageReceivedEvent event) {
+        Optional<Commitment> commitment = commitmentStore.findByCorrelationId(event.correlationId());
+        if (commitment.isEmpty()) {
+            LOG.debugf("No commitment for correlationId=%s — skipping PROPOSE notification", event.correlationId());
+            return;
+        }
+        String obligor = commitment.get().obligor();
+        if (obligor == null || obligor.isBlank()) {
+            return;
+        }
+        fire(new QhorusObligationEvent(
+                QhorusObligationEvent.Kind.PROPOSED,
                 event.tenancyId(),
                 obligor,
                 commitment.get().requester(),

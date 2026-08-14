@@ -84,12 +84,15 @@ Channel fields (all nullable unless specified):
 | `HANDOFF` | Delegate COMMAND to another agent | Transfers obligation | No |
 | `DONE` | Successful COMMAND completion | No | Yes |
 | `FAILURE` | Failed COMMAND | No | Yes |
+| `PROPOSE` | Conditional commitment (commissive) | Yes -- DONE (accept), DECLINE (reject), or RESPONSE (non-fulfilling) | No |
 | `EVENT` | Telemetry / observer signal | No | N/A -- excluded from agent context |
+
+`PROPOSE` is the commissive speech act: "I will do X if you agree." Unlike COMMAND, RESPONSE on a PROPOSE does **not** auto-fulfill the commitment -- only DONE (explicit acceptance) fulfills. This enables counter-proposal exchange without premature commitment closure.
 
 Utility methods on `MessageType`:
 - `isAgentVisible()` -- true for all except `EVENT`
-- `requiresCorrelationId()` -- true for `QUERY` and `COMMAND`
-- `requiresContent()` -- true for `DECLINE` and `FAILURE`
+- `requiresCorrelationId()` -- true for `QUERY`, `COMMAND`, and `PROPOSE`
+- `requiresContent()` -- true for `DECLINE`, `FAILURE`, and `PROPOSE`
 - `requiresTarget()` -- true for `HANDOFF`
 - `isTerminal()` -- true for `HANDOFF`, `DONE`, `FAILURE`
 

@@ -18,7 +18,7 @@ public record QhorusObligationEvent(
 ) implements SubscribableEvent {
 
     public enum Kind {
-        ASSIGNED, FULFILLED, FAILED, DECLINED, EXPIRED
+        ASSIGNED, PROPOSED, FULFILLED, FAILED, DECLINED, EXPIRED
     }
 
     private static final String TYPE_PREFIX = "io.casehub.qhorus.obligation.";

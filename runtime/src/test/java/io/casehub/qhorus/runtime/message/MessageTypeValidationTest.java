@@ -92,12 +92,13 @@ class MessageTypeValidationTest {
     }
 
     @Test
-    void requiresCorrelationIdForQueryAndCommandOnly() {
+    void requiresCorrelationIdForQueryCommandAndPropose() {
         assertTrue(MessageType.QUERY.requiresCorrelationId(), "QUERY must require correlationId");
         assertTrue(MessageType.COMMAND.requiresCorrelationId(), "COMMAND must require correlationId");
+        assertTrue(MessageType.PROPOSE.requiresCorrelationId(), "PROPOSE must require correlationId");
 
         for (MessageType t : MessageType.values()) {
-            if (t != MessageType.QUERY && t != MessageType.COMMAND) {
+            if (t != MessageType.QUERY && t != MessageType.COMMAND && t != MessageType.PROPOSE) {
                 assertFalse(t.requiresCorrelationId(), t.name() + " must NOT require correlationId");
             }
         }

@@ -142,6 +142,14 @@ public record MessageDispatch(
                         throw new IllegalArgumentException("HANDOFF requires target");
                     }
                 }
+                case PROPOSE -> {
+                    if (correlationId == null) {
+                        throw new IllegalArgumentException("PROPOSE requires correlationId for commitment tracking");
+                    }
+                    if (content == null || content.isBlank()) {
+                        throw new IllegalArgumentException("PROPOSE requires content (proposal terms)");
+                    }
+                }
                 case EVENT -> {
                     if (content != null) {
                         throw new IllegalArgumentException("EVENT messages must not carry content — use STATUS for content-bearing observe-channel broadcasts.");
