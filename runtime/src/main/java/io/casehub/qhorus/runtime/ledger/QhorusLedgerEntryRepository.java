@@ -1,30 +1,33 @@
 package io.casehub.qhorus.runtime.ledger;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
-import jakarta.transaction.Transactional.TxType;
-
-import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.spi.ActorIdentityProvider;
+import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.runtime.model.LedgerMerkleFrontier;
 import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
-import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.runtime.privacy.ContentSanitiser;
-import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.repository.LedgerMerkleFrontierRepository;
 import io.casehub.ledger.runtime.service.AttestationRecordedEvent;
 import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.runtime.service.LedgerMerkleTree;
 import io.casehub.platform.api.identity.TenancyConstants;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
+import jakarta.transaction.Transactional;
+import jakarta.transaction.Transactional.TxType;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Qhorus's default {@link LedgerEntryRepository} bean.
@@ -285,6 +288,49 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
                 .setParameter("cap", capabilityTag)
                 .setParameter("tid", tenancyId(tenancyId))
                 .getResultList();
+    }
+
+
+    @Override
+    public List<LedgerAttestation> findPeerAttestationsByAttestorIds(Set<String> attestorIds, String tenancyId) {
+        if (attestorIds == null || attestorIds.isEmpty()) {
+            return List.of();
+        }
+        return em.createQuery(
+                         "SELECT a FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id" +
+                         " WHERE a.attestorId IN :aids AND a.verdict IN (io.casehub.ledger.api.model.AttestationVerdict.ENDORSED, io.casehub.ledger.api.model.AttestationVerdict.CHALLENGED)" +
+                         " AND e.tenancyId = :tid ORDER BY a.occurredAt ASC",
+                         LedgerAttestation.class)
+                 .setParameter("aids", attestorIds)
+                 .setParameter("tid", tenancyId(tenancyId))
+                 .getResultList();
+    }
+
+    @Override
+    public Map<String, Map<String, Long>> findPeerAttestationPairCounts(Set<String> attestorIds, String tenancyId) {
+        if (attestorIds == null || attestorIds.isEmpty()) {
+            return Map.of();
+        }
+        List<Tuple> rows = em.createQuery(
+                                     "SELECT a.attestorId AS attestorId, e.actorId AS subjectActorId, COUNT(a) AS cnt" +
+                                     " FROM LedgerAttestation a JOIN LedgerEntry e ON a.ledgerEntryId = e.id" +
+                                     " WHERE a.attestorId IN :aids AND a.verdict = io.casehub.ledger.api.model.AttestationVerdict.ENDORSED" +
+                                     " AND e.tenancyId = :tid" +
+                                     " GROUP BY a.attestorId, e.actorId",
+                                     Tuple.class)
+                             .setParameter("aids", attestorIds)
+                             .setParameter("tid", tenancyId(tenancyId))
+                             .getResultList();
+
+        Map<String, Map<String, Long>> result = new LinkedHashMap<>();
+        for (Tuple row : rows) {
+            String attestorId     = row.get("attestorId", String.class);
+            String subjectActorId = row.get("subjectActorId", String.class);
+            Long   count          = row.get("cnt", Long.class);
+            result.computeIfAbsent(attestorId, k -> new LinkedHashMap<>())
+                  .put(subjectActorId, count);
+        }
+        return result;
     }
 
     private static String tenancyId(final String tenancyId) {

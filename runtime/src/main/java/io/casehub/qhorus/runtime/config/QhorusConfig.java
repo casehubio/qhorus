@@ -249,5 +249,29 @@ public interface QhorusConfig {
          */
         @WithDefault("0.5")
         double peerChallengedConfidence();
+
+        /**
+         * Minimum overlapping peer+policy attestation data points before credibility is assessed. Default: 5.
+         */
+        @WithDefault("5")
+        int credibilityMinDataPoints();
+
+        /**
+         * Agreement rate below which the LOW_AGREEMENT flag is set. Default: 0.3.
+         */
+        @WithDefault("0.3")
+        double credibilityLowAgreementThreshold();
+
+        /**
+         * Enable collusion-aware credibility policy with mutual-endorsement pair detection. Default: false.
+         */
+        @WithDefault("false")
+        boolean collusionDetectionEnabled();
+
+        /**
+         * Mutual endorsement ratio threshold above which COLLUSION_SUSPECT flag is set. Default: 0.8.
+         */
+        @WithDefault("0.8")
+        double collusionThreshold();
     }
 }
