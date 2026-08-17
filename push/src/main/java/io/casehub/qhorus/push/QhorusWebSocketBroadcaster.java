@@ -6,12 +6,14 @@ import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.PresenceStatus;
 import io.casehub.qhorus.api.channel.Space;
+import io.casehub.qhorus.api.event.ChannelMutationEvent;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.store.SpaceStore;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 
 import java.time.Instant;
@@ -104,5 +106,17 @@ public class QhorusWebSocketBroadcaster {
     public void broadcastTopicRemove(UUID channelId, Long topicId) {
         eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_TOPICS,
             PushMessage.remove("topics", String.valueOf(topicId)));
+    }
+
+    void onMutation(@Observes ChannelMutationEvent event) {
+        switch (event) {
+            case ChannelMutationEvent.ReactionAdded e -> broadcastReactionAppend(e.messageId(), e.emoji());
+            case ChannelMutationEvent.ReactionRemoved e -> broadcastReactionRemove(e.messageId(), e.emoji());
+            case ChannelMutationEvent.MemberJoined e -> broadcastMemberAppend(e.channelId(), e.membership());
+            case ChannelMutationEvent.MemberLeft e -> broadcastMemberRemove(e.channelId(), e.memberId());
+            case ChannelMutationEvent.TopicCreated e -> broadcastTopicAppend(e.channelId(), e.topic());
+            case ChannelMutationEvent.TopicUpdated e -> broadcastTopicReplace(e.channelId(), e.topic());
+            case ChannelMutationEvent.TopicRemoved e -> broadcastTopicRemove(e.channelId(), e.topicId());
+        }
     }
 }

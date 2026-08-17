@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasItems;
@@ -334,5 +335,174 @@ class ChannelResourceTest {
                .statusCode(404);
     }
 
+    // --- Aggregation endpoints ---
 
+    @Test
+    void feedReturnsArray() {
+        given().when().get("/api/channels/feed")
+               .then().statusCode(200)
+               .body("$.size()", greaterThanOrEqualTo(0));
+    }
+
+    @Test
+    void timelineReturnsMessagesForChannel() {
+        var channelId = createChannel("timeline-test");
+        given().when().get("/api/channels/" + channelId + "/timeline")
+               .then().statusCode(200)
+               .body("$.size()", greaterThanOrEqualTo(0));
+    }
+
+    // --- Reaction CRUD ---
+
+    @Test
+    void reactionAddAndList() {
+        var channelId = createChannel("react-test");
+        var msgId = postMessage(channelId, "react to me");
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"emoji": "thumbsup"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/messages/" + msgId + "/reactions")
+               .then().statusCode(200);
+
+        given().when().get("/api/channels/" + channelId + "/messages/" + msgId + "/reactions")
+               .then().statusCode(200)
+               .body("$", hasItem("thumbsup"));
+    }
+
+    @Test
+    void reactionRemove() {
+        var channelId = createChannel("react-rm-test");
+        var msgId = postMessage(channelId, "react then remove");
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"emoji": "thumbsup"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/messages/" + msgId + "/reactions")
+               .then().statusCode(200);
+
+        given().when().delete("/api/channels/" + channelId + "/messages/" + msgId + "/reactions/thumbsup")
+               .then().statusCode(200);
+    }
+
+    // --- Topic CRUD ---
+
+    @Test
+    void topicCreateAndList() {
+        var channelId = createChannel("topic-test");
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"name": "design"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/topics")
+               .then().statusCode(200)
+               .body("name", equalTo("design"));
+
+        given().when().get("/api/channels/" + channelId + "/topics")
+               .then().statusCode(200)
+               .body("$.size()", greaterThan(0));
+    }
+
+    @Test
+    void topicUpdate() {
+        var channelId = createChannel("topic-upd-test");
+        var topicId = given().contentType(ContentType.JSON)
+               .body("""
+                     {"name": "original"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/topics")
+               .then().statusCode(200)
+               .extract().path("id").toString();
+
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"name": "renamed"}
+                     """)
+               .when().put("/api/channels/" + channelId + "/topics/" + topicId)
+               .then().statusCode(200);
+    }
+
+    // --- Member CRUD ---
+
+    @Test
+    void memberJoinAndList() {
+        var channelId = createChannel("member-test");
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"memberId": "alice"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/members")
+               .then().statusCode(200);
+
+        given().when().get("/api/channels/" + channelId + "/members")
+               .then().statusCode(200)
+               .body("$.size()", greaterThan(0));
+    }
+
+    @Test
+    void memberLeave() {
+        var channelId = createChannel("member-leave-test");
+        given().contentType(ContentType.JSON)
+               .body("""
+                     {"memberId": "bob"}
+                     """)
+               .when().post("/api/channels/" + channelId + "/members")
+               .then().statusCode(200);
+
+        given().when().delete("/api/channels/" + channelId + "/members/bob")
+               .then().statusCode(200);
+    }
+
+    // --- Presence ---
+
+    @Test
+    void presenceListReturnsArray() {
+        var channelId = createChannel("presence-test");
+        given().when().get("/api/channels/" + channelId + "/presence")
+               .then().statusCode(200)
+               .body("$.size()", greaterThanOrEqualTo(0));
+    }
+
+    // --- Commitments ---
+
+    @Test
+    void commitmentsListReturnsArray() {
+        var channelId = createChannel("commit-test");
+        given().when().get("/api/channels/" + channelId + "/commitments")
+               .then().statusCode(200)
+               .body("$.size()", greaterThanOrEqualTo(0));
+    }
+
+    // --- Correlation ---
+
+    @Test
+    void correlationChainReturnsArray() {
+        var channelId = createChannel("corr-test");
+        given().when().get("/api/channels/" + channelId + "/correlation/no-such-corr")
+               .then().statusCode(200)
+               .body("$.size()", greaterThanOrEqualTo(0));
+    }
+
+    // --- Test helpers ---
+
+    private String createChannel(String name) {
+        return given().contentType(ContentType.JSON)
+               .body("""
+                     {"name": "%s"}
+                     """.formatted(name))
+               .when().post("/api/channels")
+               .then().statusCode(201)
+               .extract().path("channelId").toString();
+    }
+
+    private String postMessage(String channelId, String text) {
+        return given().contentType(ContentType.JSON)
+               .body("""
+                     {"channelId": "%s", "sender": "test-user",
+                      "type": "QUERY", "actorType": "HUMAN", "content": "%s"}
+                     """.formatted(channelId, text))
+               .when().post("/api/channels/" + channelId + "/messages")
+               .then().statusCode(200)
+               .extract().path("messageId").toString();
+    }
 }
