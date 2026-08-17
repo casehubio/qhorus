@@ -26,6 +26,7 @@ target/
 *.dylib
 wksp
 .claude/scheduled_tasks.lock
-.claude
 package-lock.json
 proj
+.mvn/maven.config
+.mvn/slot-settings.xml

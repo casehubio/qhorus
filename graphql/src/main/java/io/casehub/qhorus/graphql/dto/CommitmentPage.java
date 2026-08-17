@@ -1,0 +1,8 @@
+package io.casehub.qhorus.graphql.dto;
+
+import io.casehub.platform.graphql.PageInfo;
+import java.util.List;
+import org.eclipse.microprofile.graphql.Type;
+
+@Type("CommitmentPage")
+public record CommitmentPage(List<CommitmentType> items, PageInfo pageInfo) {}

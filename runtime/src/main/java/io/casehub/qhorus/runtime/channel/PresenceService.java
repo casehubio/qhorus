@@ -3,10 +3,12 @@ package io.casehub.qhorus.runtime.channel;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.casehub.qhorus.api.channel.Presence;
+import io.casehub.qhorus.api.channel.PresenceChangedEvent;
 import io.casehub.qhorus.api.channel.PresenceTracker;
 import io.casehub.qhorus.api.channel.PresenceStatus;
 import io.casehub.qhorus.runtime.config.PresenceConfig;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 
 import java.time.Clock;
@@ -47,7 +49,13 @@ public class PresenceService implements PresenceTracker {
             throw new IllegalArgumentException(
                     "Only reportable statuses (ONLINE, AVAILABLE, BUSY) are accepted; got " + status);
         }
+        PresenceEntry previous = cache.getIfPresent(memberId);
+        PresenceStatus previousStatus = previous != null ? previous.reportedStatus() : PresenceStatus.OFFLINE;
         cache.put(memberId, new PresenceEntry(status, clock.instant(), statusMessage));
+        if (presenceEvent != null && previousStatus != status) {
+            presenceEvent.fireAsync(new PresenceChangedEvent(
+                    memberId, null, status, previousStatus, clock.instant()));
+        }
     }
 
     public Presence getPresence(String memberId) {
@@ -66,7 +74,12 @@ public class PresenceService implements PresenceTracker {
     }
 
     public void setOffline(String memberId) {
+        PresenceEntry previous = cache.getIfPresent(memberId);
         cache.invalidate(memberId);
+        if (presenceEvent != null && previous != null) {
+            presenceEvent.fireAsync(new PresenceChangedEvent(
+                    memberId, null, PresenceStatus.OFFLINE, previous.reportedStatus(), clock.instant()));
+        }
     }
 
     private PresenceStatus computeEffectiveStatus(PresenceEntry entry) {
@@ -79,8 +92,10 @@ public class PresenceService implements PresenceTracker {
 
     @Inject
     public ChannelMembershipService membershipService;
-    @jakarta.inject.Inject
+    @Inject
     io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+    @Inject
+    Event<PresenceChangedEvent> presenceEvent;
 
     @Override
     public void heartbeat(PresenceStatus status, String statusMessage) {
