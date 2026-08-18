@@ -27,7 +27,7 @@ class SpaceResourceTest {
                 """)
             .when().post("/api/spaces")
             .then()
-            .statusCode(200)
+            .statusCode(201)
             .body("name", equalTo("space-rest-test"))
             .body("description", equalTo("A test space"))
             .body("id", notNullValue())
@@ -106,7 +106,7 @@ class SpaceResourceTest {
               """.formatted(name);
         return given().contentType(ContentType.JSON).body(body)
             .when().post("/api/spaces")
-            .then().statusCode(200)
+            .then().statusCode(201)
             .extract().path("id").toString();
     }
 }

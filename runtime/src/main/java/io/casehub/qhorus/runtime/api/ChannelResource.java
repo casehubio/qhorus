@@ -168,7 +168,7 @@ public class ChannelResource {
                                 ReactionRequest request) {
         final Channel ch = resolve(id);
         if (ch == null) return error(404, "Channel not found: " + id);
-        long msgId = Long.parseLong(messageId);
+        long msgId = parseLongParam(messageId, "messageId");
         reactionManager.react(msgId, request.emoji());
         mutationEvent.fire(new ChannelMutationEvent.ReactionAdded(msgId, request.emoji()));
         return Response.ok().build();
@@ -182,7 +182,7 @@ public class ChannelResource {
                                    @PathParam("emoji") String emoji) {
         final Channel ch = resolve(id);
         if (ch == null) return error(404, "Channel not found: " + id);
-        long msgId = Long.parseLong(messageId);
+        long msgId = parseLongParam(messageId, "messageId");
         reactionManager.unreact(msgId, emoji);
         mutationEvent.fire(new ChannelMutationEvent.ReactionRemoved(msgId, emoji));
         return Response.ok().build();
@@ -194,7 +194,7 @@ public class ChannelResource {
                                   @PathParam("messageId") String messageId) {
         final Channel ch = resolve(id);
         if (ch == null) return error(404, "Channel not found: " + id);
-        var reactions = reactionReader.findByMessage(Long.parseLong(messageId)).stream()
+        var reactions = reactionReader.findByMessage(parseLongParam(messageId, "messageId")).stream()
             .map(Reaction::emoji).toList();
         return Response.ok(reactions).build();
     }
@@ -235,7 +235,7 @@ public class ChannelResource {
                                 UpdateTopicRequest request) {
         final Channel ch = resolve(id);
         if (ch == null) return error(404, "Channel not found: " + id);
-        long topicLongId = Long.parseLong(topicId);
+        long topicLongId = parseLongParam(topicId, "topicId");
         var existing = topicReader.findById(topicLongId);
         if (existing.isEmpty()) return error(404, "Topic not found");
         if (!ch.id().equals(existing.get().channelId())) return error(400, "Topic does not belong to this channel");
@@ -261,12 +261,12 @@ public class ChannelResource {
                                MergeTopicRequest request) {
         final Channel ch = resolve(id);
         if (ch == null) return error(404, "Channel not found: " + id);
-        long sourceTopicId = Long.parseLong(topicId);
+        long sourceTopicId = parseLongParam(topicId, "topicId");
         var source = topicReader.findById(sourceTopicId);
         if (source.isEmpty()) return error(404, "Source topic not found");
         if (!ch.id().equals(source.get().channelId())) return error(400, "Source topic does not belong to this channel");
         if ("general".equalsIgnoreCase(source.get().name())) return error(400, "Cannot merge the default topic");
-        long targetTopicId = Long.parseLong(request.targetTopicId());
+        long targetTopicId = parseLongParam(request.targetTopicId(), "targetTopicId");
         var target = topicReader.findById(targetTopicId);
         if (target.isEmpty()) return error(404, "Target topic not found");
         if (!ch.id().equals(target.get().channelId())) return error(400, "Target topic does not belong to this channel");
@@ -526,6 +526,14 @@ public class ChannelResource {
         return names.stream().map(MessageType::valueOf).collect(Collectors.toSet());
     }
 
+    static long parseLongParam(final String value, final String name) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid " + name + ": " + value);
+        }
+    }
+
     static Response error(final int status, final String message) {
         return Response.status(status)
                 .entity(new ErrorResponse(message))
@@ -566,4 +574,9 @@ public class ChannelResource {
     public record UpdateTopicRequest(String name, String state) {}
     public record MergeTopicRequest(String targetTopicId) {}
     public record MessagePostRequest(String sender, String type, String actorType, String content) {}
+
+    @org.jboss.resteasy.reactive.server.ServerExceptionMapper
+    Response handleIllegalArgument(IllegalArgumentException e) {
+        return error(400, e.getMessage());
+    }
 }

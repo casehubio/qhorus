@@ -7,6 +7,7 @@ import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.PresenceStatus;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.event.ChannelMutationEvent;
+import io.quarkus.logging.Log;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.Commitment;
@@ -117,6 +118,7 @@ public class QhorusWebSocketBroadcaster {
             case ChannelMutationEvent.TopicCreated e -> broadcastTopicAppend(e.channelId(), e.topic());
             case ChannelMutationEvent.TopicUpdated e -> broadcastTopicReplace(e.channelId(), e.topic());
             case ChannelMutationEvent.TopicRemoved e -> broadcastTopicRemove(e.channelId(), e.topicId());
+            default -> Log.warnf("Unhandled ChannelMutationEvent variant: %s", event.getClass().getSimpleName());
         }
     }
 }

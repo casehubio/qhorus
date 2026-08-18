@@ -36,22 +36,26 @@ public class SpaceResource {
     @GET
     @Path("/{id}")
     public Response get(@PathParam("id") String id) {
-        return spaceService.findById(UUID.fromString(id))
+        var uuid = parseUuid(id);
+        if (uuid == null) return Response.status(400).entity(new ErrorResponse("Invalid UUID: " + id)).build();
+        return spaceService.findById(uuid)
             .map(s -> Response.ok(s).build())
             .orElse(Response.status(404).build());
     }
 
     @GET
     @Path("/{id}/children")
-    public List<Space> children(@PathParam("id") String id) {
-        return spaceService.listChildren(UUID.fromString(id));
+    public Response children(@PathParam("id") String id) {
+        var uuid = parseUuid(id);
+        if (uuid == null) return Response.status(400).entity(new ErrorResponse("Invalid UUID: " + id)).build();
+        return Response.ok(spaceService.listChildren(uuid)).build();
     }
 
     @POST
     public Response create(SpaceCreateRequest request) {
         try {
             var space = spaceService.create(request);
-            return Response.ok(space).build();
+            return Response.status(Response.Status.CREATED).entity(space).build();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return Response.status(400).entity(new ErrorResponse(e.getMessage())).build();
         }
@@ -60,7 +64,8 @@ public class SpaceResource {
     @PUT
     @Path("/{id}")
     public Response update(@PathParam("id") String id, SpaceUpdateRequest request) {
-        var uuid = UUID.fromString(id);
+        var uuid = parseUuid(id);
+        if (uuid == null) return Response.status(400).entity(new ErrorResponse("Invalid UUID: " + id)).build();
         try {
             if (request.name() != null) {
                 spaceService.rename(uuid, request.name());
@@ -83,7 +88,9 @@ public class SpaceResource {
     @Path("/{id}")
     public Response delete(@PathParam("id") String id) {
         try {
-            spaceService.delete(UUID.fromString(id));
+            var uuid = parseUuid(id);
+            if (uuid == null) return Response.status(400).entity(new ErrorResponse("Invalid UUID: " + id)).build();
+            spaceService.delete(uuid);
             return Response.noContent().build();
         } catch (IllegalArgumentException e) {
             return Response.status(404).entity(new ErrorResponse(e.getMessage())).build();
@@ -95,7 +102,14 @@ public class SpaceResource {
     @GET
     @Path("/{id}/channels")
     public List<Channel> channelsInSpace(@PathParam("id") String id) {
-        return spaceService.listChannels(UUID.fromString(id));
+        var uuid = parseUuid(id);
+        if (uuid == null) return List.of();
+        return spaceService.listChannels(uuid);
+    }
+
+    private static UUID parseUuid(String id) {
+        try { return UUID.fromString(id); }
+        catch (IllegalArgumentException e) { return null; }
     }
 
     record SpaceUpdateRequest(String name, String description, UUID parentSpaceId) {}
