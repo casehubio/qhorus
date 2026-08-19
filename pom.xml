@@ -14,6 +14,7 @@
   <url>https://github.com/casehubio/qhorus</url>
 
   <modules>
+    <module>a2a-protocol</module>
     <module>api</module>
     <module>connectors</module>
     <module>runtime</module>
