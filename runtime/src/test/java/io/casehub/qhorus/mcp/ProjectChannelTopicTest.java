@@ -34,9 +34,9 @@ class ProjectChannelTopicTest {
     void topicFilter_foldsOnlyMatchingTopic() {
         String ch = "proj-topic-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "testing");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
 
         String result = tools.projectChannel(ch, "topic-counter", null, "design");
 
@@ -48,8 +48,8 @@ class ProjectChannelTopicTest {
     void nullTopic_foldsAllMessages() {
         String ch = "proj-notopic-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "testing");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
         String result = tools.projectChannel(ch, "topic-counter", null, null);
 
@@ -61,8 +61,8 @@ class ProjectChannelTopicTest {
     void blankTopic_normalizedToNull_foldsAll() {
         String ch = "proj-blank-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "testing");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
         String result = tools.projectChannel(ch, "topic-counter", null, "  ");
 
@@ -74,8 +74,8 @@ class ProjectChannelTopicTest {
     void topicFilter_caseInsensitive() {
         String ch = "proj-case-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "Design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "testing");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "Design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
         String result = tools.projectChannel(ch, "topic-counter", null, "design");
 
@@ -87,7 +87,7 @@ class ProjectChannelTopicTest {
     void topicFilter_noMatchingMessages_returnsEmpty() {
         String ch = "proj-nomatch-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
 
         String result = tools.projectChannel(ch, "topic-counter", null, "nonexistent");
 
@@ -99,9 +99,9 @@ class ProjectChannelTopicTest {
     void topicAndMaxMessages_bothApplied() {
         String ch = "proj-combined-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
 
         String result = tools.projectChannel(ch, "topic-counter", 2, "design");
 
@@ -113,10 +113,10 @@ class ProjectChannelTopicTest {
     void topicOnly_noMaxMessages_scopedPathTaken() {
         String ch = "proj-topiconly-" + System.nanoTime();
         tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, "testing");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "dave", "status", "d", null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
+        tools.sendMessage(ch, "dave", "status", "d", null, null, null, null, null, null, null, null, "design");
 
         String result = tools.projectChannel(ch, "topic-counter", null, "design");
 

@@ -20,7 +20,7 @@ class RenderableProjectionTest {
 
     private static MessageView msg(MessageType type, String sender, String content) {
         return new MessageView(1L, UUID.randomUUID(), sender, type, content,
-                               null, null, null, null, null, ActorType.AGENT, Instant.now(), null, 0);}
+                               null, null, null, null, null, null, ActorType.AGENT, Instant.now(), null, 0);}
 
     // A minimal RenderableProjection that counts COMMAND messages.
     private static final RenderableProjection<Integer> COMMAND_COUNTER =

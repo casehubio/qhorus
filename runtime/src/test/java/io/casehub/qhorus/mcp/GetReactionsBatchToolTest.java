@@ -26,8 +26,8 @@ class GetReactionsBatchToolTest {
     void batchReturnsGroupedReactions() {
         tools.createChannel("react-batch-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult msg1 = tools.sendMessage("react-batch-1", "agent-a", "status", "hello", null, null, null, null, null, null, null, null);
-        DispatchResult msg2 = tools.sendMessage("react-batch-1", "agent-a", "status", "world", null, null, null, null, null, null, null, null);
+        DispatchResult msg1 = tools.sendMessage("react-batch-1", "agent-a", "status", "hello", null, null, null, null, null, null, null, null, null);
+        DispatchResult msg2 = tools.sendMessage("react-batch-1", "agent-a", "status", "world", null, null, null, null, null, null, null, null, null);
 
         reactionService.react(msg1.messageId(), "👍", "user-1", null);
         reactionService.react(msg2.messageId(), "❤️", "user-2", null);

@@ -249,7 +249,7 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_uses_backend_normaliser_when_provided() {
         InboundNormaliser customNormaliser = (ch, raw) -> new NormalisedMessage(
-                MessageType.RESPONSE, raw.content(),
+                MessageType.RESPONSE, raw.content(), null,
                 "human:" + raw.externalSenderId(),
                 raw.correlationId(), raw.inReplyTo(), null, null);
 
@@ -322,7 +322,7 @@ class ChannelGatewayTest {
     @Test
     void receiveHumanMessage_telemetryEventReflectsCustomBackendId() {
         InboundNormaliser customNormaliser = (ch, raw) -> new NormalisedMessage(
-                MessageType.RESPONSE, raw.content(),
+                MessageType.RESPONSE, raw.content(), null,
                 "human:" + raw.externalSenderId(),
                 raw.correlationId(), raw.inReplyTo(), null, null);
         HumanParticipatingChannelBackend customBackend = new HumanParticipatingChannelBackend() {

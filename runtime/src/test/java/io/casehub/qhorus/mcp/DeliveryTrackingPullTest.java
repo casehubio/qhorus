@@ -36,10 +36,8 @@ class DeliveryTrackingPullTest {
         tools.register(readerId, "test reader", null, null, null);
         membershipStore.put(new ChannelMembership(null, ch.id(), readerId,
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
-        tools.sendMessage(ch.name(), "agent-a", "STATUS", "contribution-a",
-                null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch.name(), "agent-b", "STATUS", "contribution-b",
-                null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "contribution-a", null, null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-b", "STATUS", "contribution-b", null, null, null, null, null, null, null, null, null);
         tools.checkMessages(ch.name(), 0L, null, null, readerId, null);
         var membership = membershipStore.find(ch.id(), readerId).orElseThrow();
         assertNotNull(membership.lastDeliveredMessageId());
@@ -56,8 +54,7 @@ class DeliveryTrackingPullTest {
         tools.register(readerId, "test reader", null, null, null);
         membershipStore.put(new ChannelMembership(null, ch.id(), readerId,
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
-        tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello",
-                null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello", null, null, null, null, null, null, null, null, null);
         tools.checkMessages(ch.name(), 0L, null, null, readerId, null);
         var membership = membershipStore.find(ch.id(), readerId).orElseThrow();
         assertNull(membership.lastDeliveredMessageId());
@@ -71,8 +68,7 @@ class DeliveryTrackingPullTest {
                 .semantic(ChannelSemantic.BARRIER)
                 .barrierContributors(List.of("agent-a"))
                 .build());
-        tools.sendMessage(ch.name(), "agent-a", "STATUS", "data",
-                null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "data", null, null, null, null, null, null, null, null, null);
         var result = tools.checkMessages(ch.name(), 0L, null, null, null, null);
         assertNotNull(result);
     }
@@ -89,8 +85,7 @@ class DeliveryTrackingPullTest {
         tools.register(readerId, "test reader", null, null, null);
         membershipStore.put(new ChannelMembership(null, ch.id(), readerId,
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
-        tools.sendMessage(ch.name(), "agent-a", "STATUS", "tracked",
-                null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "tracked", null, null, null, null, null, null, null, null, null);
         tools.checkMessages(ch.name(), 0L, null, null, readerId, null);
         var membership = membershipStore.find(ch.id(), readerId).orElseThrow();
         assertNotNull(membership.lastDeliveredMessageId());
@@ -113,8 +108,7 @@ class DeliveryTrackingPullTest {
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
         membershipStore.put(new ChannelMembership(null, ch.id(), undeliveredReader,
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
-        tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello",
-                null, null, null, null, null, null, null, null);
+        tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello", null, null, null, null, null, null, null, null, null);
         tools.checkMessages(ch.name(), 0L, null, null, deliveredReader, null);
         var statuses = tools.getMessageDeliveryStatus(ch.name(), 1L);
         var delivered = statuses.stream().filter(s -> s.memberId().equals(deliveredReader)).findFirst().orElseThrow();

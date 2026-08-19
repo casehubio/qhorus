@@ -106,5 +106,5 @@ class PeerReviewResponseHandlerTest {
 
     private MessageReceivedEvent event(MessageType type, String content) {
         return new MessageReceivedEvent(1L, "test-ch", UUID.randomUUID(), TENANT,
-                                        type, "reviewer-a", null, null, UUID.randomUUID().toString(), Instant.now(), content, null);}
+                                        type, "reviewer-a", null, null, UUID.randomUUID().toString(), Instant.now(), content, null, null);}
 }

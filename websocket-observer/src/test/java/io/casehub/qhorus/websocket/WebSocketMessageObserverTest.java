@@ -45,7 +45,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, null,
-                Instant.now(), "hello", null));
+                Instant.now(), "hello", null, null));
 
         verify(conn).sendTextAndAwait(anyString());
     }
@@ -57,7 +57,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, null,
-                Instant.now(), "hello", null));
+                Instant.now(), "hello", null, null));
         // No exception, no crash
     }
 
@@ -70,7 +70,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.COMMAND, "agent-1", null, null, "corr-1",
-                Instant.now(), "do it", "general"));
+                Instant.now(), "do it", null, "general"));
 
         var captor = org.mockito.ArgumentCaptor.forClass(String.class);
         verify(conn).sendTextAndAwait(captor.capture());
@@ -93,7 +93,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, null,
-                Instant.now(), "hello", null));
+                Instant.now(), "hello", null, null));
 
         verify(good).sendTextAndAwait(anyString());
     }
@@ -108,7 +108,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 5L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, null,
-                Instant.now(), "hello", null));
+                Instant.now(), "hello", null, null));
 
         verify(conn, never()).sendTextAndAwait(anyString());
         var buffered = registry.completeCatchUp(channelId, conn);
@@ -128,7 +128,7 @@ class WebSocketMessageObserverTest {
         observer.onMessage(new MessageReceivedEvent(
                 6L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, null,
-                Instant.now(), "hello", null));
+                Instant.now(), "hello", null, null));
 
         verify(live).sendTextAndAwait(anyString());
         verify(catching, never()).sendTextAndAwait(anyString());

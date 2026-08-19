@@ -10,6 +10,7 @@ public record MessageDispatch(
         String sender,
         MessageType type,
         String content,
+        String payload,
         String correlationId,
         Long inReplyTo,
         java.util.List<ArtefactRef> artefactRefs,
@@ -29,6 +30,7 @@ public record MessageDispatch(
         private String                      sender;
         private MessageType                 type;
         private String                      content;
+        private String                      payload;
         private String                      correlationId;
         private Long                        inReplyTo;
         private java.util.List<ArtefactRef> artefactRefs;
@@ -58,6 +60,11 @@ public record MessageDispatch(
 
         public Builder content(String v) {
             this.content = v;
+            return this;
+        }
+
+        public Builder payload(String v) {
+            this.payload = v;
             return this;
         }
 
@@ -167,7 +174,7 @@ public record MessageDispatch(
                 }
             }
 
-            return new MessageDispatch(channelId, sender, type, content, correlationId,
+            return new MessageDispatch(channelId, sender, type, content, payload, correlationId,
                                        inReplyTo, artefactRefs, target, subjectId, causedByEntryId, actorType, deadline, telemetry,
                                        tenancyId, topic);
         }

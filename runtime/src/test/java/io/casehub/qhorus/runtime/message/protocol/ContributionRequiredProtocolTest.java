@@ -29,12 +29,12 @@ class ContributionRequiredProtocolTest {
 
     private MessageView mv(String sender) {
         return new MessageView(System.nanoTime(), CH, sender, MessageType.STATUS,
-                "content", null, null, null, null, List.of(), ActorType.AGENT, Instant.now(), null, 0);
+                "content", null, null, null, null, null, List.of(), ActorType.AGENT, Instant.now(), null, 0);
     }
 
     private MessageView event(String sender) {
         return new MessageView(System.nanoTime(), CH, sender, MessageType.EVENT,
-                null, null, null, null, null, List.of(), ActorType.AGENT, Instant.now(), null, 0);
+                null, null, null, null, null, null, List.of(), ActorType.AGENT, Instant.now(), null, 0);
     }
 
     @Test

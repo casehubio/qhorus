@@ -265,6 +265,7 @@ public class MessageService implements ConsumerMessaging {
                 if (last.sender().equals(dispatch.sender())) {
                     Message updated = last.toBuilder()
                             .content(dispatch.content())
+                            .payload(dispatch.payload())
                             .messageType(dispatch.type())
                             .correlationId(dispatch.correlationId())
                             .inReplyTo(dispatch.inReplyTo())
@@ -287,6 +288,7 @@ public class MessageService implements ConsumerMessaging {
                     try {
                         channelGateway.fanOut(ch.id(), ch.name(), new OutboundMessage(
                                 UUID.randomUUID(), saved.id(), dispatch.sender(), dispatch.type(), dispatch.content(),
+                                dispatch.payload(),
                                 dispatch.correlationId(),
                                 dispatch.inReplyTo(),
                                 dispatch.actorType(),
@@ -332,6 +334,7 @@ public class MessageService implements ConsumerMessaging {
                 .messageType(dispatch.type())
                 .actorType(dispatch.actorType())
                 .content(dispatch.content())
+                .payload(dispatch.payload())
                 .correlationId(dispatch.correlationId())
                 .inReplyTo(dispatch.inReplyTo())
                 .artefactRefs(dispatch.artefactRefs())
@@ -401,7 +404,7 @@ public class MessageService implements ConsumerMessaging {
 
         final MessageDispatch dispatchWithTenancy = dispatch.tenancyId() != null ? dispatch
                 : new MessageDispatch(dispatch.channelId(), dispatch.sender(), dispatch.type(),
-                        dispatch.content(), dispatch.correlationId(), dispatch.inReplyTo(),
+                        dispatch.content(), dispatch.payload(), dispatch.correlationId(), dispatch.inReplyTo(),
                         dispatch.artefactRefs(), dispatch.target(), dispatch.subjectId(),
                         dispatch.causedByEntryId(), dispatch.actorType(), dispatch.deadline(),
                         dispatch.telemetry(), effectiveTenancyId, dispatch.topic());
@@ -427,6 +430,7 @@ public class MessageService implements ConsumerMessaging {
             try {
                 hasTracked = channelGateway.fanOut(ch.id(), ch.name(), new OutboundMessage(
                         UUID.randomUUID(), saved.id(), dispatch.sender(), dispatch.type(), dispatch.content(),
+                        dispatch.payload(),
                         dispatch.correlationId(),
                         dispatch.inReplyTo(),
                         dispatch.actorType(),

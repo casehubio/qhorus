@@ -90,6 +90,9 @@ public class InstanceService {
     @Transactional
     public void markStaleOlderThan(int thresholdSeconds) {
         Instant cutoff = Instant.now().minusSeconds(thresholdSeconds);
-        InstanceEntity.update("status = 'stale' WHERE lastSeen < ?1 AND status = 'online'", cutoff);
+        InstanceEntity.update(
+            "status = 'stale' WHERE lastSeen < ?1 AND status = 'online' " +
+            "AND instanceId NOT IN (SELECT eab.instanceId FROM ExternalAgentBinding eab)",
+            cutoff);
     }
 }

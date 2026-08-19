@@ -11,6 +11,7 @@ public record OutboundMessage(
         String sender,
         MessageType type,
         String content,
+        String payload,
         String correlationId,
         Long inReplyTo,
         ActorType senderActorType,
@@ -18,11 +19,20 @@ public record OutboundMessage(
         String target,
         String topic) {
 
+    public OutboundMessage(UUID messageId, Long sequenceId, String sender, MessageType type,
+                           String content, String correlationId, Long inReplyTo,
+                           ActorType senderActorType,
+                           java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
+                           String target, String topic) {
+        this(messageId, sequenceId, sender, type, content, null, correlationId, inReplyTo,
+             senderActorType, artefactRefs, target, topic);
+    }
+
     public OutboundMessage(UUID messageId, String sender, MessageType type, String content,
                            String correlationId, Long inReplyTo, ActorType senderActorType,
                            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
                            String target, String topic) {
-        this(messageId, null, sender, type, content, correlationId, inReplyTo,
+        this(messageId, null, sender, type, content, null, correlationId, inReplyTo,
              senderActorType, artefactRefs, target, topic);
     }
 
@@ -30,7 +40,7 @@ public record OutboundMessage(
                            String correlationId, Long inReplyTo, ActorType senderActorType,
                            java.util.List<io.casehub.qhorus.api.message.ArtefactRef> artefactRefs,
                            String target) {
-        this(messageId, null, sender, type, content, correlationId, inReplyTo,
+        this(messageId, null, sender, type, content, null, correlationId, inReplyTo,
              senderActorType, artefactRefs, target, null);
     }
 }

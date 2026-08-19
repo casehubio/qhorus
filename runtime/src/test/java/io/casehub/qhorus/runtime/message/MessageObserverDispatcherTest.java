@@ -388,14 +388,14 @@ class MessageObserverDispatcherTest {
     void messageReceivedEvent_eventWithContent_throwsIllegalArgument() {
         assertThrows(IllegalArgumentException.class, () ->
             new io.casehub.qhorus.api.gateway.MessageReceivedEvent(
-                null, channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, null, null, Instant.now(), "non-null content", null));
+                null, channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, null, null, Instant.now(), "non-null content", null, null));
     }
 
     @Test
     void messageReceivedEvent_eventWithNullContent_isValid() {
         assertDoesNotThrow(() ->
             new io.casehub.qhorus.api.gateway.MessageReceivedEvent(
-                null, channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, null, null, Instant.now(), null, null));
+                null, channelName, channelId, TEST_TENANCY_ID, MessageType.EVENT, "agent-a", null, null, null, Instant.now(), null, null, null));
     }
 
 // ── CLUSTER scope filtering ───────────────────────────────────────────

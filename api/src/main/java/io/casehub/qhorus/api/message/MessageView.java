@@ -11,6 +11,7 @@ public record MessageView(
         String sender,
         MessageType type,
         String content,
+        String payload,
         String correlationId,
         Long inReplyTo,
         String target,

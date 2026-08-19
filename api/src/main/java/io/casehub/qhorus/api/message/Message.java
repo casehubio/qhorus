@@ -14,6 +14,7 @@ public record Message(
         ActorType actorType,
         String tenancyId,
         String content,
+        String payload,
         String correlationId,
         Long inReplyTo,
         int replyCount,
@@ -33,7 +34,7 @@ public record Message(
     public Builder toBuilder() {
         return new Builder()
                        .id(id).channelId(channelId).sender(sender).messageType(messageType)
-                       .actorType(actorType).tenancyId(tenancyId).content(content)
+                       .actorType(actorType).tenancyId(tenancyId).content(content).payload(payload)
                        .correlationId(correlationId).inReplyTo(inReplyTo).replyCount(replyCount)
                        .artefactRefs(artefactRefs).target(target).topic(topic).commitmentId(commitmentId)
                        .deadline(deadline).acknowledgedAt(acknowledgedAt).version(version)
@@ -52,6 +53,7 @@ public record Message(
         private ActorType         actorType;
         private String            tenancyId;
         private String            content;
+        private String            payload;
         private String            correlationId;
         private Long              inReplyTo;
         private int               replyCount;
@@ -98,6 +100,11 @@ public record Message(
 
         public Builder content(String v)                 {
                                                              this.content = v;
+                                                             return this;
+                                                         }
+
+        public Builder payload(String v)                 {
+                                                             this.payload = v;
                                                              return this;
                                                          }
 
@@ -158,7 +165,7 @@ public record Message(
 
         public Message build() {
             return new Message(id, channelId, sender, messageType, actorType,
-                               tenancyId, content, correlationId, inReplyTo, replyCount,
+                               tenancyId, content, payload, correlationId, inReplyTo, replyCount,
                                artefactRefs, target, topic, commitmentId, deadline, acknowledgedAt,
                                version, createdAt);
         }

@@ -144,7 +144,7 @@ class NotificationBridgeObserverTest {
         var evt = new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
                 MessageType.EVENT, "system:telemetry", null, null, CORRELATION_ID,
-                Instant.now(), null, null);
+                Instant.now(), null, null, null);
 
         observer.onMessage(evt);
 
@@ -157,7 +157,7 @@ class NotificationBridgeObserverTest {
         var evt = new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
                 MessageType.COMMAND, REQUESTER, null, null, null,
-                Instant.now(), "Do this", null);
+                Instant.now(), "Do this", null, null);
 
         observer.onMessage(evt);
 
@@ -236,7 +236,7 @@ class NotificationBridgeObserverTest {
         return new MessageReceivedEvent(
                 1L, CHANNEL_NAME, CHANNEL_ID, TENANCY_ID,
                 type, sender, null, null, CORRELATION_ID,
-                Instant.now(), content, null);}
+                Instant.now(), content, null, null);}
 
     private Commitment commitment(String requester, String obligor) {
         return Commitment.builder()

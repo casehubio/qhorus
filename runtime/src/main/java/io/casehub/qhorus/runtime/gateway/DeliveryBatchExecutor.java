@@ -190,6 +190,7 @@ class DeliveryBatchExecutor {
                 m.sender(),
                 m.messageType(),
                 m.content(),
+                m.payload(),
                 m.correlationId(),
                 m.inReplyTo(),
                 m.actorType(),

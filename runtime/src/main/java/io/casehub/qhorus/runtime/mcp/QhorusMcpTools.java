@@ -865,6 +865,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "sender", description = "Sender identifier") String sender,
             @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), PROPOSE (offering conditional commitment — sender binds to action contingent on receiver's acceptance; RESPONSE does not auto-fulfill, only DONE accepts), EVENT (telemetry only, not delivered to agents)") String type,
             @ToolArg(name = "content", description = "Message content") String content,
+            @ToolArg(name = "payload", description = "Structured data payload (JSON string). Carried alongside content for machine-readable data (tool results, parameters). Not analyzed by governance.", required = false) String payload,
             @ToolArg(name = "correlation_id", description = "Correlation ID (auto-generated for QUERY, COMMAND, and PROPOSE if omitted)", required = false) String correlationId,
             @ToolArg(name = "in_reply_to", description = "ID of the message being replied to", required = false) Long inReplyTo,
             @ToolArg(name = "artefact_refs", description = "UUIDs of shared artefacts to attach. Auto-claims each artefact for the sender; auto-released on commitment resolution (RESPONSE/DONE/DECLINE/FAILURE).", required = false) List<String> artefactRefs,
@@ -960,6 +961,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                         .sender(sender)
                         .type(msgType)
                         .content(content)
+                        .payload(payload)
                         .correlationId(corrId)
                         .inReplyTo(inReplyTo)
                         .artefactRefs(refsList)
@@ -1310,7 +1312,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     public WaitResult requestApprovalWithCorrelationId(String channelName, String content, String correlationId,
                                                        Integer timeoutS) {
         int timeout = timeoutS != null ? timeoutS : 300;
-        sendMessage(channelName, "agent", "query", content, correlationId, null, (List<String>) null, null, null, null, null, null);
+        sendMessage(channelName, "agent", "query", content, null, correlationId, null, (List<String>) null, null, null, null, null, null);
         return waitForReply(channelName, correlationId, timeout, null);
     }
 
@@ -1332,7 +1334,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         // respondToApproval is a human tool and must not fail even on unusual commitment states.
         io.casehub.qhorus.api.message.MessageDispatch dispatch = new io.casehub.qhorus.api.message.MessageDispatch(
                 ch.id(), Senders.HUMAN, io.casehub.qhorus.api.message.MessageType.RESPONSE,
-                responseText, correlationId, inReplyTo, null, null, null, null,
+                responseText, null, correlationId, inReplyTo, null, null, null, null,
                 io.casehub.platform.api.identity.ActorType.HUMAN, null, null, null, null);
         return messageService.dispatch(dispatch);
     }

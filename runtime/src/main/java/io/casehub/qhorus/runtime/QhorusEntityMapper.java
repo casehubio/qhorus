@@ -66,6 +66,7 @@ public class QhorusEntityMapper {
                 msg.sender(),
                 msg.messageType(),
                 msg.content(),
+                msg.payload(),
                 msg.correlationId(),
                 msg.inReplyTo(),
                 msg.target(),

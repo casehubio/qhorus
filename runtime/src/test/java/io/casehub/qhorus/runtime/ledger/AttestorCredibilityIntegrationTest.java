@@ -48,9 +48,9 @@ class AttestorCredibilityIntegrationTest {
         setup(ch, "agent-a", "agent-b");
 
         String corrId = UUID.randomUUID().toString();
-        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", corrId,
+        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", null, corrId,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "agent-b", "done", "done1", corrId,
+        tools.sendMessage(ch, "agent-b", "done", "done1", null, corrId,
                 cmd.messageId(), null, null, null, null, null, null);
 
         UUID channelId = channelId(ch);
@@ -76,9 +76,9 @@ class AttestorCredibilityIntegrationTest {
         setup(ch, "agent-a", "agent-b");
 
         String corrId = UUID.randomUUID().toString();
-        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", corrId,
+        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", null, corrId,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "agent-b", "done", "done1", corrId,
+        tools.sendMessage(ch, "agent-b", "done", "done1", null, corrId,
                 cmd.messageId(), null, null, null, null, null, null);
 
         UUID channelId = channelId(ch);
@@ -102,9 +102,9 @@ class AttestorCredibilityIntegrationTest {
         setup(ch, "agent-a", "agent-b");
 
         String corrId = UUID.randomUUID().toString();
-        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", corrId,
+        DispatchResult cmd = tools.sendMessage(ch, "agent-a", "command", "task1", null, corrId,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "agent-b", "done", "done1", corrId,
+        tools.sendMessage(ch, "agent-b", "done", "done1", null, corrId,
                 cmd.messageId(), null, null, null, null, null, null);
 
         UUID channelId = channelId(ch);
@@ -130,15 +130,15 @@ class AttestorCredibilityIntegrationTest {
         setup(ch, "agent-a", "agent-b");
 
         String corrId1 = UUID.randomUUID().toString();
-        DispatchResult cmd1 = tools.sendMessage(ch, "agent-a", "command", "task1", corrId1,
+        DispatchResult cmd1 = tools.sendMessage(ch, "agent-a", "command", "task1", null, corrId1,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "agent-b", "done", "done1", corrId1,
+        tools.sendMessage(ch, "agent-b", "done", "done1", null, corrId1,
                 cmd1.messageId(), null, null, null, null, null, null);
 
         String corrId2 = UUID.randomUUID().toString();
-        DispatchResult cmd2 = tools.sendMessage(ch, "agent-a", "command", "task2", corrId2,
+        DispatchResult cmd2 = tools.sendMessage(ch, "agent-a", "command", "task2", null, corrId2,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "agent-b", "done", "done2", corrId2,
+        tools.sendMessage(ch, "agent-b", "done", "done2", null, corrId2,
                 cmd2.messageId(), null, null, null, null, null, null);
 
         UUID channelId = channelId(ch);
@@ -228,9 +228,9 @@ class AttestorCredibilityIntegrationTest {
 
     private MessageLedgerEntry dispatchCommandDone(String channel, String commander, String doer) {
         String corrId = UUID.randomUUID().toString();
-        DispatchResult cmd = tools.sendMessage(channel, commander, "command", "task-" + corrId, corrId,
+        DispatchResult cmd = tools.sendMessage(channel, commander, "command", "task-" + corrId, null, corrId,
                 null, null, null, null, null, null, null);
-        tools.sendMessage(channel, doer, "done", "done-" + corrId, corrId,
+        tools.sendMessage(channel, doer, "done", "done-" + corrId, null, corrId,
                 cmd.messageId(), null, null, null, null, null, null);
 
         UUID channelId = channelId(channel);

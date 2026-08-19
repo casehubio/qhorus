@@ -34,7 +34,7 @@ class DeniedTypesMcpTest {
 
         // EVENT is not obligation-creating — dispatch succeeds with advisory
         io.casehub.qhorus.api.message.DispatchResult result = tools.sendMessage("oversight-denied", "telemetry-agent", "event",
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
 
         assertThat(result.advisories()).isNotEmpty();
         String adv = result.advisories().get(0);
@@ -49,7 +49,7 @@ class DeniedTypesMcpTest {
 
         // COMMAND is not denied — should pass
         tools.sendMessage("oversight-pass", "overseer", "command",
-                "proceed", null, null, null, null, null, null, null, null);
+                "proceed", null, null, null, null, null, null, null, null, null);
     }
 
     @Test

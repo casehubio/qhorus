@@ -41,7 +41,7 @@ class KafkaMessageObserverTest {
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.STATUS, "agent-1", null, null, "corr-1",
-                Instant.now(), "hello", "general");
+                Instant.now(), "hello", null, "general");
 
         observer.onMessage(event);
 
@@ -57,7 +57,7 @@ class KafkaMessageObserverTest {
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "test-channel", channelId, "t1",
                 MessageType.COMMAND, "agent-1", null, null, null,
-                Instant.now(), "do it", null);
+                Instant.now(), "do it", null, null);
 
         observer.onMessage(event);
 
@@ -85,7 +85,7 @@ class KafkaMessageObserverTest {
             String content = type == MessageType.EVENT ? null : "payload";
             observer.onMessage(new MessageReceivedEvent(
                     1L, "ch", channelId, "t1", type, "a", null, null, null,
-                    Instant.now(), content, null));
+                    Instant.now(), content, null, null));
         }
         assertThat(sent).hasSize(MessageType.values().length);
     }

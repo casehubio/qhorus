@@ -24,7 +24,7 @@ class QhorusEventPublisherTest {
         var event = new MessageReceivedEvent(
                 1L, "test-channel", UUID.randomUUID(), "tenant",
                 MessageType.STATUS, "sender", null, null, null,
-                Instant.now(), "hello", "general");
+                Instant.now(), "hello", null, "general");
         publisher.onMessageReceived(event);
 
         assertThat(received).hasSize(1);
@@ -59,7 +59,7 @@ class QhorusEventPublisherTest {
         var event = new MessageReceivedEvent(
                 1L, "ch", UUID.randomUUID(), "tenant",
                 MessageType.STATUS, "sender", null, null, null,
-                Instant.now(), "content", "general");
+                Instant.now(), "content", null, "general");
         publisher.onMessageReceived(event);
 
         assertThat(sub1).hasSize(1);

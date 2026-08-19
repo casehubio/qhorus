@@ -156,7 +156,7 @@ public int updateTopicName(UUID channelId, String oldTopic, String newTopic) {
         for (int i = filtered.size() - 1; i >= 0; i--) {
             Message m = filtered.get(i);
             views.add(new MessageView(m.id(), m.channelId(), m.sender(), m.messageType(),
-                                      m.content(), m.correlationId(), m.inReplyTo(), m.target(), m.topic(),
+                                      m.content(), m.payload(), m.correlationId(), m.inReplyTo(), m.target(), m.topic(),
                                       m.artefactRefs(), m.actorType(), m.createdAt(), m.deadline(), m.replyCount()));
         }
         return views;

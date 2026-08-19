@@ -88,7 +88,7 @@ class ChannelGatewayCommitmentE2ETest {
                     ? MessageType.DONE
                     : MessageType.QUERY;
             return new NormalisedMessage(
-                    type, raw.content(),
+                    type, raw.content(), null,
                     "human:" + raw.externalSenderId(),
                     raw.correlationId(), null, null, null);
         }
@@ -108,7 +108,7 @@ class ChannelGatewayCommitmentE2ETest {
         final String ch = "gw-commit-fulfill-1";
         tools.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         tools.registerInstance(ch, "agent-a", null, null, null);
-        tools.sendMessage(ch, "agent-a", "command", "Please approve", "corr-fulfill-1",
+        tools.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-fulfill-1",
                 null, null, null, null, null, null, null);
 
         final var before = commitmentStore.findByCorrelationId("corr-fulfill-1");
@@ -134,7 +134,7 @@ class ChannelGatewayCommitmentE2ETest {
         final String ch = "gw-commit-open-1";
         tools.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         tools.registerInstance(ch, "agent-a", null, null, null);
-        tools.sendMessage(ch, "agent-a", "command", "Please approve", "corr-open-1",
+        tools.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-open-1",
                 null, null, null, null, null, null, null);
 
         final var channel = tools.listChannels().stream()

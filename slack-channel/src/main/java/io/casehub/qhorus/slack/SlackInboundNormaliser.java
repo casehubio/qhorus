@@ -39,6 +39,7 @@ public class SlackInboundNormaliser implements InboundNormaliser {
         return new NormalisedMessage(
                 type,
                 content,
+                null,
                 "human:" + raw.externalSenderId(),
                 raw.correlationId(),
                 null,

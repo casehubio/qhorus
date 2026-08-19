@@ -48,6 +48,10 @@ public class MessageEntity extends PanacheEntityBase {
     @Column(columnDefinition = "TEXT")
     public String content;
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "payload")
+    public String payload;
+
     @Column(name = "correlation_id")
     public String correlationId;
 
@@ -105,6 +109,7 @@ public class MessageEntity extends PanacheEntityBase {
         e.actorType      = msg.actorType();
         e.tenancyId      = msg.tenancyId() != null ? msg.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.content        = msg.content();
+        e.payload        = msg.payload();
         e.correlationId  = msg.correlationId();
         e.inReplyTo      = msg.inReplyTo();
         e.replyCount     = msg.replyCount();
@@ -121,7 +126,7 @@ public class MessageEntity extends PanacheEntityBase {
     public io.casehub.qhorus.api.message.Message toDomain() {
         return new io.casehub.qhorus.api.message.Message(
                 id, channelId, sender, messageType, actorType, tenancyId,
-                content, correlationId, inReplyTo, replyCount,
+                content, payload, correlationId, inReplyTo, replyCount,
                 artefactRefs, target, topic, commitmentId,
                 deadline, acknowledgedAt, version, createdAt);}
 

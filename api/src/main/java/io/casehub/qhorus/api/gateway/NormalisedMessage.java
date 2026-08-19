@@ -5,6 +5,7 @@ import io.casehub.qhorus.api.message.MessageType;
 public record NormalisedMessage(
         MessageType type,
         String content,
+        String payload,
         String senderInstanceId,
         String correlationId,
         Long inReplyTo,

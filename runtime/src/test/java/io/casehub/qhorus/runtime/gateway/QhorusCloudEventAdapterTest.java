@@ -47,7 +47,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "my-channel", channelId, "tenant-1", MessageType.COMMAND,
-                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "hello", null);
+                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "hello", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -60,7 +60,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "telemetry", channelId, "tenant-1", MessageType.EVENT,
-                "system:normaliser", null, null, null, Instant.now(), null, null);
+                "system:normaliser", null, null, null, Instant.now(), null, null, null);
 
         adapter.onMessageReceived(event);
 
@@ -73,7 +73,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "t1", MessageType.RESPONSE,
-                "agent:bob", null, null, UUID.randomUUID().toString(), Instant.now(), "answer", null);
+                "agent:bob", null, null, UUID.randomUUID().toString(), Instant.now(), "answer", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -86,7 +86,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "t1", MessageType.STATUS,
-                "agent:bob", null, null, null, Instant.now(), "working", null);
+                "agent:bob", null, null, null, Instant.now(), "working", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -99,7 +99,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "acme-corp", MessageType.DONE,
-                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "done", null);
+                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "done", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -112,7 +112,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, null, MessageType.QUERY,
-                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "what?", null);
+                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "what?", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -125,7 +125,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "t1", MessageType.QUERY,
-                "agent:alice", null, null, null, Instant.now(), "q?", null);
+                "agent:alice", null, null, null, Instant.now(), "q?", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -138,7 +138,7 @@ class QhorusCloudEventAdapterTest {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "t1", MessageType.COMMAND,
-                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "go", null);
+                "agent:alice", null, null, UUID.randomUUID().toString(), Instant.now(), "go", null, null);
 
         adapter.onMessageReceived(event);
 
@@ -152,7 +152,7 @@ class QhorusCloudEventAdapterTest {
         Instant fixedTime = Instant.parse("2026-01-15T10:30:00Z");
         MessageReceivedEvent event = new MessageReceivedEvent(
                 1L, "ch", channelId, "t1", MessageType.COMMAND,
-                "agent:alice", null, null, UUID.randomUUID().toString(), fixedTime, "go", null);
+                "agent:alice", null, null, UUID.randomUUID().toString(), fixedTime, "go", null, null);
 
         adapter.onMessageReceived(event);
 

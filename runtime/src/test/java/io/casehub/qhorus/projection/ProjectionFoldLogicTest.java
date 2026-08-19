@@ -139,7 +139,7 @@ class ProjectionFoldLogicTest {
     void messageView_carriesTopicField() {
         MessageView v = new MessageView(
                 1L, UUID.randomUUID(), "agent-a", MessageType.STATUS,
-                "content", null, null, null, "design",
+                "content", null, null, null, null, "design",
                 null, ActorType.AGENT, Instant.now(), null, 0);
         assertThat(v.topic()).isEqualTo("design");
     }
@@ -150,6 +150,6 @@ class ProjectionFoldLogicTest {
     private static MessageView view(final MessageType type) {
         return new MessageView(
                 1L, UUID.randomUUID(), "agent-a", type,
-                "content", null, null, null, null,
+                "content", null, null, null, null, null,
                 null, ActorType.AGENT, Instant.now(), null, 0);}
 }

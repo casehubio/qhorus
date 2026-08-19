@@ -61,6 +61,7 @@ public abstract class QhorusMcpToolsBase {
             String sender,
             String messageType,
             String content,
+            String payload,
             String correlationId,
             Long inReplyTo,
             String createdAt,
@@ -500,7 +501,7 @@ public abstract class QhorusMcpToolsBase {
 
     protected MessageSummary toMessageSummary(Message m) {
         java.util.List<io.casehub.qhorus.api.message.ArtefactRef> refs = m.artefactRefs() != null ? m.artefactRefs() : java.util.List.of();
-        return new MessageSummary(m.id(), m.sender(), m.messageType().name(), m.content(),
+        return new MessageSummary(m.id(), m.sender(), m.messageType().name(), m.content(), m.payload(),
                                   m.correlationId(), m.inReplyTo(), m.createdAt().toString(), refs, m.target(), m.topic());}
 
     /** Single-item path — looks up binding by channel ID. Used by all tool call sites except list_channels. */

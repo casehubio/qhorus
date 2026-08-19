@@ -20,6 +20,7 @@ public record MessageReceivedEvent(
         String correlationId,
         Instant occurredAt,
         String content,
+        String payload,
         String topic) {
 
     public MessageReceivedEvent {
@@ -37,6 +38,6 @@ public record MessageReceivedEvent(
                 message.id(), channelName, message.channelId(), message.tenancyId(),
                 message.messageType(), message.sender(), message.target(), message.actorType(),
                 message.correlationId(),
-                occurredAt, content, message.topic());
+                occurredAt, content, message.payload(), message.topic());
     }
 }

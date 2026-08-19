@@ -32,7 +32,7 @@ class PeerAttestationIntegrationTest {
         instanceService.register(requesterId, "requester", List.of());
         instanceService.register("anonymous", "test-principal", List.of());
 
-        tools.sendMessage(chName, requesterId, "command", "do the task",
+        tools.sendMessage(chName, requesterId, "command", "do the task", null,
                           null, null, null, null, null, null, null, null);
 
         var ledgerEntries = tools.listLedgerEntries(chName, "COMMAND", null, null, null, null, null, null);
@@ -61,7 +61,7 @@ class PeerAttestationIntegrationTest {
         instanceService.register("req-" + chName, "requester", List.of());
         instanceService.register("rev-" + chName, "reviewer", List.of("peer-reviewer"));
 
-        tools.sendMessage(chName, "req-" + chName, "command", "do the task",
+        tools.sendMessage(chName, "req-" + chName, "command", "do the task", null,
                           null, null, null, null, null, null, null, null);
 
         var ledgerEntries = tools.listLedgerEntries(chName, "COMMAND", null, null, null, null, null, null);
