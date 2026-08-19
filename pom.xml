@@ -26,6 +26,7 @@
     <module>webhook-observer</module>
     <module>graphql</module>
     <module>notification-bridge</module>
+    <module>push</module>
     <module>persistence-memory</module>
     <module>testing</module>
     <module>examples</module>

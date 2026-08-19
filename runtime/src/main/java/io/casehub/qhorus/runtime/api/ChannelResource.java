@@ -2,15 +2,34 @@ package io.casehub.qhorus.runtime.api;
 
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.MembershipManager;
+import io.casehub.qhorus.api.channel.PresenceTracker;
+import io.casehub.qhorus.api.channel.ReactionManager;
 import io.casehub.qhorus.api.channel.Space;
+import io.casehub.qhorus.api.channel.TopicManager;
+import io.casehub.qhorus.api.event.ChannelMutationEvent;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.ConsumerMessaging;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.message.Reaction;
+import io.casehub.qhorus.api.message.Topic;
+import io.casehub.qhorus.api.message.TopicSummary;
+import io.casehub.qhorus.api.store.CommitmentReader;
+import io.casehub.qhorus.api.store.MembershipReader;
 import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.ReactionReader;
 import io.casehub.qhorus.api.store.SpaceStore;
+import io.casehub.qhorus.api.store.TopicReader;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.dashboard.QhorusDashboardService;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -37,14 +56,20 @@ import java.util.stream.Collectors;
 @Consumes(MediaType.APPLICATION_JSON)
 public class ChannelResource {
 
-    @Inject
-    ChannelService channelService;
-
-    @Inject
-    MessageStore messageStore;
-
-    @Inject
-    SpaceStore spaceStore;
+    @Inject ChannelService channelService;
+    @Inject MessageStore messageStore;
+    @Inject SpaceStore spaceStore;
+    @Inject QhorusDashboardService dashboard;
+    @Inject ReactionManager reactionManager;
+    @Inject ReactionReader reactionReader;
+    @Inject TopicManager topicManager;
+    @Inject TopicReader topicReader;
+    @Inject MembershipManager membershipManager;
+    @Inject MembershipReader membershipReader;
+    @Inject PresenceTracker presenceTracker;
+    @Inject CommitmentReader commitmentReader;
+    @Inject ConsumerMessaging messaging;
+    @Inject Event<ChannelMutationEvent> mutationEvent;
 
     @POST
     public Response create(final CreateChannelRequest req) {
@@ -113,6 +138,229 @@ public class ChannelResource {
         } catch (IllegalStateException e) {
             return error(409, e.getMessage());
         }
+    }
+
+    // -- Aggregation --------------------------------------------------------
+
+    @GET
+    @Path("/feed")
+    public List<Map<String, Object>> feed(@QueryParam("limit") @DefaultValue("50") int limit) {
+        return dashboard.getFeed(limit);
+    }
+
+    @GET
+    @Path("/{id}/timeline")
+    public Response timeline(@PathParam("id") final String id,
+                             @QueryParam("after") Long after,
+                             @QueryParam("limit") @DefaultValue("100") int limit) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(dashboard.getTimeline(ch.name(), after != null ? after : 0, limit)).build();
+    }
+
+    // -- Reactions ----------------------------------------------------------
+
+    @POST
+    @Path("/{id}/messages/{messageId}/reactions")
+    @Transactional
+    public Response addReaction(@PathParam("id") final String id,
+                                @PathParam("messageId") String messageId,
+                                ReactionRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        long msgId = parseLongParam(messageId, "messageId");
+        reactionManager.react(msgId, request.emoji());
+        mutationEvent.fire(new ChannelMutationEvent.ReactionAdded(msgId, request.emoji()));
+        return Response.ok().build();
+    }
+
+    @DELETE
+    @Path("/{id}/messages/{messageId}/reactions/{emoji}")
+    @Transactional
+    public Response removeReaction(@PathParam("id") final String id,
+                                   @PathParam("messageId") String messageId,
+                                   @PathParam("emoji") String emoji) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        long msgId = parseLongParam(messageId, "messageId");
+        reactionManager.unreact(msgId, emoji);
+        mutationEvent.fire(new ChannelMutationEvent.ReactionRemoved(msgId, emoji));
+        return Response.ok().build();
+    }
+
+    @GET
+    @Path("/{id}/messages/{messageId}/reactions")
+    public Response listReactions(@PathParam("id") final String id,
+                                  @PathParam("messageId") String messageId) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        var reactions = reactionReader.findByMessage(parseLongParam(messageId, "messageId")).stream()
+            .map(Reaction::emoji).toList();
+        return Response.ok(reactions).build();
+    }
+
+    // -- Topics -------------------------------------------------------------
+
+    @POST
+    @Path("/{id}/topics")
+    @Transactional
+    public Response createTopic(@PathParam("id") final String id,
+                                CreateTopicRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        String name = request.name() != null ? request.name().trim() : "";
+        if (name.isEmpty()) return error(400, "Topic name must not be empty");
+        if (name.length() > 100) return error(400, "Topic name must be 100 characters or less");
+        if ("General".equals(name) || "general".equals(name)) return error(409, "\"General\" is reserved");
+        var existing = topicReader.find(ch.id(), name);
+        if (existing.isPresent()) return error(409, "Topic already exists");
+        var topic = topicManager.create(ch.id(), name);
+        mutationEvent.fire(new ChannelMutationEvent.TopicCreated(ch.id(), topic));
+        return Response.ok(Map.of("id", String.valueOf(topic.id()), "name", topic.name())).build();
+    }
+
+    @GET
+    @Path("/{id}/topics")
+    public Response listTopics(@PathParam("id") final String id) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(topicManager.listTopics(ch.id())).build();
+    }
+
+    @PUT
+    @Path("/{id}/topics/{topicId}")
+    @Transactional
+    public Response updateTopic(@PathParam("id") final String id,
+                                @PathParam("topicId") String topicId,
+                                UpdateTopicRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        long topicLongId = parseLongParam(topicId, "topicId");
+        var existing = topicReader.findById(topicLongId);
+        if (existing.isEmpty()) return error(404, "Topic not found");
+        if (!ch.id().equals(existing.get().channelId())) return error(400, "Topic does not belong to this channel");
+        if (request.name() != null) {
+            var trimmed = request.name().trim();
+            if (trimmed.isEmpty() || trimmed.length() > 100) return error(400, "Invalid topic name");
+            topicManager.rename(ch.id(), existing.get().name(), trimmed);
+        }
+        if (request.state() != null) {
+            if ("RESOLVED".equals(request.state())) topicManager.resolve(ch.id(), existing.get().name());
+            else if ("ACTIVE".equals(request.state()) && existing.get().resolved()) topicManager.unresolve(ch.id(), existing.get().name());
+        }
+        var updated = topicReader.findById(topicLongId).orElse(existing.get());
+        mutationEvent.fire(new ChannelMutationEvent.TopicUpdated(ch.id(), updated));
+        return Response.ok(Map.of("ok", true)).build();
+    }
+
+    @POST
+    @Path("/{id}/topics/{topicId}/merge")
+    @Transactional
+    public Response mergeTopic(@PathParam("id") final String id,
+                               @PathParam("topicId") String topicId,
+                               MergeTopicRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        long sourceTopicId = parseLongParam(topicId, "topicId");
+        var source = topicReader.findById(sourceTopicId);
+        if (source.isEmpty()) return error(404, "Source topic not found");
+        if (!ch.id().equals(source.get().channelId())) return error(400, "Source topic does not belong to this channel");
+        if ("general".equalsIgnoreCase(source.get().name())) return error(400, "Cannot merge the default topic");
+        long targetTopicId = parseLongParam(request.targetTopicId(), "targetTopicId");
+        var target = topicReader.findById(targetTopicId);
+        if (target.isEmpty()) return error(404, "Target topic not found");
+        if (!ch.id().equals(target.get().channelId())) return error(400, "Target topic does not belong to this channel");
+        topicManager.merge(ch.id(), source.get().name(), target.get().name());
+        mutationEvent.fire(new ChannelMutationEvent.TopicRemoved(ch.id(), sourceTopicId));
+        var updatedTarget = topicReader.findById(targetTopicId).orElse(target.get());
+        mutationEvent.fire(new ChannelMutationEvent.TopicUpdated(ch.id(), updatedTarget));
+        return Response.ok(Map.of("ok", true)).build();
+    }
+
+    // -- Members ------------------------------------------------------------
+
+    @GET
+    @Path("/{id}/members")
+    public Response listMembers(@PathParam("id") final String id) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(membershipReader.findByChannel(ch.id())).build();
+    }
+
+    @POST
+    @Path("/{id}/members")
+    @Transactional
+    public Response addMember(@PathParam("id") final String id,
+                              AddMemberRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        var membership = membershipManager.join(ch.id(), request.memberId());
+        mutationEvent.fire(new ChannelMutationEvent.MemberJoined(ch.id(), membership));
+        return Response.ok().build();
+    }
+
+    @DELETE
+    @Path("/{id}/members/{memberId}")
+    @Transactional
+    public Response removeMember(@PathParam("id") final String id,
+                                 @PathParam("memberId") String memberId) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        membershipManager.leave(ch.id(), memberId);
+        mutationEvent.fire(new ChannelMutationEvent.MemberLeft(ch.id(), memberId));
+        return Response.ok().build();
+    }
+
+    // -- Presence -----------------------------------------------------------
+
+    @GET
+    @Path("/{id}/presence")
+    public Response listPresence(@PathParam("id") final String id) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(presenceTracker.getChannelPresence(ch.id())).build();
+    }
+
+    // -- Commitments --------------------------------------------------------
+
+    @GET
+    @Path("/{id}/commitments")
+    public Response listCommitments(@PathParam("id") final String id) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(commitmentReader.findByChannel(ch.id())).build();
+    }
+
+    // -- Correlation --------------------------------------------------------
+
+    @GET
+    @Path("/{id}/correlation/{correlationId}")
+    public Response correlationChain(@PathParam("id") final String id,
+                                     @PathParam("correlationId") String correlationId) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        return Response.ok(messaging.findAllByCorrelationId(correlationId)).build();
+    }
+
+    // -- Messages (read-only, via qhorus) -----------------------------------
+
+    @POST
+    @Path("/{id}/messages")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
+    public Response postMessage(@PathParam("id") final String id,
+                                MessagePostRequest request) {
+        final Channel ch = resolve(id);
+        if (ch == null) return error(404, "Channel not found: " + id);
+        var dispatch = io.casehub.qhorus.api.message.MessageDispatch.builder()
+            .channelId(ch.id())
+            .sender(request.sender())
+            .type(MessageType.valueOf(request.type()))
+            .actorType(io.casehub.platform.api.identity.ActorType.valueOf(request.actorType()))
+            .content(request.content())
+            .build();
+        var result = messaging.dispatch(dispatch);
+        return Response.ok(Map.of("messageId", result.messageId())).build();
     }
 
     // -- Resolution ---------------------------------------------------------
@@ -278,6 +526,14 @@ public class ChannelResource {
         return names.stream().map(MessageType::valueOf).collect(Collectors.toSet());
     }
 
+    static long parseLongParam(final String value, final String name) {
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid " + name + ": " + value);
+        }
+    }
+
     static Response error(final int status, final String message) {
         return Response.status(status)
                 .entity(new ErrorResponse(message))
@@ -312,5 +568,15 @@ public class ChannelResource {
 
     public record DeliveryTrackingRequest(Boolean enabled) {}
 
+    public record ReactionRequest(String emoji) {}
+    public record AddMemberRequest(String memberId) {}
+    public record CreateTopicRequest(String name) {}
+    public record UpdateTopicRequest(String name, String state) {}
+    public record MergeTopicRequest(String targetTopicId) {}
+    public record MessagePostRequest(String sender, String type, String actorType, String content) {}
 
+    @org.jboss.resteasy.reactive.server.ServerExceptionMapper
+    Response handleIllegalArgument(IllegalArgumentException e) {
+        return error(400, e.getMessage());
+    }
 }
