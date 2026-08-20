@@ -23,7 +23,7 @@
 
 ## Epics — Ordered by Execution Priority
 
-### Epic 1: Cross-Channel Causal Graphs
+### Epic 1: Cross-Channel Causal Graphs — #398
 
 **Scale:** S | **Complexity:** Low-Med | **Wow:** "Show me why this failed — across every channel it touched."
 
@@ -39,7 +39,7 @@ The data is already in the ledger. Every message has `causedByEntryId` and `corr
 
 ---
 
-### Epic 2: Cascade Containment
+### Epic 2: Cascade Containment — #399
 
 **Scale:** S | **Complexity:** Low | **Wow:** "A loop started. The system caught it and quarantined the agent in 200ms."
 
@@ -56,7 +56,7 @@ Connect existing detection (watchdog conditions) to existing containment (channe
 
 ---
 
-### Epic 3: Active Governance Policies
+### Epic 3: Active Governance Policies — #400
 
 **Scale:** S | **Complexity:** Low | **Wow:** "This channel blocks unauthorized delegations. Protocol violations are rejected, not just logged."
 
@@ -73,7 +73,7 @@ Protocol enforcement is currently advisory. Add an enforcement mode per channel:
 
 ---
 
-### Epic 4: Reputation-Aware Routing
+### Epic 4: Reputation-Aware Routing — #401
 
 **Scale:** M | **Complexity:** Med | **Wow:** "Three agents can do this. The system picked the one with a 94% fulfillment rate."
 
@@ -91,7 +91,7 @@ When a COMMAND targets a capability (`target: "role:analyst"`) rather than a spe
 
 ---
 
-### Epic 5: Compliance Evidence Export
+### Epic 5: Compliance Evidence Export — #402
 
 **Scale:** M | **Complexity:** Med | **Wow:** "Here's your EU AI Act audit report. Auto-generated from the ledger."
 
@@ -111,7 +111,7 @@ Package existing ledger data into compliance-ready formats. The data exists — 
 
 ---
 
-### Epic 6: Signed Agent Cards + DID
+### Epic 6: Signed Agent Cards + DID — #403
 
 **Scale:** M-L | **Complexity:** High | **Wow:** "Every agent's identity is cryptographically verified."
 
@@ -129,7 +129,7 @@ Cryptographic identity verification for agent cards. Moves trust from configurat
 
 ---
 
-### Epic 7: Formal Verification
+### Epic 7: Formal Verification — #404
 
 **Scale:** M | **Complexity:** High (intellectual) | **Wow:** "We proved the commitment lifecycle has no deadlocks."
 
@@ -146,7 +146,7 @@ Encode the commitment state machine as temporal logic properties and verify them
 
 ---
 
-### Epic 8: Context-Aware Work Redistribution
+### Epic 8: Context-Aware Work Redistribution — #405
 
 **Scale:** L | **Complexity:** High | **Wow:** "The agent's context filled up. The system moved its work to a backup — automatically."
 
@@ -164,7 +164,7 @@ Automatic obligation redistribution when context pressure exceeds threshold.
 
 ---
 
-### Epic 9: A2A Push Notifications
+### Epic 9: A2A Push Notifications — #406
 
 **Scale:** M | **Complexity:** Med | **Wow:** "External agents get notified of channel events in real-time."
 
@@ -215,6 +215,19 @@ NOW │───>│ E2       │────>│ Routing  │────>│ E
 **Phase 4 (independent, M each):** E7 + E9 — formal verification and A2A push. No dependencies on Phase 2/3. Can start whenever capacity allows.
 
 **Phase 5 (L):** E8 — context-aware redistribution. Depends on E4 (routing) and E2 (containment pattern). The crown jewel, saved for when the foundation is solid.
+
+---
+
+## Cross-Repo Dependencies
+
+| Qhorus Epic | Prerequisite | Repo | Issue | Scale |
+|---|---|---|---|---|
+| #401 E4 Routing | Materialized trust score snapshots | casehubio/ledger | ledger#200 | M |
+| #402 E5 Compliance | Time-range aggregate queries | casehubio/ledger | ledger#201 | S |
+| #404 E7 Formal Verification | Streaming/cursor-based query API | casehubio/ledger | ledger#202 | S |
+| #403 E6 Signed Cards | Promote SigningService SPI | casehubio/platform | platform#244 | S |
+
+Phase 1 epics (#398, #399, #400) have **zero cross-repo dependencies** — entirely qhorus-internal.
 
 ---
 
