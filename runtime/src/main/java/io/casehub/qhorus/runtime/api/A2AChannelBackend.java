@@ -16,6 +16,7 @@ import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.message.MessageService;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
@@ -162,7 +163,7 @@ public class A2AChannelBackend implements ChannelBackend {
         }
     }
 
-    void onChannelRecovery(@jakarta.enterprise.event.Observes io.casehub.qhorus.api.gateway.ChannelInitialisedEvent event) {
+    void onChannelRecovery(@Observes ChannelInitialisedEvent event) {
         if (!event.recovered()) {
             return;
         }

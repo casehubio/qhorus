@@ -296,7 +296,10 @@ casehub-qhorus/
 │       ├── A2AOutboundBackend.java      — ChannelBackend impl (AT_LEAST_ONCE); selective interception via target → ExternalAgentBinding resolution; sender-based loop guard (external agent responses skip re-forwarding); startup recovery via ChannelInitialisedEvent; credential resolution via CredentialResolver SPI
 │       ├── A2AInstanceResolver.java     — target → ExternalAgentBinding → endpoint resolution; delegates to ExternalAgentBindingStore.findByInstanceId(); null/blank target → empty
 │       ├── A2AResponseHandler.java      — A2ATask → MessageDispatch mapping; COMPLETED→DONE, FAILED→FAILURE, CANCELED→DECLINE, WORKING/SUBMITTED→STATUS, INPUT_REQUIRED→STATUS+payload; extracts TextParts→content, DataParts→payload; merges artifact parts into terminal messages
-│       └── ResponseContext.java         — record: channelId, externalAgentInstanceId, correlationId, inReplyTo; carries dispatch context from outbound message to response handler
+│       ├── ResponseContext.java         — record: channelId, externalAgentInstanceId, correlationId, inReplyTo; carries dispatch context from outbound message to response handler
+│       ├── ExternalAgentBindingResource.java — REST API: PUT/GET/DELETE /a2a-outbound/bindings/{instanceId}, GET list; delegates to ExternalAgentBindingStore; BadRequestException for missing endpoint; Refs #397
+│       ├── ExternalAgentBindingRequest.java — REST request record (endpoint, authConfigKey, protocolVersion)
+│       └── A2AClientRegistryProducer.java — CDI producer: @Produces @ApplicationScoped A2AClientRegistry with @Disposes shutdown
 ├── persistence-memory/                  — InMemory*Store (@Alternative @Priority(1)); zero-config ephemeral installs and test isolation; package: io.casehub.qhorus.persistence.memory
 ├── testing/                             — Test utilities (RecordingChannelBackend, MessageLedgerEntryTestFactory) + CommitmentServiceTest
 ├── kafka-observer/                      — Optional Kafka observer (MessageReceivedEvent → Kafka topic as CloudEvents)

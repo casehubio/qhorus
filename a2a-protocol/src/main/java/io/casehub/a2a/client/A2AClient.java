@@ -1,5 +1,16 @@
 package io.casehub.a2a.client;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.casehub.a2a.model.A2AArtifact;
+import io.casehub.a2a.model.A2AMessage;
+import io.casehub.a2a.model.A2ATask;
+import io.casehub.a2a.model.A2ATaskState;
+import io.casehub.a2a.model.A2ATaskStatus;
+import io.casehub.a2a.model.AgentCard;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -8,18 +19,6 @@ import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import io.casehub.a2a.model.A2AArtifact;
-import io.casehub.a2a.model.A2AMessage;
-import io.casehub.a2a.model.A2ATask;
-import io.casehub.a2a.model.A2ATaskState;
-import io.casehub.a2a.model.A2ATaskStatus;
-import io.casehub.a2a.model.AgentCard;
 
 public class A2AClient implements AutoCloseable {
 
@@ -99,9 +98,7 @@ public class A2AClient implements AutoCloseable {
     }
 
     @Override
-    public void close() {
-        // JDK HttpClient has no explicit close before JDK 21
-    }
+    public void close() {httpClient.close();}
 
     private ObjectNode buildJsonRpcRequest(String method, A2AMessage message, String contextId) {
         ObjectNode root = MAPPER.createObjectNode();

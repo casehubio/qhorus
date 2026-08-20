@@ -1,5 +1,14 @@
 package io.casehub.qhorus.runtime.api;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.casehub.a2a.jsonrpc.JsonRpcError;
+import io.casehub.a2a.jsonrpc.JsonRpcRequest;
+import io.casehub.a2a.model.A2AMessage;
+import io.casehub.a2a.model.A2APart;
+import io.casehub.a2a.model.A2ATask;
+import io.casehub.a2a.model.A2ATaskState;
+import io.casehub.a2a.model.A2ATaskStatus;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
@@ -55,7 +64,7 @@ public class A2AResource {
     io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
 
     @Inject
-    com.fasterxml.jackson.databind.ObjectMapper mapper;
+    ObjectMapper mapper;
 
     // -----------------------------------------------------------------------
     // JSON-RPC 2.0 dispatch — sync
@@ -65,22 +74,22 @@ public class A2AResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @Transactional
-    public Response dispatch(io.casehub.a2a.jsonrpc.JsonRpcRequest request, @Context HttpHeaders headers) {
+    public Response dispatch(JsonRpcRequest request, @Context HttpHeaders headers) {
         if (!config.a2a().enabled()) {
             return Response.status(Response.Status.NOT_IMPLEMENTED)
-                           .entity(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INTERNAL_ERROR,
+                           .entity(jsonRpcErrorNode(request, JsonRpcError.INTERNAL_ERROR,
                                                     "A2A endpoint is disabled. Set casehub.qhorus.a2a.enabled=true to activate."))
                            .type(MediaType.APPLICATION_JSON).build();
         }
         if (request == null || request.method() == null) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_REQUEST, null))
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_REQUEST, null))
                            .type(MediaType.APPLICATION_JSON).build();
         }
         return switch (request.method()) {
             case "message/send" -> handleMessageSend(request, headers);
             case "tasks/get" -> handleTasksGet(request);
             case "tasks/cancel" -> handleTasksCancel(request);
-            default -> Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.METHOD_NOT_FOUND,
+            default -> Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
                                                     request.method())).type(MediaType.APPLICATION_JSON).build();
         };
     }
@@ -93,7 +102,7 @@ public class A2AResource {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces("text/event-stream")
     @RunOnVirtualThread
-    public void dispatchStream(io.casehub.a2a.jsonrpc.JsonRpcRequest request,
+    public void dispatchStream(JsonRpcRequest request,
                                @Context SseEventSink sink,
                                @Context Sse sse) throws Exception {
         if (!config.a2a().enabled()) {
@@ -114,43 +123,43 @@ public class A2AResource {
     // message/send — sync
     // -----------------------------------------------------------------------
 
-    private Response handleMessageSend(io.casehub.a2a.jsonrpc.JsonRpcRequest request, HttpHeaders headers) {
-        com.fasterxml.jackson.databind.JsonNode params = request.params();
+    private Response handleMessageSend(JsonRpcRequest request, HttpHeaders headers) {
+        JsonNode params = request.params();
         if (params == null || !params.has("message")) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "message is required")).type(MediaType.APPLICATION_JSON).build();
         }
 
-        io.casehub.a2a.model.A2AMessage msg;
+        A2AMessage msg;
         try {
-            msg = mapper.treeToValue(params.get("message"), io.casehub.a2a.model.A2AMessage.class);
+            msg = mapper.treeToValue(params.get("message"), A2AMessage.class);
         } catch (Exception e) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "Invalid message: " + e.getMessage())).type(MediaType.APPLICATION_JSON).build();
         }
 
         if (msg.contextId() == null || msg.contextId().isBlank()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "message.contextId (channel name) is required")).type(MediaType.APPLICATION_JSON).build();
         }
         if (msg.parts() == null || msg.parts().isEmpty()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "message.parts must contain at least one text part")).type(MediaType.APPLICATION_JSON).build();
         }
 
         String text = msg.parts().stream()
-                         .filter(p -> p instanceof io.casehub.a2a.model.A2APart.TextPart)
-                         .map(p -> ((io.casehub.a2a.model.A2APart.TextPart) p).text())
+                         .filter(p -> p instanceof A2APart.TextPart)
+                         .map(p -> ((A2APart.TextPart) p).text())
                          .filter(java.util.Objects::nonNull)
                          .findFirst().orElse(null);
         if (text == null) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "message.parts must contain at least one text part")).type(MediaType.APPLICATION_JSON).build();
         }
 
         Channel channel = channelService.findByName(msg.contextId()).orElse(null);
         if (channel == null) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "channel not found: " + msg.contextId())).type(MediaType.APPLICATION_JSON).build();
         }
 
@@ -170,12 +179,12 @@ public class A2AResource {
             a2aBackend.receive(msg.contextId(), msg.role(), text, taskId, metadata, actorTypeHeader);
         } catch (Exception e) {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INTERNAL_ERROR,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INTERNAL_ERROR,
                                                 cause.getMessage())).type(MediaType.APPLICATION_JSON).build();
         }
 
-        var task = new io.casehub.a2a.model.A2ATask(taskId, msg.contextId(),
-                                                    new io.casehub.a2a.model.A2ATaskStatus(io.casehub.a2a.model.A2ATaskState.SUBMITTED, null),
+        var task = new A2ATask(taskId, msg.contextId(),
+                                                    new A2ATaskStatus(A2ATaskState.SUBMITTED, null),
                                                     null, null);
         return Response.ok(jsonRpcSuccessNode(request, task)).type(MediaType.APPLICATION_JSON).build();
     }
@@ -184,17 +193,17 @@ public class A2AResource {
     // tasks/get — sync
     // -----------------------------------------------------------------------
 
-    private Response handleTasksGet(io.casehub.a2a.jsonrpc.JsonRpcRequest request) {
-        com.fasterxml.jackson.databind.JsonNode params = request.params();
+    private Response handleTasksGet(JsonRpcRequest request) {
+        JsonNode params = request.params();
         String                                  taskId = params != null && params.has("id") ? params.get("id").asText() : null;
         if (taskId == null || taskId.isBlank()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "id is required")).type(MediaType.APPLICATION_JSON).build();
         }
 
         List<Message> messages = messageService.findAllByCorrelationId(taskId);
         if (messages.isEmpty()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "Task not found: " + taskId)).type(MediaType.APPLICATION_JSON).build();
         }
 
@@ -207,19 +216,19 @@ public class A2AResource {
                           ? A2ATaskStateMapper.fromCommitmentState(commitment.state())
                           : A2ATaskStateMapper.fromMessageHistory(messages);
 
-        io.casehub.a2a.model.A2ATaskState state = io.casehub.a2a.model.A2ATaskState.fromWireValue(stateStr);
+        A2ATaskState state = A2ATaskState.fromWireValue(stateStr);
 
-        List<io.casehub.a2a.model.A2AMessage> history = messages.stream()
-                                                                .map(m -> new io.casehub.a2a.model.A2AMessage(
+        List<A2AMessage> history = messages.stream()
+                                                                .map(m -> new A2AMessage(
                                                                         m.sender(),
                                                                         m.content() != null
-                                                                        ? List.of(new io.casehub.a2a.model.A2APart.TextPart(m.content()))
+                                                                        ? List.of(new A2APart.TextPart(m.content()))
                                                                         : List.of(),
                                                                         null, m.correlationId(), channel.name(), null))
                                                                 .toList();
 
-        var task = new io.casehub.a2a.model.A2ATask(taskId, channel.name(),
-                                                    new io.casehub.a2a.model.A2ATaskStatus(state, null), null, history);
+        var task = new A2ATask(taskId, channel.name(),
+                                                    new A2ATaskStatus(state, null), null, history);
         return Response.ok(jsonRpcSuccessNode(request, task)).type(MediaType.APPLICATION_JSON).build();
     }
 
@@ -227,17 +236,17 @@ public class A2AResource {
     // tasks/cancel — sync
     // -----------------------------------------------------------------------
 
-    private Response handleTasksCancel(io.casehub.a2a.jsonrpc.JsonRpcRequest request) {
-        com.fasterxml.jackson.databind.JsonNode params = request.params();
+    private Response handleTasksCancel(JsonRpcRequest request) {
+        JsonNode params = request.params();
         String                                  taskId = params != null && params.has("id") ? params.get("id").asText() : null;
         if (taskId == null || taskId.isBlank()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "id is required")).type(MediaType.APPLICATION_JSON).build();
         }
 
         var declined = commitmentService.decline(taskId);
         if (declined.isEmpty()) {
-            return Response.ok(jsonRpcErrorNode(request, io.casehub.a2a.jsonrpc.JsonRpcError.INVALID_PARAMS,
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
                                                 "Task not found: " + taskId)).type(MediaType.APPLICATION_JSON).build();
         }
 
@@ -248,8 +257,8 @@ public class A2AResource {
                                         .map(Channel::name).orElse(null);
         }
 
-        var task = new io.casehub.a2a.model.A2ATask(taskId, channelName,
-                                                    new io.casehub.a2a.model.A2ATaskStatus(io.casehub.a2a.model.A2ATaskState.CANCELED, null),
+        var task = new A2ATask(taskId, channelName,
+                                                    new A2ATaskStatus(A2ATaskState.CANCELED, null),
                                                     null, null);
         return Response.ok(jsonRpcSuccessNode(request, task)).type(MediaType.APPLICATION_JSON).build();
     }
@@ -258,17 +267,17 @@ public class A2AResource {
     // message/send — SSE stream
     // -----------------------------------------------------------------------
 
-    private void handleMessageSendStream(io.casehub.a2a.jsonrpc.JsonRpcRequest request,
+    private void handleMessageSendStream(JsonRpcRequest request,
                                          SseEventSink sink, Sse sse) throws Exception {
-        com.fasterxml.jackson.databind.JsonNode params = request.params();
+        JsonNode params = request.params();
         if (params == null || !params.has("message")) {
             sendErrorEvent(sink, sse, null, "message is required");
             return;
         }
 
-        io.casehub.a2a.model.A2AMessage msg;
+        A2AMessage msg;
         try {
-            msg = mapper.treeToValue(params.get("message"), io.casehub.a2a.model.A2AMessage.class);
+            msg = mapper.treeToValue(params.get("message"), A2AMessage.class);
         } catch (Exception e) {
             sendErrorEvent(sink, sse, null, "Invalid message: " + e.getMessage());
             return;
@@ -411,7 +420,7 @@ public class A2AResource {
     // -----------------------------------------------------------------------
 
     private com.fasterxml.jackson.databind.node.ObjectNode jsonRpcSuccessNode(
-            io.casehub.a2a.jsonrpc.JsonRpcRequest request, Object result) {
+            JsonRpcRequest request, Object result) {
         com.fasterxml.jackson.databind.node.ObjectNode node = mapper.createObjectNode();
         node.put("jsonrpc", "2.0");
         if (request != null && request.id() != null) {
@@ -422,8 +431,8 @@ public class A2AResource {
     }
 
     private com.fasterxml.jackson.databind.node.ObjectNode jsonRpcErrorNode(
-            io.casehub.a2a.jsonrpc.JsonRpcRequest request,
-            io.casehub.a2a.jsonrpc.JsonRpcError error,
+            JsonRpcRequest request,
+            JsonRpcError error,
             String data) {
         com.fasterxml.jackson.databind.node.ObjectNode node = mapper.createObjectNode();
         node.put("jsonrpc", "2.0");
