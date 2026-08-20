@@ -140,10 +140,9 @@ public class A2AClient implements AutoCloseable {
     }
 
     private String resolveToken() {
-        if (auth.tokenConfigKey() == null) return null;
-        return System.getProperty(auth.tokenConfigKey(),
-            System.getenv(auth.tokenConfigKey()));
-    }
+        if (auth.resolvedToken() != null) {return auth.resolvedToken();}
+        if (auth.tokenConfigKey() == null) {return null;}
+        return System.getProperty(auth.tokenConfigKey(), System.getenv(auth.tokenConfigKey()));}
 
     private A2ATask handleResponse(HttpResponse<String> response) throws IOException {
         int status = response.statusCode();

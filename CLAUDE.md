@@ -291,6 +291,12 @@ casehub-qhorus/
 │       ├── SlackThreadCache.java, SlackThreadCacheId.java, SlackThreadCacheStore.java — thread cache (keyed by channelId + correlationId); V23/V24 migrations
 │       ├── SlackBindingResource.java — PUT/GET/DELETE /slack-channel/bindings/{channelId}
 │       └── SlackThreadCacheCleanupJob.java — @Scheduled TTL eviction (30 days)
+├── a2a-outbound/                        — Optional A2A outbound bridge (AT_LEAST_ONCE ChannelBackend); routes channel messages to external A2A agents via delivery pump; activates by classpath presence; Refs #396
+│   └── src/main/java/io/casehub/qhorus/a2a/outbound/
+│       ├── A2AOutboundBackend.java      — ChannelBackend impl (AT_LEAST_ONCE); selective interception via target → ExternalAgentBinding resolution; sender-based loop guard (external agent responses skip re-forwarding); startup recovery via ChannelInitialisedEvent; credential resolution via CredentialResolver SPI
+│       ├── A2AInstanceResolver.java     — target → ExternalAgentBinding → endpoint resolution; delegates to ExternalAgentBindingStore.findByInstanceId(); null/blank target → empty
+│       ├── A2AResponseHandler.java      — A2ATask → MessageDispatch mapping; COMPLETED→DONE, FAILED→FAILURE, CANCELED→DECLINE, WORKING/SUBMITTED→STATUS, INPUT_REQUIRED→STATUS+payload; extracts TextParts→content, DataParts→payload; merges artifact parts into terminal messages
+│       └── ResponseContext.java         — record: channelId, externalAgentInstanceId, correlationId, inReplyTo; carries dispatch context from outbound message to response handler
 ├── persistence-memory/                  — InMemory*Store (@Alternative @Priority(1)); zero-config ephemeral installs and test isolation; package: io.casehub.qhorus.persistence.memory
 ├── testing/                             — Test utilities (RecordingChannelBackend, MessageLedgerEntryTestFactory) + CommitmentServiceTest
 ├── kafka-observer/                      — Optional Kafka observer (MessageReceivedEvent → Kafka topic as CloudEvents)
