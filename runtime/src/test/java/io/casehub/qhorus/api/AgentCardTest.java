@@ -20,7 +20,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class AgentCardTest {
 
-    static final String ENDPOINT = "/.well-known/agent-card.json";
+    static final String ENDPOINT = "/.well-known/agent.json";
 
     // -----------------------------------------------------------------------
     // Integration — HTTP-level (RestAssured against running QuarkusTest server)
@@ -145,11 +145,11 @@ class AgentCardTest {
     }
 
     @Test
-    void agentCardCapabilitiesMcpIsTrue() {
+    void agentCardCapabilitiesPushNotificationsIsFalse() {
         given()
                 .when().get(ENDPOINT)
                 .then()
-                .body("capabilities.mcp", equalTo(true));
+                .body("capabilities.pushNotifications", equalTo(false));
     }
 
     @Test
@@ -171,7 +171,9 @@ class AgentCardTest {
                 .body("$", hasKey("description"))
                 .body("$", hasKey("version"))
                 .body("$", hasKey("skills"))
-                .body("$", hasKey("capabilities"));
+                .body("$", hasKey("capabilities"))
+                .body("$", hasKey("authentication"))
+                .body("$", hasKey("agents"));
     }
 
     @Test
@@ -213,7 +215,7 @@ class AgentCardTest {
 
         Map<String, Object> caps = response.jsonPath().getMap("capabilities");
         assertTrue((Boolean) caps.get("streaming"), "streaming must be true");
-        assertTrue((Boolean) caps.get("mcp"), "mcp must be true");
+        assertFalse((Boolean) caps.get("pushNotifications"), "pushNotifications must be false");
         assertEquals(2, caps.size(), "capabilities should have exactly 2 fields");
     }
 

@@ -1,6 +1,11 @@
 package io.casehub.qhorus.runtime.api;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.qhorus.api.gateway.ChannelRef;
+import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.MessageType;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -8,13 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.qhorus.api.gateway.ChannelRef;
-import io.casehub.qhorus.api.gateway.OutboundMessage;
-import io.casehub.qhorus.api.message.MessageType;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * CDI-free unit tests for the SSE stream registry added to {@link A2AChannelBackend}.
@@ -160,5 +159,88 @@ class A2AChannelBackendSseTest {
         backend.post(ref, outbound(corrId, MessageType.STATUS));
 
         assertThat(goodCount.get()).isEqualTo(2);
+    }
+
+// ── restart recovery via ChannelInitialisedEvent ─────────────────────────
+
+    @Test
+    void onChannelRecovery_withActiveCommitments_marksChannelKnown() {
+        UUID channelId = UUID.randomUUID();
+        var commitment = io.casehub.qhorus.api.message.Commitment.builder()
+                                                                 .id(UUID.randomUUID())
+                                                                 .correlationId(UUID.randomUUID().toString())
+                                                                 .channelId(channelId)
+                                                                 .messageType(io.casehub.qhorus.api.message.MessageType.COMMAND)
+                                                                 .requester("requester")
+                                                                 .state(io.casehub.qhorus.api.message.CommitmentState.OPEN)
+                                                                 .build();
+
+        backend.commitmentStore = new StubCommitmentReader(List.of(commitment));
+
+        backend.onChannelRecovery(new io.casehub.qhorus.api.gateway.ChannelInitialisedEvent(channelId, "ch", true));
+
+        assertThat(backend.isKnownA2AChannel(channelId)).isTrue();
+    }
+
+    @Test
+    void onChannelRecovery_withNoCommitments_doesNotMark() {
+        UUID channelId = UUID.randomUUID();
+        backend.commitmentStore = new StubCommitmentReader(List.of());
+
+        backend.onChannelRecovery(new io.casehub.qhorus.api.gateway.ChannelInitialisedEvent(channelId, "ch", true));
+
+        assertThat(backend.isKnownA2AChannel(channelId)).isFalse();
+    }
+
+    @Test
+    void onChannelRecovery_nonRecoveryEvent_skips() {
+        UUID channelId = UUID.randomUUID();
+
+        backend.onChannelRecovery(new io.casehub.qhorus.api.gateway.ChannelInitialisedEvent(channelId, "ch", false));
+
+        assertThat(backend.isKnownA2AChannel(channelId)).isFalse();
+    }
+
+    private static class StubCommitmentReader implements io.casehub.qhorus.api.store.CommitmentReader {
+        private final List<io.casehub.qhorus.api.message.Commitment> openByChannel;
+
+        StubCommitmentReader(List<io.casehub.qhorus.api.message.Commitment> openByChannel) {
+            this.openByChannel = openByChannel;
+        }
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findOpenByChannelId(UUID channelId) {
+            return openByChannel.stream().filter(c -> channelId.equals(c.channelId())).toList();
+        }
+
+        @Override
+        public java.util.Optional<io.casehub.qhorus.api.message.Commitment> findById(UUID id)                                       {return java.util.Optional.empty();}
+
+        @Override
+        public java.util.Optional<io.casehub.qhorus.api.message.Commitment> findByCorrelationId(String id)                          {return java.util.Optional.empty();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findAllByCorrelationId(String id)                                     {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findByIds(java.util.Collection<UUID> ids)                             {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findOpenByObligor(String o, UUID ch)                                  {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findOpenByRequester(String r, UUID ch)                                {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findByState(io.casehub.qhorus.api.message.CommitmentState s, UUID ch) {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findByChannel(UUID ch)                                                {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findExpiredBefore(java.time.Instant cutoff)                           {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findAllOpen()                                                         {return List.of();}
     }
 }

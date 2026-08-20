@@ -1,18 +1,19 @@
 package io.casehub.qhorus.api;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.UUID;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.util.UUID;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Issue #35 — GET /a2a/tasks/{id} returns A2A Task status via correlation_id lookup.
@@ -48,8 +49,7 @@ class A2AGetTaskTest {
     @Inject
     QhorusMcpTools tools;
 
-    private static final String SEND_PATH = "/a2a/message:send";
-    private static final String TASKS_PATH = "/a2a/tasks/";
+    private static final String A2A_PATH = "/a2a";
 
     /** Get the messageId of the first message in a channel (used for inReplyTo). */
     private Long firstMessageId(String channel) {
@@ -63,21 +63,29 @@ class A2AGetTaskTest {
     // -----------------------------------------------------------------------
 
     private String sendA2A(String channel, String role, String text, String taskId) {
-        String taskPart = taskId != null ? "\"taskId\":\"" + taskId + "\"," : "";
-        String body = "{\"message\":{\"role\":\"" + role + "\","
-                + taskPart
-                + "\"contextId\":\"" + channel + "\","
-                + "\"parts\":[{\"kind\":\"text\",\"text\":\"" + text + "\"}]}}";
+        String taskPart = taskId != null ? ",\"taskId\":\"" + taskId + "\"" : "";
+        String reqId    = java.util.UUID.randomUUID().toString();
+        String body = "{\"jsonrpc\":\"2.0\",\"id\":\"" + reqId + "\",\"method\":\"message/send\",\"params\":"
+                      + "{\"message\":{\"role\":\"" + role + "\","
+                      + "\"contextId\":\"" + channel + "\","
+                      + "\"parts\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]"
+                      + taskPart + "}}}";
 
         return given()
-                .urlEncodingEnabled(false)
-                .contentType("application/json")
-                .body(body)
-                .when().post(SEND_PATH)
-                .then()
-                .statusCode(200)
-                .extract().path("task.id");
+                       .contentType("application/json")
+                       .accept("application/json")
+                       .body(body)
+                       .when().post(A2A_PATH)
+                       .then()
+                       .statusCode(200)
+                       .extract().path("result.id");
     }
+
+    private String getTaskBody(String taskId) {
+        String reqId = java.util.UUID.randomUUID().toString();
+        return "{\"jsonrpc\":\"2.0\",\"id\":\"" + reqId + "\",\"method\":\"tasks/get\",\"params\":{\"id\":\"" + taskId + "\"}}";
+    }
+
 
     // -----------------------------------------------------------------------
     // Unit — state derivation and 404
@@ -85,10 +93,14 @@ class A2AGetTaskTest {
 
     @Test
     void unknownTaskIdReturns404() {
+        String unknownId = UUID.randomUUID().toString();
         given()
-                .when().get(TASKS_PATH + UUID.randomUUID())
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(unknownId))
+                .when().post(A2A_PATH)
                 .then()
-                .statusCode(404);
+                .statusCode(200)
+                .body("error.code", equalTo(-32602));
     }
 
     @Test
@@ -98,12 +110,14 @@ class A2AGetTaskTest {
         sendA2A("a2a-gt-1", "user", "initial request", taskId);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("submitted"))
-                .body("id", equalTo(taskId))
-                .body("contextId", equalTo("a2a-gt-1"));
+                .body("result.status.state", equalTo("submitted"))
+                .body("result.id", equalTo(taskId))
+                .body("result.contextId", equalTo("a2a-gt-1"));
     }
 
     @Test
@@ -118,10 +132,12 @@ class A2AGetTaskTest {
         tools.sendMessage("a2a-gt-2", "agent", "status", "processing...", null, taskId, null, null, null, null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("working"));
+                .body("result.status.state", equalTo("working"));
     }
 
     @Test
@@ -134,10 +150,12 @@ class A2AGetTaskTest {
         tools.sendMessage("a2a-gt-3", "agent", "response", "here is the answer", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("completed"));
+                .body("result.status.state", equalTo("completed"));
     }
 
     @Test
@@ -150,10 +168,12 @@ class A2AGetTaskTest {
         tools.sendMessage("a2a-gt-4", "agent", "done", "task finished", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("completed"));
+                .body("result.status.state", equalTo("completed"));
     }
 
     @Test
@@ -166,10 +186,12 @@ class A2AGetTaskTest {
         tools.sendMessage("a2a-gt-4b", "agent", "failure", "could not complete the requested action", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("failed"));
+                .body("result.status.state", equalTo("failed"));
     }
 
     @Test
@@ -179,11 +201,13 @@ class A2AGetTaskTest {
         sendA2A("a2a-gt-5", "user", "hello", taskId);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("id", equalTo(taskId))
-                .body("contextId", equalTo("a2a-gt-5"));
+                .body("result.id", equalTo(taskId))
+                .body("result.contextId", equalTo("a2a-gt-5"));
     }
 
     // -----------------------------------------------------------------------
@@ -197,12 +221,14 @@ class A2AGetTaskTest {
         sendA2A("a2a-gt-6", "user", "the content", taskId);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("history", hasSize(1))
-                .body("history[0].parts[0].text", equalTo("the content"))
-                .body("history[0].role", equalTo("human:user"));
+                .body("result.history", hasSize(1))
+                .body("result.history[0].parts[0].text", equalTo("the content"))
+                .body("result.history[0].role", equalTo("human:user"));
     }
 
     @Test
@@ -216,13 +242,15 @@ class A2AGetTaskTest {
         tools.sendMessage("a2a-gt-7", "agent", "response", "final answer", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("history", hasSize(3))
-                .body("history[0].role", equalTo("human:user"))
-                .body("history[1].role", equalTo("agent"))
-                .body("history[2].parts[0].text", equalTo("final answer"));
+                .body("result.history", hasSize(3))
+                .body("result.history[0].role", equalTo("human:user"))
+                .body("result.history[1].role", equalTo("agent"))
+                .body("result.history[2].parts[0].text", equalTo("final answer"));
     }
 
     // -----------------------------------------------------------------------
@@ -240,13 +268,15 @@ class A2AGetTaskTest {
 
         // Retrieve via GET
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("id", equalTo(taskId))
-                .body("status.state", equalTo("submitted"))
-                .body("contextId", equalTo("a2a-gt-8"))
-                .body("history", hasSize(1));
+                .body("result.id", equalTo(taskId))
+                .body("result.status.state", equalTo("submitted"))
+                .body("result.contextId", equalTo("a2a-gt-8"))
+                .body("result.history", hasSize(1));
     }
 
     // -----------------------------------------------------------------------
@@ -267,11 +297,13 @@ class A2AGetTaskTest {
 
         // getTask() should return completed state via CommitmentStore
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("completed"))
-                .body("history", hasSize(2));  // QUERY + DONE messages
+                .body("result.status.state", equalTo("completed"))
+                .body("result.history", hasSize(2));  // QUERY + DONE messages
     }
 
     @Test
@@ -290,10 +322,12 @@ class A2AGetTaskTest {
                 queryId, null, "role:specialist", null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("working"));
+                .body("result.status.state", equalTo("working"));
     }
 
     @Test
@@ -308,10 +342,12 @@ class A2AGetTaskTest {
                 cmd.messageId(), null, "role:specialist", null, null, null, null);
 
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("working"));
+                .body("result.status.state", equalTo("working"));
     }
 
     // -----------------------------------------------------------------------
@@ -328,20 +364,24 @@ class A2AGetTaskTest {
 
         // 2. Orchestrator polls — task is submitted
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("submitted"));
+                .body("result.status.state", equalTo("submitted"));
 
         // 3. Internal agent (MCP) picks up task, sends status update
         tools.sendMessage("a2a-e2e-gt-1", "analyst-agent", "status", "I'm working on it", null, taskId, null, null, null, null, null, null, null);
 
         // 4. Orchestrator polls again — task is working
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("working"));
+                .body("result.status.state", equalTo("working"));
 
         // 5. Agent completes task
         Long queryId = firstMessageId("a2a-e2e-gt-1");
@@ -349,12 +389,14 @@ class A2AGetTaskTest {
 
         // 6. Orchestrator polls — task is completed with full history
         given()
-                .when().get(TASKS_PATH + taskId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(taskId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("status.state", equalTo("completed"))
-                .body("history", hasSize(3))
-                .body("history[2].parts[0].text", equalTo("Analysis complete: 42"));
+                .body("result.status.state", equalTo("completed"))
+                .body("result.history", hasSize(3))
+                .body("result.history[2].parts[0].text", equalTo("Analysis complete: 42"));
     }
 
     @Test
@@ -368,10 +410,12 @@ class A2AGetTaskTest {
 
         // 2. Retrieve using the auto-generated id
         given()
-                .when().get(TASKS_PATH + generatedId)
+                .contentType("application/json").accept("application/json")
+                .body(getTaskBody(generatedId))
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("id", equalTo(generatedId))
-                .body("status.state", equalTo("submitted"));
+                .body("result.id", equalTo(generatedId))
+                .body("result.status.state", equalTo("submitted"));
     }
 }

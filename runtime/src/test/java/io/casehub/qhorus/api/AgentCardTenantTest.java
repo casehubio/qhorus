@@ -10,7 +10,7 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
- * Verifies that {@code GET /.well-known/agent-card.json} reflects the tenant
+ * Verifies that {@code GET /.well-known/agent.json} reflects the tenant
  * from the {@code X-Tenancy-ID} header (set by {@link
  * io.casehub.qhorus.runtime.identity.TenancyContextFilter}).
  *
@@ -23,7 +23,7 @@ class AgentCardTenantTest {
     void agentCard_withTenancyHeader_includesTenancyIdField() {
         given()
                 .header("X-Tenancy-ID", "tenant-alpha")
-                .when().get("/.well-known/agent-card.json")
+                .when().get("/.well-known/agent.json")
                 .then().statusCode(200)
                 .body("tenancyId", equalTo("tenant-alpha"));
     }
@@ -31,7 +31,7 @@ class AgentCardTenantTest {
     @Test
     void agentCard_withoutTenancyHeader_includesDefaultTenancyId() {
         given()
-                .when().get("/.well-known/agent-card.json")
+                .when().get("/.well-known/agent.json")
                 .then().statusCode(200)
                 .body("tenancyId", equalTo(TenancyConstants.DEFAULT_TENANT_ID));
     }
@@ -39,7 +39,7 @@ class AgentCardTenantTest {
     @Test
     void agentCard_hasRequiredA2AFields() {
         given()
-                .when().get("/.well-known/agent-card.json")
+                .when().get("/.well-known/agent.json")
                 .then().statusCode(200)
                 .body("name", notNullValue())
                 .body("description", notNullValue())

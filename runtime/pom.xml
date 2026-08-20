@@ -88,6 +88,13 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- A2A protocol — JSON-RPC types, model records, client -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-a2a-protocol</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- Ledger — structured event audit trail -->
     <dependency>
       <groupId>io.casehub</groupId>

@@ -1,103 +1,57 @@
 package io.casehub.qhorus.api;
 
-import static io.restassured.RestAssured.given;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.*;
-
+import io.quarkus.test.junit.QuarkusTest;
 import org.junit.jupiter.api.Test;
 
-import io.quarkus.test.junit.QuarkusTest;
+import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 
-/**
- * Issue #33 — A2A config guard and REST resource skeleton.
- *
- * <p>
- * Verifies that all A2A endpoints return HTTP 501 Not Implemented when
- * {@code casehub.qhorus.a2a.enabled=false} (the default). This protects existing
- * deployments from accidentally exposing A2A endpoints.
- *
- * <p>
- * The default test profile does NOT set {@code casehub.qhorus.a2a.enabled},
- * so these tests exercise the default-disabled behaviour.
- *
- * <p>
- * Refs #33, Epic #32.
- */
 @QuarkusTest
 class A2AResourceDisabledTest {
 
     // -----------------------------------------------------------------------
-    // POST /a2a/message:send — disabled
+    // POST /a2a — sync dispatch disabled
     // -----------------------------------------------------------------------
 
-    // Note: urlEncodingEnabled(false) is required because RestAssured encodes ':' to '%3A'
-    // by default, which prevents matching the A2A path pattern "message:send".
-    // RFC 3986 permits ':' in path segments after the first — it is not a reserved character
-    // in that position, so the literal colon is correct and the encoding must be suppressed.
-
     @Test
-    void sendEndpointReturns501WhenA2ADisabled() {
+    void syncDispatchReturns501WhenA2ADisabled() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
-                .body("{\"message\":{\"role\":\"user\",\"parts\":[{\"kind\":\"text\",\"text\":\"hi\"}],\"contextId\":\"ch\"}}")
-                .when().post("/a2a/message:send")
+                .accept("application/json")
+                .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":{}}")
+                .when().post("/a2a")
                 .then()
                 .statusCode(501);
     }
 
     @Test
-    void sendEndpointReturns501WithInformativeMessage() {
+    void syncDispatchReturns501WithInformativeMessage() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
-                .body("{}")
-                .when().post("/a2a/message:send")
+                .accept("application/json")
+                .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":{}}")
+                .when().post("/a2a")
                 .then()
                 .statusCode(501)
                 .body(containsString("a2a"));
     }
 
     // -----------------------------------------------------------------------
-    // GET /a2a/tasks/{id} — disabled
+    // POST /a2a — SSE stream disabled
     // -----------------------------------------------------------------------
 
     @Test
-    void tasksGetEndpointReturns501WhenA2ADisabled() {
-        given()
-                .when().get("/a2a/tasks/some-task-id")
-                .then()
-                .statusCode(501);
-    }
-
-    @Test
-    void tasksGetEndpointReturns501WithInformativeMessage() {
-        given()
-                .when().get("/a2a/tasks/any-id")
-                .then()
-                .statusCode(501)
-                .body(containsString("a2a"));
-    }
-
-    // -----------------------------------------------------------------------
-    // GET /a2a/tasks/{id}/stream — disabled
-    //
-    // NOTE: the stream endpoint returns HTTP 200 + event:error (not 501) when
-    // A2A is disabled. JAX-RS void SSE methods cannot return a different HTTP
-    // status code. The event:error event type allows clients to detect the
-    // disabled state. This is a deliberate divergence from the 501 pattern
-    // used by the non-SSE endpoints. Refs qhorus#147.
-    // -----------------------------------------------------------------------
-
-    @Test
-    void streamEndpoint_whenA2ADisabled_returnsHttp200WithErrorEvent() {
+    void streamDispatchReturns200WithErrorEvent() {
         final String body = given()
-                .accept("text/event-stream")
-                .when().get("/a2a/tasks/any-task-id/stream")
-                .then()
-                .statusCode(200)
-                .contentType("text/event-stream")
-                .extract().body().asString();
+                                    .contentType("application/json")
+                                    .accept("text/event-stream")
+                                    .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":{}}")
+                                    .when().post("/a2a")
+                                    .then()
+                                    .statusCode(200)
+                                    .contentType("text/event-stream")
+                                    .extract().body().asString();
 
         assertThat(body).contains("event:error");
         assertThat(body).contains("\"final\":true");

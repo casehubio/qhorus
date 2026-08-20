@@ -1,32 +1,30 @@
 package io.casehub.qhorus.runtime.api;
 
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.platform.api.identity.ActorTypeResolver;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.gateway.ChannelBackend;
+import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
+import io.casehub.qhorus.api.gateway.ChannelRef;
+import io.casehub.qhorus.api.gateway.OutboundMessage;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.runtime.message.MessageService;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import org.jboss.logging.Logger;
+
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
-import org.jboss.logging.Logger;
-
-import io.casehub.platform.api.identity.ActorType;
-import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.casehub.qhorus.api.gateway.ChannelBackend;
-import io.casehub.qhorus.api.gateway.ChannelRef;
-import io.casehub.qhorus.api.gateway.OutboundMessage;
-import io.casehub.qhorus.api.message.MessageDispatch;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
-import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.api.message.Message;
-import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.api.store.MessageStore;
-import io.casehub.qhorus.api.store.query.MessageQuery;
 
 /**
  * Protocol bridge backend that registers A2A as a first-class gateway participant.
@@ -90,6 +88,9 @@ public class A2AChannelBackend implements ChannelBackend {
 
     @Inject
     MessageService messageService;
+    @Inject
+    io.casehub.qhorus.api.store.CommitmentReader commitmentStore;
+
 
     @Override
     public String backendId() {
@@ -161,6 +162,20 @@ public class A2AChannelBackend implements ChannelBackend {
         }
     }
 
+    void onChannelRecovery(@jakarta.enterprise.event.Observes io.casehub.qhorus.api.gateway.ChannelInitialisedEvent event) {
+        if (!event.recovered()) {
+            return;
+        }
+        if (commitmentStore == null) {
+            return;
+        }
+        if (!commitmentStore.findOpenByChannelId(event.channelId()).isEmpty()) {
+            registeredChannels.add(event.channelId());
+            LOG.debugf("A2A backend: channel %s has active commitments — marked for recovery", event.channelName());
+        }
+    }
+
+
     /**
      * Registers a consumer to receive outbound messages for the given correlationId.
      * The consumer is called on the virtual thread that executes {@link ChannelGateway#fanOut}.
@@ -198,6 +213,11 @@ public class A2AChannelBackend implements ChannelBackend {
         final Set<Consumer<OutboundMessage>> s = sseStreams.get(correlationId);
         return s == null ? 0 : s.size();
     }
+
+    boolean isKnownA2AChannel(UUID channelId) {
+        return registeredChannels.contains(channelId);
+    }
+
 
     /**
      * Processes an inbound A2A message: resolves actor type, builds structured sender,

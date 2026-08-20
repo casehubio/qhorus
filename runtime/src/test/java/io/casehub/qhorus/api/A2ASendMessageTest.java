@@ -1,18 +1,20 @@
 package io.casehub.qhorus.api;
 
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.UUID;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.util.UUID;
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Issue #34 — POST /a2a/message:send maps A2A SendMessageRequest to send_message.
@@ -39,18 +41,20 @@ class A2ASendMessageTest {
     @Inject
     QhorusMcpTools tools;
 
-    private static final String SEND_PATH = "/a2a/message:send";
+    private static final String A2A_PATH = "/a2a";
 
     // -----------------------------------------------------------------------
     // Helper
     // -----------------------------------------------------------------------
 
     private String sendBody(String contextId, String role, String text, String taskId) {
-        String taskPart = taskId != null ? "\"taskId\":\"" + taskId + "\"," : "";
-        return "{\"message\":{\"role\":\"" + role + "\","
-                + taskPart
-                + "\"contextId\":\"" + contextId + "\","
-                + "\"parts\":[{\"kind\":\"text\",\"text\":\"" + text + "\"}]}}";
+        String taskPart = taskId != null ? ",\"taskId\":\"" + taskId + "\"" : "";
+        String reqId    = java.util.UUID.randomUUID().toString();
+        return "{\"jsonrpc\":\"2.0\",\"id\":\"" + reqId + "\",\"method\":\"message/send\",\"params\":"
+               + "{\"message\":{\"role\":\"" + role + "\","
+               + "\"contextId\":\"" + contextId + "\","
+               + "\"parts\":[{\"type\":\"text\",\"text\":\"" + text + "\"}]"
+               + taskPart + "}}}";
     }
 
     // -----------------------------------------------------------------------
@@ -62,13 +66,13 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-1", "user", "hello", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("task.status.state", equalTo("submitted"));
+                .body("result.status.state", equalTo("submitted"));
     }
 
     @Test
@@ -76,13 +80,13 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-2", "user", "hello", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("task.id", not(emptyOrNullString()));
+                .body("result.id", not(emptyOrNullString()));
     }
 
     @Test
@@ -90,13 +94,13 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-3", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-3", "agent", "work item", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("task.contextId", equalTo("a2a-send-3"));
+                .body("result.contextId", equalTo("a2a-send-3"));
     }
 
     @Test
@@ -105,13 +109,13 @@ class A2ASendMessageTest {
         String taskId = UUID.randomUUID().toString();
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-4", "user", "with explicit task id", taskId))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("task.id", equalTo(taskId));
+                .body("result.id", equalTo(taskId));
     }
 
     @Test
@@ -119,13 +123,13 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-5", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         String returnedId = given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-5", "user", "auto id", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .extract().path("task.id");
+                .extract().path("result.id");
 
         assertNotNull(returnedId);
         assertDoesNotThrow(() -> UUID.fromString(returnedId),
@@ -141,10 +145,10 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-6", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-6", "user", "hello from a2a", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200);
 
@@ -159,10 +163,10 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-7", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-7", "user", "content", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200);
 
@@ -176,10 +180,10 @@ class A2ASendMessageTest {
         tools.createChannel("a2a-send-8", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-8", "orchestrator", "task", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200);
 
@@ -194,10 +198,10 @@ class A2ASendMessageTest {
         String taskId = UUID.randomUUID().toString();
 
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-send-9", "user", "correlated", taskId))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200);
 
@@ -217,14 +221,14 @@ class A2ASendMessageTest {
 
         // 1. External orchestrator sends via A2A
         String returnedTaskId = given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-e2e-send-1", "external-orchestrator", "do this work", taskId))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
                 .statusCode(200)
-                .body("task.status.state", equalTo("submitted"))
-                .extract().path("task.id");
+                .body("result.status.state", equalTo("submitted"))
+                .extract().path("result.id");
 
         assertEquals(taskId, returnedTaskId);
 
@@ -246,16 +250,16 @@ class A2ASendMessageTest {
         // A prior QUERY (user role) must exist so inReplyTo can be resolved; otherwise
         // the A2AChannelBackend correctly falls back to QUERY for an orphaned agent message.
         String taskId = UUID.randomUUID().toString();
-        given().urlEncodingEnabled(false)
-                .contentType("application/json")
+        given().contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-type-agent-1", "user", "initial request", taskId))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then().statusCode(200);
 
-        given().urlEncodingEnabled(false)
-                .contentType("application/json")
+        given().contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-type-agent-1", "agent", "work done", taskId))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then().statusCode(200);
 
         QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-type-agent-1", 0L, 10, null, null, null);
@@ -269,10 +273,10 @@ class A2ASendMessageTest {
     void role_user_noSignals_messageTypeIsQuery_senderIsHumanUser() {
         tools.createChannel("a2a-type-user-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        given().urlEncodingEnabled(false)
-                .contentType("application/json")
+        given().contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("a2a-type-user-1", "user", "hello", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then().statusCode(200);
 
         QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-type-user-1", 0L, 10, null, null, null);
@@ -284,11 +288,11 @@ class A2ASendMessageTest {
     void role_user_headerAgent_senderIsAgent() {
         tools.createChannel("a2a-header-agent-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        given().urlEncodingEnabled(false)
-                .contentType("application/json")
+        given().contentType("application/json")
+                .accept("application/json")
                 .header("x-qhorus-actor-type", "AGENT")
                 .body(sendBody("a2a-header-agent-1", "user", "delegate this", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then().statusCode(200);
 
         QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-header-agent-1", 0L, 10, null, null, null);
@@ -297,50 +301,56 @@ class A2ASendMessageTest {
     }
 
     // -----------------------------------------------------------------------
-    // Error cases — 400 for missing required fields
+    // Error cases — JSON-RPC error responses
     // -----------------------------------------------------------------------
 
     @Test
-    void missingContextIdReturns400() {
+    void missingContextIdReturnsError() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
-                .body("{\"message\":{\"role\":\"user\",\"parts\":[{\"kind\":\"text\",\"text\":\"hi\"}]}}")
-                .when().post(SEND_PATH)
+                .accept("application/json")
+                .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":"
+                        + "{\"message\":{\"role\":\"user\",\"parts\":[{\"type\":\"text\",\"text\":\"hi\"}]}}}")
+                .when().post(A2A_PATH)
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("error.code", equalTo(-32602));
     }
 
     @Test
-    void channelNotFoundReturns400() {
+    void channelNotFoundReturnsError() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
+                .accept("application/json")
                 .body(sendBody("nonexistent-channel-xyz", "user", "hi", null))
-                .when().post(SEND_PATH)
+                .when().post(A2A_PATH)
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("error.code", equalTo(-32602));
     }
 
     @Test
-    void missingPartsReturns400() {
+    void missingPartsReturnsError() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
-                .body("{\"message\":{\"role\":\"user\",\"contextId\":\"ch\",\"parts\":[]}}")
-                .when().post(SEND_PATH)
+                .accept("application/json")
+                .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":"
+                        + "{\"message\":{\"role\":\"user\",\"contextId\":\"ch\",\"parts\":[]}}}")
+                .when().post(A2A_PATH)
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("error.code", equalTo(-32602));
     }
 
     @Test
-    void nullMessageReturns400() {
+    void nullMessageReturnsError() {
         given()
-                .urlEncodingEnabled(false)
                 .contentType("application/json")
-                .body("{}")
-                .when().post(SEND_PATH)
+                .accept("application/json")
+                .body("{\"jsonrpc\":\"2.0\",\"id\":\"1\",\"method\":\"message/send\",\"params\":{}}")
+                .when().post(A2A_PATH)
                 .then()
-                .statusCode(400);
+                .statusCode(200)
+                .body("error.code", equalTo(-32602));
     }
 }
