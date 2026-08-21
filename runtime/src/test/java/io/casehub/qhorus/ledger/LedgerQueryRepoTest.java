@@ -80,7 +80,8 @@ class LedgerQueryRepoTest {
             final List<MessageLedgerEntry> chain = new ArrayList<>();
             UUID currentId = entryId;
             final java.util.Set<UUID> visited = new java.util.HashSet<>();
-            while (currentId != null && !visited.contains(currentId)) {
+            int depth = 0;
+            while (currentId != null && !visited.contains(currentId) && depth < 50) {
                 visited.add(currentId);
                 final UUID id = currentId;
                 final MessageLedgerEntry entry = saved.stream()
@@ -92,6 +93,32 @@ class LedgerQueryRepoTest {
                 }
                 chain.add(entry);
                 currentId = entry.causedByEntryId;
+                depth++;
+            }
+            java.util.Collections.reverse(chain);
+            return chain;
+        }
+
+        @Override
+        public List<MessageLedgerEntry> findAncestorChainCrossChannel(
+                final UUID entryId, final String tenancyId) {
+            final List<MessageLedgerEntry> chain = new ArrayList<>();
+            UUID currentId = entryId;
+            final java.util.Set<UUID> visited = new java.util.HashSet<>();
+            int depth = 0;
+            while (currentId != null && !visited.contains(currentId) && depth < 50) {
+                visited.add(currentId);
+                final UUID id = currentId;
+                final MessageLedgerEntry entry = saved.stream()
+                        .filter(e -> id.equals(e.id))
+                        .findFirst()
+                        .orElse(null);
+                if (entry == null) {
+                    break;
+                }
+                chain.add(entry);
+                currentId = entry.causedByEntryId;
+                depth++;
             }
             java.util.Collections.reverse(chain);
             return chain;
@@ -303,6 +330,39 @@ class LedgerQueryRepoTest {
 
         assertEquals(1, chain.size(), "Stops at channel boundary — COMMAND not in queried channel");
         assertEquals(done.id, chain.get(0).id);
+    }
+
+    // ── findAncestorChainCrossChannel ──────────────────────────────────────────
+
+    @Test
+    void findAncestorChainCrossChannel_threeHops_crossesChannelBoundary() {
+        final MessageLedgerEntry cmd = entry("COMMAND", "corr-cc", null, "agent-a", channelId);
+        final MessageLedgerEntry handoff = entry("HANDOFF", "corr-cc", cmd.id, "agent-a", channelId);
+        final MessageLedgerEntry done = entry("DONE", "corr-cc", handoff.id, "agent-b", otherChannelId);
+
+        final List<MessageLedgerEntry> chain = repo.findAncestorChainCrossChannel(done.id, null);
+
+        assertEquals(3, chain.size(), "Crosses channel boundary — all three entries returned");
+        assertEquals(cmd.id, chain.get(0).id);
+        assertEquals(handoff.id, chain.get(1).id);
+        assertEquals(done.id, chain.get(2).id);
+    }
+
+    @Test
+    void findAncestorChainCrossChannel_unknownEntry_returnsEmpty() {
+        final List<MessageLedgerEntry> chain = repo.findAncestorChainCrossChannel(UUID.randomUUID(), null);
+
+        assertTrue(chain.isEmpty());
+    }
+
+    @Test
+    void findAncestorChainCrossChannel_rootEntry_returnsSingle() {
+        final MessageLedgerEntry cmd = entry("COMMAND", "corr-root", null);
+
+        final List<MessageLedgerEntry> chain = repo.findAncestorChainCrossChannel(cmd.id, null);
+
+        assertEquals(1, chain.size());
+        assertEquals(cmd.id, chain.get(0).id);
     }
 
     // ── findStalledCommands ───────────────────────────────────────────────────

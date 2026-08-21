@@ -246,10 +246,13 @@ public abstract class QhorusMcpToolsBase {
     /** One entry in a causal chain returned by {@code get_causal_chain}. */
     public record CausalChainEntry(
             String entryId,
+            String channelId,
+            String channelName,
             String messageType,
             String actorId,
             String correlationId,
             String occurredAt,
+            String content,
             /** Null for the root entry. */
             String causedByEntryId) {
     }

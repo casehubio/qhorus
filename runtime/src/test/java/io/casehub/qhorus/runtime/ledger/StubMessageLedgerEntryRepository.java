@@ -73,6 +73,12 @@ public class StubMessageLedgerEntryRepository extends MessageLedgerEntryReposito
                 .reduce((a, b) -> b);
     }
 
+    @Override
+    public List<MessageLedgerEntry> findAncestorChainCrossChannel(
+            final UUID entryId, final String tenancyId) {
+        return List.of();
+    }
+
     private static String effective(final String t) {
         return t != null ? t : TenancyConstants.DEFAULT_TENANT_ID;
     }

@@ -119,6 +119,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     CommitmentStore commitmentStore;
 
     @Inject
+    io.casehub.qhorus.runtime.ledger.CausalGraphService causalGraphService;
+
+    @Inject
     ChannelGateway channelGateway;
 
     @Inject
@@ -1875,13 +1878,13 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     @Tool(name = "get_causal_chain", description = "Compliance and audit tool. Takes a ledger_entry_id (UUID from list_ledger_entries) "
             + "and walks causedByEntryId links upward to the root. "
             + "Returns the chain ordered oldest-first. "
+            + "When channel is omitted, walks across channel boundaries (cross-channel attribution). "
+            + "Cross-tenant delegation traces stop at the tenant boundary. "
             + "Returns empty list for unknown entry IDs (never throws on missing chain).")
     @Transactional
     public List<CausalChainEntry> getCausalChain(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "channel", description = "Channel name or UUID. When omitted, walks across channel boundaries.", required = false) String channel,
             @ToolArg(name = "ledger_entry_id", description = "UUID of the ledger entry (from list_ledger_entries entry_id field)") String ledgerEntryId) {
-
-        final Channel ch = resolveChannel(channel);
 
         final UUID entryUuid;
         try {
@@ -1891,15 +1894,60 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                     "Invalid ledger_entry_id '" + ledgerEntryId + "' — must be a UUID");
         }
 
-        return ledgerRepo.findAncestorChain(ch.id(), entryUuid, currentPrincipal.tenancyId()).stream()
+        final String tenancyId = currentPrincipal.tenancyId();
+
+        if (channel != null && !channel.isBlank()) {
+            final Channel ch = resolveChannel(channel);
+            return ledgerRepo.findAncestorChain(ch.id(), entryUuid, tenancyId).stream()
+                    .map(e -> new CausalChainEntry(
+                            e.id != null ? e.id.toString() : null,
+                            e.channelId != null ? e.channelId.toString() : null,
+                            ch.name(),
+                            e.messageType,
+                            e.actorId,
+                            e.correlationId,
+                            e.occurredAt != null ? e.occurredAt.toString() : null,
+                            e.content,
+                            e.causedByEntryId != null ? e.causedByEntryId.toString() : null))
+                    .toList();
+        }
+
+        final List<io.casehub.qhorus.runtime.ledger.MessageLedgerEntry> chain =
+                ledgerRepo.findAncestorChainCrossChannel(entryUuid, tenancyId);
+
+        final java.util.Set<java.util.UUID> channelIds = chain.stream()
+                .map(e -> e.channelId)
+                .collect(java.util.stream.Collectors.toSet());
+        final java.util.Map<java.util.UUID, String> channelNames = channelStore.findByIds(channelIds).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        c -> c.id(), c -> c.name(), (a, b) -> a));
+
+        return chain.stream()
                 .map(e -> new CausalChainEntry(
                         e.id != null ? e.id.toString() : null,
+                        e.channelId != null ? e.channelId.toString() : null,
+                        channelNames.getOrDefault(e.channelId, "unknown"),
                         e.messageType,
                         e.actorId,
                         e.correlationId,
                         e.occurredAt != null ? e.occurredAt.toString() : null,
+                        e.content,
                         e.causedByEntryId != null ? e.causedByEntryId.toString() : null))
                 .toList();
+    }
+
+    @Tool(name = "get_causal_graph", description = "Build a cross-channel causal graph for a correlation_id. "
+            + "Returns nodes (ledger entries with channel, type, actor, depth) and edges (causedByEntryId links with elapsed time). "
+            + "Edges are derived from causedByEntryId links — for complete cross-channel graphs, agents must pass "
+            + "caused_by_entry_id when sending messages that continue delegations from other channels. "
+            + "Cross-tenant delegation traces stop at the tenant boundary.")
+    @Transactional
+    public io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph getCausalGraph(
+            @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
+            @ToolArg(name = "limit", description = "Maximum entries to include (default 100, max 500)", required = false) Integer limit) {
+
+        final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 100;
+        return causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
     }
 
     @Tool(name = "list_stalled_obligations", description = "Return COMMAND entries with no terminal sibling "

@@ -67,9 +67,9 @@ public class MessageLedgerEntryRepository {
      *
      * @param channelId scopes the query to this channel
      * @param messageTypes if non-null/non-empty, only entries whose {@code messageType} is in this set
-     * @param afterSequence if non-null, only entries with sequenceNumber &gt; afterSequence
+     * @param afterSequence if non-null, only entries with sequenceNumber > afterSequence
      * @param agentId if non-null/blank, filter by actorId
-     * @param since if non-null, filter by occurredAt &gt;= since
+     * @param since if non-null, filter by occurredAt >= since
      * @param limit max results
      * @param tenancyId scopes the query to this tenant
      */
@@ -172,6 +172,36 @@ public class MessageLedgerEntryRepository {
         Collections.reverse(chain);
         return chain;
     }
+
+    /**
+     * Cross-channel variant of {@link #findAncestorChain} — walks {@code causedByEntryId}
+     * links upward from {@code entryId} to the root without stopping at channel boundaries.
+     * Only the tenancy boundary is enforced (security boundary).
+     * <p>
+     * <p>Depth limit: 50 hops. Cycle-guard via visited set.
+     * Returns an empty list if {@code entryId} does not exist in this tenant.
+     */
+    public List<MessageLedgerEntry> findAncestorChainCrossChannel(
+            final UUID entryId, final String tenancyId) {
+        final List<MessageLedgerEntry> chain     = new ArrayList<>();
+        UUID                           currentId = entryId;
+        final Set<UUID>                visited   = new java.util.HashSet<>();
+        final String                   tid       = tenancyId(tenancyId);
+        int                            depth     = 0;
+        while (currentId != null && !visited.contains(currentId) && depth < 50) {
+            visited.add(currentId);
+            final MessageLedgerEntry entry = em.find(MessageLedgerEntry.class, currentId);
+            if (entry == null || !tid.equals(entry.tenancyId)) {
+                break;
+            }
+            chain.add(entry);
+            currentId = entry.causedByEntryId;
+            depth++;
+        }
+        Collections.reverse(chain);
+        return chain;
+    }
+
 
     /**
      * COMMAND entries on this channel in {@code tenancyId} whose {@code occurredAt} is before
