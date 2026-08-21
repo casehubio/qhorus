@@ -3,6 +3,7 @@ package io.casehub.qhorus.runtime.channel;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.MembershipManager;
 import io.casehub.qhorus.api.channel.MemberRole;
+import io.casehub.qhorus.api.channel.UnreadCountProvider;
 import io.casehub.qhorus.api.channel.UnreadCount;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
@@ -19,7 +20,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
-public class ChannelMembershipService implements MembershipManager {
+public class ChannelMembershipService implements MembershipManager, UnreadCountProvider {
 
     @Inject
     ChannelMembershipStore membershipStore;
@@ -77,6 +78,7 @@ public class ChannelMembershipService implements MembershipManager {
         }
     }
 
+    @Override
     public Map<UUID, UnreadCount> getUnreadCounts(String memberId, String tenancyId) {
         List<ChannelMembership> memberships = membershipStore.findByMember(memberId, tenancyId);
         Map<UUID, UnreadCount> result = new LinkedHashMap<>();
