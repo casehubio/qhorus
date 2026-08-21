@@ -10,6 +10,7 @@ import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
 import io.quarkus.websockets.next.WebSocket;
 import io.quarkus.websockets.next.WebSocketConnection;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import jakarta.inject.Inject;
 
 @WebSocket(path = "/ws/push")
@@ -19,8 +20,7 @@ public class QhorusPushWebSocket {
     @Inject TopicRegistry topicRegistry;
     @Inject EventStore eventStore;
     @Inject QhorusDatasetBuilder datasetBuilder;
-    @Inject
-            io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+    @Inject CurrentPrincipal currentPrincipal;
 
 
     @OnOpen
@@ -55,7 +55,8 @@ public class QhorusPushWebSocket {
             }
             case PushRequest.Unlisten unlisten -> topicRegistry.unlisten(connection.id(), unlisten.topics());
             default -> Log.debugf("Ignoring push request: %s", request.op());
-        }}
+        }
+    }
 
     @OnClose
     void onClose(WebSocketConnection connection) {

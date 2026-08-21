@@ -121,8 +121,7 @@ public class QhorusDatasetBuilder {
     @Inject TopicManager topicManager;
     @Inject PresenceTracker presenceTracker;
     @Inject SpaceStore spaceStore;
-    @Inject
-            UnreadCountProvider unreadCountProvider;
+    @Inject UnreadCountProvider unreadCountProvider;
 
     @Inject ObjectMapper objectMapper;
 
