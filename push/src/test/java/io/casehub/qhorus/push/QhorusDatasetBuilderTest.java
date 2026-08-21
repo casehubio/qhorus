@@ -20,6 +20,17 @@ class QhorusDatasetBuilderTest {
     }
 
     @Test
+    void channelSnapshotColumnsIncludeUnreadCount() {
+        var names = QhorusDatasetBuilder.CHANNEL_SNAPSHOT_COLUMNS.stream()
+                                                                 .map(PushColumn::id).toList();
+        assertThat(names).hasSize(9);
+        assertThat(names.get(8)).isEqualTo("unreadCount");
+        assertThat(names).containsAll(
+                QhorusDatasetBuilder.CHANNEL_COLUMNS.stream().map(PushColumn::id).toList());
+    }
+
+
+    @Test
     void allTopicsHasSevenEntries() {
         assertThat(QhorusDatasetBuilder.ALL_TOPICS).hasSize(7);
         assertThat(QhorusDatasetBuilder.ALL_TOPICS).contains(

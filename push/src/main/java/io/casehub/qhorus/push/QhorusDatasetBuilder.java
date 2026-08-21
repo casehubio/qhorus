@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.pages.push.PushColumn;
 import io.casehub.pages.push.PushMessage;
 import io.casehub.qhorus.api.channel.ChannelReader;
+import io.casehub.qhorus.api.channel.UnreadCount;
+import io.casehub.qhorus.api.channel.UnreadCountProvider;
 import io.casehub.qhorus.api.channel.PresenceTracker;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.channel.TopicManager;
@@ -53,6 +55,14 @@ public class QhorusDatasetBuilder {
         new PushColumn("spaceId", "Space ID", "LABEL"),
         new PushColumn("spaceName", "Space Name", "LABEL"),
         new PushColumn("parentSpaceId", "Parent Space", "LABEL"));
+    public static final List<PushColumn> CHANNEL_SNAPSHOT_COLUMNS;
+
+    static {
+        var cols = new java.util.ArrayList<>(CHANNEL_COLUMNS);
+        cols.add(new PushColumn("unreadCount", "Unread", "LABEL"));
+        CHANNEL_SNAPSHOT_COLUMNS = List.copyOf(cols);
+    }
+
 
     public static final List<PushColumn> MESSAGE_COLUMNS = List.of(
         new PushColumn("channelId", "Channel", "LABEL"),
@@ -111,6 +121,9 @@ public class QhorusDatasetBuilder {
     @Inject TopicManager topicManager;
     @Inject PresenceTracker presenceTracker;
     @Inject SpaceStore spaceStore;
+    @Inject
+            UnreadCountProvider unreadCountProvider;
+
     @Inject ObjectMapper objectMapper;
 
     public String buildSnapshot(String topic) {
@@ -129,6 +142,14 @@ public class QhorusDatasetBuilder {
             default -> throw new IllegalArgumentException("Unknown topic: " + topic);
         };
     }
+
+    public String buildSnapshot(String topic, Long seq, String userId, String tenancyId) {
+        if (TOPIC_CHANNELS.equals(topic) && userId != null) {
+            return buildChannelSnapshot(seq, userId, tenancyId);
+        }
+        return buildSnapshot(topic, seq);
+    }
+
 
     private String buildChannelSnapshot(Long seq) {
         var channels = channelReader.listAll();
@@ -154,6 +175,35 @@ public class QhorusDatasetBuilder {
             .toList();
         return PushMessage.snapshot("channels", CHANNEL_COLUMNS, rows, seq);
     }
+
+    private String buildChannelSnapshot(Long seq, String userId, String tenancyId) {
+        var channels = channelReader.listAll();
+        var spaceIds = channels.stream()
+                               .map(ch -> ch.spaceId())
+                               .filter(id -> id != null)
+                               .distinct()
+                               .toList();
+        Map<UUID, Space> spaces = spaceIds.isEmpty()
+                                  ? Map.of()
+                                  : spaceStore.findByIds(spaceIds).stream()
+                                              .collect(Collectors.toMap(Space::id, s -> s));
+        Map<UUID, UnreadCount> unreadCounts = unreadCountProvider.getUnreadCounts(userId, tenancyId);
+        var rows = channels.stream()
+                           .map(ch -> {
+                               Space       space = ch.spaceId() != null ? spaces.get(ch.spaceId()) : null;
+                               UnreadCount uc    = unreadCounts.get(ch.id());
+                               return List.of(
+                                       ch.id().toString(), ch.name(), "",
+                                       ch.description() != null ? ch.description() : "", "false",
+                                       ch.spaceId() != null ? ch.spaceId().toString() : "",
+                                       space != null ? space.name() : "",
+                                       space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : "",
+                                       uc != null ? String.valueOf(uc.count()) : "0");
+                           })
+                           .toList();
+        return PushMessage.snapshot("channels", CHANNEL_SNAPSHOT_COLUMNS, rows, seq);
+    }
+
 
     private String buildTopicSnapshot(Long seq) {
         var channels = channelReader.listAll();

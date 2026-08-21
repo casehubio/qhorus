@@ -19,6 +19,9 @@ public class QhorusPushWebSocket {
     @Inject TopicRegistry topicRegistry;
     @Inject EventStore eventStore;
     @Inject QhorusDatasetBuilder datasetBuilder;
+    @Inject
+            io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+
 
     @OnOpen
     void onOpen(WebSocketConnection connection) {
@@ -31,15 +34,17 @@ public class QhorusPushWebSocket {
         switch (request) {
             case PushRequest.Listen listen -> {
                 topicRegistry.listen(connection.id(), listen.topics());
+                String userId    = currentPrincipal.isAuthenticated() ? currentPrincipal.actorId() : null;
+                String tenancyId = currentPrincipal.isAuthenticated() ? currentPrincipal.tenancyId() : null;
                 for (var entry : listen.since().entrySet()) {
                     String topic = entry.getKey();
-                    long since = entry.getValue();
+                    long   since = entry.getValue();
                     if (since == 0) {
-                        sendText(connection, PushMessage.event(topic, datasetBuilder.buildSnapshot(topic)));
+                        sendText(connection, PushMessage.event(topic, datasetBuilder.buildSnapshot(topic, null, userId, tenancyId)));
                     } else {
                         var events = eventStore.replay(topic, since, 10000);
                         if (events.isEmpty() || events.get(0).seq() > since + 1) {
-                            sendText(connection, PushMessage.event(topic, datasetBuilder.buildSnapshot(topic)));
+                            sendText(connection, PushMessage.event(topic, datasetBuilder.buildSnapshot(topic, null, userId, tenancyId)));
                         } else {
                             for (var event : events) {
                                 sendText(connection, PushMessage.event(topic, event.payloadJson(), event.seq()));
@@ -48,11 +53,9 @@ public class QhorusPushWebSocket {
                     }
                 }
             }
-            case PushRequest.Unlisten unlisten ->
-                topicRegistry.unlisten(connection.id(), unlisten.topics());
+            case PushRequest.Unlisten unlisten -> topicRegistry.unlisten(connection.id(), unlisten.topics());
             default -> Log.debugf("Ignoring push request: %s", request.op());
-        }
-    }
+        }}
 
     @OnClose
     void onClose(WebSocketConnection connection) {
