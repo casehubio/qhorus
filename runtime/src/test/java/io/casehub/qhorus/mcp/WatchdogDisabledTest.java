@@ -26,7 +26,7 @@ class WatchdogDisabledTest {
     void registerWatchdogDisabledThrows() {
         ToolCallException ex = assertThrows(ToolCallException.class,
                 () -> tools.registerWatchdog("BARRIER_STUCK", "test-channel", 300, null, null,
-                        "alerts", "human"));
+                        "alerts", "human", null));
         assertTrue(ex.getMessage().toLowerCase().contains("watchdog"),
                 "error should mention watchdog");
     }

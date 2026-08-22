@@ -8,4 +8,6 @@ public record AgentStaleContext(
 
     @Override
     public WatchdogConditionType conditionType() { return WatchdogConditionType.AGENT_STALE; }
+    @Override
+    public List<String> affectedAgentIds() { return staleInstanceIds; }
 }

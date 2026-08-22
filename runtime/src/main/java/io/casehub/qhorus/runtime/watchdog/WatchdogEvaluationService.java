@@ -40,6 +40,7 @@ import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
+import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -89,6 +90,16 @@ public class WatchdogEvaluationService {
     MessageLedgerEntryRepository messageRepo;
     @Inject
     io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+    @Inject
+    io.casehub.qhorus.runtime.channel.ChannelService channelService;
+    @Inject
+    io.casehub.qhorus.runtime.instance.InstanceService instanceService;
+    @Inject
+    io.casehub.qhorus.runtime.message.CommitmentService commitmentService;
+    @Inject
+    com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+
+    private static final org.jboss.logging.Logger LOG = org.jboss.logging.Logger.getLogger(WatchdogEvaluationService.class);
 
 
     /**
@@ -286,22 +297,17 @@ public class WatchdogEvaluationService {
     }
 
     private void fireAlert(Watchdog w, String summary, AlertContext context, Instant now) {
-        // 1. Fire async event FIRST — external delivery is independent of internal channel
-        //    success. fireAsync() dispatches immediately; it does not wait for the outer
-        //    @Transactional boundary to commit.
-        //    Ghost-notification risk (tx rollback after fire): narrow window, accepted.
-        //    Crash/missed-alert risk (app crashes before observer delivers): accepted — CDI
-        //    async is at-most-once; outbox pattern required for at-least-once.
+        fireAlert(w, summary, context, now, null);
+    }
+
+    void fireAlert(Watchdog w, String summary, AlertContext context, Instant now, UUID channelId) {
         alertEvents.fireAsync(new WatchdogAlertEvent(
                 w.id(), w.targetName(), w.notificationChannel(), summary, now, context));
 
-        // 2. Internal channel dispatch SECOND — failure does not suppress the event above.
-        //    Use cross-tenant lookup scoped to the watchdog's tenancy — no CDI request context
-        //    available in the scheduler thread. Pass w.tenancyId() explicitly so MessageService
-        //    can route without CurrentPrincipal (GE-20260531-446fea pattern).
         Optional<Channel> notifChannel = crossTenantChannelStore
                                                  .findByNameAndTenancy(w.notificationChannel(), w.tenancyId());
         if (notifChannel.isEmpty()) {
+            executeContainmentAction(w, context, channelId, null);
             return;
         }
         messageService.dispatch(MessageDispatch.builder()
@@ -312,6 +318,60 @@ public class WatchdogEvaluationService {
                                                .actorType(ActorType.SYSTEM)
                                                .tenancyId(w.tenancyId())
                                                .build());
+        executeContainmentAction(w, context, channelId, notifChannel.get().id());
+    }
+
+    private void executeContainmentAction(Watchdog w, AlertContext context, UUID channelId, UUID notifChannelId) {
+        if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.ALERT) return;
+        try {
+            if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.PAUSE_CHANNEL
+                    || w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.QUARANTINE) {
+                if (channelId == null) {
+                    LOG.warnf("PAUSE_CHANNEL on cross-channel condition %s — no channelId, skipping", w.conditionType());
+                } else if (channelId.equals(notifChannelId)) {
+                    LOG.warnf("Skipping containment on notification channel %s — self-defeating", w.notificationChannel());
+                } else {
+                    channelService.pause(channelId);
+                    commitmentService.expireByChannel(channelId);
+                }
+            }
+            if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.DEREGISTER_AGENT
+                    || w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.QUARANTINE) {
+                java.util.List<String> agents = context.affectedAgentIds();
+                if (agents.isEmpty()) {
+                    LOG.warnf("DEREGISTER_AGENT on condition %s with no identified agents — skipping", w.conditionType());
+                } else {
+                    for (String agentId : agents) {
+                        instanceService.markOffline(agentId);
+                    }
+                }
+            }
+            dispatchContainmentEvent(w, context, channelId, notifChannelId);
+        } catch (Exception e) {
+            LOG.errorf(e, "Containment action %s failed for watchdog %s — alert was still sent", w.action(), w.id());
+        }
+    }
+
+    private void dispatchContainmentEvent(Watchdog w, AlertContext context, UUID channelId, UUID notifChannelId) {
+        if (notifChannelId == null) return;
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode telemetry = objectMapper.createObjectNode();
+            telemetry.put("containment_action", w.action().name());
+            telemetry.put("condition_type", w.conditionType().name());
+            telemetry.put("watchdog_id", w.id().toString());
+            if (channelId != null) telemetry.put("channel_id", channelId.toString());
+            telemetry.set("affected_agents", objectMapper.valueToTree(context.affectedAgentIds()));
+            messageService.dispatch(MessageDispatch.builder()
+                    .channelId(notifChannelId)
+                    .sender("system:watchdog")
+                    .type(MessageType.EVENT)
+                    .telemetry(telemetry.toString())
+                    .actorType(ActorType.SYSTEM)
+                    .tenancyId(w.tenancyId())
+                    .build());
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to dispatch containment EVENT for watchdog %s", w.id());
+        }
     }
 
     private boolean evaluateContextPressure(Watchdog w, Instant now) {

@@ -4,6 +4,8 @@ import io.casehub.platform.api.identity.TenancyConstants;
 import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
@@ -57,6 +59,10 @@ public class WatchdogEntity extends PanacheEntityBase {
     @Column(name = "last_fired_at")
     public Instant lastFiredAt;
 
+    @Column(name = "action")
+    @Enumerated(EnumType.STRING)
+    public io.casehub.qhorus.api.watchdog.WatchdogAction action;
+
     public static WatchdogEntity fromDomain(io.casehub.qhorus.api.watchdog.Watchdog w) {
         WatchdogEntity e = new WatchdogEntity();
         e.id                  = w.id();
@@ -70,7 +76,9 @@ public class WatchdogEntity extends PanacheEntityBase {
         e.tenancyId           = w.tenancyId() != null ? w.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt           = w.createdAt();
         e.lastFiredAt         = w.lastFiredAt();
-        return e;}
+        e.action              = w.action();
+        return e;
+    }
 
     public io.casehub.qhorus.api.watchdog.Watchdog toDomain() {
         io.casehub.qhorus.api.watchdog.WatchdogConditionType type =
@@ -81,7 +89,8 @@ public class WatchdogEntity extends PanacheEntityBase {
         return new io.casehub.qhorus.api.watchdog.Watchdog(
                 id, type, targetName, thresholdSeconds, thresholdCount,
                 similarityPct, notificationChannel, createdBy, tenancyId,
-                createdAt, lastFiredAt);}
+                createdAt, lastFiredAt, action);
+    }
 
     @PrePersist
     void prePersist() {

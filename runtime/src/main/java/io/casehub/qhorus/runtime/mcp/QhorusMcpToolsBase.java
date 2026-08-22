@@ -214,7 +214,8 @@ public abstract class QhorusMcpToolsBase {
             String notificationChannel,
             String createdBy,
             String createdAt,
-            String lastFiredAt) {
+            String lastFiredAt,
+            String action) {
     }
 
     public record DeleteWatchdogResult(
@@ -550,7 +551,9 @@ public abstract class QhorusMcpToolsBase {
                 w.notificationChannel(),
                 w.createdBy(),
                 w.createdAt() != null ? w.createdAt().toString() : null,
-                w.lastFiredAt() != null ? w.lastFiredAt().toString() : null);}
+                w.lastFiredAt() != null ? w.lastFiredAt().toString() : null,
+                w.action() != null ? w.action().name() : "ALERT");
+    }
 
     /** Variant of {@link #toLedgerEntryMap} that prepends the channel name. Used by get_obligation_activity. */
     protected Map<String, Object> toLedgerEntryMapWithChannel(final MessageLedgerEntry e,

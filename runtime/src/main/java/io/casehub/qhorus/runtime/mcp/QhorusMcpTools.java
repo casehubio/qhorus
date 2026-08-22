@@ -2149,14 +2149,24 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "threshold_count", description = "Count threshold (for QUEUE_DEPTH, LOOP_DETECTED repetitions, ECHO_CHAMBER min agents)", required = false) Integer thresholdCount,
             @ToolArg(name = "similarity_pct", description = "Content similarity percentage threshold 0-100 (for LOOP_DETECTED, ECHO_CHAMBER)", required = false) Integer similarityPct,
             @ToolArg(name = "notification_channel", description = "Channel to post alert events to") String notificationChannel,
-            @ToolArg(name = "created_by", description = "Who is registering this watchdog") String createdBy) {
+            @ToolArg(name = "created_by", description = "Who is registering this watchdog") String createdBy,
+            @ToolArg(name = "action", description = "Action on trigger: ALERT (default, notify only), PAUSE_CHANNEL (pause affected channel), DEREGISTER_AGENT (mark agent offline), QUARANTINE (pause + deregister + containment EVENT)", required = false) String action) {
         requireWatchdogEnabled();
         io.casehub.qhorus.api.watchdog.WatchdogConditionType type = io.casehub.qhorus.api.watchdog.WatchdogConditionType.fromString(conditionType)
                                                                                                                         .orElseThrow(() -> new IllegalArgumentException("Unknown condition_type '" + conditionType + "'. Valid: " + java.util.Arrays.toString(io.casehub.qhorus.api.watchdog.WatchdogConditionType.values())));
+        io.casehub.qhorus.api.watchdog.WatchdogAction parsedAction = io.casehub.qhorus.api.watchdog.WatchdogAction.ALERT;
+        if (action != null && !action.isBlank()) {
+            try {
+                parsedAction = io.casehub.qhorus.api.watchdog.WatchdogAction.valueOf(action);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Unknown action '" + action + "'. Valid: " + java.util.Arrays.toString(io.casehub.qhorus.api.watchdog.WatchdogAction.values()));
+            }
+        }
         Watchdog w = watchdogStore.put(Watchdog.builder(type, targetName)
                                                .thresholdSeconds(thresholdSeconds).thresholdCount(thresholdCount)
                                                .similarityPct(similarityPct)
                                                .notificationChannel(notificationChannel).createdBy(createdBy)
+                                               .action(parsedAction)
                                                .tenancyId(currentPrincipal.tenancyId()).build());
         return toWatchdogSummary(w);
     }

@@ -95,4 +95,9 @@ public class InstanceService {
             "AND instanceId NOT IN (SELECT eab.instanceId FROM ExternalAgentBinding eab)",
             cutoff);
     }
+
+    @Transactional
+    public void markOffline(String instanceId) {
+        InstanceEntity.update("status = 'offline' WHERE instanceId = ?1", instanceId);
+    }
 }

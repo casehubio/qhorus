@@ -1,5 +1,7 @@
 package io.casehub.qhorus.api.watchdog;
 
+import java.util.List;
+
 public sealed interface AlertContext
         permits BarrierStuckContext, ApprovalPendingContext,
                 AgentStaleContext, ChannelIdleContext, QueueDepthContext,
@@ -9,4 +11,6 @@ public sealed interface AlertContext
                 CircularDelegationContext, DeliveryLagContext {
 
     WatchdogConditionType conditionType();
+
+    default List<String> affectedAgentIds() { return List.of(); }
 }

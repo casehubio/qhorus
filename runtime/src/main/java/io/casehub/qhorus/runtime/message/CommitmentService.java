@@ -382,4 +382,29 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         return store.findByCorrelationId(correlationId);
     }
+
+    @Transactional
+    public int expireByChannel(UUID channelId) {
+        List<Commitment> active = store.findOpenByChannelId(channelId);
+        List<CommitmentExpiredEvent> toFire = new ArrayList<>(active.size());
+        Instant now = Instant.now();
+        active.forEach(c -> {
+            if (c.state().isTerminal()) return;
+            store.save(c.toBuilder()
+                    .state(CommitmentState.EXPIRED)
+                    .resolvedAt(now)
+                    .expiresAt(now)
+                    .build());
+            toFire.add(new CommitmentExpiredEvent(
+                    c.id(), c.correlationId(), channelId, c.obligor(), c.requester(), now));
+        });
+        toFire.forEach(event -> {
+            try {
+                expiredEvents.fire(event);
+            } catch (Exception e) {
+                LOG.warnf(e, "CommitmentExpiredEvent observer failed for commitment %s — continuing", event.commitmentId());
+            }
+        });
+        return toFire.size();
+    }
 }

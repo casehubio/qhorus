@@ -9,4 +9,6 @@ public record EchoChamberContext(
 ) implements AlertContext {
     @Override
     public WatchdogConditionType conditionType() { return WatchdogConditionType.ECHO_CHAMBER; }
+    @Override
+    public List<String> affectedAgentIds() { return participants; }
 }

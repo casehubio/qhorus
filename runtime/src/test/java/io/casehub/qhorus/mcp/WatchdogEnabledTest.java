@@ -51,7 +51,7 @@ class WatchdogEnabledTest {
         tools.createChannel("wd-notif-1", "Alerts", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         QhorusMcpTools.WatchdogSummary summary = tools.registerWatchdog(
-                "BARRIER_STUCK", "any-channel", 300, null, null, "wd-notif-1", "admin");
+                "BARRIER_STUCK", "any-channel", 300, null, null, "wd-notif-1", "admin", null);
 
         assertNotNull(summary.id());
         assertEquals("BARRIER_STUCK", summary.conditionType());
@@ -66,7 +66,7 @@ class WatchdogEnabledTest {
         tools.createChannel("wd-notif-2", "Alerts", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         QhorusMcpTools.WatchdogSummary created = tools.registerWatchdog(
-                "APPROVAL_PENDING", "*", 60, null, null, "wd-notif-2", "admin");
+                "APPROVAL_PENDING", "*", 60, null, null, "wd-notif-2", "admin", null);
 
         List<QhorusMcpTools.WatchdogSummary> list = tools.listWatchdogs();
         assertTrue(list.stream().anyMatch(w -> created.id().equals(w.id())));
@@ -78,7 +78,7 @@ class WatchdogEnabledTest {
         tools.createChannel("wd-notif-3", "Alerts", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         QhorusMcpTools.WatchdogSummary created = tools.registerWatchdog(
-                "CHANNEL_IDLE", "work-channel", 600, null, null, "wd-notif-3", "admin");
+                "CHANNEL_IDLE", "work-channel", 600, null, null, "wd-notif-3", "admin", null);
 
         tools.deleteWatchdog(created.id());
 
@@ -105,7 +105,7 @@ class WatchdogEnabledTest {
 
         // Register watchdog with threshold of 0s (always fires if not released)
         tools.registerWatchdog("BARRIER_STUCK", "wd-barrier-1", 0, null, null,
-                "wd-notif-b1", "admin");
+                "wd-notif-b1", "admin", null);
 
         // Alice writes but barrier is still stuck (bob missing)
         tools.sendMessage("wd-barrier-1", "alice", "status", "alice done", null, null, null, null, null, null, null, null, null);
@@ -132,7 +132,7 @@ class WatchdogEnabledTest {
         String corrId = UUID.randomUUID().toString();
 
         // Register watchdog with threshold of 0s
-        tools.registerWatchdog("APPROVAL_PENDING", "*", 0, null, null, "wd-notif-a1", "admin");
+        tools.registerWatchdog("APPROVAL_PENDING", "*", 0, null, null, "wd-notif-a1", "admin", null);
 
         // Register a commitment directly — simulates what wait_for_reply does
         var ch = tools.listChannels().stream()
@@ -162,7 +162,7 @@ class WatchdogEnabledTest {
 
         // Register watchdog with threshold 0s (always fires for any channel)
         tools.registerWatchdog("CHANNEL_IDLE", "wd-idle-1", 0, null, null,
-                "wd-notif-i1", "admin");
+                "wd-notif-i1", "admin", null);
 
         watchdogService.evaluateAll();
 
@@ -182,7 +182,7 @@ class WatchdogEnabledTest {
         tools.createChannel("wd-notif-q1", "Alerts", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         tools.registerWatchdog("QUEUE_DEPTH", "wd-queue-1", null, 2, null,
-                "wd-notif-q1", "admin");
+                "wd-notif-q1", "admin", null);
 
         // Add 3 messages — exceeds threshold of 2
         tools.sendMessage("wd-queue-1", "a1", "status", "m1", null, null, null, null, null, null, null, null, null);
@@ -203,7 +203,7 @@ class WatchdogEnabledTest {
         tools.createChannel("wd-notif-q2", "Alerts", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         tools.registerWatchdog("QUEUE_DEPTH", "wd-queue-2", null, 5, null,
-                "wd-notif-q2", "admin");
+                "wd-notif-q2", "admin", null);
 
         // Only 2 messages — below threshold of 5
         tools.sendMessage("wd-queue-2", "a1", "status", "m1", null, null, null, null, null, null, null, null, null);
@@ -227,7 +227,7 @@ class WatchdogEnabledTest {
 
         // Threshold 0s — fires immediately
         tools.registerWatchdog("CHANNEL_IDLE", "wd-debounce-1", 0, null, null,
-                "wd-notif-d1", "admin");
+                "wd-notif-d1", "admin", null);
 
         // First evaluation — fires
         watchdogService.evaluateAll();
@@ -258,7 +258,7 @@ class WatchdogEnabledTest {
         // 1. Ops team registers a watchdog
         QhorusMcpTools.WatchdogSummary watchdog = tools.registerWatchdog(
                 "BARRIER_STUCK", barrierChannel, 0, null, null,
-                alertsChannel, "ops-team");
+                alertsChannel, "ops-team", null);
         assertNotNull(watchdog.id());
 
         // 2. Alice writes but bob doesn't — barrier is stuck
