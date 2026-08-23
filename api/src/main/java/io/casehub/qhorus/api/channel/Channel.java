@@ -26,6 +26,8 @@ public record Channel(
         List<String> protocols,
         List<String> protocolParticipants,
         Boolean trackDelivery,
+        EnforcementMode enforcementMode,
+        List<String> enforcementExclusions,
         String tenancyId,
         Instant createdAt,
         Instant lastActivityAt) {
@@ -37,6 +39,7 @@ public record Channel(
         reviewerInstances    = reviewerInstances != null ? List.copyOf(reviewerInstances) : List.of();
         protocols            = protocols != null ? List.copyOf(protocols) : List.of();
         protocolParticipants = protocolParticipants != null ? List.copyOf(protocolParticipants) : List.of();
+        enforcementExclusions = enforcementExclusions != null ? List.copyOf(enforcementExclusions) : List.of();
         allowedTypes         = allowedTypes != null ? Set.copyOf(allowedTypes) : null;
         deniedTypes          = deniedTypes != null ? Set.copyOf(deniedTypes) : null;
     }
@@ -52,7 +55,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             protocols, protocolParticipants, null, tenancyId, createdAt, lastActivityAt);
+             protocols, protocolParticipants, null, null, null, tenancyId, createdAt, lastActivityAt);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -65,7 +68,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             null, null, null, tenancyId, createdAt, lastActivityAt);
+             null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -77,7 +80,23 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, null,
-             null, null, null, tenancyId, createdAt, lastActivityAt);
+             null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
+    }
+
+    public Channel(UUID id, String name, String description, ChannelSemantic semantic,
+                   List<String> barrierContributors, List<String> allowedWriters,
+                   List<String> adminInstances, Integer rateLimitPerChannel,
+                   Integer rateLimitPerInstance, Set<MessageType> allowedTypes,
+                   Set<MessageType> deniedTypes, boolean paused, boolean autoCreated,
+                   UUID spaceId, List<String> reviewerInstances,
+                   List<String> protocols, List<String> protocolParticipants,
+                   Boolean trackDelivery,
+                   String tenancyId, Instant createdAt, Instant lastActivityAt) {
+        this(id, name, description, semantic, barrierContributors, allowedWriters,
+             adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
+             deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
+             protocols, protocolParticipants, trackDelivery, null, null,
+             tenancyId, createdAt, lastActivityAt);
     }
 
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
@@ -101,6 +120,8 @@ public record Channel(
                 req.protocols(),
                 req.protocolParticipants(),
                 req.trackDelivery(),
+                req.enforcementMode(),
+                req.enforcementExclusions(),
                 tenancyId,
                 now,
                 now);
@@ -116,6 +137,7 @@ public record Channel(
                        .spaceId(spaceId).reviewerInstances(reviewerInstances)
                        .protocols(protocols).protocolParticipants(protocolParticipants)
                        .trackDelivery(trackDelivery)
+                       .enforcementMode(enforcementMode).enforcementExclusions(enforcementExclusions)
                        .tenancyId(tenancyId).createdAt(createdAt).lastActivityAt(lastActivityAt);
     }
 
@@ -142,6 +164,8 @@ public record Channel(
         private       List<String>     protocols;
         private       List<String>     protocolParticipants;
         private       Boolean          trackDelivery;
+        private       EnforcementMode  enforcementMode;
+        private       List<String>     enforcementExclusions;
         private       String           tenancyId;
         private       Instant          createdAt;
         private       Instant          lastActivityAt;
@@ -233,6 +257,16 @@ public record Channel(
             return this;
         }
 
+        public Builder enforcementMode(EnforcementMode v) {
+            this.enforcementMode = v;
+            return this;
+        }
+
+        public Builder enforcementExclusions(List<String> v) {
+            this.enforcementExclusions = v;
+            return this;
+        }
+
         public Builder tenancyId(String v) {
             this.tenancyId = v;
             return this;
@@ -255,6 +289,7 @@ public record Channel(
                                allowedTypes, deniedTypes,
                                paused, autoCreated, spaceId, reviewerInstances,
                                protocols, protocolParticipants, trackDelivery,
+                               enforcementMode, enforcementExclusions,
                                tenancyId, createdAt, lastActivityAt);
         }
     }

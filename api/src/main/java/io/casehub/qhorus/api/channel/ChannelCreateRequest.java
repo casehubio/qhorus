@@ -23,6 +23,8 @@ public record ChannelCreateRequest(
         List<String> protocols,
         List<String> protocolParticipants,
         Boolean trackDelivery,
+        EnforcementMode enforcementMode,
+        List<String> enforcementExclusions,
         String inboundConnectorId,
         String externalKey,
         String outboundConnectorId,
@@ -46,6 +48,7 @@ public record ChannelCreateRequest(
         reviewerInstances    = reviewerInstances != null ? List.copyOf(reviewerInstances) : List.of();
         protocols            = protocols != null ? List.copyOf(protocols) : List.of();
         protocolParticipants = protocolParticipants != null ? List.copyOf(protocolParticipants) : List.of();
+        enforcementExclusions = enforcementExclusions != null ? List.copyOf(enforcementExclusions) : List.of();
         allowedTypes         = allowedTypes != null ? Set.copyOf(allowedTypes) : null;
         deniedTypes          = deniedTypes != null ? Set.copyOf(deniedTypes) : null;
 
@@ -71,7 +74,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, reviewerInstances, protocols, protocolParticipants, null,
+             spaceId, reviewerInstances, protocols, protocolParticipants, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
     }
 
@@ -85,7 +88,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, reviewerInstances, null, null, null,
+             spaceId, reviewerInstances, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
     }
 
@@ -99,7 +102,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, null, null, null, null,
+             spaceId, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
     }
 
@@ -113,7 +116,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             null, null, null, null, null,
+             null, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination);
     }
 
@@ -141,6 +144,8 @@ public record ChannelCreateRequest(
         private       List<String>     protocols;
         private       List<String>     protocolParticipants;
         private       Boolean          trackDelivery;
+        private       EnforcementMode  enforcementMode;
+        private       List<String>     enforcementExclusions;
         private       String           inboundConnectorId;
         private       String           externalKey;
         private       String           outboundConnectorId;
@@ -218,6 +223,16 @@ public record ChannelCreateRequest(
             return this;
         }
 
+        public Builder enforcementMode(EnforcementMode v) {
+            this.enforcementMode = v;
+            return this;
+        }
+
+        public Builder enforcementExclusions(List<String> v) {
+            this.enforcementExclusions = v;
+            return this;
+        }
+
         public Builder inboundConnectorId(String v) {
             this.inboundConnectorId = v;
             return this;
@@ -245,6 +260,7 @@ public record ChannelCreateRequest(
                                             allowedTypes, deniedTypes,
                                             spaceId, reviewerInstances,
                                             protocols, protocolParticipants, trackDelivery,
+                                            enforcementMode, enforcementExclusions,
                                             inboundConnectorId, externalKey,
                                             outboundConnectorId, outboundDestination);
         }

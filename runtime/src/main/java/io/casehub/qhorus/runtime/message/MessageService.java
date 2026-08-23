@@ -114,6 +114,12 @@ public class MessageService implements ConsumerMessaging {
     @Inject
     io.casehub.qhorus.runtime.config.QhorusTracingConfig tracingConfig;
 
+    @Inject
+    EnforcementExecutor enforcementExecutor;
+
+    private static final java.util.Set<MessageType> RESOLUTION_TYPES = java.util.Set.of(
+            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.RESPONSE);
+
     @Transactional
     public DispatchResult dispatch(final MessageDispatch dispatch) {
         final String effectiveTenancyId = dispatch.tenancyId() != null
@@ -203,13 +209,13 @@ public class MessageService implements ConsumerMessaging {
             }
         }
 
-        List<String> advisories = List.of();
+        List<TaggedAdvisory> taggedAdvisories = new ArrayList<>();
         if (ch != null) {
             messageTypePolicy.validate(ch, dispatch.type());
             final String adv = messageTypePolicy.advisory(ch, dispatch.type());
             if (adv != null) {
                 LOG.warn(adv);
-                advisories = List.of(adv);
+                taggedAdvisories.add(new TaggedAdvisory("TYPE_POLICY", adv));
             }
             if (span != null) {
                 span.addEvent("qhorus.enforcement.type_policy");
@@ -221,9 +227,8 @@ public class MessageService implements ConsumerMessaging {
             if (!correlationAdvisories.isEmpty()) {
                 for (String ca : correlationAdvisories) {
                     LOG.warn(ca);
+                    taggedAdvisories.add(new TaggedAdvisory("CORRELATION_INTEGRITY", ca));
                 }
-                advisories = new ArrayList<>(advisories);
-                advisories.addAll(correlationAdvisories);
             }
             if (span != null) {
                 span.addEvent("qhorus.enforcement.correlation_integrity");
@@ -245,15 +250,23 @@ public class MessageService implements ConsumerMessaging {
                                 recent, activeCommitments);
                 for (io.casehub.qhorus.api.spi.ChannelProtocol protocol : activeProtocols) {
                     List<String> violations = protocol.evaluate(protocolCtx);
-                    for (String v : violations) { LOG.warn(v); }
-                    if (!violations.isEmpty()) {
-                        advisories = new ArrayList<>(advisories);
-                        advisories.addAll(violations);
+                    for (String v : violations) {
+                        LOG.warn(v);
+                        taggedAdvisories.add(new TaggedAdvisory(protocol.protocolName(), v));
                     }
                 }
             }
             if (span != null) {
                 span.addEvent("qhorus.enforcement.protocol");
+            }
+        }
+
+        // Enforcement gate — positioned after all advisory sources, before LAST_WRITE/persist
+        if (ch != null) {
+            enforceIfRequired(ch, taggedAdvisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
+                    dispatch, effectiveTenancyId);
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.gate");
             }
         }
 
@@ -314,7 +327,7 @@ public class MessageService implements ConsumerMessaging {
                     return new DispatchResult(saved.id(), ch.id(), saved.sender(),
                             saved.messageType(), saved.correlationId(), saved.inReplyTo(),
                             saved.artefactRefs(), saved.target(),
-                            null, null, null, 0, advisories);
+                            null, null, null, 0, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
                 } else {
                     throw new IllegalStateException(
                             "LAST_WRITE channel '" + ch.name() + "' already has a message from '"
@@ -472,7 +485,7 @@ public class MessageService implements ConsumerMessaging {
                 ledgerOutcome.entryId(),
                 ledgerOutcome.subjectId(),
                 ledgerOutcome.causedByEntryId(),
-                parentReplyCount, advisories);
+                parentReplyCount, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
         } catch (Exception e) {
             if (span != null) {
                 span.setStatus(io.opentelemetry.api.trace.StatusCode.ERROR);
@@ -584,4 +597,43 @@ public class MessageService implements ConsumerMessaging {
     }
 
 
+    static void enforceIfRequired(io.casehub.qhorus.api.channel.Channel ch,
+                                  java.util.List<TaggedAdvisory> taggedAdvisories,
+                                  MessageType type, String sender,
+                                  EnforcementExecutor executor) {
+        enforceIfRequired(ch, taggedAdvisories, type, sender, executor, null, null);
+    }
+
+    static void enforceIfRequired(io.casehub.qhorus.api.channel.Channel ch,
+                                  java.util.List<TaggedAdvisory> taggedAdvisories,
+                                  MessageType type, String sender,
+                                  EnforcementExecutor executor,
+                                  MessageDispatch dispatch, String tenancyId) {
+        if (ch.enforcementMode() == null
+            || ch.enforcementMode() == io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY) {
+            return;
+        }
+        if (type == MessageType.EVENT) {return;}
+        if (sender.contains(":")) {return;}
+        if (RESOLUTION_TYPES.contains(type)) {return;}
+        if (taggedAdvisories.isEmpty()) {return;}
+
+        java.util.List<TaggedAdvisory> enforceable = taggedAdvisories.stream()
+                                                                     .filter(ta -> !ch.enforcementExclusions().contains(ta.source()))
+                                                                     .toList();
+        if (enforceable.isEmpty()) {return;}
+
+        if (executor != null && dispatch != null) {
+            try {
+                executor.execute(ch, dispatch, enforceable, tenancyId);
+            } catch (Exception e) {
+                LOG.warnf(e, "Enforcement execution failed for channel '%s'", ch.name());
+            }
+        }
+
+        throw new io.casehub.qhorus.api.message.EnforcementBlockedException(
+                ch.enforcementMode(),
+                enforceable.stream().map(TaggedAdvisory::source).distinct().toList(),
+                enforceable.stream().map(TaggedAdvisory::message).toList());
+    }
 }

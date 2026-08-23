@@ -2,7 +2,6 @@ package io.casehub.qhorus.runtime.api;
 
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
-import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.MembershipManager;
 import io.casehub.qhorus.api.channel.PresenceTracker;
@@ -10,13 +9,9 @@ import io.casehub.qhorus.api.channel.ReactionManager;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.channel.TopicManager;
 import io.casehub.qhorus.api.event.ChannelMutationEvent;
-import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
-import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.Reaction;
-import io.casehub.qhorus.api.message.Topic;
-import io.casehub.qhorus.api.message.TopicSummary;
 import io.casehub.qhorus.api.store.CommitmentReader;
 import io.casehub.qhorus.api.store.MembershipReader;
 import io.casehub.qhorus.api.store.MessageStore;
@@ -478,6 +473,27 @@ public class ChannelResource {
         return Response.ok(toResponse(updated)).build();
     }
 
+    @PUT
+    @Path("/{id}/enforcement-mode")
+    @jakarta.transaction.Transactional
+    public Response setEnforcementMode(@PathParam("id") final String id, final EnforcementModeRequest req) {
+        Channel ch = resolve(id);
+        if (ch == null) {return error(404, "Channel not found: " + id);}
+        if (req.mode() != null) {
+            io.casehub.qhorus.api.channel.EnforcementMode mode;
+            try {
+                mode = io.casehub.qhorus.api.channel.EnforcementMode.valueOf(req.mode().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return error(400, "Invalid enforcement mode: " + req.mode());
+            }
+            ch = channelService.setEnforcementMode(ch.id(), mode);
+        }
+        if (req.exclusions() != null) {
+            ch = channelService.setEnforcementExclusions(ch.id(), req.exclusions());
+        }
+        return Response.ok(toResponse(ch)).build();
+    }
+
 
     Channel resolve(final String idOrName) {
         final UUID uuid = tryParseUuid(idOrName);
@@ -574,6 +590,9 @@ public class ChannelResource {
     public record UpdateTopicRequest(String name, String state) {}
     public record MergeTopicRequest(String targetTopicId) {}
     public record MessagePostRequest(String sender, String type, String actorType, String content) {}
+
+    public record EnforcementModeRequest(String mode, java.util.List<String> exclusions) {}
+
 
     @org.jboss.resteasy.reactive.server.ServerExceptionMapper
     Response handleIllegalArgument(IllegalArgumentException e) {

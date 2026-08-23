@@ -95,6 +95,11 @@ public class ChannelEntity extends PanacheEntityBase {
     @Column(name = "track_delivery")
     public Boolean trackDelivery;
 
+    @Column(name = "enforcement_mode")
+    public String enforcementMode;
+
+    @Column(name = "enforcement_exclusions", columnDefinition = "TEXT")
+    public String enforcementExclusions;
 
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
@@ -140,6 +145,8 @@ public class ChannelEntity extends PanacheEntityBase {
         e.autoCreated          = channel.autoCreated();
         e.spaceId              = channel.spaceId();
         e.trackDelivery        = channel.trackDelivery();
+        e.enforcementMode      = channel.enforcementMode() != null ? channel.enforcementMode().name() : null;
+        e.enforcementExclusions = joinCsv(channel.enforcementExclusions());
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -159,6 +166,8 @@ public class ChannelEntity extends PanacheEntityBase {
                 splitCsv(protocols),
                 splitCsv(protocolParticipants),
                 trackDelivery,
+                enforcementMode != null ? io.casehub.qhorus.api.channel.EnforcementMode.valueOf(enforcementMode) : null,
+                splitCsv(enforcementExclusions),
                 tenancyId, createdAt, lastActivityAt);}
 
     private static String joinCsv(java.util.List<String> list) {

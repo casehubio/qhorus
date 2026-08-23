@@ -438,6 +438,50 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 "protocol_participants", ch.protocolParticipants());
     }
 
+    @Tool(name = "set_enforcement_mode", description = "Set the enforcement mode for a channel. " +
+                                                       "ADVISORY (default) = advisories only. BLOCKING = reject on violation. " +
+                                                       "QUARANTINE = reject + pause channel + expire commitments.")
+    public ChannelDetail setEnforcementMode(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "mode", description = "ADVISORY, BLOCKING, or QUARANTINE") String mode) {
+        Channel                                       ch = resolveChannel(channel);
+        io.casehub.qhorus.api.channel.EnforcementMode enforcementMode;
+        try {
+            enforcementMode = io.casehub.qhorus.api.channel.EnforcementMode.valueOf(mode.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid enforcement mode: " + mode
+                                               + ". Valid values: ADVISORY, BLOCKING, QUARANTINE");
+        }
+        Channel updated = channelService.setEnforcementMode(ch.id(), enforcementMode);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    @Tool(name = "set_enforcement_exclusions", description = "Set enforcement exclusions for a channel (full replacement). " +
+                                                             "Excluded sources remain advisory-only even in BLOCKING/QUARANTINE mode. " +
+                                                             "Known sources: TYPE_POLICY, CORRELATION_INTEGRITY, plus any registered protocol names.")
+    public ChannelDetail setEnforcementExclusions(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "exclusions", description = "Comma-separated source tags to exclude from enforcement. Empty string to clear.") String exclusions) {
+        Channel      ch            = resolveChannel(channel);
+        List<String> exclusionList = splitCsv(exclusions);
+        Channel      updated       = channelService.setEnforcementExclusions(ch.id(), exclusionList);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    @Tool(name = "get_channel_enforcement", description = "Get the enforcement configuration for a channel — mode, exclusions, and available source tags.")
+    public java.util.Map<String, Object> getChannelEnforcement(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        Channel      ch               = resolveChannel(channel);
+        List<String> availableSources = new java.util.ArrayList<>();
+        availableSources.add("TYPE_POLICY");
+        availableSources.add("CORRELATION_INTEGRITY");
+        availableSources.addAll(protocolRegistry.allNames());
+        return java.util.Map.of(
+                "enforcement_mode", ch.enforcementMode() != null ? ch.enforcementMode().name() : "ADVISORY",
+                "enforcement_exclusions", ch.enforcementExclusions(),
+                "available_sources", availableSources);
+    }
+
 
     @Tool(name = "attest", description = "Record a peer attestation (ENDORSED or CHALLENGED) "
                                          + "on a COMMAND or HANDOFF ledger entry. Self-attestation is rejected.")

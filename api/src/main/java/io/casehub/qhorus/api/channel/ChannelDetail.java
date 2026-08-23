@@ -10,6 +10,7 @@ public record ChannelDetail(
         String allowedTypes, String deniedTypes, UUID spaceId, String spaceName,
         String reviewerInstances, String protocols, String protocolParticipants,
         Boolean trackDelivery,
+        String enforcementMode, String enforcementExclusions,
         ConnectorBinding connectorBinding) {
 
     public ChannelDetail(UUID channelId, String name, String description, String semantic,
@@ -22,7 +23,7 @@ public record ChannelDetail(
         this(channelId, name, description, semantic, barrierContributors, messageCount,
              lastActivityAt, paused, allowedWriters, adminInstances, rateLimitPerChannel,
              rateLimitPerInstance, allowedTypes, deniedTypes, spaceId, spaceName,
-             reviewerInstances, protocols, protocolParticipants, null, connectorBinding);
+             reviewerInstances, protocols, protocolParticipants, null, null, null, connectorBinding);
     }
 
     public ChannelDetail(UUID channelId, String name, String description, String semantic,
@@ -35,7 +36,7 @@ public record ChannelDetail(
         this(channelId, name, description, semantic, barrierContributors, messageCount,
              lastActivityAt, paused, allowedWriters, adminInstances, rateLimitPerChannel,
              rateLimitPerInstance, allowedTypes, deniedTypes, spaceId, spaceName,
-             reviewerInstances, null, null, null, connectorBinding);
+             reviewerInstances, null, null, null, null, null, connectorBinding);
     }
 
     public record ConnectorBinding(String inboundConnectorId, String externalKey,

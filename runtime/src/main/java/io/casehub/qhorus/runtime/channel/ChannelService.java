@@ -169,6 +169,20 @@ public class ChannelService implements ChannelManager, ChannelReader {
         return channelStore.put(ch.toBuilder().protocolParticipants(protocolParticipants).build());
     }
 
+    @Transactional
+    public Channel setEnforcementMode(UUID channelId, io.casehub.qhorus.api.channel.EnforcementMode mode) {
+        Channel ch = channelStore.find(channelId)
+                                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return channelStore.put(ch.toBuilder().enforcementMode(mode).build());
+    }
+
+    @Transactional
+    public Channel setEnforcementExclusions(UUID channelId, java.util.List<String> exclusions) {
+        Channel ch = channelStore.find(channelId)
+                                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return channelStore.put(ch.toBuilder().enforcementExclusions(exclusions).build());
+    }
+
 
     @Override
     @Transactional
