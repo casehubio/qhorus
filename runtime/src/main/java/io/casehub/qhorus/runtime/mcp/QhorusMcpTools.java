@@ -1994,6 +1994,19 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
     }
 
+    @Tool(name = "render_causal_graph", description = "Render a correlation ID's causal graph as readable indented text. "
+                                                      + "Shows cross-channel attribution tree with message types, actors, content snippets, depth, and timing. "
+                                                      + "Designed for LLM consumption — structured text is easier to reason about than raw JSON nodes+edges.")
+    @Transactional
+    public String renderCausalGraph(
+            @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
+            @ToolArg(name = "limit", description = "Maximum entries to include (default 200, max 500)", required = false) Integer limit) {
+        final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 200;
+        var       graph          = causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
+        return io.casehub.qhorus.runtime.ledger.CausalGraphRenderer.render(graph);
+    }
+
+
     @Tool(name = "list_stalled_obligations", description = "Return COMMAND entries with no terminal sibling "
             + "(DONE / FAILURE / DECLINE / HANDOFF) sharing the same correlation_id, "
             + "whose timestamp is older than the given threshold. "

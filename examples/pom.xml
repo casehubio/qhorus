@@ -22,6 +22,7 @@
   <modules>
     <module>type-system</module>
     <module>normative-layout</module>
+    <module>governance-tutorial</module>
   </modules>
 
   <profiles>
