@@ -494,6 +494,19 @@ public class ChannelResource {
         return Response.ok(toResponse(ch)).build();
     }
 
+    @PUT
+    @Path("/{id}/routing-config")
+    @jakarta.transaction.Transactional
+    public Response setRoutingConfig(@PathParam("id") final String id, final RoutingConfigRequest req) {
+        Channel ch = resolve(id);
+        if (ch == null) {return error(404, "Channel not found: " + id);}
+        if (req.trustThreshold() != null && (req.trustThreshold() < 0.0 || req.trustThreshold() > 1.0)) {
+            return error(400, "trustThreshold must be between 0.0 and 1.0");
+        }
+        ch = channelService.setRoutingTrustThreshold(ch.id(), req.trustThreshold());
+        return Response.ok(toResponse(ch)).build();
+    }
+
 
     Channel resolve(final String idOrName) {
         final UUID uuid = tryParseUuid(idOrName);
@@ -592,6 +605,8 @@ public class ChannelResource {
     public record MessagePostRequest(String sender, String type, String actorType, String content) {}
 
     public record EnforcementModeRequest(String mode, java.util.List<String> exclusions) {}
+
+    public record RoutingConfigRequest(Double trustThreshold) {}
 
 
     @org.jboss.resteasy.reactive.server.ServerExceptionMapper

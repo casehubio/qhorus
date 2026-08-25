@@ -86,6 +86,15 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
     @Column(name = "context_window_pct")
     public Integer contextWindowPct;
 
+    @Column(name = "routing_original_target")
+    public String routingOriginalTarget;
+    @Column(name = "routing_selected_agent")
+    public String routingSelectedAgent;
+    @Column(name = "routing_strategy")
+    public String routingStrategy;
+    @Column(name = "routing_candidate_count")
+    public Integer routingCandidateCount;
+
 
     @Override
     protected byte[] domainContentBytes() {

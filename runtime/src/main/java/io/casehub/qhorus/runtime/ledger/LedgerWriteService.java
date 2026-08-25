@@ -14,6 +14,7 @@ import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.CommitmentContext;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
@@ -140,6 +141,14 @@ public class LedgerWriteService {
             final Long messageId,
             @Nullable final UUID commitmentId,
             final Instant occurredAt) {
+        return record(dispatch, messageId, commitmentId, occurredAt, null);
+    }
+
+    public LedgerWriteOutcome record(final MessageDispatch dispatch,
+            final Long messageId,
+            @Nullable final UUID commitmentId,
+            final Instant occurredAt,
+            @Nullable final RoutingBridge.RoutingOutcome routingOutcome) {
         if (!config.enabled()) {
             return LedgerWriteOutcome.DISABLED;
         }
@@ -215,6 +224,12 @@ public class LedgerWriteService {
             entry.messageType = dispatch.type().name();
             entry.target = dispatch.target();
             entry.topic = dispatch.topic();
+            if (routingOutcome != null) {
+                entry.routingOriginalTarget = routingOutcome.originalTarget();
+                entry.routingSelectedAgent = routingOutcome.resolvedTarget();
+                entry.routingStrategy = routingOutcome.strategyName();
+                entry.routingCandidateCount = routingOutcome.candidateCount();
+            }
             entry.correlationId = dispatch.correlationId();
             entry.actorId = resolvedActorId;
             entry.actorType = dispatch.actorType();

@@ -101,6 +101,9 @@ public class ChannelEntity extends PanacheEntityBase {
     @Column(name = "enforcement_exclusions", columnDefinition = "TEXT")
     public String enforcementExclusions;
 
+    @Column(name = "routing_trust_threshold")
+    public Double routingTrustThreshold;
+
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
     public String tenancyId = "278776f9-e1b0-46fb-9032-8bddebdcf9ce"; // TenancyConstants.DEFAULT_TENANT_ID
@@ -147,6 +150,7 @@ public class ChannelEntity extends PanacheEntityBase {
         e.trackDelivery        = channel.trackDelivery();
         e.enforcementMode      = channel.enforcementMode() != null ? channel.enforcementMode().name() : null;
         e.enforcementExclusions = joinCsv(channel.enforcementExclusions());
+        e.routingTrustThreshold = channel.routingTrustThreshold();
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -168,6 +172,7 @@ public class ChannelEntity extends PanacheEntityBase {
                 trackDelivery,
                 enforcementMode != null ? io.casehub.qhorus.api.channel.EnforcementMode.valueOf(enforcementMode) : null,
                 splitCsv(enforcementExclusions),
+                routingTrustThreshold,
                 tenancyId, createdAt, lastActivityAt);}
 
     private static String joinCsv(java.util.List<String> list) {

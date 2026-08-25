@@ -25,6 +25,13 @@ public record MessageDispatch(
 
     public static Builder builder() {return new Builder();}
 
+    public MessageDispatch withTarget(String newTarget) {
+        return new MessageDispatch(channelId, sender, type, content, payload, correlationId,
+                                   inReplyTo, artefactRefs, newTarget, subjectId, causedByEntryId, actorType,
+                                   deadline, telemetry, tenancyId, topic);
+    }
+
+
     public static final class Builder {
         private UUID                        channelId;
         private String                      sender;

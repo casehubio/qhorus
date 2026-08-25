@@ -24,6 +24,12 @@
       <artifactId>casehub-ledger-api</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
+    <!-- Eidos API — for AgentRegistry, AgentSelector, AgentMatch (capability routing) -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-eidos-api</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
     <!-- CDI Qualifier annotation — needed for @CrossTenant (api/qualifier/).
          jakarta.inject-api is annotation-only; no runtime machinery. Managed by quarkus-bom. -->
     <dependency>

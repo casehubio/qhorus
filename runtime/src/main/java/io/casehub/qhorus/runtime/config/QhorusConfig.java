@@ -37,6 +37,9 @@ public interface QhorusConfig {
     /** Channel protocol enforcement settings. */
     Protocol protocol();
 
+    /** Capability-based routing settings. */
+    Routing routing();
+
     /**
      * Connector backend settings (optional module).
      */
@@ -49,6 +52,12 @@ public interface QhorusConfig {
         Optional<String> deliveryChannel();
     }
 
+
+    interface Routing {
+        /** Default trust score threshold for capability routing. Agents below this are excluded. Default: 0.0 (no threshold). */
+        @WithDefault("0.0")
+        double defaultTrustThreshold();
+    }
 
     interface Summary {
         /** When true, enables the channel summary scheduler. Default: true. */

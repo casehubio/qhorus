@@ -48,6 +48,7 @@ import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.runtime.message.ProjectionRegistry;
+import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.ReactionService;
 import io.casehub.qhorus.runtime.message.TopicService;
 import io.quarkiverse.mcp.server.McpServer;
@@ -165,6 +166,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     ReactionStore reactionStore;
     @Inject
     io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry protocolRegistry;
+    @Inject
+    RoutingBridge                                               routingBridge;
 
 
     // ---------------------------------------------------------------------------
@@ -480,6 +483,65 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 "enforcement_mode", ch.enforcementMode() != null ? ch.enforcementMode().name() : "ADVISORY",
                 "enforcement_exclusions", ch.enforcementExclusions(),
                 "available_sources", availableSources);
+    }
+
+    @Tool(name = "set_routing_config", description = "Set the routing trust threshold for a channel. " +
+                                                     "Agents with trust scores below this threshold are excluded from capability-based routing (role: targets). " +
+                                                     "Pass null to clear and use the global default.")
+    public ChannelDetail setRoutingConfig(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "trust_threshold", description = "Minimum trust score (0.0-1.0) or null for global default") Double trustThreshold) {
+        Channel ch = resolveChannel(channel);
+        if (trustThreshold != null && (trustThreshold < 0.0 || trustThreshold > 1.0)) {
+            throw new IllegalArgumentException("trust_threshold must be between 0.0 and 1.0, got: " + trustThreshold);
+        }
+        Channel updated = channelService.setRoutingTrustThreshold(ch.id(), trustThreshold);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    @Tool(name = "get_routing_config", description = "Get the routing configuration for a channel — trust threshold (channel-specific or global default) and routing availability.")
+    public java.util.Map<String, Object> getRoutingConfig(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        Channel                       ch                 = resolveChannel(channel);
+        double                        effectiveThreshold = routingBridge.effectiveThreshold(ch);
+        java.util.Map<String, Object> result             = new java.util.LinkedHashMap<>();
+        result.put("channel", ch.name());
+        result.put("trust_threshold", ch.routingTrustThreshold());
+        result.put("effective_threshold", effectiveThreshold);
+        result.put("global_default", qhorusConfig.routing().defaultTrustThreshold());
+        return result;
+    }
+
+    @Tool(name = "get_routing_candidates", description = "Diagnostic: show which agents would be selected for a capability-based routing target (role:X) without dispatching. " +
+                                                         "Lists matching agents with trust scores and indicates which the router would select.")
+    public java.util.Map<String, Object> getRoutingCandidates(
+            @ToolArg(name = "capability", description = "Capability name to query (the X part of role:X)") String capability,
+            @ToolArg(name = "channel", description = "Optional channel name or UUID for channel-specific threshold") String channel) {
+        Channel                         ch        = channel != null && !channel.isBlank() ? resolveChannel(channel) : null;
+        String                          tenancyId = currentPrincipal.tenancyId();
+        RoutingBridge.RoutingDiagnostic diag      = routingBridge.diagnose(capability, ch, tenancyId);
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("capability", capability);
+        result.put("routing_available", diag.routingAvailable());
+        result.put("effective_threshold", diag.effectiveThreshold());
+        result.put("candidate_count", diag.candidates().size());
+        result.put("candidates", diag.candidates().stream()
+                                     .map(c -> java.util.Map.of(
+                                             "agent_id", c.agentId(),
+                                             "name", c.name() != null ? c.name() : c.agentId(),
+                                             "trust_score", c.trustScore(),
+                                             "passes_threshold", c.passesThreshold()))
+                                     .toList());
+        result.put("selection_outcome", diag.selectionOutcome());
+        if (diag.selectedAgentId() != null) {
+            result.put("selected_agent", diag.selectedAgentId());
+            result.put("selected_trust_score", diag.selectedTrustScore());
+        }
+        if (diag.reason() != null) {
+            result.put("reason", diag.reason());
+        }
+        return result;
     }
 
 

@@ -10,6 +10,7 @@ import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
@@ -117,11 +118,14 @@ public class MessageService implements ConsumerMessaging {
     @Inject
     EnforcementExecutor enforcementExecutor;
 
+    @Inject
+    RoutingBridge routingBridge;
+
     private static final java.util.Set<MessageType> RESOLUTION_TYPES = java.util.Set.of(
             MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.RESPONSE);
 
     @Transactional
-    public DispatchResult dispatch(final MessageDispatch dispatch) {
+    public DispatchResult dispatch(MessageDispatch dispatch) {
         final String effectiveTenancyId = dispatch.tenancyId() != null
                 ? dispatch.tenancyId()
                 : currentPrincipal.tenancyId();
@@ -168,10 +172,11 @@ public class MessageService implements ConsumerMessaging {
 
         if (ch != null && dispatch.type() != MessageType.EVENT) {
             final String sender = dispatch.sender();
+            final ActorType senderActorType = dispatch.actorType();
             if (!allowedWritersPolicy.isAllowedWriter(sender, ch.allowedWriters(), () -> {
                 final List<String> tags = new ArrayList<>(
                         instanceService.findCapabilityTagsForInstance(sender));
-                tags.add("role:" + dispatch.actorType().name().toLowerCase());
+                tags.add("role:" + senderActorType.name().toLowerCase());
                 return tags;
             })) {
                 throw new IllegalStateException(
@@ -191,6 +196,20 @@ public class MessageService implements ConsumerMessaging {
             }
             if (span != null) {
                 span.addEvent("qhorus.enforcement.rate_limit");
+            }
+        }
+
+        RoutingBridge.RoutingOutcome routingOutcome = null;
+        if (ch != null && dispatch.target() != null && dispatch.target().startsWith("role:")) {
+            routingOutcome = routingBridge.resolve(dispatch, ch, effectiveTenancyId);
+            if (routingOutcome != null) {
+                dispatch = dispatch.withTarget(routingOutcome.resolvedTarget());
+            }
+            if (span != null) {
+                span.addEvent("qhorus.enforcement.routing",
+                        io.opentelemetry.api.common.Attributes.of(
+                                io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.routing.resolved"),
+                                routingOutcome != null ? routingOutcome.resolvedTarget() : "none"));
             }
         }
 
@@ -422,7 +441,7 @@ public class MessageService implements ConsumerMessaging {
                         dispatch.causedByEntryId(), dispatch.actorType(), dispatch.deadline(),
                         dispatch.telemetry(), effectiveTenancyId, dispatch.topic());
         final LedgerWriteOutcome ledgerOutcome =
-                ledgerWriteService.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt);
+                ledgerWriteService.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt, routingOutcome);
 
         MessageObserverDispatcher.dispatch(
                 ch != null ? ch.name() : null, dispatch.channelId(),

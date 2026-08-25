@@ -28,6 +28,7 @@ public record Channel(
         Boolean trackDelivery,
         EnforcementMode enforcementMode,
         List<String> enforcementExclusions,
+        Double routingTrustThreshold,
         String tenancyId,
         Instant createdAt,
         Instant lastActivityAt) {
@@ -55,7 +56,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             protocols, protocolParticipants, null, null, null, tenancyId, createdAt, lastActivityAt);
+             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -68,7 +69,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -80,7 +81,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, null,
-             null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -96,7 +97,7 @@ public record Channel(
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
              protocols, protocolParticipants, trackDelivery, null, null,
-             tenancyId, createdAt, lastActivityAt);
+             null, tenancyId, createdAt, lastActivityAt);
     }
 
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
@@ -122,6 +123,7 @@ public record Channel(
                 req.trackDelivery(),
                 req.enforcementMode(),
                 req.enforcementExclusions(),
+                req.routingTrustThreshold(),
                 tenancyId,
                 now,
                 now);
@@ -138,6 +140,7 @@ public record Channel(
                        .protocols(protocols).protocolParticipants(protocolParticipants)
                        .trackDelivery(trackDelivery)
                        .enforcementMode(enforcementMode).enforcementExclusions(enforcementExclusions)
+                       .routingTrustThreshold(routingTrustThreshold)
                        .tenancyId(tenancyId).createdAt(createdAt).lastActivityAt(lastActivityAt);
     }
 
@@ -166,6 +169,7 @@ public record Channel(
         private       Boolean          trackDelivery;
         private       EnforcementMode  enforcementMode;
         private       List<String>     enforcementExclusions;
+        private       Double           routingTrustThreshold;
         private       String           tenancyId;
         private       Instant          createdAt;
         private       Instant          lastActivityAt;
@@ -267,6 +271,11 @@ public record Channel(
             return this;
         }
 
+        public Builder routingTrustThreshold(Double v) {
+            this.routingTrustThreshold = v;
+            return this;
+        }
+
         public Builder tenancyId(String v) {
             this.tenancyId = v;
             return this;
@@ -290,6 +299,7 @@ public record Channel(
                                paused, autoCreated, spaceId, reviewerInstances,
                                protocols, protocolParticipants, trackDelivery,
                                enforcementMode, enforcementExclusions,
+                               routingTrustThreshold,
                                tenancyId, createdAt, lastActivityAt);
         }
     }
