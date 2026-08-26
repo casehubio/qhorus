@@ -66,6 +66,7 @@ Channel fields (all nullable unless specified):
 | `protocols` | Named protocol enforcement rules (e.g. `REQUEST_RESPONSE`) |
 | `protocolParticipants` | Agents subject to protocol enforcement |
 | `trackDelivery` | Opt-in per-participant delivery tracking via cursor extension |
+| `routingTrustThreshold` | Minimum trust score for capability-based routing (`role:` targets); null = global default |
 | `paused` | When true, dispatch gate rejects all writes |
 | `spaceId` | Parent space for organizational hierarchy |
 | `autoCreated` | Whether the channel was auto-created via `findOrCreate` |
@@ -159,13 +160,14 @@ Pipeline (in order):
 1. **Paused check** -- rejects if channel is paused
 2. **`AllowedWritersPolicy`** -- ACL enforcement
 3. **`RateLimiter`** -- per-channel and per-instance rate limiting
-4. **`ObligorTrustPolicy` SPI** -- trust threshold for COMMAND dispatch
-5. **`MessageTypePolicy`** -- `allowedTypes`/`deniedTypes` enforcement
-6. **`CorrelationIntegrityChecker`** -- advisory: validates `inReplyTo` and `correlationId` consistency
-7. **`ProtocolEvaluation`** -- advisory: channel protocol enforcement via `ProtocolRegistry`
-8. **LAST_WRITE overwrite** -- version-aware overwrite semantics for `LAST_WRITE` channels
-9. **`LedgerWriteService.record()`** -- tamper-evident ledger entry
-10. **`ChannelGateway.fanOut()`** -- backend delivery and observer notification
+4. **`RoutingBridge`** -- resolves `role:X` capability targets to specific agents via eidos `AgentSelector`; non-role targets bypass (zero overhead)
+5. **`ObligorTrustPolicy` SPI** -- trust threshold for COMMAND dispatch
+6. **`MessageTypePolicy`** -- `allowedTypes`/`deniedTypes` enforcement
+7. **`CorrelationIntegrityChecker`** -- advisory: validates `inReplyTo` and `correlationId` consistency
+8. **`ProtocolEvaluation`** -- advisory: channel protocol enforcement via `ProtocolRegistry`
+9. **LAST_WRITE overwrite** -- version-aware overwrite semantics for `LAST_WRITE` channels
+10. **`LedgerWriteService.record()`** -- tamper-evident ledger entry
+11. **`ChannelGateway.fanOut()`** -- backend delivery and observer notification
 
 There is no bypass path.
 
@@ -391,7 +393,7 @@ Configurable condition monitoring with 11 watchdog condition types:
 
 ### MCP Tool Surface
 
-Qhorus exposes MCP tools scoped to `@McpServer("qhorus")` across capability groups: instance management, channel management, backend management, messaging, shared data, commitments, normative ledger queries, spaces, topics, presence, membership, reactions, projections, and watchdogs.
+Qhorus exposes MCP tools scoped to `@McpServer("qhorus")` across capability groups: instance management, channel management, backend management, messaging, shared data, commitments, normative ledger queries, spaces, topics, presence, membership, reactions, projections, watchdogs, and routing diagnostics.
 
 ### REST API
 
@@ -413,6 +415,7 @@ Qhorus exposes MCP tools scoped to `@McpServer("qhorus")` across capability grou
 | `PUT` | `/api/channels/{id}/protocols` | Set protocol enforcement |
 | `PUT` | `/api/channels/{id}/protocol-participants` | Set protocol participants |
 | `PUT` | `/api/channels/{id}/delivery-tracking` | Enable/disable delivery tracking |
+| `PUT` | `/api/channels/{id}/routing-config` | Set routing trust threshold |
 
 Channel resolution supports both UUID and name lookups in the `{id}` path parameter.
 
