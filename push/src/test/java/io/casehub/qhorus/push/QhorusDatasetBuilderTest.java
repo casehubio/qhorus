@@ -31,11 +31,11 @@ class QhorusDatasetBuilderTest {
 
 
     @Test
-    void allTopicsHasSevenEntries() {
-        assertThat(QhorusDatasetBuilder.ALL_TOPICS).hasSize(7);
+    void allTopicsHasEightEntries() {
+        assertThat(QhorusDatasetBuilder.ALL_TOPICS).hasSize(8);
         assertThat(QhorusDatasetBuilder.ALL_TOPICS).contains(
             "chat:channels", "chat:topics", "chat:messages",
-            "chat:members", "chat:presence", "chat:reactions", "chat:commitments");
+            "chat:members", "chat:presence", "chat:reactions", "chat:commitments", "chat:spaces");
     }
 
     @Test

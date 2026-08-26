@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.pages.push.PushColumn;
 import io.casehub.pages.push.PushMessage;
 import io.casehub.qhorus.api.channel.ChannelReader;
-import io.casehub.qhorus.api.channel.UnreadCount;
-import io.casehub.qhorus.api.channel.UnreadCountProvider;
 import io.casehub.qhorus.api.channel.PresenceTracker;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.channel.TopicManager;
+import io.casehub.qhorus.api.channel.UnreadCount;
+import io.casehub.qhorus.api.channel.UnreadCountProvider;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.Commitment;
@@ -41,10 +41,12 @@ public class QhorusDatasetBuilder {
     public static final String TOPIC_PRESENCE    = "chat:presence";
     public static final String TOPIC_REACTIONS   = "chat:reactions";
     public static final String TOPIC_COMMITMENTS = "chat:commitments";
+    public static final String TOPIC_SPACES      = "chat:spaces";
+
 
     public static final List<String> ALL_TOPICS = List.of(
         TOPIC_CHANNELS, TOPIC_TOPICS, TOPIC_MESSAGES,
-        TOPIC_MEMBERS, TOPIC_PRESENCE, TOPIC_REACTIONS, TOPIC_COMMITMENTS);
+        TOPIC_MEMBERS, TOPIC_PRESENCE, TOPIC_REACTIONS, TOPIC_COMMITMENTS, TOPIC_SPACES);
 
     public static final List<PushColumn> CHANNEL_COLUMNS = List.of(
         new PushColumn("id", "ID", "LABEL"),
@@ -111,6 +113,12 @@ public class QhorusDatasetBuilder {
         new PushColumn("messageCount", "Messages", "LABEL"),
         new PushColumn("latestActivityTs", "Latest", "DATE"),
         new PushColumn("createdAt", "Created", "DATE"));
+    public static final List<PushColumn> SPACE_COLUMNS = List.of(
+            new PushColumn("id", "ID", "LABEL"),
+            new PushColumn("name", "Name", "LABEL"),
+            new PushColumn("description", "Description", "LABEL"),
+            new PushColumn("parentSpaceId", "Parent Space", "LABEL"));
+
 
     @Inject ChannelReader channelReader;
     @Inject ConsumerMessaging messaging;
@@ -138,6 +146,7 @@ public class QhorusDatasetBuilder {
             case TOPIC_PRESENCE -> buildPresenceSnapshot(seq);
             case TOPIC_REACTIONS -> buildReactionSnapshot(seq);
             case TOPIC_COMMITMENTS -> buildCommitmentSnapshot(seq);
+            case TOPIC_SPACES -> buildSpaceSnapshot(seq);
             default -> throw new IllegalArgumentException("Unknown topic: " + topic);
         };
     }
@@ -286,6 +295,40 @@ public class QhorusDatasetBuilder {
         }
         return PushMessage.snapshot("commitments", COMMITMENT_COLUMNS, rows, seq);
     }
+
+    private String buildSpaceSnapshot(Long seq) {
+        List<Space> allSpaces = collectAllSpaces();
+        var         rows      = new ArrayList<List<String>>();
+        for (Space s : allSpaces) {
+            rows.add(spaceToRow(s));
+        }
+        return PushMessage.snapshot("spaces", SPACE_COLUMNS, rows, seq);
+    }
+
+    private List<Space> collectAllSpaces() {
+        List<Space> result = new ArrayList<>();
+        List<Space> roots  = spaceStore.listRoots();
+        for (Space root : roots) {
+            collectSpaceTree(root, result);
+        }
+        return result;
+    }
+
+    private void collectSpaceTree(Space space, List<Space> result) {
+        result.add(space);
+        for (Space child : spaceStore.listByParent(space.id())) {
+            collectSpaceTree(child, result);
+        }
+    }
+
+    public List<String> spaceToRow(Space space) {
+        return List.of(
+                space.id().toString(),
+                space.name(),
+                space.description() != null ? space.description() : "",
+                space.parentSpaceId() != null ? space.parentSpaceId().toString() : "");
+    }
+
 
     public List<String> messageToRow(Message msg) {
         String topicIdStr = "";

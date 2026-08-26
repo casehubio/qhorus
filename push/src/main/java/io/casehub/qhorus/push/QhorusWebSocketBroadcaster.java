@@ -7,12 +7,12 @@ import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.PresenceStatus;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.event.ChannelMutationEvent;
-import io.quarkus.logging.Log;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.store.SpaceStore;
+import io.quarkus.logging.Log;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.inject.Inject;
@@ -109,6 +109,24 @@ public class QhorusWebSocketBroadcaster {
             PushMessage.remove("topics", String.valueOf(topicId)));
     }
 
+    public void broadcastSpaceAppend(Space space) {
+        eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_SPACES,
+                                   PushMessage.append("spaces", QhorusDatasetBuilder.SPACE_COLUMNS,
+                                                      List.of(datasetBuilder.spaceToRow(space))));
+    }
+
+    public void broadcastSpaceReplace(Space space) {
+        eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_SPACES,
+                                   PushMessage.replace("spaces", QhorusDatasetBuilder.SPACE_COLUMNS,
+                                                       space.id().toString(), datasetBuilder.spaceToRow(space)));
+    }
+
+    public void broadcastSpaceRemove(UUID spaceId) {
+        eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_SPACES,
+                                   PushMessage.remove("spaces", spaceId.toString()));
+    }
+
+
     void onMutation(@Observes ChannelMutationEvent event) {
         switch (event) {
             case ChannelMutationEvent.ReactionAdded e -> broadcastReactionAppend(e.messageId(), e.emoji());
@@ -118,6 +136,9 @@ public class QhorusWebSocketBroadcaster {
             case ChannelMutationEvent.TopicCreated e -> broadcastTopicAppend(e.channelId(), e.topic());
             case ChannelMutationEvent.TopicUpdated e -> broadcastTopicReplace(e.channelId(), e.topic());
             case ChannelMutationEvent.TopicRemoved e -> broadcastTopicRemove(e.channelId(), e.topicId());
+            case ChannelMutationEvent.SpaceCreated e -> spaceStore.find(e.spaceId()).ifPresent(this::broadcastSpaceAppend);
+            case ChannelMutationEvent.SpaceRenamed e -> spaceStore.find(e.spaceId()).ifPresent(this::broadcastSpaceReplace);
+            case ChannelMutationEvent.SpaceDeleted e -> broadcastSpaceRemove(e.spaceId());
             default -> Log.warnf("Unhandled ChannelMutationEvent variant: %s", event.getClass().getSimpleName());
         }
     }

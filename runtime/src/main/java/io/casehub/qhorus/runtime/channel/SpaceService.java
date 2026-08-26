@@ -4,8 +4,10 @@ import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.channel.SpaceCreateRequest;
+import io.casehub.qhorus.api.event.ChannelMutationEvent;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.SpaceStore;
+import jakarta.enterprise.event.Event;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -29,6 +31,9 @@ public class SpaceService {
 
     @Inject
     CurrentPrincipal currentPrincipal;
+    @Inject
+    Event<ChannelMutationEvent> mutationEvent;
+
 
     @Transactional
     public Space create(SpaceCreateRequest request) {
@@ -51,7 +56,9 @@ public class SpaceService {
         }
         Space space = new Space(UUID.randomUUID(), request.name(), request.description(),
                                 request.parentSpaceId(), currentPrincipal.tenancyId(), Instant.now());
-        return spaceStore.put(space);}
+        Space created = spaceStore.put(space);
+        mutationEvent.fire(new ChannelMutationEvent.SpaceCreated(created.id(), created.name(), created.tenancyId()));
+        return created;}
 
     public Optional<Space> findById(UUID id) {
         return spaceStore.find(id);
@@ -96,7 +103,7 @@ public class SpaceService {
                     "Cannot delete space with channels: " + spaceId);
         }
         spaceStore.delete(spaceId);
-    }
+        mutationEvent.fire(new ChannelMutationEvent.SpaceDeleted(spaceId));}
 
     @Transactional
     public Space rename(UUID spaceId, String newName) {
@@ -111,8 +118,9 @@ public class SpaceService {
                                 .orElseThrow(() -> new IllegalArgumentException("Space not found: " + spaceId));
         Space updated = new Space(space.id(), newName, space.description(),
                                   space.parentSpaceId(), space.tenancyId(), space.createdAt());
-        return spaceStore.put(updated);
-    }
+        Space result = spaceStore.put(updated);
+        mutationEvent.fire(new ChannelMutationEvent.SpaceRenamed(spaceId, newName));
+        return result;}
 
     @Transactional
     public Space updateDescription(UUID spaceId, String newDescription) {

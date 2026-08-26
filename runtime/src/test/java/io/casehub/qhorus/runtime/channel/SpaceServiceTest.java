@@ -108,6 +108,10 @@ class SpaceServiceTest {
         service                  = new SpaceService();
         service.spaceStore       = spaceStore;
         service.channelStore     = channelStore;
+        @SuppressWarnings("unchecked")
+        jakarta.enterprise.event.Event<io.casehub.qhorus.api.event.ChannelMutationEvent> noOpEvent =
+                org.mockito.Mockito.mock(jakarta.enterprise.event.Event.class);
+        service.mutationEvent    = noOpEvent;
         service.currentPrincipal = new CurrentPrincipal() {
             @Override
             public String tenancyId()             {return TENANCY;}
