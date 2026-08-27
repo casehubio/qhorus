@@ -94,26 +94,45 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
     public String routingStrategy;
     @Column(name = "routing_candidate_count")
     public Integer routingCandidateCount;
+    @Column(name = "judgment_id")
+    public UUID    judgmentId;
+
+    @Column(name = "judgment_type", length = 100)
+    public String judgmentType;
+
+    @Column(name = "verification_outcome", length = 20)
+    public String verificationOutcome;
+
+    @Column(name = "evidence_quality")
+    public Double evidenceQuality;
 
 
     @Override
     protected byte[] domainContentBytes() {
         String canonical = String.join("|",
-            channelId     != null ? channelId.toString()     : "",
-            messageId     != null ? messageId.toString()     : "",
-            messageType   != null ? messageType              : "",
-            target        != null ? target                   : "",
-            content       != null ? content                  : "",
-            correlationId != null ? correlationId            : "",
-            commitmentId  != null ? commitmentId.toString()  : "",
-            topic         != null ? topic                    : "",
-            toolName      != null ? toolName                 : "",
-            durationMs    != null ? durationMs.toString()    : "",
-            tokenCount    != null ? tokenCount.toString()    : "",
-            contextRefs      != null ? contextRefs                 : "",
-            sourceEntity     != null ? sourceEntity                : "",
-            contextWindowPct != null ? contextWindowPct.toString() : ""
-        );
+                                       channelId != null ? channelId.toString() : "",
+                                       messageId != null ? messageId.toString() : "",
+                                       messageType != null ? messageType : "",
+                                       target != null ? target : "",
+                                       content != null ? content : "",
+                                       correlationId != null ? correlationId : "",
+                                       commitmentId != null ? commitmentId.toString() : "",
+                                       topic != null ? topic : "",
+                                       toolName != null ? toolName : "",
+                                       durationMs != null ? durationMs.toString() : "",
+                                       tokenCount != null ? tokenCount.toString() : "",
+                                       contextRefs != null ? contextRefs : "",
+                                       sourceEntity != null ? sourceEntity : "",
+                                       contextWindowPct != null ? contextWindowPct.toString() : ""
+                                      );
+        if (judgmentId != null || judgmentType != null
+            || verificationOutcome != null || evidenceQuality != null) {
+            canonical += "|J:"
+                         + (judgmentId != null ? judgmentId.toString() : "") + "|"
+                         + (judgmentType != null ? judgmentType : "") + "|"
+                         + (verificationOutcome != null ? verificationOutcome : "") + "|"
+                         + (evidenceQuality != null ? String.valueOf(evidenceQuality) : "");
+        }
         return canonical.getBytes(StandardCharsets.UTF_8);
     }
 }

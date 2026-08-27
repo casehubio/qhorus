@@ -2,6 +2,7 @@ package io.casehub.qhorus.compliance.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.delivery.DigestSchedule;
+import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
@@ -24,6 +25,9 @@ public class ComplianceReportScheduler {
     @Inject ComplianceReportStorageService storageService;
     @Inject ObligationReportService obligationService;
     @Inject ViolationReportService violationService;
+    @Inject
+            JudgmentFulfillmentReportService judgmentFulfillmentService;
+
     @Inject Event<ComplianceReportGeneratedEvent> generatedEvent;
     @Inject ObjectMapper objectMapper;
 
@@ -55,6 +59,8 @@ public class ComplianceReportScheduler {
                 }
                 yield violationService.generate(schedule.channelId, from, now, schedule.tenancyId);
             }
+            case JUDGMENT_FULFILLMENT -> judgmentFulfillmentService.generate(
+                    from, now, null, null, schedule.tenancyId);
             default -> throw new IllegalStateException(
                     "Scheduled generation not supported for " + schedule.reportType);
         };

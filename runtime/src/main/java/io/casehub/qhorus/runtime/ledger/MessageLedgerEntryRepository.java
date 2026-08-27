@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.ledger;
 
 import io.casehub.platform.api.identity.TenancyConstants;
+import io.casehub.qhorus.api.judgment.JudgmentEventKinds;
 import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -419,6 +420,58 @@ public class MessageLedgerEntryRepository {
                 .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(limit)
                 .getResultList();
+    }
+
+
+    public List<MessageLedgerEntry> findJudgmentEvents(
+            final UUID channelId, final UUID judgmentId,
+            final Instant from, final Instant to, final String tenancyId) {
+        StringBuilder jpql = new StringBuilder(
+                "SELECT e FROM MessageLedgerEntry e WHERE e.tenancyId = :tid AND e.toolName IN :kinds");
+        if (channelId != null) {jpql.append(" AND e.channelId = :channelId");}
+        if (judgmentId != null) {jpql.append(" AND e.judgmentId = :judgmentId");}
+        if (from != null) {jpql.append(" AND e.occurredAt >= :from");}
+        if (to != null) {jpql.append(" AND e.occurredAt <= :to");}
+        jpql.append(" ORDER BY e.occurredAt ASC");
+
+        TypedQuery<MessageLedgerEntry> query = em.createQuery(jpql.toString(), MessageLedgerEntry.class)
+                                                 .setParameter("tid", tenancyId(tenancyId))
+                                                 .setParameter("kinds", JudgmentEventKinds.ALL);
+        if (channelId != null) {query.setParameter("channelId", channelId);}
+        if (judgmentId != null) {query.setParameter("judgmentId", judgmentId);}
+        if (from != null) {query.setParameter("from", from);}
+        if (to != null) {query.setParameter("to", to);}
+        return query.getResultList();
+    }
+
+    public List<Object[]> countJudgmentOutcomes(final Instant from, final Instant to, final String tenancyId) {
+        return em.createQuery(
+                         "SELECT e.judgmentType, e.toolName, e.verificationOutcome, COUNT(e)"
+                         + " FROM MessageLedgerEntry e"
+                         + " WHERE e.tenancyId = :tid"
+                         + " AND e.toolName IN :terminalKinds"
+                         + " AND e.occurredAt >= :from AND e.occurredAt <= :to"
+                         + " GROUP BY e.judgmentType, e.toolName, e.verificationOutcome", Object[].class)
+                 .setParameter("tid", tenancyId(tenancyId))
+                 .setParameter("terminalKinds", JudgmentEventKinds.TERMINAL)
+                 .setParameter("from", from)
+                 .setParameter("to", to)
+                 .getResultList();
+    }
+
+    public List<MessageLedgerEntry> findPendingJudgments(final String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e WHERE e.tenancyId = :tid"
+                         + " AND e.toolName = :yieldedKind"
+                         + " AND NOT EXISTS (SELECT 1 FROM MessageLedgerEntry v"
+                         + "   WHERE v.tenancyId = :tid"
+                         + "   AND v.judgmentId = e.judgmentId"
+                         + "   AND v.toolName IN :terminalKinds)"
+                         + " ORDER BY e.occurredAt ASC", MessageLedgerEntry.class)
+                 .setParameter("tid", tenancyId(tenancyId))
+                 .setParameter("yieldedKind", JudgmentEventKinds.YIELDED)
+                 .setParameter("terminalKinds", JudgmentEventKinds.TERMINAL)
+                 .getResultList();
     }
 
     private static String tenancyId(final String tenancyId) {

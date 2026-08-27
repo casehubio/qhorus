@@ -39,6 +39,10 @@ public class ComplianceScheduleResource {
             return Response.status(Response.Status.BAD_REQUEST)
                     .entity("channelId is required for VIOLATION report schedules").build();
         }
+        if (request.reportType() == ReportType.JUDGMENT_ATTRIBUTION) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("JUDGMENT_ATTRIBUTION is on-demand only — not schedulable").build();
+        }
 
         ComplianceReportSchedule schedule = new ComplianceReportSchedule();
         schedule.id = UUID.randomUUID();

@@ -7,9 +7,13 @@ import io.casehub.qhorus.compliance.graphql.dto.ComplianceReportRecordType;
 import io.casehub.qhorus.compliance.graphql.dto.ObligationReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ProvenanceReportType;
 import io.casehub.qhorus.compliance.graphql.dto.TrustHistoryReportType;
+import io.casehub.qhorus.compliance.graphql.dto.JudgmentAttributionReportType;
+import io.casehub.qhorus.compliance.graphql.dto.JudgmentFulfillmentReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ViolationReportType;
 import io.casehub.qhorus.compliance.model.ReportType;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
+import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
+import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ProvenanceReportService;
 import io.casehub.qhorus.compliance.report.TrustHistoryReportService;
@@ -38,6 +42,11 @@ public class ComplianceQueryResolver {
     @Inject ProvenanceReportService provenanceService;
     @Inject ComplianceReportRecordStore recordStore;
     @Inject CurrentPrincipal currentPrincipal;
+    @Inject
+            JudgmentAttributionReportService judgmentAttributionService;
+    @Inject
+            JudgmentFulfillmentReportService judgmentFulfillmentService;
+
 
     @Query
     @Description("Generate an attribution report for an agent causal chain — nodes, edges, trust scores, attestation verdicts")
@@ -96,5 +105,22 @@ public class ComplianceQueryResolver {
         return recordStore.findByTimeRange(
                         Instant.now().minus(90, ChronoUnit.DAYS), Instant.now(), tenancyId, max)
                 .stream().map(ComplianceReportRecordType::from).toList();
+    }
+
+    @Query
+    @Description("Generate a judgment attribution report — provenance chain for a single judgment exchange")
+    public JudgmentAttributionReportType complianceJudgmentAttribution(String judgmentId, Integer limit) {
+        int depth = limit != null ? limit : 200;
+        return JudgmentAttributionReportType.from(
+                judgmentAttributionService.generate(UUID.fromString(judgmentId), depth, currentPrincipal.tenancyId()));
+    }
+
+    @Query
+    @Description("Generate a judgment fulfillment report — per-type and per-caller acceptance rates for a time window")
+    public JudgmentFulfillmentReportType complianceJudgmentFulfillment(String from, String to, String judgmentType, String actorId) {
+        Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
+        Instant t = to != null ? Instant.parse(to) : Instant.now();
+        return JudgmentFulfillmentReportType.from(
+                judgmentFulfillmentService.generate(f, t, judgmentType, actorId, currentPrincipal.tenancyId()));
     }
 }

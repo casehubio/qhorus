@@ -388,7 +388,7 @@ public class LedgerWriteService {
         }
         try {
             final JsonNode root = objectMapper.readTree(content);
-            final JsonNode tn = root.get("tool_name");
+            final JsonNode tn   = root.get("tool_name");
             if (tn != null && tn.isTextual()) {
                 entry.toolName = tn.asText();
             }
@@ -406,7 +406,7 @@ public class LedgerWriteService {
                     entry.contextRefs = objectMapper.writeValueAsString(cr);
                 } catch (final Exception ignored) {
                     LOG.warnf("Could not serialise context_refs for ledger entry on message %d",
-                            entry.messageId);
+                              entry.messageId);
                 }
             }
             final JsonNode se = root.get("source_entity");
@@ -415,16 +415,38 @@ public class LedgerWriteService {
                     entry.sourceEntity = objectMapper.writeValueAsString(se);
                 } catch (final Exception ignored) {
                     LOG.warnf("Could not serialise source_entity for ledger entry on message %d",
-                            entry.messageId);
+                              entry.messageId);
                 }
             }
             final JsonNode cwp = root.get("context_window_pct");
             if (cwp != null && cwp.isNumber()) {
                 entry.contextWindowPct = cwp.asInt();
             }
+
+            final JsonNode ji = root.get("judgment_id");
+            if (ji != null && ji.isTextual()) {
+                try {
+                    entry.judgmentId = UUID.fromString(ji.asText());
+                } catch (IllegalArgumentException ignored) {
+                    LOG.warnf("Invalid judgment_id UUID for message %d", entry.messageId);
+                }
+            }
+            final JsonNode jt = root.get("judgment_type");
+            if (jt != null && jt.isTextual()) {
+                entry.judgmentType = jt.asText();
+            }
+            final JsonNode vo = root.get("verification_outcome");
+            if (vo != null && vo.isTextual()) {
+                entry.verificationOutcome = vo.asText();
+            }
+            final JsonNode eq = root.get("evidence_quality");
+            if (eq != null && eq.isNumber()) {
+                double val = eq.asDouble();
+                entry.evidenceQuality = (val >= 0 && val <= 1) ? val : null;
+            }
         } catch (final Exception e) {
             LOG.warnf("Could not parse EVENT content as JSON for message %d — telemetry fields will be null",
-                    entry.messageId);
+                      entry.messageId);
         }
     }
 }

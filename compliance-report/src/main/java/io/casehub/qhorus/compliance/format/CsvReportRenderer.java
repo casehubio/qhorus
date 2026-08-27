@@ -4,6 +4,8 @@ import io.casehub.qhorus.compliance.model.AgentObligationSummary;
 import io.casehub.qhorus.compliance.model.AttributionNode;
 import io.casehub.qhorus.compliance.model.AttributionReport;
 import io.casehub.qhorus.compliance.model.ChannelObligationSummary;
+import io.casehub.qhorus.compliance.model.JudgmentAttributionReport;
+import io.casehub.qhorus.compliance.model.JudgmentFulfillmentReport;
 import io.casehub.qhorus.compliance.model.ObligationReport;
 import io.casehub.qhorus.compliance.model.ReportFormat;
 import io.casehub.qhorus.compliance.model.TrustHistoryReport;
@@ -28,6 +30,8 @@ public class CsvReportRenderer implements ReportRenderer {
             case ObligationReport r -> renderObligation(r);
             case ViolationReport r -> renderViolation(r);
             case TrustHistoryReport r -> renderTrustHistory(r);
+            case JudgmentAttributionReport r -> renderJudgmentAttribution(r);
+            case JudgmentFulfillmentReport r -> renderJudgmentFulfillment(r);
             default -> throw new IllegalArgumentException("Unsupported report type for CSV: " + report.getClass().getSimpleName());
         };
         return csv.getBytes(StandardCharsets.UTF_8);
@@ -112,6 +116,52 @@ public class CsvReportRenderer implements ReportRenderer {
             sb.append(escape(actor.actorId())).append(',');
             sb.append(actor.currentScore() != null ? actor.currentScore() : "");
             sb.append('\n');
+        }
+        return sb.toString();
+    }
+
+
+    private String renderJudgmentAttribution(JudgmentAttributionReport report) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("eventKind,actorId,occurredAt,evidenceQuality,verificationOutcome,escalationReason,trustScore,durationMs\n");
+        for (var e : report.events()) {
+            sb.append(String.join(",",
+                                  escape(e.eventKind()), escape(e.actorId()),
+                                  escape(e.occurredAt() != null ? e.occurredAt().toString() : ""),
+                                  e.evidenceQuality() != null ? String.valueOf(e.evidenceQuality()) : "",
+                                  escape(e.verificationOutcome() != null ? e.verificationOutcome() : ""),
+                                  escape(e.escalationReason() != null ? e.escalationReason() : ""),
+                                  e.trustScoreAtTime() != null ? String.valueOf(e.trustScoreAtTime()) : "",
+                                  e.durationMs() != null ? String.valueOf(e.durationMs()) : ""
+                                 )).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String renderJudgmentFulfillment(JudgmentFulfillmentReport report) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("judgmentType,total,accepted,rejected,escalated,pending,acceptanceRate,avgResponseTimeMs,avgEvidenceQuality\n");
+        for (var t : report.byType()) {
+            sb.append(String.join(",",
+                                  escape(t.judgmentType()), String.valueOf(t.total()),
+                                  String.valueOf(t.accepted()), String.valueOf(t.rejected()),
+                                  String.valueOf(t.escalated()), String.valueOf(t.pending()),
+                                  String.valueOf(t.acceptanceRate()),
+                                  String.valueOf(t.averageResponseTimeMs()),
+                                  String.valueOf(t.averageEvidenceQuality())
+                                 )).append("\n");
+        }
+        sb.append("\nactorId,total,accepted,rejected,escalated,pending,acceptanceRate,avgResponseTimeMs,avgEvidenceQuality,trustScore\n");
+        for (var c : report.byCaller()) {
+            sb.append(String.join(",",
+                                  escape(c.actorId()), String.valueOf(c.total()),
+                                  String.valueOf(c.accepted()), String.valueOf(c.rejected()),
+                                  String.valueOf(c.escalated()), String.valueOf(c.pending()),
+                                  String.valueOf(c.acceptanceRate()),
+                                  String.valueOf(c.averageResponseTimeMs()),
+                                  String.valueOf(c.averageEvidenceQuality()),
+                                  c.currentTrustScore() != null ? String.valueOf(c.currentTrustScore()) : ""
+                                 )).append("\n");
         }
         return sb.toString();
     }

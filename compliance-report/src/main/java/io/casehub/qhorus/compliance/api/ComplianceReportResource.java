@@ -3,12 +3,12 @@ package io.casehub.qhorus.compliance.api;
 import io.casehub.qhorus.compliance.format.CsvReportRenderer;
 import io.casehub.qhorus.compliance.format.HtmlReportRenderer;
 import io.casehub.qhorus.compliance.format.JsonReportRenderer;
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ReportType;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ProvenanceReportService;
 import io.casehub.qhorus.compliance.report.TrustHistoryReportService;
+import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
+import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecordStore;
 import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
@@ -41,6 +41,11 @@ public class ComplianceReportResource {
     @Inject CsvReportRenderer csvRenderer;
     @Inject HtmlReportRenderer htmlRenderer;
     @Inject InboundTenancyContext tenancyContext;
+    @Inject
+            JudgmentAttributionReportService judgmentAttributionService;
+    @Inject
+            JudgmentFulfillmentReportService judgmentFulfillmentService;
+
 
     @GET
     @Path("/attribution/{correlationId}")
@@ -112,6 +117,33 @@ public class ComplianceReportResource {
         return Response.ok(jsonRenderer.render(report))
                 .header("Content-Type", "application/ld+json")
                 .build();
+    }
+
+
+    @GET
+    @Path("/judgment-attribution/{judgmentId}")
+    public Response getJudgmentAttribution(
+            @PathParam("judgmentId") String judgmentId,
+            @QueryParam("limit") @DefaultValue("200") int limit,
+            @HeaderParam("Accept") @DefaultValue("application/json") String accept) {
+        var report = judgmentAttributionService.generate(
+                UUID.fromString(judgmentId), limit, tenancyContext.tenancyId());
+        return renderResponse(report, accept);
+    }
+
+    @GET
+    @Path("/judgment-fulfillment")
+    public Response getJudgmentFulfillment(
+            @QueryParam("from") String from,
+            @QueryParam("to") String to,
+            @QueryParam("judgmentType") String judgmentType,
+            @QueryParam("actorId") String actorId,
+            @HeaderParam("Accept") @DefaultValue("application/json") String accept) {
+        Instant fromInstant = from != null ? Instant.parse(from) : Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS);
+        Instant toInstant = to != null ? Instant.parse(to) : Instant.now();
+        var report = judgmentFulfillmentService.generate(
+                fromInstant, toInstant, judgmentType, actorId, tenancyContext.tenancyId());
+        return renderResponse(report, accept);
     }
 
     @GET

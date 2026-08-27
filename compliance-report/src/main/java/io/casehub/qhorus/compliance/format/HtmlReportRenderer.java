@@ -3,6 +3,8 @@ package io.casehub.qhorus.compliance.format;
 import io.casehub.qhorus.compliance.model.AttributionNode;
 import io.casehub.qhorus.compliance.model.AttributionReport;
 import io.casehub.qhorus.compliance.model.ChannelObligationSummary;
+import io.casehub.qhorus.compliance.model.JudgmentAttributionReport;
+import io.casehub.qhorus.compliance.model.JudgmentFulfillmentReport;
 import io.casehub.qhorus.compliance.model.ObligationReport;
 import io.casehub.qhorus.compliance.model.ReportFormat;
 import io.casehub.qhorus.compliance.model.ViolationEntry;
@@ -34,6 +36,8 @@ public class HtmlReportRenderer implements ReportRenderer {
             case AttributionReport r -> renderAttribution(r);
             case ObligationReport r -> renderObligation(r);
             case ViolationReport r -> renderViolation(r);
+            case JudgmentAttributionReport r -> renderJudgmentAttribution(r);
+            case JudgmentFulfillmentReport r -> renderJudgmentFulfillment(r);
             default -> renderGeneric(report);
         };
         return html.getBytes(StandardCharsets.UTF_8);
@@ -120,6 +124,70 @@ public class HtmlReportRenderer implements ReportRenderer {
         return sb.toString();
     }
 
+
+    private String renderJudgmentAttribution(JudgmentAttributionReport report) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(header("Judgment Attribution Report — " + esc(report.judgmentId())));
+        sb.append("<p>Type: ").append(esc(report.judgmentType()))
+          .append(" | Outcome: ").append(esc(report.verificationOutcome()))
+          .append(" | Duration: ").append(report.totalDurationMs()).append("ms</p>");
+        sb.append("<h2>Judgment Events</h2>");
+        sb.append("<table><tr><th>Event</th><th>Actor</th><th>Time</th><th>Evidence Quality</th><th>Outcome</th><th>Trust</th></tr>");
+        for (var e : report.events()) {
+            sb.append("<tr>");
+            sb.append("<td>").append(esc(e.eventKind())).append("</td>");
+            sb.append("<td>").append(esc(e.actorId())).append("</td>");
+            sb.append("<td>").append(e.occurredAt() != null ? esc(e.occurredAt().toString()) : "").append("</td>");
+            sb.append("<td>").append(e.evidenceQuality() != null ? e.evidenceQuality() : "").append("</td>");
+            sb.append("<td>").append(e.verificationOutcome() != null ? esc(e.verificationOutcome()) : "").append("</td>");
+            sb.append("<td>").append(e.trustScoreAtTime() != null ? e.trustScoreAtTime() : "").append("</td>");
+            sb.append("</tr>");
+        }
+        sb.append("</table>");
+        sb.append(footer());
+        return sb.toString();
+    }
+
+    private String renderJudgmentFulfillment(JudgmentFulfillmentReport report) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(header("Judgment Fulfillment Report"));
+        sb.append("<p>Period: ").append(esc(report.from().toString()))
+          .append(" to ").append(esc(report.to().toString())).append("</p>");
+        sb.append("<p>Total: ").append(report.totalJudgments())
+          .append(" | Accepted: ").append(report.accepted())
+          .append(" | Rejected: ").append(report.rejected())
+          .append(" | Escalated: ").append(report.escalated())
+          .append(" | Pending: ").append(report.pending()).append("</p>");
+        sb.append("<h2>By Type</h2>");
+        sb.append("<table><tr><th>Type</th><th>Total</th><th>Accepted</th><th>Rejected</th><th>Escalated</th><th>Pending</th><th>Rate</th></tr>");
+        for (var t : report.byType()) {
+            sb.append("<tr>");
+            sb.append("<td>").append(esc(t.judgmentType())).append("</td>");
+            sb.append("<td>").append(t.total()).append("</td>");
+            sb.append("<td>").append(t.accepted()).append("</td>");
+            sb.append("<td>").append(t.rejected()).append("</td>");
+            sb.append("<td>").append(t.escalated()).append("</td>");
+            sb.append("<td>").append(t.pending()).append("</td>");
+            sb.append("<td>").append(String.format("%.1f%%", t.acceptanceRate() * 100)).append("</td>");
+            sb.append("</tr>");
+        }
+        sb.append("</table>");
+        sb.append("<h2>By Caller</h2>");
+        sb.append("<table><tr><th>Actor</th><th>Acceptance Rate</th><th>Avg Response (ms)</th><th>Avg Quality</th><th>Trust</th></tr>");
+        for (var c : report.byCaller()) {
+            sb.append("<tr>");
+            sb.append("<td>").append(esc(c.actorId())).append("</td>");
+            sb.append("<td>").append(String.format("%.1f%%", c.acceptanceRate() * 100)).append("</td>");
+            sb.append("<td>").append(String.format("%.0f", c.averageResponseTimeMs())).append("</td>");
+            sb.append("<td>").append(String.format("%.2f", c.averageEvidenceQuality())).append("</td>");
+            sb.append("<td>").append(c.currentTrustScore() != null ? String.format("%.2f", c.currentTrustScore()) : "").append("</td>");
+            sb.append("</tr>");
+        }
+        sb.append("</table>");
+        sb.append(footer());
+        return sb.toString();
+    }
+
     private String renderGeneric(Object report) {
         StringBuilder sb = new StringBuilder();
         sb.append(header("Compliance Report"));
@@ -139,7 +207,7 @@ public class HtmlReportRenderer implements ReportRenderer {
     }
 
     private static String esc(String value) {
-        if (value == null) return "";
+        if (value == null) {return "";}
         return value.replace("&", "&amp;").replace("<", "&lt;")
                     .replace(">", "&gt;").replace("\"", "&quot;");
     }
