@@ -139,26 +139,23 @@ class LedgerAttestationIntegrationTest {
     }
 
     @Test
-    void done_without_prior_command_writes_no_attestation_no_exception() {
+    void done_with_mismatched_correlationId_still_writes_attestation_via_inReplyTo() {
         String channelName = "attest-orphan-" + System.nanoTime();
         String corrId = UUID.randomUUID().toString();
-        setup(channelName, "agent-b");
+        setup(channelName, "agent-a", "agent-b");
 
-        // First send a COMMAND so we have an inReplyTo — but with a different corrId
-        // to simulate "DONE with no matching COMMAND ledger entry in this channel"
         String orphanCorrId = UUID.randomUUID().toString();
         DispatchResult orphanCmd = tools.sendMessage(channelName, "agent-a", "command",
                 "Orphan command", null, orphanCorrId, null, null, null, null, null, null, null);
 
-        // DONE referencing the orphan command's id, but using a different corrId that has no ledger entry
-        // This exercises: "inReplyTo provided but correlationId doesn't match any COMMAND entry"
         assertDoesNotThrow(() -> tools.sendMessage(channelName, "agent-b", "done",
                 "Orphan done", null, corrId, orphanCmd.messageId(), null, null, null, null, null, null));
 
         UUID channelId = channelId(channelName);
         MessageLedgerEntry doneEntry = ledgerRepo.findAllByCorrelationId(channelId, corrId, null).stream()
                 .filter(e -> "DONE".equals(e.messageType)).findFirst().orElseThrow();
-        assertTrue(ledger.findAttestationsByEntryId(doneEntry.id, currentPrincipal.tenancyId()).isEmpty());
+        assertFalse(ledger.findAttestationsByEntryId(doneEntry.id, currentPrincipal.tenancyId()).isEmpty(),
+                "DONE with valid inReplyTo should write attestation regardless of correlationId mismatch");
     }
 
     @Test
