@@ -81,6 +81,16 @@ public class JpaCommitmentStore implements CommitmentStore {
                 .stream().map(CommitmentEntity::toDomain).toList();
     }
 
+
+    @Override
+    public List<Commitment> findByObligorInTenancy(String obligor, String tenancyId) {
+        if (obligor == null) {return List.of();}
+        return repo.list(
+                           "obligor = ?1 AND tenancyId = ?2 ORDER BY createdAt ASC",
+                           obligor, tenancyId)
+                   .stream().map(CommitmentEntity::toDomain).toList();
+    }
+
     @Override
     public List<Commitment> findOpenByObligor(String obligor) {
         if (obligor == null) return List.of();

@@ -123,6 +123,11 @@ class CommitmentTracingTest {
 
         @Override
         public List<Commitment> findOpenByChannelId(UUID channelId) {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findByObligorInTenancy(String obligor, String tenancyId) {
+            return List.of();
+        }
     }
 
     private InMemorySpanExporter exporter;

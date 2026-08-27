@@ -1,6 +1,10 @@
 package io.casehub.qhorus.ledger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -11,12 +15,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pure unit tests for the 6 new query methods on {@link MessageLedgerEntryRepository}.
@@ -151,6 +152,21 @@ class LedgerQueryRepoTest {
                     .forEach(e -> counts.merge(e.messageType, 1L, Long::sum));
             return counts;
         }
+
+        @Override
+        public Map<String, Long> countByOutcome(final UUID channelId, final Instant from, final Instant to, final String tenancyId) {
+            final java.util.Set<String> relevant = java.util.Set.of("COMMAND", "DONE", "FAILURE", "DECLINE", "HANDOFF");
+            final Map<String, Long>     counts   = new java.util.HashMap<>();
+            saved.stream()
+                 .filter(e -> channelId.equals(e.subjectId)
+                              && relevant.contains(e.messageType)
+                              && e.occurredAt != null
+                              && !e.occurredAt.isBefore(from)
+                              && !e.occurredAt.isAfter(to))
+                 .forEach(e -> counts.merge(e.messageType, 1L, Long::sum));
+            return counts;
+        }
+
 
         @Override
         public List<MessageLedgerEntry> findByActorIdInChannel(final UUID channelId,
@@ -460,6 +476,41 @@ class LedgerQueryRepoTest {
 
         assertTrue(counts.isEmpty());
     }
+
+    @Test
+    void countByOutcome_withTimeRange_filtersCorrectly() {
+        final Instant t1 = Instant.now().minus(3, ChronoUnit.HOURS);
+        final Instant t2 = Instant.now().minus(2, ChronoUnit.HOURS);
+        final Instant t3 = Instant.now().minus(1, ChronoUnit.HOURS);
+
+        final MessageLedgerEntry e1 = entry("COMMAND", "c1", null);
+        e1.occurredAt = t1;
+        final MessageLedgerEntry e2 = entry("DONE", "c1", null);
+        e2.occurredAt = t2;
+        final MessageLedgerEntry e3 = entry("COMMAND", "c2", null);
+        e3.occurredAt = t3;
+
+        final Map<String, Long> counts = repo.countByOutcome(channelId, t1, t2, null);
+
+        assertEquals(1L, counts.get("COMMAND"));
+        assertEquals(1L, counts.get("DONE"));
+        assertNull(counts.get("FAILURE"));
+        assertEquals(2, counts.size(), "Only entries in [t1, t2] counted — t3 excluded");
+    }
+
+    @Test
+    void countByOutcome_withTimeRange_emptyWindow_returnsEmptyMap() {
+        final Instant            t1 = Instant.now().minus(3, ChronoUnit.HOURS);
+        final MessageLedgerEntry e1 = entry("COMMAND", "c1", null);
+        e1.occurredAt = t1;
+
+        final Instant           windowStart = Instant.now().minus(1, ChronoUnit.HOURS);
+        final Instant           windowEnd   = Instant.now();
+        final Map<String, Long> counts      = repo.countByOutcome(channelId, windowStart, windowEnd, null);
+
+        assertTrue(counts.isEmpty(), "No entries in the time window");
+    }
+
 
     // ── findByActorIdInChannel ────────────────────────────────────────────────
 

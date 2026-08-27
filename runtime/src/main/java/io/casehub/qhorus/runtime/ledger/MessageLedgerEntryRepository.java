@@ -253,6 +253,29 @@ public class MessageLedgerEntryRepository {
         return result;
     }
 
+    public java.util.Map<String, Long> countByOutcome(final UUID channelId, final java.time.Instant from, final java.time.Instant to, final String tenancyId) {
+        final List<Object[]> rows = em.createQuery(
+                                              "SELECT e.messageType, COUNT(e) FROM MessageLedgerEntry e " +
+                                              "WHERE e.subjectId = :cid " +
+                                              "AND e.tenancyId = :tid " +
+                                              "AND e.occurredAt >= :from " +
+                                              "AND e.occurredAt <= :to " +
+                                              "AND e.messageType IN ('COMMAND', 'DONE', 'FAILURE', 'DECLINE', 'HANDOFF') " +
+                                              "GROUP BY e.messageType",
+                                              Object[].class)
+                                      .setParameter("cid", channelId)
+                                      .setParameter("tid", tenancyId(tenancyId))
+                                      .setParameter("from", from)
+                                      .setParameter("to", to)
+                                      .getResultList();
+        final java.util.Map<String, Long> result = new java.util.HashMap<>();
+        for (final Object[] row : rows) {
+            result.put((String) row[0], (Long) row[1]);
+        }
+        return result;
+    }
+
+
     /**
      * All entries for {@code actorId} on this channel in {@code tenancyId}, ordered by
      * sequence number descending (most recent first), capped at {@code limit}.

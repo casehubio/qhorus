@@ -28,6 +28,7 @@
     <module>graphql</module>
     <module>a2a-outbound</module>
     <module>notification-bridge</module>
+    <module>compliance-report</module>
     <module>push</module>
     <module>persistence-memory</module>
     <module>testing</module>

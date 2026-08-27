@@ -242,5 +242,10 @@ class A2AChannelBackendSseTest {
 
         @Override
         public List<io.casehub.qhorus.api.message.Commitment> findAllOpen()                                                         {return List.of();}
+
+        @Override
+        public List<io.casehub.qhorus.api.message.Commitment> findByObligorInTenancy(String obligor, String tenancyId) {
+            return List.of();
+        }
     }
 }

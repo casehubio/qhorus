@@ -30,7 +30,7 @@
 Five categories across `api/`:
 
 - **`api/store/`** -- Data access (CRUD): blocking store interfaces with reader sub-interfaces; cross-tenant variants for administrative queries; structured query types in `api/store/query/`.
-- **`api/spi/`** -- Extension points: consumers replace policies, attestation, identity, projections, summaries, and protocols with custom beans via `@Alternative @Priority`.
+- **`api/spi/`** -- Extension points: consumers replace policies, attestation, identity, projections, summaries, protocols, and compliance posture with custom beans via `@Alternative @Priority`.
 - **`api/gateway/`** -- Integration contracts: channel backend hierarchy (`AgentChannelBackend`, `HumanParticipatingChannelBackend`, `HumanObserverChannelBackend`), `MessageObserver`, `ChannelActivityBroadcaster`, inbound normalisation (`InboundNormaliser`, `NormalisedMessage`, `InboundHumanMessage`), outbound messaging (`OutboundMessage`), delivery (`DeliveryGuarantee`, `DeliveryCursor`), lifecycle events (`ChannelInitialisedEvent`, `ChannelClosedEvent`, `CommitmentStateChangedEvent`).
 - **`api/channel/`, `api/message/`** -- Service facades and domain records: mutating facades (`ChannelManager`, `MessageDispatcher`, `ConsumerMessaging`, `TopicManager`, `MembershipManager`, `PresenceTracker`, `ReactionManager`) and reader interfaces (`ChannelReader`); domain records (`Channel`, `Message`, `MessageView`, `Commitment`, `ChannelSummary`, `Topic`, `Reaction`, etc.).
 - **`api/watchdog/`** -- Watchdog domain types: `WatchdogConditionType` (11 conditions), `Watchdog` record, `WatchdogAlertEvent`, `WatchdogAlertRouter` SPI, sealed `AlertContext` hierarchy with typed context records for each condition.

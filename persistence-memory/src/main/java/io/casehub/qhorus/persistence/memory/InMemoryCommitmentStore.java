@@ -70,6 +70,17 @@ public class InMemoryCommitmentStore implements CommitmentStore {
                   .toList();
     }
 
+
+    @Override
+    public List<Commitment> findByObligorInTenancy(String obligor, String tenancyId) {
+        if (obligor == null) {return List.of();}
+        return byId.values().stream()
+                   .filter(c -> obligor.equals(c.obligor()))
+                   .filter(c -> tenancyId == null || tenancyId.equals(c.tenancyId()))
+                   .sorted(java.util.Comparator.comparing(Commitment::createdAt, java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                   .toList();
+    }
+
     @Override
     public List<Commitment> findOpenByObligor(String obligor, UUID channelId) {
         return byId.values().stream()

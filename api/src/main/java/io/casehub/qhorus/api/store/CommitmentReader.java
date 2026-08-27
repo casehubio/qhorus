@@ -33,6 +33,9 @@ public interface CommitmentReader {
 
     List<Commitment> findAllOpen();
 
+
+    List<Commitment> findByObligorInTenancy(String obligor, String tenancyId);
+
     default List<Commitment> findOpenByObligor(String obligor) {
         if (obligor == null) { return List.of(); }
         return findAllOpen().stream()
