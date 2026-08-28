@@ -244,6 +244,24 @@ Searle-category × deontic-effect matrix:
 
 Future candidates must demonstrate an empty cell in this matrix.
 
+### Governed Yield Composition
+
+Governed yields (judgment requests, evidence verification, trust feedback) compose
+with existing types rather than adding new ones. A judgment request is a COMMAND
+(directive); evidence delivery is DONE (declaration); verification tracking is EVENT
+(perlocutionary). The dual-lifecycle separation — commitment tracks obligation
+discharge, attestation tracks quality — is intentional: obligation fulfillment and
+quality assessment are orthogonal dimensions.
+
+A reviewer who sends DONE has fulfilled their obligation to provide a review. Whether
+the review meets quality standards is a separate quality assessment handled by the
+attestation layer (`JudgmentCommitmentAttestationPolicy` defers DONE attestation;
+`JudgmentVerificationObserver` writes the sole attestation when the engine's VERIFIED
+event confirms quality). Formal verification properties (liveness, safety, fairness,
+deadlock freedom, evidence completeness) are checked offline against the ledger.
+
+See `docs/specs/issue-411-judgment-commitment-type/2026-08-28-governed-yield-governance-design.md`.
+
 ---
 
 ## Relationship to Prior Work
