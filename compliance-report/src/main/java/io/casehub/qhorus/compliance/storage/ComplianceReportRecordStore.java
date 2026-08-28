@@ -55,4 +55,13 @@ public class ComplianceReportRecordStore {
             em.remove(record);
         }
     }
+
+    public List<ComplianceReportRecord> findOlderThan(Instant cutoff) {
+        return em.createQuery(
+                         "SELECT r FROM ComplianceReportRecord r WHERE r.generatedAt < :cutoff ORDER BY r.generatedAt ASC",
+                         ComplianceReportRecord.class)
+                 .setParameter("cutoff", cutoff)
+                 .getResultList();
+    }
+
 }

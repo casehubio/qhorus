@@ -1,7 +1,6 @@
 package io.casehub.qhorus.compliance.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.casehub.qhorus.api.store.DataStore;
 import io.casehub.qhorus.compliance.model.ReportFormat;
 import io.casehub.qhorus.compliance.model.ReportType;
 import io.casehub.qhorus.runtime.data.DataService;
@@ -63,4 +62,9 @@ public class ComplianceReportStorageService {
             recordStore.delete(reportId);
         });
     }
+
+    public java.util.List<ComplianceReportRecord> findOlderThan(java.time.Instant cutoff) {
+        return recordStore.findOlderThan(cutoff);
+    }
+
 }

@@ -30,6 +30,10 @@ public class ComplianceReportScheduler {
 
     @Inject Event<ComplianceReportGeneratedEvent> generatedEvent;
     @Inject ObjectMapper objectMapper;
+    @Inject
+    @org.eclipse.microprofile.config.inject.ConfigProperty(name = "casehub.qhorus.compliance.retention-days")
+    java.util.Optional<Integer> retentionDays;
+
 
     @Scheduled(every = "1h")
     void sweep() {
@@ -48,6 +52,31 @@ public class ComplianceReportScheduler {
             }
         }
     }
+
+    @Scheduled(every = "6h", identity = "compliance-retention-purge")
+    void purgeExpired() {
+        if (retentionDays.isEmpty()) {
+            return;
+        }
+        Instant cutoff = Instant.now().minus(java.time.Duration.ofDays(retentionDays.get()));
+        java.util.List<io.casehub.qhorus.compliance.storage.ComplianceReportRecord> expired =
+                storageService.findOlderThan(cutoff);
+        int purged = 0;
+        for (var record : expired) {
+            try {
+                LOG.infof("Purging compliance report %s (type=%s, tenant=%s, generated=%s)",
+                          record.id, record.reportType, record.tenancyId, record.generatedAt);
+                storageService.delete(record.id);
+                purged++;
+            } catch (Exception e) {
+                LOG.warnf(e, "Failed to purge compliance report %s", record.id);
+            }
+        }
+        if (purged > 0) {
+            LOG.infof("Compliance retention purge complete: %d reports purged (cutoff=%s)", purged, cutoff);
+        }
+    }
+
 
     private void generateAndStore(ComplianceReportSchedule schedule, Instant from, Instant now) {
         Object report = switch (schedule.reportType) {

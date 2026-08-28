@@ -48,6 +48,7 @@ class ComplianceReportSchedulerTest {
         scheduler.violationService = violationService;
         scheduler.generatedEvent = generatedEvent;
         scheduler.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+        scheduler.retentionDays = java.util.Optional.empty();
     }
 
     @Test
@@ -138,6 +139,59 @@ class ComplianceReportSchedulerTest {
 
         verify(storageService).store(any(), any(), any(), any(), any());
     }
+
+    @Test
+    void purgeExpired_deletesOldReports() {
+        scheduler.retentionDays = java.util.Optional.of(90);
+
+        ComplianceReportRecord old = new ComplianceReportRecord();
+        old.id          = UUID.randomUUID();
+        old.reportType  = ReportType.OBLIGATION;
+        old.tenancyId   = "test-tenant";
+        old.generatedAt = Instant.now().minus(java.time.Duration.ofDays(100));
+
+        when(storageService.findOlderThan(any(Instant.class))).thenReturn(java.util.List.of(old));
+
+        scheduler.purgeExpired();
+
+        verify(storageService).delete(old.id);
+    }
+
+    @Test
+    void purgeExpired_skipsWhenRetentionNotConfigured() {
+        scheduler.retentionDays = java.util.Optional.empty();
+
+        scheduler.purgeExpired();
+
+        verify(storageService, never()).findOlderThan(any());
+        verify(storageService, never()).delete(any());
+    }
+
+    @Test
+    void purgeExpired_errorIsolation_continuesToNextReport() {
+        scheduler.retentionDays = java.util.Optional.of(90);
+
+        ComplianceReportRecord r1 = new ComplianceReportRecord();
+        r1.id          = UUID.randomUUID();
+        r1.reportType  = ReportType.OBLIGATION;
+        r1.tenancyId   = "t1";
+        r1.generatedAt = Instant.now().minus(java.time.Duration.ofDays(100));
+
+        ComplianceReportRecord r2 = new ComplianceReportRecord();
+        r2.id          = UUID.randomUUID();
+        r2.reportType  = ReportType.VIOLATION;
+        r2.tenancyId   = "t2";
+        r2.generatedAt = Instant.now().minus(java.time.Duration.ofDays(200));
+
+        when(storageService.findOlderThan(any(Instant.class))).thenReturn(java.util.List.of(r1, r2));
+        org.mockito.Mockito.doThrow(new RuntimeException("artefact locked")).when(storageService).delete(r1.id);
+
+        scheduler.purgeExpired();
+
+        verify(storageService).delete(r1.id);
+        verify(storageService).delete(r2.id);
+    }
+
 
     private ComplianceReportSchedule obligationSchedule() {
         ComplianceReportSchedule s = new ComplianceReportSchedule();
