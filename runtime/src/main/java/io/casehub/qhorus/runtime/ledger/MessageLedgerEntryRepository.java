@@ -491,4 +491,16 @@ public class MessageLedgerEntryRepository {
                  .setParameter("tid", tenancyId(tenancyId))
                  .getResultList();
     }
+
+    public boolean hasJudgmentEvent(String correlationId, String tenancyId) {
+        return em.createQuery(
+                         "SELECT COUNT(e) FROM MessageLedgerEntry e " +
+                         "WHERE e.correlationId = :corrId " +
+                         "AND e.tenancyId = :tenancyId " +
+                         "AND e.toolName = :yieldedKind", Long.class)
+                 .setParameter("corrId", correlationId)
+                 .setParameter("tenancyId", tenancyId(tenancyId))
+                 .setParameter("yieldedKind", JudgmentEventKinds.YIELDED)
+                 .getSingleResult() > 0;
+    }
 }

@@ -255,6 +255,25 @@ public interface QhorusConfig {
         double responseConfidence();
 
         /**
+         * Confidence for SOUND attestation on ACCEPTED judgment verification. Default: 0.7.
+         */
+        @WithDefault("0.7")
+        double judgmentAcceptedConfidence();
+
+        /**
+         * Confidence for FLAGGED attestation on REJECTED judgment verification. Default: 0.3.
+         */
+        @WithDefault("0.3")
+        double judgmentRejectedConfidence();
+
+        /**
+         * Confidence for FLAGGED attestation on PARTIAL judgment verification. Default: 0.5.
+         */
+        @WithDefault("0.5")
+        double judgmentPartialConfidence();
+
+
+        /**
          * Confidence for peer ENDORSED attestation. Default: 0.4.
          */
         @WithDefault("0.4")
