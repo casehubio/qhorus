@@ -27,6 +27,9 @@ public class ComplianceReportScheduler {
     @Inject ViolationReportService violationService;
     @Inject
             JudgmentFulfillmentReportService judgmentFulfillmentService;
+    @Inject
+    io.casehub.qhorus.compliance.verification.PropertyVerificationService propertyVerificationService;
+
 
     @Inject Event<ComplianceReportGeneratedEvent> generatedEvent;
     @Inject ObjectMapper objectMapper;
@@ -90,6 +93,8 @@ public class ComplianceReportScheduler {
             }
             case JUDGMENT_FULFILLMENT -> judgmentFulfillmentService.generate(
                     from, now, null, null, schedule.tenancyId);
+            case PROPERTY_VERIFICATION -> propertyVerificationService.verify(
+                    schedule.tenancyId, from, now);
             default -> throw new IllegalStateException(
                     "Scheduled generation not supported for " + schedule.reportType);
         };

@@ -4,11 +4,11 @@ import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.mcp.McpDomain;
 import io.casehub.qhorus.compliance.graphql.dto.AttributionReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ComplianceReportRecordType;
+import io.casehub.qhorus.compliance.graphql.dto.JudgmentAttributionReportType;
+import io.casehub.qhorus.compliance.graphql.dto.JudgmentFulfillmentReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ObligationReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ProvenanceReportType;
 import io.casehub.qhorus.compliance.graphql.dto.TrustHistoryReportType;
-import io.casehub.qhorus.compliance.graphql.dto.JudgmentAttributionReportType;
-import io.casehub.qhorus.compliance.graphql.dto.JudgmentFulfillmentReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ViolationReportType;
 import io.casehub.qhorus.compliance.model.ReportType;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
@@ -46,6 +46,8 @@ public class ComplianceQueryResolver {
             JudgmentAttributionReportService judgmentAttributionService;
     @Inject
             JudgmentFulfillmentReportService judgmentFulfillmentService;
+    @Inject
+    io.casehub.qhorus.compliance.verification.PropertyVerificationService propertyVerificationService;
 
 
     @Query
@@ -123,4 +125,14 @@ public class ComplianceQueryResolver {
         return JudgmentFulfillmentReportType.from(
                 judgmentFulfillmentService.generate(f, t, judgmentType, actorId, currentPrincipal.tenancyId()));
     }
+
+    @Query
+    @Description("Verify formal properties (liveness, safety, fairness, deadlock freedom, evidence completeness) against the ledger for a time window")
+    public io.casehub.qhorus.compliance.graphql.dto.PropertyVerificationReportType compliancePropertyVerification(String from, String to) {
+        Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
+        Instant t = to != null ? Instant.parse(to) : Instant.now();
+        return io.casehub.qhorus.compliance.graphql.dto.PropertyVerificationReportType.from(
+                propertyVerificationService.verify(currentPrincipal.tenancyId(), f, t));
+    }
+
 }

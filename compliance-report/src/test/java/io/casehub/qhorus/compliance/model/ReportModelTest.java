@@ -99,7 +99,7 @@ class ReportModelTest {
 
     @Test
     void reportType_allValues() {
-        assertThat(ReportType.values()).hasSize(7);
+        assertThat(ReportType.values()).hasSize(8);
         assertThat(ReportType.valueOf("ATTRIBUTION")).isEqualTo(ReportType.ATTRIBUTION);
     }
 

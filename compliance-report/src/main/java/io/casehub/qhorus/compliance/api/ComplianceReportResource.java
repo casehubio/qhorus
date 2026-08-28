@@ -4,11 +4,11 @@ import io.casehub.qhorus.compliance.format.CsvReportRenderer;
 import io.casehub.qhorus.compliance.format.HtmlReportRenderer;
 import io.casehub.qhorus.compliance.format.JsonReportRenderer;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
+import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
+import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ProvenanceReportService;
 import io.casehub.qhorus.compliance.report.TrustHistoryReportService;
-import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
-import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecordStore;
 import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
@@ -45,6 +45,8 @@ public class ComplianceReportResource {
             JudgmentAttributionReportService judgmentAttributionService;
     @Inject
             JudgmentFulfillmentReportService judgmentFulfillmentService;
+    @Inject
+    io.casehub.qhorus.compliance.verification.PropertyVerificationService propertyVerificationService;
 
 
     @GET
@@ -145,6 +147,19 @@ public class ComplianceReportResource {
                 fromInstant, toInstant, judgmentType, actorId, tenancyContext.tenancyId());
         return renderResponse(report, accept);
     }
+
+    @GET
+    @Path("/property-verification")
+    public Response getPropertyVerification(
+            @QueryParam("from") String from,
+            @QueryParam("to") String to,
+            @HeaderParam("Accept") @DefaultValue("application/json") String accept) {
+        Instant fromInstant = from != null ? Instant.parse(from) : Instant.now().minus(30, java.time.temporal.ChronoUnit.DAYS);
+        Instant toInstant   = to != null ? Instant.parse(to) : Instant.now();
+        var     report      = propertyVerificationService.verify(tenancyContext.tenancyId(), fromInstant, toInstant);
+        return renderResponse(report, accept);
+    }
+
 
     @GET
     @Path("/reports/{id}")
