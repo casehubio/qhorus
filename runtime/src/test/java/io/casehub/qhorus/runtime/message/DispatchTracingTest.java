@@ -1,16 +1,5 @@
 package io.casehub.qhorus.runtime.message;
 
-import java.util.List;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Produces;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -18,12 +7,21 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
-import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Produces;
+import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -206,4 +204,48 @@ class DispatchTracingTest {
             assertThat(event.getName()).isEqualTo("exception");
         });
     }
+
+    @Test
+    void enforcement_block_emits_span_event_with_attributes() {
+        UUID channelId = io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().call(() -> {
+            Channel channel = Channel.builder("trace-enforcement-block")
+                                     .semantic(ChannelSemantic.APPEND)
+                                     .enforcementMode(io.casehub.qhorus.api.channel.EnforcementMode.BLOCKING)
+                                     .deniedTypes(java.util.Set.of(MessageType.STATUS))
+                                     .build();
+            return channelStore.put(channel).id();
+        });
+
+        assertThatThrownBy(() -> {
+            io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
+                messageService.dispatch(MessageDispatch.builder()
+                                                       .channelId(channelId)
+                                                       .sender("agent-1")
+                                                       .type(MessageType.STATUS)
+                                                       .content("blocked content")
+                                                       .actorType(ActorType.AGENT)
+                                                       .build());
+            });
+        }).isInstanceOf(io.casehub.qhorus.api.message.EnforcementBlockedException.class);
+
+        var span = TestTracerProducer.EXPORTER.getFinishedSpanItems().stream()
+                                              .filter(s -> s.getName().equals("qhorus.dispatch"))
+                                              .filter(s -> "agent-1".equals(s.getAttributes().get(
+                                                      io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.message.sender"))))
+                                              .findFirst().orElseThrow();
+
+        var gateEvents = span.getEvents().stream()
+                             .filter(e -> e.getName().equals("qhorus.enforcement.gate"))
+                             .toList();
+        assertThat(gateEvents).hasSize(1);
+
+        var attrs = gateEvents.get(0).getAttributes();
+        assertThat(attrs.get(io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.enforcement.mode")))
+                .isEqualTo("BLOCKING");
+        assertThat(attrs.get(io.opentelemetry.api.common.AttributeKey.longKey("qhorus.enforcement.violation_count")))
+                .isEqualTo(1L);
+        assertThat(attrs.get(io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.enforcement.violation_sources")))
+                .isEqualTo("TYPE_POLICY");
+    }
+
 }

@@ -282,8 +282,22 @@ public class MessageService implements ConsumerMessaging {
 
         // Enforcement gate — positioned after all advisory sources, before LAST_WRITE/persist
         if (ch != null) {
-            enforceIfRequired(ch, taggedAdvisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
-                    dispatch, effectiveTenancyId);
+            try {
+                enforceIfRequired(ch, taggedAdvisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
+                        dispatch, effectiveTenancyId);
+            } catch (io.casehub.qhorus.api.message.EnforcementBlockedException ebe) {
+                if (span != null) {
+                    span.addEvent("qhorus.enforcement.gate",
+                            io.opentelemetry.api.common.Attributes.of(
+                                    io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.enforcement.mode"),
+                                    ebe.mode().name(),
+                                    io.opentelemetry.api.common.AttributeKey.longKey("qhorus.enforcement.violation_count"),
+                                    (long) ebe.violations().size(),
+                                    io.opentelemetry.api.common.AttributeKey.stringKey("qhorus.enforcement.violation_sources"),
+                                    String.join(",", ebe.violationSources())));
+                }
+                throw ebe;
+            }
             if (span != null) {
                 span.addEvent("qhorus.enforcement.gate");
             }
