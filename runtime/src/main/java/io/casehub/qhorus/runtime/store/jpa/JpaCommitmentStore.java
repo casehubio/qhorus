@@ -149,6 +149,16 @@ public class JpaCommitmentStore implements CommitmentStore {
     }
 
     @Override
+    public List<Commitment> findOpenOlderThan(Instant cutoff, String tenancyId) {
+        return repo.list(
+                           "state IN ?1 AND createdAt < ?2 AND tenancyId = ?3 ORDER BY createdAt ASC",
+                           List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED),
+                           cutoff, tenancyId != null ? tenancyId : currentPrincipal.tenancyId())
+                   .stream().map(CommitmentEntity::toDomain).toList();
+    }
+
+
+    @Override
     @Transactional
     public void deleteById(UUID id) {
         repo.delete("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId());

@@ -149,6 +149,16 @@ public class InMemoryCommitmentStore implements CommitmentStore {
     }
 
     @Override
+    public List<Commitment> findOpenOlderThan(Instant cutoff, String tenancyId) {
+        return byId.values().stream()
+                   .filter(c -> c.state() == CommitmentState.OPEN || c.state() == CommitmentState.ACKNOWLEDGED)
+                   .filter(c -> c.createdAt() != null && c.createdAt().isBefore(cutoff))
+                   .sorted(java.util.Comparator.comparing(Commitment::createdAt))
+                   .toList();
+    }
+
+
+    @Override
     public void deleteById(UUID commitmentId) {
         byId.remove(commitmentId);
     }

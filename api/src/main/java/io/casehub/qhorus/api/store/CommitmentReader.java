@@ -36,6 +36,11 @@ public interface CommitmentReader {
 
     List<Commitment> findByObligorInTenancy(String obligor, String tenancyId);
 
+    default List<Commitment> findOpenOlderThan(Instant cutoff, String tenancyId) {
+        return List.of();
+    }
+
+
     default List<Commitment> findOpenByObligor(String obligor) {
         if (obligor == null) { return List.of(); }
         return findAllOpen().stream()

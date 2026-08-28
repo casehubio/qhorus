@@ -503,4 +503,20 @@ public class MessageLedgerEntryRepository {
                  .setParameter("yieldedKind", JudgmentEventKinds.YIELDED)
                  .getSingleResult() > 0;
     }
+
+    public List<MessageLedgerEntry> findDoneEntriesWithoutAttestation(Instant from, Instant to, String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e " +
+                         "WHERE e.tenancyId = :tenancyId " +
+                         "AND e.messageType = 'DONE' " +
+                         "AND e.occurredAt >= :from AND e.occurredAt <= :to " +
+                         "AND NOT EXISTS (SELECT 1 FROM io.casehub.ledger.runtime.model.LedgerAttestation a " +
+                         "WHERE a.ledgerEntryId = e.id)",
+                         MessageLedgerEntry.class)
+                 .setParameter("tenancyId", tenancyId(tenancyId))
+                 .setParameter("from", from)
+                 .setParameter("to", to)
+                 .getResultList();
+    }
+
 }
