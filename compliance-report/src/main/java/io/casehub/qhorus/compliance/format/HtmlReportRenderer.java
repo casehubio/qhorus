@@ -132,7 +132,7 @@ public class HtmlReportRenderer implements ReportRenderer {
           .append(" | Outcome: ").append(esc(report.verificationOutcome()))
           .append(" | Duration: ").append(report.totalDurationMs()).append("ms</p>");
         sb.append("<h2>Judgment Events</h2>");
-        sb.append("<table><tr><th>Event</th><th>Actor</th><th>Time</th><th>Evidence Quality</th><th>Outcome</th><th>Trust</th></tr>");
+        sb.append("<table><tr><th>Event</th><th>Actor</th><th>Time</th><th>Evidence Quality</th><th>Outcome</th><th>Trust</th><th>Reasoning</th></tr>");
         for (var e : report.events()) {
             sb.append("<tr>");
             sb.append("<td>").append(esc(e.eventKind())).append("</td>");
@@ -141,6 +141,7 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("<td>").append(e.evidenceQuality() != null ? e.evidenceQuality() : "").append("</td>");
             sb.append("<td>").append(e.verificationOutcome() != null ? esc(e.verificationOutcome()) : "").append("</td>");
             sb.append("<td>").append(e.trustScoreAtTime() != null ? e.trustScoreAtTime() : "").append("</td>");
+            sb.append("<td>").append(e.reasoning() != null ? esc(e.reasoning()) : "").append("</td>");
             sb.append("</tr>");
         }
         sb.append("</table>");

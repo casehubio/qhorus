@@ -257,8 +257,8 @@ ALTER TABLE message_ledger_entry ADD COLUMN evidence_quality DOUBLE PRECISION;
 ALTER TABLE message_ledger_entry ADD CONSTRAINT chk_evidence_quality
     CHECK (evidence_quality IS NULL OR (evidence_quality >= 0 AND evidence_quality <= 1));
 
--- Index for judgment EVENT queries (toolName discriminator + tenancy)
-CREATE INDEX idx_mle_tenancy_toolname ON message_ledger_entry(tenancy_id, tool_name);
+-- Index for judgment EVENT queries (toolName discriminator)
+CREATE INDEX idx_mle_toolname ON message_ledger_entry(tool_name);
 ```
 
 Null for non-judgment entries. Populated by `LedgerWriteService.record()` when the telemetry JSON contains `judgment_id`, `judgment_type`, `verification_outcome`, or `evidence_quality` keys.

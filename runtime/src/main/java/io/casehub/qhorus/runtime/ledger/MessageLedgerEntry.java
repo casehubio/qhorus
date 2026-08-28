@@ -105,6 +105,8 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
 
     @Column(name = "evidence_quality")
     public Double evidenceQuality;
+    @Column(name = "reasoning", columnDefinition = "TEXT")
+    public String reasoning;
 
 
     @Override
@@ -126,12 +128,13 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
                                        contextWindowPct != null ? contextWindowPct.toString() : ""
                                       );
         if (judgmentId != null || judgmentType != null
-            || verificationOutcome != null || evidenceQuality != null) {
+            || verificationOutcome != null || evidenceQuality != null || reasoning != null) {
             canonical += "|J:"
                          + (judgmentId != null ? judgmentId.toString() : "") + "|"
                          + (judgmentType != null ? judgmentType : "") + "|"
                          + (verificationOutcome != null ? verificationOutcome : "") + "|"
-                         + (evidenceQuality != null ? String.valueOf(evidenceQuality) : "");
+                         + (evidenceQuality != null ? String.valueOf(evidenceQuality) : "") + "|"
+                         + (reasoning != null ? reasoning : "");
         }
         return canonical.getBytes(StandardCharsets.UTF_8);
     }

@@ -10,5 +10,6 @@ public record JudgmentEvent(
     String verificationOutcome,
     String escalationReason,
     Double trustScoreAtTime,
-    Long durationMs
+    Long durationMs,
+    String reasoning
 ) {}

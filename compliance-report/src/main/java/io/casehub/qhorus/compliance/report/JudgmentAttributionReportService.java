@@ -113,7 +113,7 @@ public class JudgmentAttributionReportService {
         return new JudgmentEvent(
                 e.toolName, e.actorId, e.occurredAt,
                 e.evidenceQuality, e.verificationOutcome,
-                null, trustScore, e.durationMs);
+                null, trustScore, e.durationMs, e.reasoning);
     }
 
     private AttributionNode enrichNode(GraphNode node, String tenancyId) {

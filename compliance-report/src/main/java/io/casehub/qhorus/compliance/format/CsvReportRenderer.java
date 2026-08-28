@@ -123,7 +123,7 @@ public class CsvReportRenderer implements ReportRenderer {
 
     private String renderJudgmentAttribution(JudgmentAttributionReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append("eventKind,actorId,occurredAt,evidenceQuality,verificationOutcome,escalationReason,trustScore,durationMs\n");
+        sb.append("eventKind,actorId,occurredAt,evidenceQuality,verificationOutcome,escalationReason,trustScore,durationMs,reasoning\n");
         for (var e : report.events()) {
             sb.append(String.join(",",
                                   escape(e.eventKind()), escape(e.actorId()),
@@ -132,7 +132,8 @@ public class CsvReportRenderer implements ReportRenderer {
                                   escape(e.verificationOutcome() != null ? e.verificationOutcome() : ""),
                                   escape(e.escalationReason() != null ? e.escalationReason() : ""),
                                   e.trustScoreAtTime() != null ? String.valueOf(e.trustScoreAtTime()) : "",
-                                  e.durationMs() != null ? String.valueOf(e.durationMs()) : ""
+                                  e.durationMs() != null ? String.valueOf(e.durationMs()) : "",
+                                  escape(e.reasoning() != null ? e.reasoning() : "")
                                  )).append("\n");
         }
         return sb.toString();

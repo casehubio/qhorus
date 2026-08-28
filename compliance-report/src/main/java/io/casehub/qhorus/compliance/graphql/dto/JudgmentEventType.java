@@ -9,11 +9,11 @@ import java.time.Instant;
 public record JudgmentEventType(
         String eventKind, String actorId, Instant occurredAt,
         Double evidenceQuality, String verificationOutcome, String escalationReason,
-        Double trustScoreAtTime, Long durationMs) {
+        Double trustScoreAtTime, Long durationMs, String reasoning) {
 
     public static JudgmentEventType from(JudgmentEvent e) {
         return new JudgmentEventType(e.eventKind(), e.actorId(), e.occurredAt(),
                 e.evidenceQuality(), e.verificationOutcome(), e.escalationReason(),
-                e.trustScoreAtTime(), e.durationMs());
+                e.trustScoreAtTime(), e.durationMs(), e.reasoning());
     }
 }

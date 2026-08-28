@@ -444,6 +444,10 @@ public class LedgerWriteService {
                 double val = eq.asDouble();
                 entry.evidenceQuality = (val >= 0 && val <= 1) ? val : null;
             }
+            final JsonNode rs = root.get("reasoning");
+            if (rs != null && rs.isTextual()) {
+                entry.reasoning = rs.asText();
+            }
         } catch (final Exception e) {
             LOG.warnf("Could not parse EVENT content as JSON for message %d — telemetry fields will be null",
                       entry.messageId);
