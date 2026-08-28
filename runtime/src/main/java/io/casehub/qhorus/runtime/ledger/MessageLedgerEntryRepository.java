@@ -519,4 +519,52 @@ public class MessageLedgerEntryRepository {
                  .getResultList();
     }
 
+    public List<MessageLedgerEntry> findRoutingEntries(Instant from, Instant to, String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e " +
+                         "WHERE e.tenancyId = :tenancyId " +
+                         "AND e.routingSelectedAgent IS NOT NULL " +
+                         "AND e.occurredAt >= :from AND e.occurredAt <= :to " +
+                         "ORDER BY e.occurredAt ASC",
+                         MessageLedgerEntry.class)
+                 .setParameter("tenancyId", tenancyId(tenancyId))
+                 .setParameter("from", from)
+                 .setParameter("to", to)
+                 .getResultList();
+    }
+
+    public List<MessageLedgerEntry> findHandoffEntries(Instant from, Instant to, String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e " +
+                         "WHERE e.tenancyId = :tenancyId " +
+                         "AND e.messageType = 'HANDOFF' " +
+                         "AND e.occurredAt >= :from AND e.occurredAt <= :to " +
+                         "ORDER BY e.occurredAt ASC",
+                         MessageLedgerEntry.class)
+                 .setParameter("tenancyId", tenancyId(tenancyId))
+                 .setParameter("from", from)
+                 .setParameter("to", to)
+                 .getResultList();
+    }
+
+
+    public List<MessageLedgerEntry> findDoneEntriesWithDeferredAttestation(String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e " +
+                         "WHERE e.tenancyId = :tenancyId " +
+                         "AND e.messageType = 'DONE' " +
+                         "AND NOT EXISTS (SELECT 1 FROM io.casehub.ledger.runtime.model.LedgerAttestation a " +
+                         "WHERE a.ledgerEntryId = e.id) " +
+                         "AND EXISTS (SELECT 1 FROM MessageLedgerEntry v " +
+                         "WHERE v.correlationId = e.correlationId " +
+                         "AND v.tenancyId = :tenancyId " +
+                         "AND v.toolName = :verifiedKind)",
+                         MessageLedgerEntry.class)
+                 .setParameter("tenancyId", tenancyId(tenancyId))
+                 .setParameter("verifiedKind",
+                               io.casehub.qhorus.api.judgment.JudgmentEventKinds.VERIFIED)
+                 .getResultList();
+    }
+
+
 }
