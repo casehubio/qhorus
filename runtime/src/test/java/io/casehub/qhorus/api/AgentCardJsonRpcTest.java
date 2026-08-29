@@ -62,7 +62,7 @@ class AgentCardJsonRpcTest {
                 .then()
                 .statusCode(200)
                 .body("capabilities.streaming", equalTo(true))
-                .body("capabilities.pushNotifications", equalTo(true));
+                .body("capabilities.pushNotifications", equalTo(false));
     }
 
     @Test

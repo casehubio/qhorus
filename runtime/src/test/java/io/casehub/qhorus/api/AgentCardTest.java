@@ -149,7 +149,7 @@ class AgentCardTest {
         given()
                 .when().get(ENDPOINT)
                 .then()
-                .body("capabilities.pushNotifications", equalTo(true));
+                .body("capabilities.pushNotifications", equalTo(false));
     }
 
     @Test
@@ -215,7 +215,7 @@ class AgentCardTest {
 
         Map<String, Object> caps = response.jsonPath().getMap("capabilities");
         assertTrue((Boolean) caps.get("streaming"), "streaming must be true");
-        assertTrue((Boolean) caps.get("pushNotifications"), "pushNotifications reflects module presence");
+        assertFalse((Boolean) caps.get("pushNotifications"), "pushNotifications false when push module absent");
         assertEquals(2, caps.size(), "capabilities should have exactly 2 fields");
     }
 
