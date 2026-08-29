@@ -65,6 +65,14 @@ public class A2AResource {
 
     @Inject
     ObjectMapper mapper;
+    @Inject
+    jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.store.PushNotificationConfigStore> pushNotificationConfigStore;
+
+    @Inject
+    jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.a2a.PushNotificationRegistrar> pushNotificationRegistrar;
+    @Inject
+    io.casehub.platform.api.identity.CurrentPrincipal                                       currentPrincipal;
+
 
     // -----------------------------------------------------------------------
     // JSON-RPC 2.0 dispatch — sync
@@ -89,6 +97,10 @@ public class A2AResource {
             case "message/send" -> handleMessageSend(request, headers);
             case "tasks/get" -> handleTasksGet(request);
             case "tasks/cancel" -> handleTasksCancel(request);
+            case "pushNotificationConfig/set" -> handlePushConfigSet(request);
+            case "pushNotificationConfig/get" -> handlePushConfigGet(request);
+            case "pushNotificationConfig/list" -> handlePushConfigList(request);
+            case "pushNotificationConfig/delete" -> handlePushConfigDelete(request);
             default -> Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
                                                     request.method())).type(MediaType.APPLICATION_JSON).build();
         };
@@ -181,6 +193,25 @@ public class A2AResource {
             Throwable cause = e.getCause() != null ? e.getCause() : e;
             return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INTERNAL_ERROR,
                                                 cause.getMessage())).type(MediaType.APPLICATION_JSON).build();
+        }
+
+        if (pushNotificationConfigStore.isResolvable() && params.has("pushNotificationConfig")) {
+            JsonNode pushCfg = params.get("pushNotificationConfig");
+            if (pushCfg.has("url")) {
+                String pushUrl = pushCfg.get("url").asText();
+                String pushToken = pushCfg.has("token") ? pushCfg.get("token").asText() : null;
+                String pushAuthScheme = pushCfg.has("authScheme") ? pushCfg.get("authScheme").asText() : null;
+                String pushAuthRef = pushCfg.has("authCredentialsRef") ? pushCfg.get("authCredentialsRef").asText() : null;
+                var cfg = new io.casehub.qhorus.api.a2a.PushNotificationConfig(
+                        UUID.randomUUID(), taskId, channel.id(), pushUrl, pushToken,
+                        pushAuthScheme, pushAuthRef,
+                        currentPrincipal.tenancyId(),
+                        java.time.Instant.now(), null);
+                pushNotificationConfigStore.get().put(cfg);
+                if (pushNotificationRegistrar.isResolvable()) {
+                    pushNotificationRegistrar.get().onConfigCreated(channel.id(), taskId);
+                }
+            }
         }
 
         var task = new A2ATask(taskId, msg.contextId(),
@@ -418,6 +449,108 @@ public class A2AResource {
     // -----------------------------------------------------------------------
     // JSON-RPC response helpers
     // -----------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------
+    // Push notification config CRUD
+    // -----------------------------------------------------------------------
+
+    private Response handlePushConfigSet(JsonRpcRequest request) {
+        if (!pushNotificationConfigStore.isResolvable()) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
+                                                "Push notifications not available — add casehub-qhorus-a2a-push-notification to classpath"))
+                           .type(MediaType.APPLICATION_JSON).build();
+        }
+        JsonNode params = request.params();
+        if (params == null || !params.has("taskId") || !params.has("url")) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                "taskId and url are required")).type(MediaType.APPLICATION_JSON).build();
+        }
+
+        String taskId             = params.get("taskId").asText();
+        String url                = params.get("url").asText();
+        String token              = params.has("token") ? params.get("token").asText() : null;
+        String authScheme         = params.has("authScheme") ? params.get("authScheme").asText() : null;
+        String authCredentialsRef = params.has("authCredentialsRef") ? params.get("authCredentialsRef").asText() : null;
+
+        UUID channelId;
+        if (params.has("channelId")) {
+            channelId = UUID.fromString(params.get("channelId").asText());
+        } else {
+            var commitment = commitmentService.findByCorrelationId(taskId).orElse(null);
+            if (commitment == null) {
+                return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                    "invalid params: unknown task " + taskId)).type(MediaType.APPLICATION_JSON).build();
+            }
+            channelId = commitment.channelId();
+        }
+
+        var store = pushNotificationConfigStore.get();
+        var existing = store.findByTaskId(taskId).stream()
+                            .filter(c -> c.url().equals(url)).findFirst();
+        UUID configId = existing.map(io.casehub.qhorus.api.a2a.PushNotificationConfig::id).orElse(UUID.randomUUID());
+
+        var cfg = new io.casehub.qhorus.api.a2a.PushNotificationConfig(
+                configId, taskId, channelId, url, token, authScheme, authCredentialsRef,
+                currentPrincipal.tenancyId(),
+                java.time.Instant.now(), null);
+        store.put(cfg);
+
+        if (pushNotificationRegistrar.isResolvable()) {
+            pushNotificationRegistrar.get().onConfigCreated(channelId, taskId);
+        }
+
+        return Response.ok(jsonRpcSuccessNode(request, cfg)).type(MediaType.APPLICATION_JSON).build();
+    }
+
+    private Response handlePushConfigGet(JsonRpcRequest request) {
+        if (!pushNotificationConfigStore.isResolvable()) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
+                                                "Push notifications not available")).type(MediaType.APPLICATION_JSON).build();
+        }
+        JsonNode params = request.params();
+        if (params == null || !params.has("id")) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                "id is required")).type(MediaType.APPLICATION_JSON).build();
+        }
+        UUID id    = UUID.fromString(params.get("id").asText());
+        var  found = pushNotificationConfigStore.get().findById(id);
+        if (found.isEmpty()) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                "push config not found: " + id)).type(MediaType.APPLICATION_JSON).build();
+        }
+        return Response.ok(jsonRpcSuccessNode(request, found.get())).type(MediaType.APPLICATION_JSON).build();
+    }
+
+    private Response handlePushConfigList(JsonRpcRequest request) {
+        if (!pushNotificationConfigStore.isResolvable()) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
+                                                "Push notifications not available")).type(MediaType.APPLICATION_JSON).build();
+        }
+        JsonNode params = request.params();
+        if (params == null || !params.has("taskId")) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                "taskId is required")).type(MediaType.APPLICATION_JSON).build();
+        }
+        String taskId  = params.get("taskId").asText();
+        var    configs = pushNotificationConfigStore.get().findByTaskId(taskId);
+        return Response.ok(jsonRpcSuccessNode(request, configs)).type(MediaType.APPLICATION_JSON).build();
+    }
+
+    private Response handlePushConfigDelete(JsonRpcRequest request) {
+        if (!pushNotificationConfigStore.isResolvable()) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.METHOD_NOT_FOUND,
+                                                "Push notifications not available")).type(MediaType.APPLICATION_JSON).build();
+        }
+        JsonNode params = request.params();
+        if (params == null || !params.has("id")) {
+            return Response.ok(jsonRpcErrorNode(request, JsonRpcError.INVALID_PARAMS,
+                                                "id is required")).type(MediaType.APPLICATION_JSON).build();
+        }
+        UUID id = UUID.fromString(params.get("id").asText());
+        pushNotificationConfigStore.get().delete(id);
+        return Response.ok(jsonRpcSuccessNode(request, Map.of("deleted", true))).type(MediaType.APPLICATION_JSON).build();
+    }
 
     private com.fasterxml.jackson.databind.node.ObjectNode jsonRpcSuccessNode(
             JsonRpcRequest request, Object result) {

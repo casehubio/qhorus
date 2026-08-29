@@ -23,6 +23,9 @@ public class AgentCardResource {
 
     @Inject
     io.casehub.qhorus.runtime.instance.InstanceService instanceService;
+    @Inject
+    jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.store.PushNotificationConfigStore> pushStore;
+
 
     @GET
     @Path("/agent.json")
@@ -42,7 +45,7 @@ public class AgentCardResource {
                 cfg.url().orElse(""),
                 cfg.version(),
                 buildSkills(),
-                new io.casehub.a2a.model.AgentCapabilities(true, false),
+                new io.casehub.a2a.model.AgentCapabilities(true, pushStore.isResolvable()),
                 java.util.Map.of("schemes", java.util.List.of("bearer")),
                 currentPrincipal.tenancyId(),
                 agents);
@@ -65,7 +68,7 @@ public class AgentCardResource {
                                           "/.well-known/agents/" + inst.instanceId() + ".json",
                                           config.agentCard().version(),
                                           skills,
-                                          new io.casehub.a2a.model.AgentCapabilities(true, false),
+                                          new io.casehub.a2a.model.AgentCapabilities(true, pushStore.isResolvable()),
                                           null,
                                           currentPrincipal.tenancyId(),
                                           null);

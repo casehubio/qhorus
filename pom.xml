@@ -30,6 +30,7 @@
     <module>notification-bridge</module>
     <module>compliance-report</module>
     <module>push</module>
+    <module>a2a-push-notification</module>
     <module>persistence-memory</module>
     <module>testing</module>
     <module>examples</module>
