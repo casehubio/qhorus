@@ -19,7 +19,12 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class JudgmentVerificationObserverTest {
 
@@ -30,18 +35,21 @@ class JudgmentVerificationObserverTest {
 
     @BeforeEach
     void setUp() {
-        observer = new JudgmentVerificationObserver();
-        ledger = mock(LedgerEntryRepository.class);
+        observer    = new JudgmentVerificationObserver();
+        ledger      = mock(LedgerEntryRepository.class);
         messageRepo = mock(MessageLedgerEntryRepository.class);
-        config = mock(QhorusConfig.class, RETURNS_DEEP_STUBS);
+        config      = mock(QhorusConfig.class, RETURNS_DEEP_STUBS);
 
-        observer.ledger = ledger;
+        observer.ledger      = ledger;
         observer.messageRepo = messageRepo;
-        observer.config = config;
+        observer.config      = config;
 
         when(config.attestation().judgmentAcceptedConfidence()).thenReturn(0.7);
         when(config.attestation().judgmentRejectedConfidence()).thenReturn(0.3);
         when(config.attestation().judgmentPartialConfidence()).thenReturn(0.5);
+
+        when(messageRepo.findTerminalEntryByCorrelationId(any(), any(), any()))
+                .thenReturn(Optional.empty());
     }
 
     @Test
@@ -188,6 +196,98 @@ class JudgmentVerificationObserverTest {
         observer.onMessage(eventMessage(messageId, channelId, corrId));
         verifyNoInteractions(ledger);
     }
+
+    @Test
+    void acceptedVerificationWritesDualAttestations() {
+        UUID   channelId = UUID.randomUUID();
+        String corrId    = UUID.randomUUID().toString();
+        Long   messageId = 50L;
+
+        var verifiedEntry = buildEntry(channelId, "judgment_verified",
+                                       "ACCEPTED", 0.85, corrId);
+        var commandEntry = buildEntry(channelId, null, null, null, corrId);
+        commandEntry.id        = UUID.randomUUID();
+        commandEntry.subjectId = UUID.randomUUID();
+        commandEntry.actorId   = "engine-actor";
+
+        var doneEntry = buildEntry(channelId, null, null, null, corrId);
+        doneEntry.id        = UUID.randomUUID();
+        doneEntry.subjectId = commandEntry.subjectId;
+        doneEntry.actorId   = "reviewer-actor";
+
+        when(messageRepo.findByMessageId(messageId)).thenReturn(Optional.of(verifiedEntry));
+        when(messageRepo.findLatestByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.of(commandEntry));
+        when(messageRepo.findTerminalEntryByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.of(doneEntry));
+
+        observer.onMessage(eventMessage(messageId, channelId, corrId));
+
+        var captor = ArgumentCaptor.forClass(LedgerAttestation.class);
+        verify(ledger, times(2)).saveAttestation(captor.capture(), eq("default"));
+
+        var attestations = captor.getAllValues();
+        assertThat(attestations.get(0).ledgerEntryId).isEqualTo(commandEntry.id);
+        assertThat(attestations.get(0).verdict).isEqualTo(AttestationVerdict.SOUND);
+        assertThat(attestations.get(1).ledgerEntryId).isEqualTo(doneEntry.id);
+        assertThat(attestations.get(1).verdict).isEqualTo(AttestationVerdict.SOUND);
+    }
+
+    @Test
+    void sameActorSkipsDoneAttestation() {
+        UUID   channelId = UUID.randomUUID();
+        String corrId    = UUID.randomUUID().toString();
+        Long   messageId = 51L;
+
+        var verifiedEntry = buildEntry(channelId, "judgment_verified",
+                                       "ACCEPTED", 0.9, corrId);
+        var commandEntry = buildEntry(channelId, null, null, null, corrId);
+        commandEntry.id        = UUID.randomUUID();
+        commandEntry.subjectId = UUID.randomUUID();
+        commandEntry.actorId   = "same-actor";
+
+        var doneEntry = buildEntry(channelId, null, null, null, corrId);
+        doneEntry.id        = UUID.randomUUID();
+        doneEntry.subjectId = commandEntry.subjectId;
+        doneEntry.actorId   = "same-actor";
+
+        when(messageRepo.findByMessageId(messageId)).thenReturn(Optional.of(verifiedEntry));
+        when(messageRepo.findLatestByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.of(commandEntry));
+        when(messageRepo.findTerminalEntryByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.of(doneEntry));
+
+        observer.onMessage(eventMessage(messageId, channelId, corrId));
+
+        verify(ledger, times(1)).saveAttestation(any(), eq("default"));
+    }
+
+    @Test
+    void missingTerminalEntryWritesCommandOnly() {
+        UUID   channelId = UUID.randomUUID();
+        String corrId    = UUID.randomUUID().toString();
+        Long   messageId = 52L;
+
+        var verifiedEntry = buildEntry(channelId, "judgment_verified",
+                                       "ACCEPTED", 0.8, corrId);
+        var commandEntry = buildEntry(channelId, null, null, null, corrId);
+        commandEntry.id        = UUID.randomUUID();
+        commandEntry.subjectId = UUID.randomUUID();
+        commandEntry.actorId   = "engine";
+
+        when(messageRepo.findByMessageId(messageId)).thenReturn(Optional.of(verifiedEntry));
+        when(messageRepo.findLatestByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.of(commandEntry));
+        when(messageRepo.findTerminalEntryByCorrelationId(channelId, corrId, "default"))
+                .thenReturn(Optional.empty());
+
+        observer.onMessage(eventMessage(messageId, channelId, corrId));
+
+        var captor = ArgumentCaptor.forClass(LedgerAttestation.class);
+        verify(ledger, times(1)).saveAttestation(captor.capture(), eq("default"));
+        assertThat(captor.getValue().ledgerEntryId).isEqualTo(commandEntry.id);
+    }
+
 
     private MessageReceivedEvent eventMessage(Long messageId, UUID channelId, String corrId) {
         return new MessageReceivedEvent(messageId, "ch", channelId,

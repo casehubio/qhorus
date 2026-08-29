@@ -339,6 +339,24 @@ public class MessageLedgerEntryRepository {
                 .findFirst();
     }
 
+    public Optional<MessageLedgerEntry> findTerminalEntryByCorrelationId(
+            final UUID channelId, final String correlationId, final String tenancyId) {
+        return em.createQuery(
+                         "SELECT e FROM MessageLedgerEntry e " +
+                         "WHERE e.subjectId = :sid AND e.correlationId = :corr " +
+                         "AND e.tenancyId = :tid " +
+                         "AND e.messageType IN ('DONE', 'FAILURE', 'DECLINE') " +
+                         "ORDER BY e.sequenceNumber DESC",
+                         MessageLedgerEntry.class)
+                 .setParameter("sid", channelId)
+                 .setParameter("corr", correlationId)
+                 .setParameter("tid", tenancyId(tenancyId))
+                 .setMaxResults(1)
+                 .getResultStream()
+                 .findFirst();
+    }
+
+
     /**
      * Finds the ledger entry whose {@code messageId} matches the given message entity ID.
      * Used at ledger write time to resolve {@code causedByEntryId} from {@code inReplyTo}.
@@ -510,12 +528,19 @@ public class MessageLedgerEntryRepository {
                          "WHERE e.tenancyId = :tenancyId " +
                          "AND e.messageType = 'DONE' " +
                          "AND e.occurredAt >= :from AND e.occurredAt <= :to " +
-                         "AND NOT EXISTS (SELECT 1 FROM io.casehub.ledger.runtime.model.LedgerAttestation a " +
-                         "WHERE a.ledgerEntryId = e.id)",
+                         "AND NOT EXISTS (SELECT 1 FROM " +
+                         "io.casehub.ledger.runtime.model.LedgerAttestation a " +
+                         "WHERE a.ledgerEntryId = e.id) " +
+                         "AND NOT EXISTS (SELECT 1 FROM MessageLedgerEntry v " +
+                         "WHERE v.correlationId = e.correlationId " +
+                         "AND v.tenancyId = :tenancyId " +
+                         "AND v.toolName = :yieldedKind)",
                          MessageLedgerEntry.class)
                  .setParameter("tenancyId", tenancyId(tenancyId))
                  .setParameter("from", from)
                  .setParameter("to", to)
+                 .setParameter("yieldedKind",
+                               io.casehub.qhorus.api.judgment.JudgmentEventKinds.YIELDED)
                  .getResultList();
     }
 

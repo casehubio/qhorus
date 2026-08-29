@@ -1,10 +1,7 @@
 package io.casehub.qhorus.compliance.verification;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
-import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
@@ -80,13 +77,13 @@ public class EvidenceCompletenessProperty implements RemediatingProperty {
             var verifiedEntries = messageRepo.findJudgmentEvents(
                     null, doneEntry.judgmentId, null, null, tenancyId);
             var verified = verifiedEntries.stream()
-                    .filter(e -> "judgment_verified".equals(e.toolName))
-                    .findFirst();
-            if (verified.isEmpty()) continue;
+                                          .filter(e -> "judgment_verified".equals(e.toolName))
+                                          .findFirst();
+            if (verified.isEmpty()) {continue;}
 
             MessageLedgerEntry v = verified.get();
             AttestationVerdict verdict = "ACCEPTED".equals(v.verificationOutcome)
-                    ? AttestationVerdict.SOUND : AttestationVerdict.FLAGGED;
+                                         ? AttestationVerdict.SOUND : AttestationVerdict.FLAGGED;
             double confidence = switch (v.verificationOutcome != null ? v.verificationOutcome : "") {
                 case "ACCEPTED" -> Math.max(
                         config.attestation().judgmentAcceptedConfidence(),
@@ -96,18 +93,21 @@ public class EvidenceCompletenessProperty implements RemediatingProperty {
                 default -> config.attestation().judgmentRejectedConfidence();
             };
 
-            LedgerAttestation attestation = new LedgerAttestation();
-            attestation.ledgerEntryId = doneEntry.id;
-            attestation.subjectId = doneEntry.subjectId;
-            attestation.attestorId = "system:judgment-verifier";
-            attestation.attestorType = ActorType.SYSTEM;
-            attestation.verdict = verdict;
-            attestation.confidence = confidence;
-            attestation.capabilityTag = CapabilityTag.GLOBAL;
-
             try {
-                ledger.saveAttestation(attestation, tenancyId);
+                writeAttestation(doneEntry.id, doneEntry.subjectId, verdict, confidence, tenancyId);
                 count++;
+
+                var commandEntry = messageRepo.findLatestByCorrelationId(
+                        doneEntry.channelId, doneEntry.correlationId, tenancyId);
+                commandEntry.ifPresent(cmd -> {
+                    boolean alreadyAttested = ledger.findAttestationsByEntryId(cmd.id, tenancyId)
+                                                    .stream()
+                                                    .anyMatch(a -> "system:judgment-verifier".equals(a.attestorId));
+                    if (!alreadyAttested) {
+                        writeAttestation(cmd.id, cmd.subjectId, verdict, confidence, tenancyId);
+                    }
+                });
+
                 LOG.infof("Remediated missing judgment attestation for entry %s", doneEntry.id);
             } catch (Exception e) {
                 LOG.warnf(e, "Failed to remediate judgment attestation for entry %s", doneEntry.id);
@@ -115,4 +115,19 @@ public class EvidenceCompletenessProperty implements RemediatingProperty {
         }
         return count;
     }
+
+    private void writeAttestation(java.util.UUID entryId, java.util.UUID subjectId,
+                                  AttestationVerdict verdict, double confidence, String tenancyId) {
+        io.casehub.ledger.runtime.model.LedgerAttestation attestation =
+                new io.casehub.ledger.runtime.model.LedgerAttestation();
+        attestation.ledgerEntryId = entryId;
+        attestation.subjectId     = subjectId;
+        attestation.attestorId    = "system:judgment-verifier";
+        attestation.attestorType  = io.casehub.platform.api.identity.ActorType.SYSTEM;
+        attestation.verdict       = verdict;
+        attestation.confidence    = confidence;
+        attestation.capabilityTag = io.casehub.ledger.api.model.CapabilityTag.GLOBAL;
+        ledger.saveAttestation(attestation, tenancyId);
+    }
+
 }
