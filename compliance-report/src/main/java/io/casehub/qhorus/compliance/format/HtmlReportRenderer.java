@@ -25,6 +25,39 @@ public class HtmlReportRenderer implements ReportRenderer {
             @media print { body { margin: 1cm; } }
             """;
 
+    private static final String PDF_PAGE_CSS = """
+            @page {
+                margin: 2cm;
+                @top-center {
+                    content: element(running-header);
+                }
+                @bottom-left {
+                    content: element(running-footer);
+                }
+                @bottom-right {
+                    content: "Page " counter(page) " of " counter(pages);
+                    font-size: 9pt;
+                    font-family: 'Liberation Sans', sans-serif;
+                }
+            }
+            .pdf-header {
+                position: running(running-header);
+                font-size: 9pt;
+                font-family: 'Liberation Sans', sans-serif;
+                color: #666;
+                text-align: center;
+            }
+            .pdf-footer {
+                position: running(running-footer);
+                font-size: 8pt;
+                font-family: 'Liberation Sans', sans-serif;
+                color: #999;
+            }
+            code, tt, .mono {
+                font-family: 'Liberation Mono', monospace;
+            }
+            """;
+
     @Override
     public String contentType() {
         return "text/html";
@@ -32,14 +65,9 @@ public class HtmlReportRenderer implements ReportRenderer {
 
     @Override
     public byte[] render(Object report) {
-        String html = switch (report) {
-            case AttributionReport r -> renderAttribution(r);
-            case ObligationReport r -> renderObligation(r);
-            case ViolationReport r -> renderViolation(r);
-            case JudgmentAttributionReport r -> renderJudgmentAttribution(r);
-            case JudgmentFulfillmentReport r -> renderJudgmentFulfillment(r);
-            default -> renderGeneric(report);
-        };
+        String title = titleFor(report);
+        String body = bodyFor(report);
+        String html = header(title) + "<h1>" + esc(title) + "</h1>\n" + body + footer();
         return html.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -48,9 +76,36 @@ public class HtmlReportRenderer implements ReportRenderer {
         return format == ReportFormat.HTML;
     }
 
-    private String renderAttribution(AttributionReport report) {
+    public String renderForPdf(Object report, PdfDocumentMetadata metadata) {
+        String title = titleFor(report);
+        String body = bodyFor(report);
+        return pdfHeader(title, metadata) + "<h1>" + esc(title) + "</h1>\n" + body + footer();
+    }
+
+    private String titleFor(Object report) {
+        return switch (report) {
+            case AttributionReport r -> "Attribution Report — " + r.correlationId();
+            case ObligationReport ignored -> "Obligation Fulfillment Report";
+            case ViolationReport r -> "Violation Report — " + r.channelName();
+            case JudgmentAttributionReport r -> "Judgment Attribution Report — " + r.judgmentId();
+            case JudgmentFulfillmentReport ignored -> "Judgment Fulfillment Report";
+            default -> "Compliance Report";
+        };
+    }
+
+    private String bodyFor(Object report) {
+        return switch (report) {
+            case AttributionReport r -> bodyAttribution(r);
+            case ObligationReport r -> bodyObligation(r);
+            case ViolationReport r -> bodyViolation(r);
+            case JudgmentAttributionReport r -> bodyJudgmentAttribution(r);
+            case JudgmentFulfillmentReport r -> bodyJudgmentFulfillment(r);
+            default -> "<pre>" + esc(report.toString()) + "</pre>\n";
+        };
+    }
+
+    private String bodyAttribution(AttributionReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append(header("Attribution Report — " + esc(report.correlationId())));
         sb.append("<p>Outcome: ").append(esc(report.outcome()))
           .append(" | Channels: ").append(report.channelCount())
           .append(" | Duration: ").append(report.totalDurationMs() != null ? report.totalDurationMs() + "ms" : "N/A")
@@ -72,13 +127,11 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("</tr>\n");
         }
         sb.append("</tbody></table>\n");
-        sb.append(footer());
         return sb.toString();
     }
 
-    private String renderObligation(ObligationReport report) {
+    private String bodyObligation(ObligationReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append(header("Obligation Fulfillment Report"));
         sb.append("<p>Period: ").append(report.from()).append(" — ").append(report.to())
           .append(" | Overall Rate: ").append(String.format("%.1f%%", report.overallFulfillmentRate() * 100))
           .append("</p>\n");
@@ -98,13 +151,11 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("</tr>\n");
         }
         sb.append("</tbody></table>\n");
-        sb.append(footer());
         return sb.toString();
     }
 
-    private String renderViolation(ViolationReport report) {
+    private String bodyViolation(ViolationReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append(header("Violation Report — " + esc(report.channelName())));
         sb.append("<p>Blocked: ").append(report.totalBlocked())
           .append(" | Advisory: ").append(report.totalAdvisory())
           .append("</p>\n");
@@ -120,14 +171,11 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("</tr>\n");
         }
         sb.append("</tbody></table>\n");
-        sb.append(footer());
         return sb.toString();
     }
 
-
-    private String renderJudgmentAttribution(JudgmentAttributionReport report) {
+    private String bodyJudgmentAttribution(JudgmentAttributionReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append(header("Judgment Attribution Report — " + esc(report.judgmentId())));
         sb.append("<p>Type: ").append(esc(report.judgmentType()))
           .append(" | Outcome: ").append(esc(report.verificationOutcome()))
           .append(" | Duration: ").append(report.totalDurationMs()).append("ms</p>");
@@ -145,13 +193,11 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("</tr>");
         }
         sb.append("</table>");
-        sb.append(footer());
         return sb.toString();
     }
 
-    private String renderJudgmentFulfillment(JudgmentFulfillmentReport report) {
+    private String bodyJudgmentFulfillment(JudgmentFulfillmentReport report) {
         StringBuilder sb = new StringBuilder();
-        sb.append(header("Judgment Fulfillment Report"));
         sb.append("<p>Period: ").append(esc(report.from().toString()))
           .append(" to ").append(esc(report.to().toString())).append("</p>");
         sb.append("<p>Total: ").append(report.totalJudgments())
@@ -185,29 +231,31 @@ public class HtmlReportRenderer implements ReportRenderer {
             sb.append("</tr>");
         }
         sb.append("</table>");
-        sb.append(footer());
-        return sb.toString();
-    }
-
-    private String renderGeneric(Object report) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(header("Compliance Report"));
-        sb.append("<pre>").append(esc(report.toString())).append("</pre>\n");
-        sb.append(footer());
         return sb.toString();
     }
 
     private static String header(String title) {
-        return "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\">\n<title>"
-                + esc(title) + "</title>\n<style>" + CSS + "</style>\n</head><body>\n<h1>"
-                + esc(title) + "</h1>\n";
+        return "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"/>\n<title>"
+                + esc(title) + "</title>\n<style>" + CSS + "</style>\n</head><body>\n";
+    }
+
+    private static String pdfHeader(String title, PdfDocumentMetadata metadata) {
+        String reportType = metadata.reportType() != null ? esc(metadata.reportType()) : "";
+        String timestamp = metadata.createdAt() != null ? metadata.createdAt().toString() : "";
+        String tenant = metadata.tenancyId() != null ? "Tenant: " + esc(metadata.tenancyId()) : "";
+
+        return "<!DOCTYPE html>\n<html><head><meta charset=\"UTF-8\"/>\n<title>"
+                + esc(title) + "</title>\n<style>" + CSS + "\n" + PDF_PAGE_CSS
+                + "</style>\n</head><body>\n"
+                + "<div class=\"pdf-header\">" + reportType + " — " + timestamp + "</div>\n"
+                + "<div class=\"pdf-footer\">" + tenant + "</div>\n";
     }
 
     private static String footer() {
         return "</body></html>";
     }
 
-    private static String esc(String value) {
+    static String esc(String value) {
         if (value == null) {return "";}
         return value.replace("&", "&amp;").replace("<", "&lt;")
                     .replace(">", "&gt;").replace("\"", "&quot;");

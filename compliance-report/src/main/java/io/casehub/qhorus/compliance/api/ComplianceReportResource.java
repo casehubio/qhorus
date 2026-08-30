@@ -3,6 +3,7 @@ package io.casehub.qhorus.compliance.api;
 import io.casehub.qhorus.compliance.format.CsvReportRenderer;
 import io.casehub.qhorus.compliance.format.HtmlReportRenderer;
 import io.casehub.qhorus.compliance.format.JsonReportRenderer;
+import io.casehub.qhorus.compliance.format.PdfReportRenderer;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
 import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
 import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
@@ -40,6 +41,7 @@ public class ComplianceReportResource {
     @Inject JsonReportRenderer jsonRenderer;
     @Inject CsvReportRenderer csvRenderer;
     @Inject HtmlReportRenderer htmlRenderer;
+    @Inject PdfReportRenderer pdfRenderer;
     @Inject InboundTenancyContext tenancyContext;
     @Inject
             JudgmentAttributionReportService judgmentAttributionService;
@@ -181,6 +183,10 @@ public class ComplianceReportResource {
     }
 
     private Response renderResponse(Object report, String accept) {
+        if (accept != null && accept.contains("application/pdf")) {
+            return Response.ok(pdfRenderer.render(report))
+                    .header("Content-Type", "application/pdf").build();
+        }
         if (accept != null && accept.contains("text/csv")) {
             return Response.ok(csvRenderer.render(report))
                     .header("Content-Type", "text/csv").build();

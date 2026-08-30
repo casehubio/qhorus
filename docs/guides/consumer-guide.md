@@ -31,7 +31,7 @@ Any Quarkus app adds `io.casehub:casehub-qhorus` as a dependency and its agents 
 | `webhook-observer` | `casehub-qhorus-webhook-observer` | Optional -- HTTP POST webhook callbacks with HMAC-SHA256 signing |
 | `notification-bridge` | `casehub-qhorus-notification-bridge` | Optional -- commitment lifecycle to platform subscription engine |
 | `postgres-broadcaster` | `casehub-qhorus-postgres-broadcaster` | Optional -- cross-node delivery via PostgreSQL LISTEN/NOTIFY |
-| `compliance-report` | `casehub-qhorus-compliance-report` | Optional -- EU AI Act compliance evidence export (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment reports) |
+| `compliance-report` | `casehub-qhorus-compliance-report` | Optional -- EU AI Act compliance evidence export (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment reports). Supports JSON, CSV, HTML, and PDF formats via `Accept` header content negotiation. PDF requires `casehub-platform-pdf` on classpath for PDF/A-2b output |
 
 Optional modules activate by classpath presence -- no configuration needed beyond adding the dependency.
 

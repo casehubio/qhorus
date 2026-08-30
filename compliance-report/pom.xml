@@ -80,6 +80,12 @@ Optional module activated by classpath presence.</description>
     </dependency>
 
     <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-pdf</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
+
+    <dependency>
       <groupId>jakarta.enterprise</groupId>
       <artifactId>jakarta.enterprise.cdi-api</artifactId>
       <scope>provided</scope>

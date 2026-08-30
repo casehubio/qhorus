@@ -105,6 +105,6 @@ class ReportModelTest {
 
     @Test
     void reportFormat_allValues() {
-        assertThat(ReportFormat.values()).hasSize(3);
+        assertThat(ReportFormat.values()).hasSize(4);
     }
 }
