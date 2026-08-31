@@ -137,7 +137,7 @@ class ViolationReportServiceTest {
                 List.of(), List.of(), List.of(), null, null,
                 null, null, false, false, null,
                 List.of(), List.of(), List.of(), null, null,
-                List.of(), null, TENANCY, Instant.now(), null);
+                List.of(), null, TENANCY, Instant.now(), null, null);
     }
 
     private MessageLedgerEntry ledgerEntry(String actorId, String occurredAt) {

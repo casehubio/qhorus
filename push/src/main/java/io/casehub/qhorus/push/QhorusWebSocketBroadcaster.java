@@ -27,6 +27,9 @@ public class QhorusWebSocketBroadcaster {
     @Inject QhorusDatasetBuilder datasetBuilder;
     @Inject EventBroadcaster eventBroadcaster;
     @Inject SpaceStore spaceStore;
+    @Inject
+            io.casehub.qhorus.api.channel.ChannelReader channelReader;
+
 
     public void pushMessage(ChannelRef channel, OutboundMessage message) {
         var row = datasetBuilder.outboundMessageToRow(channel, message);
@@ -37,18 +40,30 @@ public class QhorusWebSocketBroadcaster {
     public void broadcastChannelAppend(Channel channel) {
         Space space = channel.spaceId() != null ? spaceStore.find(channel.spaceId()).orElse(null) : null;
         eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_CHANNELS,
-            PushMessage.append("channels", QhorusDatasetBuilder.CHANNEL_COLUMNS,
-                List.of(List.of(channel.id().toString(), channel.name(), "",
-                    channel.description() != null ? channel.description() : "", "false",
-                    channel.spaceId() != null ? channel.spaceId().toString() : "",
-                    space != null ? space.name() : "",
-                    space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : ""))));
-    }
+                                   PushMessage.append("channels", QhorusDatasetBuilder.CHANNEL_COLUMNS,
+                                                      List.of(datasetBuilder.channelToRow(channel, space))));}
 
     public void broadcastChannelRemove(UUID channelId) {
         eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_CHANNELS,
             PushMessage.remove("channels", channelId.toString()));
     }
+
+    public void broadcastChannelReplace(Channel channel) {
+        Space space = channel.spaceId() != null ? spaceStore.find(channel.spaceId()).orElse(null) : null;
+        eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_CHANNELS,
+                                   PushMessage.replace("channels", QhorusDatasetBuilder.CHANNEL_COLUMNS,
+                                                       channel.id().toString(), datasetBuilder.channelToRow(channel, space)));
+    }
+
+    private void broadcastChannelsInSpace(java.util.UUID spaceId) {
+        var channels = spaceId != null
+                       ? channelReader.scan(io.casehub.qhorus.api.store.query.ChannelQuery.bySpaceId(spaceId))
+                       : channelReader.scan(io.casehub.qhorus.api.store.query.ChannelQuery.topLevel());
+        for (Channel ch : channels) {
+            broadcastChannelReplace(ch);
+        }
+    }
+
 
     public void broadcastPresenceReplace(String memberId, PresenceStatus status) {
         eventBroadcaster.broadcast(QhorusDatasetBuilder.TOPIC_PRESENCE,
@@ -139,6 +154,12 @@ public class QhorusWebSocketBroadcaster {
             case ChannelMutationEvent.SpaceCreated e -> spaceStore.find(e.spaceId()).ifPresent(this::broadcastSpaceAppend);
             case ChannelMutationEvent.SpaceRenamed e -> spaceStore.find(e.spaceId()).ifPresent(this::broadcastSpaceReplace);
             case ChannelMutationEvent.SpaceDeleted e -> broadcastSpaceRemove(e.spaceId());
+            case ChannelMutationEvent.ChannelMoved e -> {
+                broadcastChannelsInSpace(e.targetSpaceId());
+                if (!java.util.Objects.equals(e.sourceSpaceId(), e.targetSpaceId())) {
+                    broadcastChannelsInSpace(e.sourceSpaceId());
+                }
+            }
             default -> Log.warnf("Unhandled ChannelMutationEvent variant: %s", event.getClass().getSimpleName());
         }
     }

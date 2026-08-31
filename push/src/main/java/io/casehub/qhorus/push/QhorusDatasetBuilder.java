@@ -56,7 +56,8 @@ public class QhorusDatasetBuilder {
         new PushColumn("isPrivate", "Private", "LABEL"),
         new PushColumn("spaceId", "Space ID", "LABEL"),
         new PushColumn("spaceName", "Space Name", "LABEL"),
-        new PushColumn("parentSpaceId", "Parent Space", "LABEL"));
+        new PushColumn("parentSpaceId", "Parent Space", "LABEL"),
+        new PushColumn("displayOrder", "Order", "LABEL"));
     public static final List<PushColumn> CHANNEL_SNAPSHOT_COLUMNS;
 
     static {
@@ -162,27 +163,21 @@ public class QhorusDatasetBuilder {
     private String buildChannelSnapshot(Long seq) {
         var channels = channelReader.listAll();
         var spaceIds = channels.stream()
-            .map(ch -> ch.spaceId())
-            .filter(id -> id != null)
-            .distinct()
-            .toList();
+                               .map(ch -> ch.spaceId())
+                               .filter(id -> id != null)
+                               .distinct()
+                               .toList();
         Map<UUID, Space> spaces = spaceIds.isEmpty()
-            ? Map.of()
-            : spaceStore.findByIds(spaceIds).stream()
-                .collect(Collectors.toMap(Space::id, s -> s));
+                                  ? Map.of()
+                                  : spaceStore.findByIds(spaceIds).stream()
+                                              .collect(Collectors.toMap(Space::id, s -> s));
         var rows = channels.stream()
-            .map(ch -> {
-                Space space = ch.spaceId() != null ? spaces.get(ch.spaceId()) : null;
-                return List.of(
-                    ch.id().toString(), ch.name(), "",
-                    ch.description() != null ? ch.description() : "", "false",
-                    ch.spaceId() != null ? ch.spaceId().toString() : "",
-                    space != null ? space.name() : "",
-                    space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : "");
-            })
-            .toList();
-        return PushMessage.snapshot("channels", CHANNEL_COLUMNS, rows, seq);
-    }
+                           .map(ch -> {
+                               Space space = ch.spaceId() != null ? spaces.get(ch.spaceId()) : null;
+                               return channelToRow(ch, space);
+                           })
+                           .toList();
+        return PushMessage.snapshot("channels", CHANNEL_COLUMNS, rows, seq);}
 
     private String buildChannelSnapshot(Long seq, String userId, String tenancyId) {
         var channels = channelReader.listAll();
@@ -200,17 +195,12 @@ public class QhorusDatasetBuilder {
                            .map(ch -> {
                                Space       space = ch.spaceId() != null ? spaces.get(ch.spaceId()) : null;
                                UnreadCount uc    = unreadCounts.get(ch.id());
-                               return List.of(
-                                       ch.id().toString(), ch.name(), "",
-                                       ch.description() != null ? ch.description() : "", "false",
-                                       ch.spaceId() != null ? ch.spaceId().toString() : "",
-                                       space != null ? space.name() : "",
-                                       space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : "",
-                                       uc != null ? String.valueOf(uc.count()) : "0");
+                               var         row   = new ArrayList<>(channelToRow(ch, space));
+                               row.add(uc != null ? String.valueOf(uc.count()) : "0");
+                               return (List<String>) row;
                            })
                            .toList();
-        return PushMessage.snapshot("channels", CHANNEL_SNAPSHOT_COLUMNS, rows, seq);
-    }
+        return PushMessage.snapshot("channels", CHANNEL_SNAPSHOT_COLUMNS, rows, seq);}
 
 
     private String buildTopicSnapshot(Long seq) {
@@ -327,6 +317,16 @@ public class QhorusDatasetBuilder {
                 space.name(),
                 space.description() != null ? space.description() : "",
                 space.parentSpaceId() != null ? space.parentSpaceId().toString() : "");
+    }
+
+    public List<String> channelToRow(io.casehub.qhorus.api.channel.Channel ch, Space space) {
+        return List.of(
+                ch.id().toString(), ch.name(), "",
+                ch.description() != null ? ch.description() : "", "false",
+                ch.spaceId() != null ? ch.spaceId().toString() : "",
+                space != null ? space.name() : "",
+                space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : "",
+                ch.displayOrder() != null ? String.valueOf(ch.displayOrder()) : "");
     }
 
 
