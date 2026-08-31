@@ -19,4 +19,7 @@ public sealed interface ChannelMutationEvent {
     record SpaceRenamed(UUID spaceId, String newName) implements ChannelMutationEvent {}
 
     record SpaceDeleted(UUID spaceId) implements ChannelMutationEvent {}
+
+    record ChannelMoved(UUID channelId, UUID sourceSpaceId, UUID targetSpaceId) implements ChannelMutationEvent {}
+
 }

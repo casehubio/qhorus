@@ -7,9 +7,9 @@ import io.casehub.qhorus.api.channel.SpaceCreateRequest;
 import io.casehub.qhorus.api.event.ChannelMutationEvent;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.SpaceStore;
-import jakarta.enterprise.event.Event;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
@@ -168,18 +168,85 @@ public class SpaceService {
 
     @Transactional
     public Channel moveChannelToSpace(UUID channelId, UUID spaceId) {
+        return moveChannelToSpace(channelId, spaceId, null);
+    }
+
+    @Transactional
+    public Channel moveChannelToSpace(UUID channelId, UUID spaceId, Integer position) {
         Channel channel = channelStore.find(channelId)
                                       .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
         if (spaceId != null) {
             Space space = spaceStore.find(spaceId)
                                     .orElseThrow(() -> new IllegalArgumentException("Space not found: " + spaceId));
             if (!channel.tenancyId().equals(space.tenancyId())) {
-                throw new IllegalArgumentException(
-                        "Cannot move channel to space in different tenancy");
+                throw new IllegalArgumentException("Cannot move channel to space in different tenancy");
             }
         }
-        return channelStore.put(channel.toBuilder().spaceId(spaceId).build());
+
+        UUID    oldSpaceId = channel.spaceId();
+        boolean sameSpace  = java.util.Objects.equals(oldSpaceId, spaceId);
+
+        if (sameSpace && position != null) {
+            List<Channel> current = querySiblings(spaceId).stream()
+                                                          .sorted(java.util.Comparator.comparing(Channel::displayOrder,
+                                                                                                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                                                          .toList();
+            int currentIndex = -1;
+            for (int i = 0; i < current.size(); i++) {
+                if (current.get(i).id().equals(channelId)) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            if (currentIndex == position) {return channel;}
+        }
+
+        List<Channel> siblings = querySiblings(spaceId).stream()
+                                                       .filter(ch -> !ch.id().equals(channelId))
+                                                       .sorted(java.util.Comparator.comparing(Channel::displayOrder,
+                                                                                              java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                                                       .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+
+        if (position != null && position >= 0 && position <= siblings.size()) {
+            siblings.add(position, channel);
+        } else {
+            siblings.add(channel);
+        }
+
+        for (int i = 0; i < siblings.size(); i++) {
+            Channel sib     = siblings.get(i);
+            Channel updated = sib.toBuilder().spaceId(spaceId).displayOrder(i).build();
+            if (!updated.equals(sib)) {
+                channelStore.put(updated);
+            }
+        }
+
+        if (!sameSpace) {
+            List<Channel> sourceSiblings = querySiblings(oldSpaceId).stream()
+                                                                    .filter(ch -> !ch.id().equals(channelId))
+                                                                    .sorted(java.util.Comparator.comparing(Channel::displayOrder,
+                                                                                                           java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                                                                    .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+            for (int i = 0; i < sourceSiblings.size(); i++) {
+                Channel sib     = sourceSiblings.get(i);
+                Channel updated = sib.toBuilder().displayOrder(i).build();
+                if (!updated.equals(sib)) {
+                    channelStore.put(updated);
+                }
+            }
+        }
+
+        Channel result = channelStore.find(channelId).orElseThrow();
+        mutationEvent.fire(new ChannelMutationEvent.ChannelMoved(channelId, oldSpaceId, spaceId));
+        return result;
     }
+
+    private List<Channel> querySiblings(UUID spaceId) {
+        return spaceId != null
+               ? channelStore.scan(ChannelQuery.bySpaceId(spaceId))
+               : channelStore.scan(ChannelQuery.topLevel());
+    }
+
 
     private int computeDepth(Space space) {
         int  depth    = 0;
