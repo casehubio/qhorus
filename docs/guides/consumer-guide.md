@@ -31,7 +31,7 @@ Any Quarkus app adds `io.casehub:casehub-qhorus` as a dependency and its agents 
 | `webhook-observer` | `casehub-qhorus-webhook-observer` | Optional -- HTTP POST webhook callbacks with HMAC-SHA256 signing |
 | `notification-bridge` | `casehub-qhorus-notification-bridge` | Optional -- commitment lifecycle to platform subscription engine |
 | `postgres-broadcaster` | `casehub-qhorus-postgres-broadcaster` | Optional -- cross-node delivery via PostgreSQL LISTEN/NOTIFY |
-| `compliance-report` | `casehub-qhorus-compliance-report` | Optional -- EU AI Act compliance evidence export (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment reports). Supports JSON, CSV, HTML, and PDF formats via `Accept` header content negotiation. PDF requires `casehub-platform-pdf` on classpath for PDF/A-2b output |
+| `compliance-report` | `casehub-qhorus-compliance-report` | Optional -- EU AI Act compliance evidence export (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment reports). Supports JSON, CSV, HTML, and PDF formats via `Accept` header content negotiation. PDF requires `casehub-platform-pdf` on classpath for PDF/A-2b output. Digital signatures (PAdES embedded for PDF, CAdES detached .p7s for JSON/CSV) require `casehub-platform-signing` on classpath -- automatic when configured, unsigned pass-through when not |
 
 Optional modules activate by classpath presence -- no configuration needed beyond adding the dependency.
 
@@ -419,6 +419,26 @@ Qhorus exposes MCP tools scoped to `@McpServer("qhorus")` across capability grou
 | `PUT` | `/api/channels/{id}/routing-config` | Set routing trust threshold |
 
 Channel resolution supports both UUID and name lookups in the `{id}` path parameter.
+
+`ComplianceReportResource` at `/api/compliance` provides compliance evidence export and verification:
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `GET` | `/api/compliance/obligations` | On-demand obligation report |
+| `GET` | `/api/compliance/violations` | On-demand violation report |
+| `GET` | `/api/compliance/attribution/{correlationId}` | Attribution report |
+| `GET` | `/api/compliance/trust-history` | Trust history report |
+| `GET` | `/api/compliance/provenance/{correlationId}` | PROV-DM provenance report |
+| `GET` | `/api/compliance/judgment-attribution/{id}` | Judgment attribution report |
+| `GET` | `/api/compliance/judgment-fulfillment` | Judgment fulfillment report |
+| `GET` | `/api/compliance/property-verification` | Property verification report |
+| `GET` | `/api/compliance/reports/{id}` | Retrieve stored report |
+| `DELETE` | `/api/compliance/reports/{id}` | Delete stored report |
+| `POST` | `/api/compliance/verify` | Verify uploaded document (multipart) |
+| `GET` | `/api/compliance/reports/{id}/verify` | Verify stored report signature |
+| `GET` | `/api/compliance/reports/{id}/signature` | Download detached .p7s signature |
+
+On-demand endpoints support format negotiation via `Accept` header (`application/json`, `text/csv`, `text/html`, `application/pdf`). Verification endpoints return `ComplianceVerificationResponse` (status, signerDn, signedAt, keyRef, detectedProfile, certificateChain). Signature download returns `application/pkcs7-signature` or 404 when unsigned.
 
 ### External APIs
 

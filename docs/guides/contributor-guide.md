@@ -208,6 +208,22 @@ All JPA store implementations live in `runtime/store/jpa/` following a `Jpa*Stor
 
 Cross-tenant stores (`JpaCrossTenant*Store`) bypass tenancy filtering for administrative operations.
 
+### Compliance Signing Pipeline
+
+The `compliance-report/` module has a render → sign → store pipeline for scheduled reports:
+
+1. **Render:** `ReportRenderingService` selects a `ReportRenderer` by format (CDI discovery, `supports(format)` predicate)
+2. **Sign:** `ComplianceReportSigningService` routes by format — PDF → `signPdf()` (PAdES embedded), JSON/CSV → `signDetached()` (CAdES .p7s), HTML → unsigned
+3. **Store:** `ComplianceReportStorageService.storeWithSignature()` stores binary report body via `DataService.storeBinary()`, creates .p7s artefact for detached signatures, populates `ComplianceReportRecord` signature metadata
+
+`SigningResult` is a sealed hierarchy (`Embedded` / `Detached` / `Unsigned`) carrying signature metadata. `SignatureStatus` enum (`SIGNED` / `UNSIGNED`) for API consumers.
+
+`SharedData.binaryContent` (byte[]) stores signed PDFs and .p7s signatures. Backward-compatible 9-arg constructor preserves existing text-only call sites. `SharedDataEntity.computeSize()` handles both text and binary content.
+
+Verification endpoints: `POST /api/compliance/verify` (multipart upload), `GET /reports/{id}/verify` (stored report), `GET /reports/{id}/signature` (.p7s download). All delegate to `DocumentVerificationService` SPI from `casehub-platform-api`.
+
+V50 migration: `shared_data.binary_content` (BYTEA) + 6 `compliance_report` signature metadata columns.
+
 ---
 
 ## Dependencies

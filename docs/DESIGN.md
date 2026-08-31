@@ -30,6 +30,7 @@ Maven multi-module layout:
 | Slack Channel | `casehub-qhorus-slack-channel` | Optional `HumanParticipatingChannelBackend` via `SlackBotClient`; thread-aware delivery with composite in-memory + DB-backed thread cache. Activates by classpath presence. |
 | Persistence Memory | `casehub-qhorus-persistence-memory` | In-memory store implementations for `@QuarkusTest` in consumers. |
 | Testing | `casehub-qhorus-testing` | Test utilities — `RecordingChannelBackend`, `MessageLedgerEntryTestFactory`. |
+| Compliance Report | `casehub-qhorus-compliance-report` | EU AI Act compliance evidence export — 8 report types (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment, property verification). Format renderers: JSON, CSV, HTML, PDF (PDF/A-2b via `casehub-platform-pdf`). Digital signatures: PAdES embedded (PDF) + CAdES detached .p7s (JSON/CSV) via `casehub-platform-signing`. Verification endpoints. Scheduled generation with signing pipeline (render → sign → store). |
 
 ### Optional Modules — JPA Entity Registration
 
