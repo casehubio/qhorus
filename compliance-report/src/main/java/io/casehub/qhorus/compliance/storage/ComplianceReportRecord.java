@@ -44,4 +44,22 @@ public class ComplianceReportRecord extends PanacheEntityBase {
     @Column(name = "format", nullable = false, length = 10)
     @Enumerated(EnumType.STRING)
     public ReportFormat format;
+
+    @Column(name = "signature_status", nullable = false, length = 20)
+    public String signatureStatus = "UNSIGNED";
+
+    @Column(name = "signed_at")
+    public Instant signedAt;
+
+    @Column(name = "signer_dn", length = 500)
+    public String signerDn;
+
+    @Column(name = "key_ref", length = 100)
+    public String keyRef;
+
+    @Column(name = "signing_profile", length = 10)
+    public String signingProfile;
+
+    @Column(name = "signature_artefact_id")
+    public UUID signatureArtefactId;
 }

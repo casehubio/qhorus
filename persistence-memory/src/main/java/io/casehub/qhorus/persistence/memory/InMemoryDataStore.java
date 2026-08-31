@@ -28,8 +28,9 @@ public class InMemoryDataStore implements DataStore {
     @Override
     public SharedData put(SharedData data) {
         if (data.id() == null) {
-            data = new SharedData(UUID.randomUUID(), data.key(), data.content(), data.createdBy(),
-                    data.description(), data.complete(), data.sizeBytes(), data.createdAt(), data.updatedAt());
+            data = new SharedData(UUID.randomUUID(), data.key(), data.content(),
+                    data.binaryContent(), data.createdBy(), data.description(),
+                    data.complete(), data.sizeBytes(), data.createdAt(), data.updatedAt());
         }
         store.put(data.id(), data);
         return data;

@@ -26,6 +26,9 @@ public class SharedDataEntity extends PanacheEntityBase {
     @Column(columnDefinition = "TEXT")
     public String content;
 
+    @Column(name = "binary_content")
+    public byte[] binaryContent;
+
     @Column(name = "created_by")
     public String createdBy;
 
@@ -49,6 +52,7 @@ public class SharedDataEntity extends PanacheEntityBase {
         e.id = data.id();
         e.key = data.key();
         e.content = data.content();
+        e.binaryContent = data.binaryContent();
         e.createdBy = data.createdBy();
         e.description = data.description();
         e.complete = data.complete();
@@ -60,7 +64,7 @@ public class SharedDataEntity extends PanacheEntityBase {
 
     public io.casehub.qhorus.api.data.SharedData toDomain() {
         return new io.casehub.qhorus.api.data.SharedData(
-                id, key, content, createdBy, description,
+                id, key, content, binaryContent, createdBy, description,
                 complete, sizeBytes, createdAt, updatedAt);
     }
 
@@ -74,12 +78,18 @@ public class SharedDataEntity extends PanacheEntityBase {
             createdAt = now;
         }
         updatedAt = now;
-        sizeBytes = content != null ? content.length() : 0;
+        sizeBytes = computeSize();
     }
 
     @PreUpdate
     void preUpdate() {
         updatedAt = Instant.now();
-        sizeBytes = content != null ? content.length() : 0;
+        sizeBytes = computeSize();
+    }
+
+    private long computeSize() {
+        if (binaryContent != null) return binaryContent.length;
+        if (content != null) return content.length();
+        return 0;
     }
 }

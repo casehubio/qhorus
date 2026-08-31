@@ -56,6 +56,18 @@ public class DataService {
         return dataStore.put(b.build());
     }
 
+    @Transactional
+    public SharedData storeBinary(String key, String description, String createdBy,
+                                   byte[] content, boolean lastChunk) {
+        SharedData.Builder b = SharedData.builder(key)
+                .binaryContent(content)
+                .createdBy(createdBy)
+                .complete(lastChunk)
+                .sizeBytes(content != null ? content.length : 0);
+        if (description != null) b.description(description);
+        return dataStore.put(b.build());
+    }
+
     public Optional<SharedData> getByKey(String key) {
         return dataStore.findByKey(key);
     }
