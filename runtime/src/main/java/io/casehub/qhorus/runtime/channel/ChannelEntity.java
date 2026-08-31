@@ -92,6 +92,9 @@ public class ChannelEntity extends PanacheEntityBase {
     public boolean autoCreated = false;
     @Column(name = "space_id")
     public UUID    spaceId;
+    @Column(name = "display_order")
+    public Integer displayOrder;
+
     @Column(name = "track_delivery")
     public Boolean trackDelivery;
 
@@ -147,6 +150,7 @@ public class ChannelEntity extends PanacheEntityBase {
         e.paused               = channel.paused();
         e.autoCreated          = channel.autoCreated();
         e.spaceId              = channel.spaceId();
+        e.displayOrder         = channel.displayOrder();
         e.trackDelivery        = channel.trackDelivery();
         e.enforcementMode      = channel.enforcementMode() != null ? channel.enforcementMode().name() : null;
         e.enforcementExclusions = joinCsv(channel.enforcementExclusions());
@@ -173,7 +177,7 @@ public class ChannelEntity extends PanacheEntityBase {
                 enforcementMode != null ? io.casehub.qhorus.api.channel.EnforcementMode.valueOf(enforcementMode) : null,
                 splitCsv(enforcementExclusions),
                 routingTrustThreshold,
-                tenancyId, createdAt, lastActivityAt);}
+                tenancyId, createdAt, lastActivityAt, displayOrder);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);
