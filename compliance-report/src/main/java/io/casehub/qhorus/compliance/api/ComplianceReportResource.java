@@ -1,5 +1,7 @@
 package io.casehub.qhorus.compliance.api;
 
+import io.casehub.platform.api.signing.document.DocumentVerificationResult;
+import io.casehub.platform.api.signing.document.DocumentVerificationService;
 import io.casehub.qhorus.compliance.format.CsvReportRenderer;
 import io.casehub.qhorus.compliance.format.HtmlReportRenderer;
 import io.casehub.qhorus.compliance.format.JsonReportRenderer;
@@ -13,18 +15,26 @@ import io.casehub.qhorus.compliance.report.TrustHistoryReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecordStore;
 import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
+import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import org.jboss.resteasy.reactive.multipart.FileUpload;
+import org.jboss.resteasy.reactive.RestForm;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -42,6 +52,8 @@ public class ComplianceReportResource {
     @Inject CsvReportRenderer csvRenderer;
     @Inject HtmlReportRenderer htmlRenderer;
     @Inject PdfReportRenderer pdfRenderer;
+    @Inject DocumentVerificationService verificationService;
+    @Inject DataService dataService;
     @Inject InboundTenancyContext tenancyContext;
     @Inject
             JudgmentAttributionReportService judgmentAttributionService;
@@ -180,6 +192,105 @@ public class ComplianceReportResource {
     public Response deleteStoredReport(@PathParam("id") UUID id) {
         storageService.delete(id);
         return Response.noContent().build();
+    }
+
+    @POST
+    @Path("/verify")
+    @Consumes(MediaType.MULTIPART_FORM_DATA)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response verifyUpload(@RestForm("file") FileUpload file) {
+        try {
+            byte[] bytes = Files.readAllBytes(file.filePath());
+            String filename = file.fileName();
+            DocumentVerificationResult result;
+            if (filename != null && filename.endsWith(".p7s")) {
+                return Response.status(Response.Status.BAD_REQUEST)
+                        .entity("Detached signature verification requires both data and signature files")
+                        .build();
+            }
+            result = verificationService.verifyPdf(bytes);
+            return Response.ok(toVerificationResponse(result)).build();
+        } catch (IOException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Failed to read uploaded file").build();
+        }
+    }
+
+    @GET
+    @Path("/reports/{id}/verify")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response verifyStoredReport(@PathParam("id") UUID id) {
+        var recordOpt = recordStore.findById(id);
+        if (recordOpt.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        var record = recordOpt.get();
+        var dataOpt = dataService.getByUuid(record.artefactId);
+        if (dataOpt.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).entity("Report artefact not found").build();
+        }
+        var data = dataOpt.get();
+
+        DocumentVerificationResult result;
+        if (data.binaryContent() != null) {
+            result = verificationService.verifyPdf(data.binaryContent());
+        } else if (data.content() != null) {
+            if (record.signatureArtefactId != null) {
+                var sigOpt = dataService.getByUuid(record.signatureArtefactId);
+                if (sigOpt.isPresent() && sigOpt.get().binaryContent() != null) {
+                    result = verificationService.verifyDetached(
+                            data.content().getBytes(), sigOpt.get().binaryContent());
+                } else {
+                    result = DocumentVerificationResult.unsigned();
+                }
+            } else {
+                result = DocumentVerificationResult.unsigned();
+            }
+        } else {
+            result = DocumentVerificationResult.unsigned();
+        }
+        return Response.ok(toVerificationResponse(result)).build();
+    }
+
+    @GET
+    @Path("/reports/{id}/signature")
+    public Response downloadSignature(@PathParam("id") UUID id) {
+        var recordOpt = recordStore.findById(id);
+        if (recordOpt.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        var record = recordOpt.get();
+        if (record.signatureArtefactId == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("No detached signature for this report").build();
+        }
+        var sigOpt = dataService.getByUuid(record.signatureArtefactId);
+        if (sigOpt.isEmpty() || sigOpt.get().binaryContent() == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Signature artefact not found").build();
+        }
+        return Response.ok(sigOpt.get().binaryContent())
+                .header("Content-Type", "application/pkcs7-signature")
+                .header("Content-Disposition", "attachment; filename=\"report-" + id + ".p7s\"")
+                .build();
+    }
+
+    private static ComplianceVerificationResponse toVerificationResponse(DocumentVerificationResult r) {
+        var chain = r.certificateChain().stream()
+                .map(c -> new ComplianceVerificationResponse.CertificateInfoDto(
+                        c.subjectDn(), c.issuerDn(),
+                        c.validFrom() != null ? c.validFrom().toString() : null,
+                        c.validTo() != null ? c.validTo().toString() : null,
+                        c.claimsQualified()))
+                .toList();
+        return new ComplianceVerificationResponse(
+                r.status().name(),
+                r.signerDn(),
+                r.signedAt() != null ? r.signedAt().toString() : null,
+                r.keyRef(),
+                r.detectedProfile() != null ? r.detectedProfile().name() : null,
+                chain,
+                r.diagnosticMessage());
     }
 
     private Response renderResponse(Object report, String accept) {
