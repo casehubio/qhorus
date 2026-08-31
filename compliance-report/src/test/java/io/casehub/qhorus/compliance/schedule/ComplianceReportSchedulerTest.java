@@ -9,6 +9,9 @@ import io.casehub.qhorus.compliance.model.ReportType;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
+import io.casehub.qhorus.compliance.format.ReportRenderingService;
+import io.casehub.qhorus.compliance.signing.ComplianceReportSigningService;
+import io.casehub.qhorus.compliance.signing.SigningResult;
 import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
 import jakarta.enterprise.event.Event;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,8 @@ class ComplianceReportSchedulerTest {
     @Mock ComplianceReportStorageService storageService;
     @Mock ObligationReportService obligationService;
     @Mock ViolationReportService violationService;
+    @Mock ReportRenderingService renderingService;
+    @Mock ComplianceReportSigningService signingService;
     @Mock Event<ComplianceReportGeneratedEvent> generatedEvent;
 
     ComplianceReportScheduler scheduler;
@@ -46,9 +51,14 @@ class ComplianceReportSchedulerTest {
         scheduler.storageService = storageService;
         scheduler.obligationService = obligationService;
         scheduler.violationService = violationService;
+        scheduler.renderingService = renderingService;
+        scheduler.signingService = signingService;
         scheduler.generatedEvent = generatedEvent;
         scheduler.objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
         scheduler.retentionDays = java.util.Optional.empty();
+
+        org.mockito.Mockito.lenient().when(renderingService.render(any(), any())).thenReturn(new byte[]{1, 2, 3});
+        org.mockito.Mockito.lenient().when(signingService.sign(any(), any(), any())).thenReturn(new SigningResult.Unsigned());
     }
 
     @Test
@@ -61,11 +71,11 @@ class ComplianceReportSchedulerTest {
         ComplianceReportRecord record = new ComplianceReportRecord();
         record.id = UUID.randomUUID();
         record.artefactId = UUID.randomUUID();
-        when(storageService.store(any(), any(), any(), any(), any())).thenReturn(record);
+        when(storageService.storeWithSignature(any(), any(), any(), any(), any(), any())).thenReturn(record);
 
         scheduler.sweep();
 
-        verify(storageService).store(eq(ReportType.OBLIGATION), any(), eq(ReportFormat.JSON), eq(schedule.id), eq(schedule.tenancyId));
+        verify(storageService).storeWithSignature(eq(ReportType.OBLIGATION), any(), eq(ReportFormat.JSON), eq(schedule.id), eq(schedule.tenancyId), any());
         verify(scheduleStore).updateLastRunAt(eq(schedule.id), any());
     }
 
@@ -77,7 +87,7 @@ class ComplianceReportSchedulerTest {
 
         scheduler.sweep();
 
-        verify(storageService, never()).store(any(), any(), any(), any(), any());
+        verify(storageService, never()).storeWithSignature(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -90,7 +100,7 @@ class ComplianceReportSchedulerTest {
         ComplianceReportRecord record = new ComplianceReportRecord();
         record.id = UUID.randomUUID();
         record.artefactId = UUID.randomUUID();
-        when(storageService.store(any(), any(), any(), any(), any())).thenReturn(record);
+        when(storageService.storeWithSignature(any(), any(), any(), any(), any(), any())).thenReturn(record);
 
         scheduler.sweep();
 
@@ -116,11 +126,11 @@ class ComplianceReportSchedulerTest {
         ComplianceReportRecord record = new ComplianceReportRecord();
         record.id = UUID.randomUUID();
         record.artefactId = UUID.randomUUID();
-        when(storageService.store(any(), any(), any(), any(), any())).thenReturn(record);
+        when(storageService.storeWithSignature(any(), any(), any(), any(), any(), any())).thenReturn(record);
 
         scheduler.sweep();
 
-        verify(storageService, times(1)).store(eq(ReportType.OBLIGATION), any(), any(), eq(s2.id), eq("tenant-2"));
+        verify(storageService, times(1)).storeWithSignature(eq(ReportType.OBLIGATION), any(), any(), eq(s2.id), eq("tenant-2"), any());
     }
 
     @Test
@@ -133,11 +143,11 @@ class ComplianceReportSchedulerTest {
         ComplianceReportRecord record = new ComplianceReportRecord();
         record.id = UUID.randomUUID();
         record.artefactId = UUID.randomUUID();
-        when(storageService.store(any(), any(), any(), any(), any())).thenReturn(record);
+        when(storageService.storeWithSignature(any(), any(), any(), any(), any(), any())).thenReturn(record);
 
         scheduler.sweep();
 
-        verify(storageService).store(any(), any(), any(), any(), any());
+        verify(storageService).storeWithSignature(any(), any(), any(), any(), any(), any());
     }
 
     @Test

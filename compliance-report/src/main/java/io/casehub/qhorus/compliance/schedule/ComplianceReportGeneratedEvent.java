@@ -14,5 +14,16 @@ public record ComplianceReportGeneratedEvent(
         Instant generatedAt,
         UUID scheduleId,
         String requestedBy,
-        Map<String, String> requestParameters) {
+        Map<String, String> requestParameters,
+        String signatureStatus,
+        UUID signatureArtefactId) {
+
+    public ComplianceReportGeneratedEvent(UUID reportId, ReportType reportType,
+                                          String tenancyId, UUID artefactId,
+                                          Instant generatedAt, UUID scheduleId,
+                                          String requestedBy,
+                                          Map<String, String> requestParameters) {
+        this(reportId, reportType, tenancyId, artefactId, generatedAt,
+                scheduleId, requestedBy, requestParameters, "UNSIGNED", null);
+    }
 }

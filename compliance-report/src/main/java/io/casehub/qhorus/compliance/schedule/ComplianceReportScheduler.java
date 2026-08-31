@@ -2,9 +2,12 @@ package io.casehub.qhorus.compliance.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.delivery.DigestSchedule;
+import io.casehub.qhorus.compliance.format.ReportRenderingService;
 import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
 import io.casehub.qhorus.compliance.report.ObligationReportService;
 import io.casehub.qhorus.compliance.report.ViolationReportService;
+import io.casehub.qhorus.compliance.signing.ComplianceReportSigningService;
+import io.casehub.qhorus.compliance.signing.SigningResult;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
 import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
 import io.quarkus.scheduler.Scheduled;
@@ -29,7 +32,8 @@ public class ComplianceReportScheduler {
             JudgmentFulfillmentReportService judgmentFulfillmentService;
     @Inject
     io.casehub.qhorus.compliance.verification.PropertyVerificationService propertyVerificationService;
-
+    @Inject ReportRenderingService renderingService;
+    @Inject ComplianceReportSigningService signingService;
 
     @Inject Event<ComplianceReportGeneratedEvent> generatedEvent;
     @Inject ObjectMapper objectMapper;
@@ -99,12 +103,17 @@ public class ComplianceReportScheduler {
                     "Scheduled generation not supported for " + schedule.reportType);
         };
 
-        ComplianceReportRecord record = storageService.store(
-                schedule.reportType, report, schedule.format, schedule.id, schedule.tenancyId);
+        byte[] rendered = renderingService.render(report, schedule.format);
+        SigningResult signingResult = signingService.sign(rendered, schedule.format, schedule.tenancyId);
+
+        ComplianceReportRecord record = storageService.storeWithSignature(
+                schedule.reportType, rendered, schedule.format, schedule.id,
+                schedule.tenancyId, signingResult);
 
         generatedEvent.fireAsync(new ComplianceReportGeneratedEvent(
                 record.id, schedule.reportType, schedule.tenancyId,
                 record.artefactId, now, schedule.id,
-                "system:compliance-scheduler", Map.of()));
+                "system:compliance-scheduler", Map.of(),
+                record.signatureStatus, record.signatureArtefactId));
     }
 }
