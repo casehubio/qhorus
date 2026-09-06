@@ -92,6 +92,9 @@ public class A2AChannelBackend implements ChannelBackend {
     @Inject
     io.casehub.qhorus.api.store.CommitmentReader commitmentStore;
 
+    @Inject
+    A2AEventBroadcasterBridge eventBroadcasterBridge;
+
 
     @Override
     public String backendId() {
@@ -131,6 +134,7 @@ public class A2AChannelBackend implements ChannelBackend {
         if (message.correlationId() == null) {
             return; // EVENT messages — always null correlationId, no task-level state
         }
+        eventBroadcasterBridge.publish(message);
         final Set<Consumer<OutboundMessage>> consumers = sseStreams.get(message.correlationId());
         if (consumers == null || consumers.isEmpty()) {
             return;

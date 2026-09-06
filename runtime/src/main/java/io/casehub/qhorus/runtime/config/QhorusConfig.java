@@ -181,6 +181,10 @@ public interface QhorusConfig {
         @WithDefault("false")
         boolean enabled();
 
+        /** When true, A2A task status updates are also published via EventBroadcaster for UI WebSocket push. Requires casehub-pages-push on classpath. */
+        @WithDefault("false")
+        boolean pushToEventBroadcaster();
+
         /** SSE stream settings for the A2A streaming endpoint. */
         SseSettings sse();
 
