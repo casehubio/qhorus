@@ -27,11 +27,11 @@ class ContextPressureCapacitySourceTest {
 
         var source = new ContextPressureCapacitySource(repo);
 
-        var signal = source.observe("agent-1");
-        assertThat(signal).isPresent();
-        assertThat(signal.get().pressure()).isCloseTo(0.85, within(0.001));
-        assertThat(signal.get().signalType()).isEqualTo(CapacitySignalTypes.CONTEXT_PRESSURE);
-        assertThat(signal.get().actorId()).isEqualTo("agent-1");
+        var signals = source.observe("agent-1");
+        assertThat(signals).hasSize(1);
+        assertThat(signals.getFirst().pressure()).isCloseTo(0.85, within(0.001));
+        assertThat(signals.getFirst().signalType()).isEqualTo(CapacitySignalTypes.CONTEXT_PRESSURE);
+        assertThat(signals.getFirst().actorId()).isEqualTo("agent-1");
     }
 
     @Test
@@ -40,7 +40,7 @@ class ContextPressureCapacitySourceTest {
         when(repo.findLatestContextPressureForActor("unknown")).thenReturn(Optional.empty());
 
         var source = new ContextPressureCapacitySource(repo);
-        assertThat(source.observe("unknown")).isEmpty();
+        assertThat(source.observe("unknown")).isEmpty();  // List.of()
     }
 
     @Test
@@ -72,9 +72,13 @@ class ContextPressureCapacitySourceTest {
     }
 
     @Test
-    void signalTypeIsContextPressure() {
-        var source = new ContextPressureCapacitySource(mock(MessageLedgerEntryRepository.class));
-        assertThat(source.signalType()).isEqualTo(CapacitySignalTypes.CONTEXT_PRESSURE);
+    void observeReturnsContextPressureSignalType() {
+        var repo = mock(MessageLedgerEntryRepository.class);
+        var entry = createEntry("agent-1", 50, UUID.randomUUID());
+        when(repo.findLatestContextPressureForActor("agent-1")).thenReturn(Optional.of(entry));
+        var source = new ContextPressureCapacitySource(repo);
+        var signals = source.observe("agent-1");
+        assertThat(signals.getFirst().signalType()).isEqualTo(CapacitySignalTypes.CONTEXT_PRESSURE);
     }
 
     private static MessageLedgerEntry createEntry(String actorId, int pct, UUID channelId) {
