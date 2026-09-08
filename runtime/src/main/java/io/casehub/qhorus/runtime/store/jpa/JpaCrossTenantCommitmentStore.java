@@ -58,6 +58,28 @@ public class JpaCrossTenantCommitmentStore implements CrossTenantCommitmentStore
                    .map(CommitmentEntity::toDomain);
     }
 
+    @Override
+    public long countOpenByObligor(String obligor) {
+        return repo.count("obligor = ?1 AND state IN ?2",
+                          obligor, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public java.util.Map<String, Long> findObligorsExceedingCount(int minCount) {
+        List<Object[]> rows = repo.getEntityManager().createQuery(
+                                          "SELECT c.obligor, COUNT(c) FROM CommitmentEntity c " +
+                                          "WHERE c.state IN ?1 GROUP BY c.obligor HAVING COUNT(c) >= ?2")
+                                  .setParameter(1, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+                                  .setParameter(2, (long) minCount)
+                                  .getResultList();
+        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
+        for (Object[] row : rows) {
+            result.put((String) row[0], (Long) row[1]);
+        }
+        return result;
+    }
+
 
     @Override
     @Transactional

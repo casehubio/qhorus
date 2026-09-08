@@ -73,5 +73,26 @@ public class InMemoryCrossTenantCommitmentStore implements CrossTenantCommitment
                        .max(java.util.Comparator.comparing(Commitment::resolvedAt));
     }
 
+    @Override
+    public long countOpenByObligor(String obligor) {
+        return delegate.findAllOpen().stream()
+                       .filter(c -> obligor != null && obligor.equals(c.obligor()))
+                       .count();
+    }
+
+    @Override
+    public java.util.Map<String, Long> findObligorsExceedingCount(int minCount) {
+        return delegate.findAllOpen().stream()
+                       .filter(c -> c.obligor() != null)
+                       .collect(java.util.stream.Collectors.groupingBy(
+                               Commitment::obligor,
+                               java.util.stream.Collectors.counting()))
+                       .entrySet().stream()
+                       .filter(e -> e.getValue() >= minCount)
+                       .collect(java.util.stream.Collectors.toMap(
+                               java.util.Map.Entry::getKey, java.util.Map.Entry::getValue,
+                               (a, b) -> a, java.util.LinkedHashMap::new));
+    }
+
 
 }

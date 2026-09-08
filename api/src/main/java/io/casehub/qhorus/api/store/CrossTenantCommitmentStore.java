@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.message.Commitment;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -37,6 +38,10 @@ public interface CrossTenantCommitmentStore {
     List<Commitment> findOpenByObligor(String obligor);
 
     Optional<Commitment> findLatestDelegatedByObligor(String obligor);
+
+    long countOpenByObligor(String obligor);
+
+    Map<String, Long> findObligorsExceedingCount(int minCount);
 
 
     /**
