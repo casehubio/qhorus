@@ -2701,6 +2701,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "threshold",
                      description = "Threshold 0.0-1.0 or null to clear",
                      required = false) Double threshold) {
+        if (threshold != null && (threshold < 0.0 || threshold > 1.0)) {
+            throw new IllegalArgumentException("Threshold must be between 0.0 and 1.0, got: " + threshold);
+        }
         var ch = resolveChannel(channel);
         channelService.setRedistributionCapacityThreshold(ch.id(), threshold);
         return "Redistribution threshold " + (threshold != null ? "set to " + threshold : "cleared")
@@ -2729,6 +2732,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             @ToolArg(name = "threshold",
                      description = "Threshold 0.0-1.0 or null to clear",
                      required = false) Double threshold) {
+        if (threshold != null && (threshold < 0.0 || threshold > 1.0)) {
+            throw new IllegalArgumentException("Threshold must be between 0.0 and 1.0, got: " + threshold);
+        }
         var ch = resolveChannel(channel);
         channelService.setRoutingCapacityThreshold(ch.id(), threshold);
         return "Routing capacity threshold " + (threshold != null ? "set to " + threshold : "cleared")
