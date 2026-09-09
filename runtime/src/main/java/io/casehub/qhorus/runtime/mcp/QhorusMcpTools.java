@@ -48,8 +48,8 @@ import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.runtime.message.ProjectionRegistry;
-import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.ReactionService;
+import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.TopicService;
 import io.quarkiverse.mcp.server.McpServer;
 import io.quarkiverse.mcp.server.Tool;
@@ -160,6 +160,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Inject
     io.casehub.qhorus.runtime.ledger.ReviewerResolver reviewerResolver;
+
+    @Inject
+    jakarta.enterprise.inject.Instance<io.casehub.platform.api.capacity.ActorCapacityView> capacityView;
+
+    @org.eclipse.microprofile.config.inject.ConfigProperty(
+            name = "casehub.capacity.redistribution.redistribute-threshold",
+            defaultValue = "0.85")
+    double globalRedistributeThreshold;
 
 
     @Inject
@@ -2629,5 +2637,91 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                      required = false) String topic) {
         return projectAndRender(resolveChannel(channel).id(), projectionRegistry.get(projectionName), maxMessages, topic);
     }
+
+    @Tool(description = "Get an actor's current capacity pressure across all signal sources")
+    String getActorCapacity(
+            @ToolArg(name = "actor_id", description = "Actor ID") String actorId) {
+        if (!capacityView.isResolvable()) {return "Capacity view not available";}
+        var capacity = capacityView.get().getCapacity(actorId);
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "actorId", capacity.actorId(),
+                    "aggregatePressure", capacity.aggregatePressure(),
+                    "pressureBySignalType", capacity.pressureBySignalType(),
+                    "observedAt", capacity.observedAt().toString()));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize capacity", e);
+        }
+    }
+
+    @Tool(description = "List actors whose aggregate capacity pressure exceeds the threshold")
+    String listOverloadedActors(
+            @ToolArg(name = "threshold",
+                     description = "Pressure threshold 0.0-1.0 (default 0.7)",
+                     required = false) Double threshold) {
+        if (!capacityView.isResolvable()) {return "Capacity view not available";}
+        double t          = threshold != null ? threshold : 0.7;
+        var    overloaded = capacityView.get().getOverloaded(t);
+        var items = overloaded.stream()
+                              .map(c -> java.util.Map.of(
+                                      "actorId", (Object) c.actorId(),
+                                      "aggregatePressure", (Object) c.aggregatePressure(),
+                                      "pressureBySignalType", (Object) c.pressureBySignalType()))
+                              .toList();
+        try {
+            return mapper.writeValueAsString(java.util.Map.of("overloaded_actors", items));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize overloaded actors", e);
+        }
+    }
+
+    @Tool(description = "Get redistribution history — HANDOFF messages dispatched by system:redistribution")
+    String getRedistributionHistory(
+            @ToolArg(name = "actor_id", description = "Actor ID to filter by (optional)", required = false) String actorId,
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "limit", description = "Max entries to return (default 20)", required = false) Integer limit) {
+        int maxEntries = limit != null ? Math.min(limit, 100) : 20;
+        var ch = resolveChannel(channel);
+        String tenancyId = currentPrincipal.tenancyId();
+        var entries = ledgerRepo.findByActorIdInChannel(ch.id(), "system:redistribution", maxEntries, tenancyId);
+        var filtered = entries.stream()
+                              .filter(e -> actorId == null || actorId.equals(e.routingOriginalTarget))
+                              .map(this::toLedgerEntryMap)
+                              .toList();
+        try {
+            return mapper.writeValueAsString(java.util.Map.of("redistribution_history", filtered));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize redistribution history", e);
+        }
+    }
+
+    @Tool(description = "Set per-channel redistribution capacity threshold")
+    String setChannelRedistributionThreshold(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "threshold",
+                     description = "Threshold 0.0-1.0 or null to clear",
+                     required = false) Double threshold) {
+        var ch = resolveChannel(channel);
+        channelService.setRedistributionCapacityThreshold(ch.id(), threshold);
+        return "Redistribution threshold " + (threshold != null ? "set to " + threshold : "cleared")
+               + " for channel " + ch.name();
+    }
+
+    @Tool(description = "Get per-channel redistribution capacity threshold with effective fallback")
+    String getChannelRedistributionThreshold(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        var    ch         = resolveChannel(channel);
+        Double configured = ch.redistributionCapacityThreshold();
+        double effective  = configured != null ? configured : globalRedistributeThreshold;
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "channel", ch.name(),
+                    "configured", configured != null ? configured.toString() : "null",
+                    "effective", effective));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize threshold", e);
+        }
+    }
+
 
 }
