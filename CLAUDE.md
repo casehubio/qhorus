@@ -1,12 +1,12 @@
 # qhorus Workspace
 
 **Name:** casehub-qhorus
-**Project repo:** /Users/mdproctor/claude/casehub/qhorus
+**Project repo:** /Users/mdproctor/claude/casehub/slots/174/qhorus
 **Workspace type:** public
 
 ## Session Start
 
-Run `add-dir /Users/mdproctor/claude/casehub/qhorus` before any other work.
+Run `add-dir /Users/mdproctor/claude/casehub/slots/174/qhorus` before any other work.
 
 ## Artifact Locations
 
@@ -35,8 +35,8 @@ Run `add-dir /Users/mdproctor/claude/casehub/qhorus` before any other work.
 ## Git Discipline
 
 Two git repositories are active in every session:
-- **Workspace** (`/Users/mdproctor/claude/public/casehub/qhorus`) — methodology artifacts: handover, blog, specs, plans, ADRs
-- **Project repo** (`/Users/mdproctor/claude/casehub/qhorus`) — source code
+- **Workspace** (`/Users/mdproctor/claude/casehub/slots/174/wsp-casehub-qhorus`) — methodology artifacts: handover, blog, specs, plans, ADRs
+- **Project repo** (`/Users/mdproctor/claude/casehub/slots/174/qhorus`) — source code
 
 Before any git operation, run `git rev-parse --show-toplevel` to confirm which repo is currently active. Do not assume — the session may have opened in either. cd to the correct repo before staging:
 - Source code commits → project repo
