@@ -57,6 +57,9 @@ public interface QhorusConfig {
         /** Default trust score threshold for capability routing. Agents below this are excluded. Default: 0.0 (no threshold). */
         @WithDefault("0.0")
         double defaultTrustThreshold();
+
+        /** Default capacity pressure threshold for routing exclusion. Agents at or above this pressure are excluded. Absent = 0.8. */
+        java.util.Optional<Double> defaultCapacityThreshold();
     }
 
     interface Summary {

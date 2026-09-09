@@ -110,6 +110,9 @@ public class ChannelEntity extends PanacheEntityBase {
     @Column(name = "redistribution_capacity_threshold")
     public Double redistributionCapacityThreshold;
 
+    @Column(name = "routing_capacity_threshold")
+    public Double routingCapacityThreshold;
+
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
     public String tenancyId = "278776f9-e1b0-46fb-9032-8bddebdcf9ce"; // TenancyConstants.DEFAULT_TENANT_ID
@@ -159,6 +162,7 @@ public class ChannelEntity extends PanacheEntityBase {
         e.enforcementExclusions = joinCsv(channel.enforcementExclusions());
         e.routingTrustThreshold = channel.routingTrustThreshold();
         e.redistributionCapacityThreshold = channel.redistributionCapacityThreshold();
+        e.routingCapacityThreshold = channel.routingCapacityThreshold();
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -182,7 +186,8 @@ public class ChannelEntity extends PanacheEntityBase {
                 splitCsv(enforcementExclusions),
                 routingTrustThreshold,
                 tenancyId, createdAt, lastActivityAt, displayOrder,
-                redistributionCapacityThreshold);}
+                redistributionCapacityThreshold,
+                routingCapacityThreshold);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);

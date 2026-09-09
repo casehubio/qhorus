@@ -33,7 +33,8 @@ public record Channel(
         Instant createdAt,
         Instant lastActivityAt,
         Integer displayOrder,
-        Double redistributionCapacityThreshold) {
+        Double redistributionCapacityThreshold,
+        Double routingCapacityThreshold) {
 
     public Channel {
         barrierContributors  = barrierContributors != null ? List.copyOf(barrierContributors) : List.of();
@@ -58,7 +59,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null);
+             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -71,7 +72,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -83,7 +84,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, null,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -99,7 +100,7 @@ public record Channel(
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
              protocols, protocolParticipants, trackDelivery, null, null,
-             null, tenancyId, createdAt, lastActivityAt, null, null);
+             null, tenancyId, createdAt, lastActivityAt, null, null, null);
     }
 
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
@@ -130,6 +131,7 @@ public record Channel(
                 now,
                 now,
                 null,
+                null,
                 null);
     }
 
@@ -147,7 +149,8 @@ public record Channel(
                        .routingTrustThreshold(routingTrustThreshold)
                        .tenancyId(tenancyId).createdAt(createdAt).lastActivityAt(lastActivityAt)
                        .displayOrder(displayOrder)
-                       .redistributionCapacityThreshold(redistributionCapacityThreshold);
+                       .redistributionCapacityThreshold(redistributionCapacityThreshold)
+                       .routingCapacityThreshold(routingCapacityThreshold);
     }
 
     public static Builder builder(String name) {
@@ -181,6 +184,7 @@ public record Channel(
         private       Instant          lastActivityAt;
         private       Integer          displayOrder;
         private       Double           redistributionCapacityThreshold;
+        private       Double           routingCapacityThreshold;
 
 
         private Builder(String name) {this.name = name;}
@@ -310,6 +314,11 @@ public record Channel(
             return this;
         }
 
+        public Builder routingCapacityThreshold(Double v) {
+            this.routingCapacityThreshold = v;
+            return this;
+        }
+
 
         public Channel build() {
             return new Channel(id, name, description, semantic,
@@ -321,7 +330,8 @@ public record Channel(
                                enforcementMode, enforcementExclusions,
                                routingTrustThreshold,
                                tenancyId, createdAt, lastActivityAt, displayOrder,
-                               redistributionCapacityThreshold);
+                               redistributionCapacityThreshold,
+                               routingCapacityThreshold);
         }
     }
 }

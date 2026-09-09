@@ -6,10 +6,10 @@ import io.casehub.eidos.api.AgentRegistry;
 import io.casehub.eidos.api.AgentSelection;
 import io.casehub.eidos.api.AgentSelector;
 import io.casehub.eidos.api.SelectionContext;
+import io.casehub.ledger.runtime.service.TrustGateService;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.RoutingRejectedException;
-import io.casehub.ledger.runtime.service.TrustGateService;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -26,16 +26,19 @@ public class RoutingBridge {
     private final Instance<AgentRegistry>    agentRegistryInstance;
     private final Instance<AgentSelector>    agentSelectorInstance;
     private final Instance<TrustGateService> trustGateServiceInstance;
+    private final Instance<io.casehub.platform.api.capacity.ActorCapacityView> capacityViewInstance;
     private final QhorusConfig               config;
 
     @Inject
     public RoutingBridge(Instance<AgentRegistry> agentRegistryInstance,
                          Instance<AgentSelector> agentSelectorInstance,
                          Instance<TrustGateService> trustGateServiceInstance,
+                         Instance<io.casehub.platform.api.capacity.ActorCapacityView> capacityViewInstance,
                          QhorusConfig config) {
         this.agentRegistryInstance    = agentRegistryInstance;
         this.agentSelectorInstance    = agentSelectorInstance;
         this.trustGateServiceInstance = trustGateServiceInstance;
+        this.capacityViewInstance     = capacityViewInstance;
         this.config                   = config;
     }
 
@@ -87,6 +90,15 @@ public class RoutingBridge {
                     throw new RoutingRejectedException(
                             "Best candidate '%s' (score %.2f) below channel threshold %.2f for capability '%s'"
                                     .formatted(s.agent().agentId(), s.trustScore(), channelThreshold, capability));
+                }
+                if (capacityViewInstance.isResolvable()) {
+                    double capThreshold = effectiveCapacityThreshold(channel);
+                    var cap = capacityViewInstance.get().getCapacity(s.agent().agentId());
+                    if (cap != null && cap.aggregatePressure() >= capThreshold) {
+                        throw new RoutingRejectedException(
+                                "Best candidate '%s' (pressure %.2f) exceeds channel capacity threshold %.2f for capability '%s'"
+                                        .formatted(s.agent().agentId(), cap.aggregatePressure(), capThreshold, capability));
+                    }
                 }
                 yield new RoutingOutcome(
                         s.agent().agentId(),
@@ -148,6 +160,14 @@ public class RoutingBridge {
         }
         return config.routing().defaultTrustThreshold();
     }
+
+    public double effectiveCapacityThreshold(Channel channel) {
+        if (channel != null && channel.routingCapacityThreshold() != null) {
+            return channel.routingCapacityThreshold();
+        }
+        return config.routing().defaultCapacityThreshold().orElse(0.8);
+    }
+
 
     private double lookupTrustScore(String agentId) {
         if (!trustGateServiceInstance.isResolvable()) {

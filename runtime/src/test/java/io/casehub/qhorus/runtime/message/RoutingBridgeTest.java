@@ -60,7 +60,10 @@ class RoutingBridgeTest {
         when(trustInstance.isResolvable()).thenReturn(true);
         when(trustInstance.get()).thenReturn(trustGateService);
 
-        bridge = new RoutingBridge(registryInstance, selectorInstance, trustInstance, config);
+        jakarta.enterprise.inject.Instance<io.casehub.platform.api.capacity.ActorCapacityView> capacityInstance = Mockito.mock(jakarta.enterprise.inject.Instance.class);
+        when(capacityInstance.isResolvable()).thenReturn(false);
+
+        bridge = new RoutingBridge(registryInstance, selectorInstance, trustInstance, capacityInstance, config);
     }
 
     @Test

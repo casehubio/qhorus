@@ -2723,5 +2723,33 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         }
     }
 
+    @Tool(description = "Set per-channel routing capacity threshold — agents at or above this pressure are excluded from new routing")
+    String setChannelRoutingCapacityThreshold(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
+            @ToolArg(name = "threshold",
+                     description = "Threshold 0.0-1.0 or null to clear",
+                     required = false) Double threshold) {
+        var ch = resolveChannel(channel);
+        channelService.setRoutingCapacityThreshold(ch.id(), threshold);
+        return "Routing capacity threshold " + (threshold != null ? "set to " + threshold : "cleared")
+               + " for channel " + ch.name();
+    }
+
+    @Tool(description = "Get per-channel routing capacity threshold with effective fallback")
+    String getChannelRoutingCapacityThreshold(
+            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+        var    ch         = resolveChannel(channel);
+        Double configured = ch.routingCapacityThreshold();
+        double effective  = configured != null ? configured : qhorusConfig.routing().defaultCapacityThreshold().orElse(0.8);
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "channel", ch.name(),
+                    "configured", configured != null ? configured.toString() : "null",
+                    "effective", effective));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize threshold", e);
+        }
+    }
+
 
 }

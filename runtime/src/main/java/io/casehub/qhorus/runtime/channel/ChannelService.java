@@ -190,6 +190,13 @@ public class ChannelService implements ChannelManager, ChannelReader {
         return channelStore.put(ch.toBuilder().redistributionCapacityThreshold(threshold).build());
     }
 
+    @Transactional
+    public Channel setRoutingCapacityThreshold(UUID channelId, Double threshold) {
+        Channel ch = channelStore.find(channelId)
+                                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return channelStore.put(ch.toBuilder().routingCapacityThreshold(threshold).build());
+    }
+
 
     @Transactional
     public Channel setEnforcementExclusions(UUID channelId, java.util.List<String> exclusions) {
