@@ -18,6 +18,7 @@ public class JpaCrossTenantCommitmentStore implements CrossTenantCommitmentStore
     @Inject
     CommitmentPanacheRepo repo;
 
+
     @Override
     public List<Commitment> findAllOpen() {
         return repo.<CommitmentEntity>list(
@@ -64,20 +65,19 @@ public class JpaCrossTenantCommitmentStore implements CrossTenantCommitmentStore
                           obligor, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED));
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public java.util.Map<String, Long> findObligorsExceedingCount(int minCount) {
-        List<Object[]> rows = repo.getEntityManager().createQuery(
-                                          "SELECT c.obligor, COUNT(c) FROM CommitmentEntity c " +
-                                          "WHERE c.state IN ?1 GROUP BY c.obligor HAVING COUNT(c) >= ?2")
-                                  .setParameter(1, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
-                                  .setParameter(2, (long) minCount)
-                                  .getResultList();
-        java.util.Map<String, Long> result = new java.util.LinkedHashMap<>();
-        for (Object[] row : rows) {
-            result.put((String) row[0], (Long) row[1]);
-        }
-        return result;
+        return repo.<io.casehub.qhorus.runtime.message.CommitmentEntity>list(
+                        "state IN ?1", List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+                .stream()
+                .filter(c -> c.obligor != null)
+                .collect(java.util.stream.Collectors.groupingBy(
+                        c -> c.obligor, java.util.stream.Collectors.counting()))
+                .entrySet().stream()
+                .filter(e -> e.getValue() >= minCount)
+                .collect(java.util.stream.Collectors.toMap(
+                        java.util.Map.Entry::getKey, java.util.Map.Entry::getValue,
+                        (a, b) -> a, java.util.LinkedHashMap::new));
     }
 
 
