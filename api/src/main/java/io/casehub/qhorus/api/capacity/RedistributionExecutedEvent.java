@@ -6,7 +6,8 @@ public record RedistributionExecutedEvent(
     String actorId,
     Outcome outcome,
     int successCount,
-    int totalCount,
+    int attemptedCount,
+    int filteredCount,
     String reason,
     Instant occurredAt
 ) {
@@ -14,17 +15,18 @@ public record RedistributionExecutedEvent(
 
     public static RedistributionExecutedEvent compressed(String actorId, int channelCount) {
         return new RedistributionExecutedEvent(actorId, Outcome.COMPRESSED,
-                channelCount, channelCount, null, Instant.now());
+                channelCount, channelCount, 0, null, Instant.now());
     }
 
     public static RedistributionExecutedEvent redistributed(String actorId,
-                                                             int successCount, int totalCount) {
+                                                             int successCount, int attemptedCount,
+                                                             int filteredCount) {
         return new RedistributionExecutedEvent(actorId, Outcome.REDISTRIBUTED,
-                successCount, totalCount, null, Instant.now());
+                successCount, attemptedCount, filteredCount, null, Instant.now());
     }
 
     public static RedistributionExecutedEvent escalated(String actorId, String reason) {
         return new RedistributionExecutedEvent(actorId, Outcome.ESCALATED,
-                0, 0, reason, Instant.now());
+                0, 0, 0, reason, Instant.now());
     }
 }

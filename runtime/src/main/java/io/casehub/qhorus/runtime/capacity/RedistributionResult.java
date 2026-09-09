@@ -1,3 +1,3 @@
 package io.casehub.qhorus.runtime.capacity;
 
-public record RedistributionResult(int successCount, int totalCount) {}
+public record RedistributionResult(int successCount, int attemptedCount, int filteredCount) {}

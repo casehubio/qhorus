@@ -1,15 +1,17 @@
 package io.casehub.qhorus.runtime.capacity;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import io.casehub.platform.api.capacity.ActorCapacity;
+import io.casehub.platform.api.capacity.CapacityPressureEvent;
+import io.casehub.platform.api.capacity.RedistributionDecision;
+import io.casehub.platform.api.capacity.RedistributionPolicy;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,20 +21,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.platform.api.capacity.ActorCapacity;
-import io.casehub.platform.api.capacity.CapacityPressureEvent;
-import io.casehub.platform.api.capacity.RedistributionContext;
-import io.casehub.platform.api.capacity.RedistributionDecision;
-import io.casehub.platform.api.capacity.RedistributionPolicy;
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class QhorusRedistributionExecutorTest {
 
@@ -61,7 +58,7 @@ class QhorusRedistributionExecutorTest {
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Redistribute("high pressure", Duration.ZERO, Set.of("agent-1")));
         when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
-                .thenReturn(new RedistributionResult(3, 3));
+                .thenReturn(new RedistributionResult(3, 3, 0));
 
         executor.onCapacityPressure(event("agent-1", 0.9));
 
@@ -90,7 +87,7 @@ class QhorusRedistributionExecutorTest {
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Redistribute("high pressure", Duration.ZERO, Set.of("agent-1")));
         when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
-                .thenReturn(new RedistributionResult(0, 2));
+                .thenReturn(new RedistributionResult(0, 2, 0));
 
         executor.onCapacityPressure(event("agent-1", 0.9));
 
@@ -129,7 +126,7 @@ class QhorusRedistributionExecutorTest {
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Redistribute("high pressure", Duration.ofSeconds(30), Set.of("agent-1")));
         when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
-                .thenReturn(new RedistributionResult(1, 1));
+                .thenReturn(new RedistributionResult(1, 1, 0));
 
         executor.onCapacityPressure(event("agent-1", 0.9));
 
@@ -149,7 +146,7 @@ class QhorusRedistributionExecutorTest {
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Redistribute("critical", Duration.ZERO, Set.of("agent-1")));
         when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
-                .thenReturn(new RedistributionResult(1, 1));
+                .thenReturn(new RedistributionResult(1, 1, 0));
 
         executor.onCapacityPressure(event("agent-1", 0.96));
 
@@ -189,12 +186,45 @@ class QhorusRedistributionExecutorTest {
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Redistribute("high", Duration.ZERO, Set.of("agent-1")));
         when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
-                .thenReturn(new RedistributionResult(2, 3));
+                .thenReturn(new RedistributionResult(2, 3, 0));
 
         executor.onCapacityPressure(event("agent-1", 0.9));
 
         verify(delegate, never()).escalate(anyString(), anyString());
     }
+
+    @Test
+    void compressFallbackWhenAllFiltered() {
+        var obligations = List.of(obligation("analyst"), obligation("analyst"));
+        when(commitmentStore.findOpenByObligor("agent-1")).thenReturn(obligations);
+        when(commitmentStore.findLatestDelegatedByObligor("agent-1")).thenReturn(Optional.empty());
+        when(policy.evaluate(any())).thenReturn(
+                new RedistributionDecision.Redistribute("high", Duration.ZERO, Set.of("agent-1")));
+        when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
+                .thenReturn(new RedistributionResult(0, 0, 2));
+
+        executor.onCapacityPressure(event("agent-1", 0.86));
+
+        verify(delegate).compress("agent-1", obligations);
+        verify(delegate, never()).escalate(anyString(), anyString());
+    }
+
+    @Test
+    void noCompressFallbackWhenSomeSucceeded() {
+        var obligations = List.of(obligation("analyst"), obligation("analyst"));
+        when(commitmentStore.findOpenByObligor("agent-1")).thenReturn(obligations);
+        when(commitmentStore.findLatestDelegatedByObligor("agent-1")).thenReturn(Optional.empty());
+        when(policy.evaluate(any())).thenReturn(
+                new RedistributionDecision.Redistribute("high", Duration.ZERO, Set.of("agent-1")));
+        when(delegate.redistribute(eq("agent-1"), eq(obligations), any(), anyDouble()))
+                .thenReturn(new RedistributionResult(1, 1, 1));
+
+        executor.onCapacityPressure(event("agent-1", 0.9));
+
+        verify(delegate, never()).compress(anyString(), anyList());
+        verify(delegate, never()).escalate(anyString(), anyString());
+    }
+
 
     private static CapacityPressureEvent event(String actorId, double pressure) {
         return new CapacityPressureEvent(actorId,

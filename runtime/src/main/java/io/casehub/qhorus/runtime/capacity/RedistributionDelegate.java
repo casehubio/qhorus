@@ -33,12 +33,18 @@ public class RedistributionDelegate {
     @Inject InboundTenancyContext inboundTenancyContext;
     @Inject Event<RedistributionExecutedEvent> executedEvents;
 
+    @org.eclipse.microprofile.config.inject.ConfigProperty(
+            name = "casehub.capacity.redistribution.redistribute-threshold",
+            defaultValue = "0.85")
+    double globalRedistributeThreshold;
+
     RedistributionDelegate() {}
 
     RedistributionDelegate(ChannelSummaryService summaryService, MessageService messageService,
                            RoutingBridge routingBridge, CrossTenantChannelStore channelStore,
                            MessageStore messageStore, InboundTenancyContext inboundTenancyContext,
-                           Event<RedistributionExecutedEvent> executedEvents) {
+                           Event<RedistributionExecutedEvent> executedEvents,
+                           double globalRedistributeThreshold) {
         this.summaryService = summaryService;
         this.messageService = messageService;
         this.routingBridge = routingBridge;
@@ -46,6 +52,7 @@ public class RedistributionDelegate {
         this.messageStore = messageStore;
         this.inboundTenancyContext = inboundTenancyContext;
         this.executedEvents = executedEvents;
+        this.globalRedistributeThreshold = globalRedistributeThreshold;
     }
 
     @Transactional
@@ -82,6 +89,7 @@ public class RedistributionDelegate {
                 .toList();
 
         int successCount = 0;
+        int filteredCount = 0;
         for (var commitment : redistributable) {
             try {
                 inboundTenancyContext.set(commitment.tenancyId());
@@ -100,6 +108,14 @@ public class RedistributionDelegate {
 
                 var channel = channelStore.findById(commitment.channelId()).orElse(null);
                 if (channel == null) continue;
+
+                double threshold = channel.redistributionCapacityThreshold() != null
+                        ? channel.redistributionCapacityThreshold()
+                        : globalRedistributeThreshold;
+                if (aggregatePressure < threshold) {
+                    filteredCount++;
+                    continue;
+                }
 
                 var dispatch = io.casehub.qhorus.api.message.MessageDispatch.builder()
                         .channelId(commitment.channelId())
@@ -138,9 +154,10 @@ public class RedistributionDelegate {
             }
         }
 
+        int attemptedCount = redistributable.size() - filteredCount;
         executedEvents.fireAsync(
-                RedistributionExecutedEvent.redistributed(actorId, successCount, redistributable.size()));
-        return new RedistributionResult(successCount, redistributable.size());
+                RedistributionExecutedEvent.redistributed(actorId, successCount, attemptedCount, filteredCount));
+        return new RedistributionResult(successCount, attemptedCount, filteredCount);
     }
 
     public void escalate(String actorId, String reason) {

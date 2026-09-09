@@ -72,8 +72,11 @@ public class QhorusRedistributionExecutor {
                 LOG.infof("Redistributing for %s: %s", actorId, r.reason());
                 RedistributionResult result = delegate.redistribute(
                         actorId, obligations, r, event.capacity().aggregatePressure());
-                if (result.successCount() == 0 && result.totalCount() > 0) {
+                if (result.successCount() == 0 && result.attemptedCount() > 0) {
                     delegate.escalate(actorId, "redistribution requested but no targets available");
+                } else if (result.attemptedCount() == 0 && result.filteredCount() > 0) {
+                    LOG.infof("All obligations filtered by channel thresholds for %s — compressing", actorId);
+                    delegate.compress(actorId, obligations);
                 }
             }
             case RedistributionDecision.Hold h ->
