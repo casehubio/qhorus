@@ -392,6 +392,8 @@ Configurable condition monitoring with 11 watchdog condition types:
 
 `WatchdogAlertEvent` fires via CDI async when a condition triggers. The `WatchdogAlertRouter` SPI determines where alerts are delivered via `AlertDeliveryTarget(connectorId, destination)`.
 
+`WatchdogAlertEvent` carries an optional `caseId` (nullable UUID) — populated when the alert pertains to a specific case channel, null for cross-channel alerts. The engine's `WatchdogRecoveryBridge` observes this CDI event and takes automated recovery actions (cancel hung workers, signal case context). Refs qhorus#433.
+
 ### MCP Tool Surface
 
 Qhorus exposes MCP tools scoped to `@McpServer("qhorus")` across capability groups: instance management, channel management, backend management, messaging, shared data, commitments, normative ledger queries, spaces, topics, presence, membership, reactions, projections, watchdogs, and routing diagnostics.
