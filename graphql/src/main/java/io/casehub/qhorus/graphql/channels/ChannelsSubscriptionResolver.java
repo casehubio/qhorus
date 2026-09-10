@@ -1,6 +1,7 @@
-package io.casehub.qhorus.graphql;
+package io.casehub.qhorus.graphql.channels;
 
 import io.casehub.platform.api.mcp.McpDomain;
+import io.casehub.qhorus.graphql.QhorusEventPublisher;
 import io.casehub.qhorus.graphql.dto.MessageType;
 import io.casehub.qhorus.graphql.dto.PresenceType;
 import io.smallrye.graphql.api.Subscription;
@@ -13,14 +14,14 @@ import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 
 @GraphQLApi
-@McpDomain("qhorus")
+@McpDomain("channels")
 @ApplicationScoped
-public class QhorusSubscriptionResolver {
+public class ChannelsSubscriptionResolver {
 
     private final QhorusEventPublisher publisher;
 
     @Inject
-    public QhorusSubscriptionResolver(QhorusEventPublisher publisher) {
+    public ChannelsSubscriptionResolver(QhorusEventPublisher publisher) {
         this.publisher = publisher;
     }
 

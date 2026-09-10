@@ -1,4 +1,4 @@
-package io.casehub.qhorus.graphql;
+package io.casehub.qhorus.graphql.channels;
 
 import io.casehub.platform.api.mcp.McpDomain;
 import io.casehub.platform.api.mcp.ModelEnricher;
@@ -7,22 +7,21 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 
-@McpDomain("qhorus")
+@McpDomain("channels")
 @ApplicationScoped
-public class QhorusModelEnricher implements ModelEnricher {
+public class ChannelsModelEnricher implements ModelEnricher {
 
     private final ChannelReader channelReader;
 
     @Inject
-    public QhorusModelEnricher(ChannelReader channelReader) {
+    public ChannelsModelEnricher(ChannelReader channelReader) {
         this.channelReader = channelReader;
     }
 
     @Override
     public String summary() {
-        return "Agent communication mesh — create, pause, resume, delete channels. "
-                + "Dispatch typed messages, query message history, track commitments. "
-                + "Subscribe to live channel activity and presence changes.";
+        return "Communication channels — create, query, pause, resume, delete channels. "
+                + "Retrieve message history. Subscribe to live channel activity and presence.";
     }
 
     @Override
