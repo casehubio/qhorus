@@ -34,6 +34,7 @@ class A2AChannelBackendSseTest {
         // CDI-free: injected fields (gateway, actorResolver, etc.) are null.
         // Only registry methods are exercised — they do not touch injected fields.
         backend = new A2AChannelBackend();
+        backend.eventBroadcasterBridge = new A2AEventBroadcasterBridge(false, (t, j) -> {});
         ref = new ChannelRef(UUID.randomUUID(), "test-channel");
     }
 
