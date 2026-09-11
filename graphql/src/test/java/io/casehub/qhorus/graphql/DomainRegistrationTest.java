@@ -7,6 +7,7 @@ import io.casehub.qhorus.graphql.channels.ChannelsQueryResolver;
 import io.casehub.qhorus.graphql.channels.ChannelsSubscriptionResolver;
 import io.casehub.qhorus.graphql.governance.GovernanceQueryResolver;
 import io.casehub.qhorus.graphql.messaging.MessagingMutationResolver;
+import io.casehub.qhorus.graphql.messaging.MessagingQueryResolver;
 import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.junit.jupiter.api.Test;
 
@@ -30,6 +31,7 @@ class DomainRegistrationTest {
     @Test
     void messagingDomainAnnotationsPresent() {
         assertDomain(MessagingMutationResolver.class, "messaging", true);
+        assertDomain(MessagingQueryResolver.class, "messaging", true);
     }
 
     @Test
@@ -37,7 +39,8 @@ class DomainRegistrationTest {
         Class<?>[] classes = {
                 ChannelsQueryResolver.class, ChannelsMutationResolver.class,
                 ChannelsSubscriptionResolver.class, ChannelsModelEnricher.class,
-                GovernanceQueryResolver.class, MessagingMutationResolver.class
+                GovernanceQueryResolver.class, MessagingMutationResolver.class,
+                MessagingQueryResolver.class
         };
         for (Class<?> cls : classes) {
             McpDomain ann = cls.getAnnotation(McpDomain.class);
