@@ -38,7 +38,7 @@ class MessageTaxonomyTest {
 
     @Test
     void taxonomyHasTenTypes() {
-        assertThat(MessageType.values()).hasSize(10);
+        assertThat(MessageType.values()).hasSize(11);
     }
 
     @Test
@@ -57,8 +57,9 @@ class MessageTaxonomyTest {
         assertThat(MessageType.QUERY.requiresCorrelationId()).isTrue();
         assertThat(MessageType.COMMAND.requiresCorrelationId()).isTrue();
         assertThat(MessageType.PROPOSE.requiresCorrelationId()).isTrue();
+        assertThat(MessageType.JUDGMENT.requiresCorrelationId()).isTrue();
         for (MessageType t : MessageType.values()) {
-            if (t != MessageType.QUERY && t != MessageType.COMMAND && t != MessageType.PROPOSE) {
+            if (t != MessageType.QUERY && t != MessageType.COMMAND && t != MessageType.PROPOSE && t != MessageType.JUDGMENT) {
                 assertThat(t.requiresCorrelationId())
                         .as("%s should not require correlationId", t).isFalse();
             }
@@ -70,8 +71,9 @@ class MessageTaxonomyTest {
         assertThat(MessageType.DECLINE.requiresContent()).isTrue();
         assertThat(MessageType.FAILURE.requiresContent()).isTrue();
         assertThat(MessageType.PROPOSE.requiresContent()).isTrue();
+        assertThat(MessageType.JUDGMENT.requiresContent()).isTrue();
         for (MessageType t : MessageType.values()) {
-            if (t != MessageType.DECLINE && t != MessageType.FAILURE && t != MessageType.PROPOSE) {
+            if (t != MessageType.DECLINE && t != MessageType.FAILURE && t != MessageType.PROPOSE && t != MessageType.JUDGMENT) {
                 assertThat(t.requiresContent())
                         .as("%s should not require content", t).isFalse();
             }
