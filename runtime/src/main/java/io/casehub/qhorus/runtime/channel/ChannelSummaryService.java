@@ -8,6 +8,7 @@ import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.spi.SummaryUpdateContext;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.casehub.qhorus.api.store.ChannelSummaryStore;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,6 +28,9 @@ public class ChannelSummaryService {
 
     @Inject
     ChannelService channelService;
+    @Inject
+    CrossTenantChannelStore crossTenantChannelStore;
+
 
     @Inject
     MessageStore messageStore;
@@ -91,7 +95,7 @@ public class ChannelSummaryService {
             return Optional.empty();
         }
 
-        Channel ch = channelService.findById(channelId)
+        Channel ch = crossTenantChannelStore.findById(channelId)
                                    .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
 
         long          messagesSince = countMessagesSince(channelId, existing.lastUpdatedMessageId());

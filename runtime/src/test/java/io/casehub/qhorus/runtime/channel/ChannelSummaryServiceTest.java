@@ -5,11 +5,12 @@ import io.casehub.qhorus.api.channel.ChannelSummary;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.SummaryResult;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import org.mockito.Mockito;
 import jakarta.enterprise.event.Event;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,19 +26,23 @@ class ChannelSummaryServiceTest {
     private       ChannelSummaryService service;
     private       ChannelService        channelService;
     private       MessageStore          messageStore;
+    private       CrossTenantChannelStore crossTenantChannelStore;
+
 
     @BeforeEach
     void setUp() {
         summaryStore.data.clear();
-        channelService = Mockito.mock(ChannelService.class);
-        messageStore   = Mockito.mock(MessageStore.class);
+        channelService          = Mockito.mock(ChannelService.class);
+        crossTenantChannelStore = Mockito.mock(CrossTenantChannelStore.class);
+        messageStore            = Mockito.mock(MessageStore.class);
 
-        service                = new ChannelSummaryService();
-        service.summaryStore   = summaryStore;
-        service.channelService = channelService;
-        service.messageStore   = messageStore;
-        service.hook           = ctx -> SummaryResult.ofText("generated summary for " + ctx.channelName());
-        service.summaryEvents  = Mockito.mock(Event.class);
+        service                         = new ChannelSummaryService();
+        service.summaryStore            = summaryStore;
+        service.channelService          = channelService;
+        service.crossTenantChannelStore = crossTenantChannelStore;
+        service.messageStore            = messageStore;
+        service.hook                    = ctx -> SummaryResult.ofText("generated summary for " + ctx.channelName());
+        service.summaryEvents           = Mockito.mock(Event.class);
     }
 
     @Test
@@ -123,6 +128,27 @@ class ChannelSummaryServiceTest {
     }
 
     @Test
+    void triggerUpdate_usesCrossTenantStore_notChannelService() {
+        UUID chId = UUID.randomUUID();
+        Channel ch = Channel.builder("async-ch").id(chId)
+                            .tenancyId("278776f9-e1b0-46fb-9032-8bddebdcf9ce")
+                            .createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
+        Mockito.when(crossTenantChannelStore.findById(chId)).thenReturn(Optional.of(ch));
+        Mockito.when(messageStore.scan(Mockito.any())).thenReturn(List.of());
+        Mockito.when(messageStore.count(Mockito.any())).thenReturn(0L);
+
+        summaryStore.save(ChannelSummary.builder(chId)
+                                        .tenancyId(ch.tenancyId()).content("old").build());
+
+        Optional<ChannelSummary> result = service.triggerUpdate(chId);
+        assertThat(result).isPresent();
+
+        Mockito.verify(crossTenantChannelStore).findById(chId);
+        Mockito.verify(channelService, Mockito.never()).findById(chId);
+    }
+
+
+    @Test
     void deleteSummary_removes() {
         UUID chId = stubChannel("del-ch");
         service.setSummary(chId, "to delete", "op");
@@ -144,6 +170,7 @@ class ChannelSummaryServiceTest {
                             .tenancyId("278776f9-e1b0-46fb-9032-8bddebdcf9ce")
                             .createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
         Mockito.when(channelService.findById(id)).thenReturn(Optional.of(ch));
+        Mockito.when(crossTenantChannelStore.findById(id)).thenReturn(Optional.of(ch));
         Mockito.when(messageStore.scan(Mockito.any())).thenReturn(List.of());
         return id;
     }
