@@ -28,7 +28,7 @@ public class EnforcementExecutor {
     ObjectMapper objectMapper;
 
 
-    EnforcementExecutor() {}
+    protected EnforcementExecutor() {}
 
     public EnforcementExecutor(MessageDispatcher messageDispatcher,
                                ChannelService channelService,

@@ -30,7 +30,7 @@ public class SpaceService {
     Consumer<ChannelMutationEvent> mutationConsumer;
 
 
-    SpaceService() {}
+    protected SpaceService() {}
 
     public SpaceService(SpaceStore spaceStore,
                         ChannelStore channelStore,

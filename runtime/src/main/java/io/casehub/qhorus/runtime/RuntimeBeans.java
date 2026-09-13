@@ -90,12 +90,7 @@ public class RuntimeBeans {
 
     // ── Channel ────────────────────────────────────────────────────────────
 
-    @Produces @ApplicationScoped
-    public SpaceService spaceService(SpaceStore spaceStore, ChannelStore channelStore,
-                                     CurrentPrincipal currentPrincipal,
-                                     Event<ChannelMutationEvent> mutationEvent) {
-        return new SpaceService(spaceStore, channelStore, currentPrincipal, mutationEvent::fire);
-    }
+    // SpaceService → CdiSpaceService (runtime/cdi/)
 
     @Produces @ApplicationScoped
     public ChannelSummaryService channelSummaryService(ChannelSummaryStore summaryStore,
@@ -183,18 +178,7 @@ public class RuntimeBeans {
         return gw;
     }
 
-    @Produces @ApplicationScoped
-    public DeliveryBatchExecutor deliveryBatchExecutor(CrossTenantMessageStore messageStore,
-                                                       CrossTenantChannelStore channelStore,
-                                                       DeliveryCursorStore cursorStore,
-                                                       DeliveryConfig config,
-                                                       ChannelMembershipStore channelMembershipStore,
-                                                       Instance<Tracer> tracerInstance,
-                                                       QhorusTracingConfig tracingConfig) {
-        return new DeliveryBatchExecutor(messageStore, channelStore, cursorStore, config,
-                channelMembershipStore,
-                tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig);
-    }
+    // DeliveryBatchExecutor → CdiDeliveryBatchExecutor (runtime/cdi/)
 
     @Produces @ApplicationScoped
     public DeliveryService deliveryService(DeliverySignalQueue signalQueue,
@@ -214,26 +198,8 @@ public class RuntimeBeans {
 
     // ── Message ────────────────────────────────────────────────────────────
 
-    @Produces @ApplicationScoped
-    public CommitmentService commitmentService(CommitmentStore store,
-                                               Event<CommitmentDeclinedEvent> declinedEvents,
-                                               Event<CommitmentExpiredEvent> expiredEvents,
-                                               Instance<Tracer> tracerInstance,
-                                               QhorusTracingConfig tracingConfig) {
-        return new CommitmentService(store, declinedEvents::fire, e -> {
-            try { expiredEvents.fire(e); } catch (Exception ex) { /* logged by core */ }
-        }, tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig);
-    }
-
-    @Produces @ApplicationScoped
-    public EnforcementExecutor enforcementExecutor(MessageDispatcher messageDispatcher,
-                                                    ChannelService channelService,
-                                                    CommitmentService commitmentService,
-                                                    Event<EnforcementBlockedEvent> enforcementBlockedEvent,
-                                                    ObjectMapper objectMapper) {
-        return new EnforcementExecutor(messageDispatcher, channelService, commitmentService,
-                e -> enforcementBlockedEvent.fireAsync(e), objectMapper);
-    }
+    // CommitmentService → CdiCommitmentService (runtime/cdi/)
+    // EnforcementExecutor → CdiEnforcementExecutor (runtime/cdi/)
 
     @Produces @ApplicationScoped
     public ReactionService reactionService(ReactionStore reactionStore,
@@ -268,63 +234,11 @@ public class RuntimeBeans {
         return new ProtocolRegistry(list);
     }
 
-    @Produces @ApplicationScoped
-    public MessageService messageService(ChannelService channelService,
-                                          CrossTenantChannelStore crossTenantChannelStore,
-                                          CurrentPrincipal currentPrincipal,
-                                          MessageStore messageStore,
-                                          CommitmentService commitmentService,
-                                          MessageTypePolicy messageTypePolicy,
-                                          RateLimiter rateLimiter,
-                                          QhorusConfig config,
-                                          ObligorTrustPolicy obligorTrustPolicy,
-                                          TransactionSynchronizationRegistry tsr,
-                                          InstanceService instanceService,
-                                          DeliverySignalQueue deliverySignalQueue,
-                                          TopicService topicService,
-                                          CorrelationIntegrityChecker correlationIntegrityChecker,
-                                          ProtocolRegistry protocolRegistry,
-                                          CommitmentStore commitmentStore,
-                                          ChannelActivityBroadcaster broadcaster,
-                                          Instance<Tracer> tracerInstance,
-                                          QhorusTracingConfig tracingConfig,
-                                          EnforcementExecutor enforcementExecutor,
-                                          RoutingBridge routingBridge,
-                                          @Any Instance<io.casehub.qhorus.api.gateway.MessageObserver> observers,
-                                          LedgerWriteService ledgerWriteService) {
-        return new MessageService(channelService, crossTenantChannelStore, currentPrincipal,
-                messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
-                obligorTrustPolicy, tsr, instanceService, deliverySignalQueue, topicService,
-                correlationIntegrityChecker, protocolRegistry, commitmentStore, broadcaster,
-                tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig,
-                enforcementExecutor, routingBridge,
-                (channelName, channelId, tenancyId, message) ->
-                        io.casehub.qhorus.runtime.message.MessageObserverDispatcher.dispatch(
-                                channelName, channelId, tenancyId, message, observers.handles(), tsr),
-                (channelName, channelId, tenancyId, message) ->
-                        io.casehub.qhorus.runtime.message.MessageObserverDispatcher.dispatchClusterOnly(
-                                channelName, channelId, tenancyId, message, observers.handles()),
-                (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
-                        ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome));
-    }
+    // MessageService → CdiMessageService (runtime/cdi/)
 
     // ── Capacity ───────────────────────────────────────────────────────────
 
-    @Produces @ApplicationScoped
-    public RedistributionDelegate redistributionDelegate(ChannelSummaryService summaryService,
-                                                          MessageService messageService,
-                                                          RoutingBridge routingBridge,
-                                                          CrossTenantChannelStore channelStore,
-                                                          MessageStore messageStore,
-                                                          InboundTenancyContext inboundTenancyContext,
-                                                          Event<RedistributionExecutedEvent> executedEvents,
-                                                          @org.eclipse.microprofile.config.inject.ConfigProperty(
-                                                                  name = "casehub.capacity.redistribution.redistribute-threshold",
-                                                                  defaultValue = "0.85") double threshold) {
-        return new RedistributionDelegate(summaryService, messageService, routingBridge,
-                channelStore, messageStore, inboundTenancyContext::set,
-                e -> executedEvents.fireAsync(e), threshold);
-    }
+    // RedistributionDelegate → CdiRedistributionDelegate (runtime/cdi/)
 
     @Produces @ApplicationScoped
     public QhorusRedistributionExecutor redistributionExecutor(RedistributionDelegate delegate,
@@ -349,93 +263,59 @@ public class RuntimeBeans {
 
     // ── Watchdog ───────────────────────────────────────────────────────────
 
-    @Produces @ApplicationScoped
-    public WatchdogEvaluationService watchdogEvaluationService(QhorusConfig config,
-                                                                MessageService messageService,
-                                                                WatchdogStore watchdogStore,
-                                                                CrossTenantChannelStore crossTenantChannelStore,
-                                                                CrossTenantMessageStore crossTenantMessageStore,
-                                                                CrossTenantCommitmentStore crossTenantCommitmentStore,
-                                                                CrossTenantWatchdogStore crossTenantWatchdogStore,
-                                                                InstanceStore instanceStore,
-                                                                Event<WatchdogAlertEvent> alertEvents,
-                                                                MessageLedgerEntryRepository messageRepo,
-                                                                ChannelMembershipStore channelMembershipStore,
-                                                                ChannelService channelService,
-                                                                InstanceService instanceService,
-                                                                CommitmentService commitmentService,
-                                                                ObjectMapper objectMapper) {
-        return new WatchdogEvaluationService(config, messageService, watchdogStore,
-                crossTenantChannelStore, crossTenantMessageStore, crossTenantCommitmentStore,
-                crossTenantWatchdogStore, instanceStore, e -> alertEvents.fireAsync(e),
-                (channelId, tenancyId) -> messageRepo.findLatestContextPressure(channelId, tenancyId)
-                        .stream()
-                        .map(entry -> new WatchdogEvaluationService.ContextPressureEntry(
-                                entry.actorId, entry.contextWindowPct))
-                        .toList(),
-                channelMembershipStore, channelService, instanceService, commitmentService, objectMapper);
-    }
+    // WatchdogEvaluationService → CdiWatchdogEvaluationService (runtime/cdi/)
 
     // ── CDI event observers ────────────────────────────────────────────────
 
 
-// ── Stripped classes — simple constructor forwarding ───────────────
+// ── Strip classes — simple constructor forwarding ───────────────
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public InstanceService instanceService(InstanceStore instanceStore) {
         return new InstanceService(instanceStore);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public DataService dataService(DataStore dataStore) {
         return new DataService(dataStore);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public TopicService topicService(TopicStore topicStore, MessageStore messageStore,
                                      CommitmentStore commitmentStore, CurrentPrincipal currentPrincipal) {
         return new TopicService(topicStore, messageStore, commitmentStore, currentPrincipal);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public CorrelationIntegrityChecker correlationIntegrityChecker(CommitmentStore commitmentStore,
                                                                    MessageStore messageStore) {
         return new CorrelationIntegrityChecker(commitmentStore, messageStore);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public ChannelMembershipService channelMembershipService(ChannelMembershipStore membershipStore,
                                                              MessageStore messageStore,
                                                              CurrentPrincipal currentPrincipal) {
         return new ChannelMembershipService(membershipStore, messageStore, currentPrincipal);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public RateLimiter rateLimiter() {
         return new RateLimiter();
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public DeliverySignalQueue deliverySignalQueue() {
         return new DeliverySignalQueue();
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public ProjectionService projectionService(MessageStore messageStore,
                                                QhorusEntityMapper mapper) {
         return new ProjectionService(messageStore, mapper::toMessageView);
     }
 
-    @Produces
-    @ApplicationScoped
+    @Produces @ApplicationScoped
     public io.casehub.qhorus.runtime.audit.EvidentialChecker evidentialChecker(DataStore dataStore,
                                                                                MessageStore messageStore,
                                                                                CommitmentStore commitmentStore) {

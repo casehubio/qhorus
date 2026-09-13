@@ -94,6 +94,35 @@ public class MessageService implements ConsumerMessaging {
     private static final Set<MessageType> RESOLUTION_TYPES = Set.of(
             MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.RESPONSE);
 
+
+    protected MessageService() {
+        this.channelService              = null;
+        this.crossTenantChannelStore     = null;
+        this.currentPrincipal            = null;
+        this.messageStore                = null;
+        this.commitmentService           = null;
+        this.messageTypePolicy           = null;
+        this.allowedWritersPolicy        = null;
+        this.rateLimiter                 = null;
+        this.config                      = null;
+        this.obligorTrustPolicy          = null;
+        this.tsr                         = null;
+        this.instanceService             = null;
+        this.deliverySignalQueue         = null;
+        this.topicService                = null;
+        this.correlationIntegrityChecker = null;
+        this.protocolRegistry            = null;
+        this.commitmentStore             = null;
+        this.broadcaster                 = null;
+        this.tracerSupplier              = null;
+        this.tracingConfig               = null;
+        this.enforcementExecutor         = null;
+        this.routingBridge               = null;
+        this.observerDispatcher          = null;
+        this.clusterObserverDispatcher   = null;
+        this.ledgerRecorder              = null;
+    }
+
     public MessageService(ChannelService channelService,
                           CrossTenantChannelStore crossTenantChannelStore,
                           CurrentPrincipal currentPrincipal,

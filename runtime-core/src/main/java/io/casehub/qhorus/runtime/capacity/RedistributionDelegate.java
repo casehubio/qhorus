@@ -21,14 +21,17 @@ public class RedistributionDelegate {
 
     private static final Logger LOG = Logger.getLogger(RedistributionDelegate.class);
 
-    private final ChannelSummaryService summaryService;
-    private final MessageService messageService;
-    private final RoutingBridge routingBridge;
-    private final CrossTenantChannelStore channelStore;
-    private final MessageStore messageStore;
-    private final Consumer<String> tenancyContextSetter;
-    private final Consumer<RedistributionExecutedEvent> executedConsumer;
-    private final double globalRedistributeThreshold;
+    ChannelSummaryService summaryService;
+    MessageService messageService;
+    RoutingBridge routingBridge;
+    CrossTenantChannelStore channelStore;
+    MessageStore messageStore;
+    Consumer<String> tenancyContextSetter;
+    Consumer<RedistributionExecutedEvent> executedConsumer;
+    double globalRedistributeThreshold;
+
+
+    protected RedistributionDelegate() {}
 
     public RedistributionDelegate(ChannelSummaryService summaryService,
                                   MessageService messageService,

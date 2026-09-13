@@ -43,6 +43,9 @@ public class DeliveryBatchExecutor {
     Supplier<Tracer> tracerSupplier;
     QhorusTracingConfig tracingConfig;
 
+
+    protected DeliveryBatchExecutor() {}
+
     public DeliveryBatchExecutor(CrossTenantMessageStore messageStore,
                                  CrossTenantChannelStore channelStore,
                                  DeliveryCursorStore cursorStore,

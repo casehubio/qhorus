@@ -84,7 +84,7 @@ public class WatchdogEvaluationService {
     ObjectMapper objectMapper;
 
 
-    WatchdogEvaluationService() {}
+    protected WatchdogEvaluationService() {}
 
     public WatchdogEvaluationService(QhorusConfig config,
                                      MessageService messageService,

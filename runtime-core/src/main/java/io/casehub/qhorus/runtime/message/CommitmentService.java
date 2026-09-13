@@ -35,7 +35,7 @@ public class CommitmentService {
     QhorusTracingConfig tracingConfig;
 
 
-    CommitmentService() {}
+    protected CommitmentService() {}
 
     public CommitmentService(CommitmentStore store,
                              Consumer<CommitmentDeclinedEvent> declinedConsumer,

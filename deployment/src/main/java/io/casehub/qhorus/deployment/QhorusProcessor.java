@@ -23,4 +23,5 @@ class QhorusProcessor {
                 // db/ledger/migration/*.sql — self-registered by LedgerProcessor since ledger#99
                 .build();
     }
+
 }
