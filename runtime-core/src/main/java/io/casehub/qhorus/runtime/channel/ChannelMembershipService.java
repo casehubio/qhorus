@@ -10,8 +10,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelMembershipStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -19,16 +18,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@ApplicationScoped
 public class ChannelMembershipService implements MembershipManager, UnreadCountProvider {
 
-    @Inject
-    ChannelMembershipStore membershipStore;
+    private final ChannelMembershipStore membershipStore;
+    private final MessageStore messageStore;
+    private final CurrentPrincipal currentPrincipal;
 
-    @Inject
-    MessageStore messageStore;
-    @jakarta.inject.Inject
-    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+    public ChannelMembershipService(ChannelMembershipStore membershipStore,
+                                     MessageStore messageStore,
+                                     CurrentPrincipal currentPrincipal) {
+        this.membershipStore = membershipStore;
+        this.messageStore = messageStore;
+        this.currentPrincipal = currentPrincipal;
+    }
 
     @Override
     public ChannelMembership join(UUID channelId, String memberId) {

@@ -4,19 +4,19 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.store.InstanceStore;
 import io.casehub.qhorus.api.store.query.InstanceQuery;
 
-@ApplicationScoped
 public class InstanceService {
 
-    @Inject
-    InstanceStore instanceStore;
+    private final InstanceStore instanceStore;
+
+    public InstanceService(InstanceStore instanceStore) {
+        this.instanceStore = instanceStore;
+    }
 
     @Transactional
     public Instance register(String instanceId, String description, List<String> capabilityTags) {
@@ -90,14 +90,15 @@ public class InstanceService {
     @Transactional
     public void markStaleOlderThan(int thresholdSeconds) {
         Instant cutoff = Instant.now().minusSeconds(thresholdSeconds);
-        InstanceEntity.update(
-            "status = 'stale' WHERE lastSeen < ?1 AND status = 'online' " +
-            "AND instanceId NOT IN (SELECT eab.instanceId FROM ExternalAgentBinding eab)",
-            cutoff);
+        instanceStore.scan(InstanceQuery.all()).stream()
+                .filter(i -> "online".equals(i.status()))
+                .filter(i -> i.lastSeen() != null && i.lastSeen().isBefore(cutoff))
+                .forEach(i -> instanceStore.put(i.toBuilder().status("stale").build()));
     }
 
     @Transactional
     public void markOffline(String instanceId) {
-        InstanceEntity.update("status = 'offline' WHERE instanceId = ?1", instanceId);
+        instanceStore.findByInstanceId(instanceId)
+                .ifPresent(i -> instanceStore.put(i.toBuilder().status("offline").build()));
     }
 }

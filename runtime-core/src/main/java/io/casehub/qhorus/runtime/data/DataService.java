@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.data.ArtefactClaim;
@@ -13,11 +11,13 @@ import io.casehub.qhorus.api.data.SharedData;
 import io.casehub.qhorus.api.store.DataStore;
 import io.casehub.qhorus.api.store.query.DataQuery;
 
-@ApplicationScoped
 public class DataService {
 
-    @Inject
-    DataStore dataStore;
+    private final DataStore dataStore;
+
+    public DataService(DataStore dataStore) {
+        this.dataStore = dataStore;
+    }
 
     @Transactional
     public SharedData store(String key, String description, String createdBy,
@@ -82,14 +82,7 @@ public class DataService {
 
     @Transactional
     public void claim(UUID artefactId, UUID instanceId) {
-        if (dataStore.countClaims(artefactId) == 0 ||
-                !hasClaim(artefactId, instanceId)) {
-            dataStore.putClaim(new ArtefactClaim(null, artefactId, instanceId, null));
-        }
-    }
-
-    private boolean hasClaim(UUID artefactId, UUID instanceId) {
-        return ArtefactClaimEntity.count("artefactId = ?1 AND instanceId = ?2", artefactId, instanceId) > 0;
+        dataStore.putClaim(new ArtefactClaim(null, artefactId, instanceId, null));
     }
 
     @Transactional
