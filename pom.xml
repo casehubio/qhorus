@@ -33,6 +33,7 @@
     <module>push</module>
     <module>a2a-push-notification</module>
     <module>persistence-memory</module>
+    <module>runtime-spring</module>
     <module>testing</module>
     <module>examples</module>
   </modules>
@@ -77,6 +78,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
     <openhtmltopdf.version>1.1.37</openhtmltopdf.version>
+    <spring-boot.version>3.4.5</spring-boot.version>
   </properties>
 
   <dependencyManagement>
@@ -98,6 +100,13 @@
         <groupId>io.github.openhtmltopdf</groupId>
         <artifactId>openhtmltopdf-pdfbox</artifactId>
         <version>${openhtmltopdf.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
     </dependencies>
   </dependencyManagement>
