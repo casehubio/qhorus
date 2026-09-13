@@ -1,12 +1,9 @@
 package io.casehub.qhorus.runtime.message;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageTypeViolationException;
 
-@ApplicationScoped
 public class StoredMessageTypePolicy implements MessageTypePolicy {
 
     @Override

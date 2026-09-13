@@ -4,25 +4,16 @@ import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.ProtocolContext;
-import io.casehub.qhorus.runtime.config.QhorusConfig;
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@ApplicationScoped
 public class TaskCompletionProtocol implements ChannelProtocol {
 
-    @Inject
-    QhorusConfig config;
+    private final int maxOpenCommands;
 
-    int maxOpenCommands;
-
-    @PostConstruct
-    void init() {
-        maxOpenCommands = config.protocol().taskCompletion().maxOpenCommands();
+    public TaskCompletionProtocol(int maxOpenCommands) {
+        this.maxOpenCommands = maxOpenCommands;
     }
 
     @Override

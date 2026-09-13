@@ -8,8 +8,7 @@ import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 
 import java.time.Instant;
 import java.util.List;
@@ -17,21 +16,22 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@ApplicationScoped
 public class TopicService implements TopicManager {
 
     static final String DEFAULT_TOPIC = "general";
 
-    @Inject
-    public TopicStore topicStore;
+    private final TopicStore topicStore;
+    private final MessageStore messageStore;
+    private final CommitmentStore commitmentStore;
+    private final CurrentPrincipal currentPrincipal;
 
-    @Inject
-    public MessageStore messageStore;
-
-    @Inject
-    public CommitmentStore commitmentStore;
-    @Inject
-    io.casehub.platform.api.identity.CurrentPrincipal currentPrincipal;
+    public TopicService(TopicStore topicStore, MessageStore messageStore,
+                        CommitmentStore commitmentStore, CurrentPrincipal currentPrincipal) {
+        this.topicStore = topicStore;
+        this.messageStore = messageStore;
+        this.commitmentStore = commitmentStore;
+        this.currentPrincipal = currentPrincipal;
+    }
 
     @Override
     public Topic create(UUID channelId, String name) {
@@ -183,10 +183,6 @@ public class TopicService implements TopicManager {
         }
         return trimmed;
     }
-
-    // RenameResult moved to TopicManager in qhorus-api
-
-    // MergeResult moved to TopicManager in qhorus-api
 
     public record MoveResult(String topicName, UUID sourceChannelId, UUID targetChannelId, int messagesUpdated) {}
 

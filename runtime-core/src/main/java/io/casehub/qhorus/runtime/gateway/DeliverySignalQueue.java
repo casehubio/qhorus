@@ -5,9 +5,6 @@ import java.util.UUID;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.TimeUnit;
 
-import jakarta.enterprise.context.ApplicationScoped;
-
-@ApplicationScoped
 public class DeliverySignalQueue {
 
     private final LinkedBlockingDeque<UUID> queue = new LinkedBlockingDeque<>();

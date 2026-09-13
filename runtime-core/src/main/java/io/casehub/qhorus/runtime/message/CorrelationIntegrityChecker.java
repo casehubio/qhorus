@@ -5,26 +5,25 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@ApplicationScoped
 public class CorrelationIntegrityChecker {
 
     private static final Set<MessageType> TERMINAL_TYPES = Set.of(
             MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE,
             MessageType.RESPONSE, MessageType.HANDOFF);
 
-    @Inject
-    CommitmentStore commitmentStore;
+    private final CommitmentStore commitmentStore;
+    private final MessageStore messageStore;
 
-    @Inject
-    MessageStore messageStore;
+    public CorrelationIntegrityChecker(CommitmentStore commitmentStore, MessageStore messageStore) {
+        this.commitmentStore = commitmentStore;
+        this.messageStore = messageStore;
+    }
 
     public List<String> check(MessageDispatch dispatch, UUID channelId) {
         List<String> advisories = new ArrayList<>();

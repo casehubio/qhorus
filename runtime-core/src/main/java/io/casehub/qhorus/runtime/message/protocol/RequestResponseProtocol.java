@@ -4,25 +4,16 @@ import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.ProtocolContext;
-import io.casehub.qhorus.runtime.config.QhorusConfig;
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@ApplicationScoped
 public class RequestResponseProtocol implements ChannelProtocol {
 
-    @Inject
-    QhorusConfig config;
+    private final int maxOpenQueries;
 
-    int maxOpenQueries;
-
-    @PostConstruct
-    void init() {
-        maxOpenQueries = config.protocol().requestResponse().maxOpenQueries();
+    public RequestResponseProtocol(int maxOpenQueries) {
+        this.maxOpenQueries = maxOpenQueries;
     }
 
     @Override

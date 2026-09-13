@@ -4,11 +4,9 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.ProtocolContext;
-import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
 
-@ApplicationScoped
 public class RoundRobinProtocol implements ChannelProtocol {
 
     @Override

@@ -4,24 +4,15 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.ProtocolContext;
-import io.casehub.qhorus.runtime.config.QhorusConfig;
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.List;
 
-@ApplicationScoped
 public class ContributionRequiredProtocol implements ChannelProtocol {
 
-    @Inject
-    QhorusConfig config;
+    private final int maxConsecutive;
 
-    int maxConsecutive;
-
-    @PostConstruct
-    void init() {
-        maxConsecutive = config.protocol().contributionRequired().maxConsecutive();
+    public ContributionRequiredProtocol(int maxConsecutive) {
+        this.maxConsecutive = maxConsecutive;
     }
 
     @Override
