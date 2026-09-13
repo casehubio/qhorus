@@ -23,16 +23,16 @@ public class DeliveryService implements DeliveryBatchExecutor.HealthCallback {
 
     private static final Logger LOG = Logger.getLogger(DeliveryService.class);
 
-    final DeliverySignalQueue signalQueue;
-    final DeliveryConfig config;
-    final ChannelGateway gateway;
-    final MeterRegistry meterRegistry;
-    final Executor executor;
-    final DeliveryBatchExecutor batchExecutor;
-    final DeliveryCursorStore cursorStore;
-    final CrossTenantMessageStore messageStore;
-    final io.casehub.qhorus.api.store.CrossTenantChannelStore channelStore;
-    final io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+    DeliverySignalQueue signalQueue;
+    DeliveryConfig config;
+    ChannelGateway gateway;
+    MeterRegistry meterRegistry;
+    Executor executor;
+    DeliveryBatchExecutor batchExecutor;
+    DeliveryCursorStore cursorStore;
+    CrossTenantMessageStore messageStore;
+    io.casehub.qhorus.api.store.CrossTenantChannelStore channelStore;
+    io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
 
     private final Set<String> activeDeliveries = ConcurrentHashMap.newKeySet();
     private final ConcurrentHashMap<String, Integer> consecutiveFailures = new ConcurrentHashMap<>();

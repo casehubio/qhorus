@@ -35,13 +35,13 @@ public class DeliveryBatchExecutor {
 
     private static final Logger LOG = Logger.getLogger(DeliveryBatchExecutor.class);
 
-    private final CrossTenantMessageStore messageStore;
-    private final CrossTenantChannelStore channelStore;
-    private final DeliveryCursorStore cursorStore;
-    private final DeliveryConfig config;
-    private final io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
-    private final Supplier<Tracer> tracerSupplier;
-    private final QhorusTracingConfig tracingConfig;
+    CrossTenantMessageStore messageStore;
+    CrossTenantChannelStore channelStore;
+    DeliveryCursorStore cursorStore;
+    DeliveryConfig config;
+    io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+    Supplier<Tracer> tracerSupplier;
+    QhorusTracingConfig tracingConfig;
 
     public DeliveryBatchExecutor(CrossTenantMessageStore messageStore,
                                  CrossTenantChannelStore channelStore,

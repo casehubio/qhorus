@@ -72,9 +72,9 @@ class FanOutDeliveryGuaranteeTest {
         QhorusChannelBackend agentBackend = new QhorusChannelBackend();
         gateway = new ChannelGateway(agentBackend, new DefaultInboundNormaliser(),
                 mock(MessageService.class), mock(ChannelService.class),
-                mock(CrossTenantChannelStore.class), mock(Event.class), mock(Event.class),
+                mock(CrossTenantChannelStore.class), e -> {}, e -> {},
                 deliveryConfig, mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class), mock(QhorusTracingConfig.class));
+                null, null, mock(QhorusTracingConfig.class));
         channelId = UUID.randomUUID();
         gateway.initChannel(channelId, new ChannelRef(channelId, "test-channel"));
     }

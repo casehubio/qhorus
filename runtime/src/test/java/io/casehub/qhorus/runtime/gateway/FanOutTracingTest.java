@@ -101,28 +101,19 @@ class FanOutTracingTest {
         QhorusChannelBackend agentBackend = new QhorusChannelBackend();
         DefaultInboundNormaliser normaliser = new DefaultInboundNormaliser();
 
-        @SuppressWarnings("unchecked")
-        Instance<io.opentelemetry.api.trace.Tracer> mockInstance = mock(Instance.class);
-        when(mockInstance.isResolvable()).thenReturn(false);
-
-        @SuppressWarnings("unchecked")
-        jakarta.enterprise.event.Event<io.casehub.qhorus.api.gateway.ChannelInitialisedEvent> mockEvent = mock(jakarta.enterprise.event.Event.class);
-
         gateway = new ChannelGateway(
                 agentBackend,
                 normaliser,
                 null, // messageService not needed for fanOut tests
                 null, // channelService not needed for fanOut tests
                 null, // crossTenantChannelStore not needed for fanOut tests
-                mockEvent,
-                null, // channelClosedEvents not needed for fanOut tests
+                e -> {}, // channelInitialisedConsumer
+                e -> {}, // channelClosedConsumer
                 deliveryConfig,
                 null, // crossTenantMessageStore not needed for fanOut tests
                 null, // membershipService not needed for fanOut tests
-                mockInstance,
+                () -> provider.get("qhorus-test"),
                 tracingConfig);
-
-        gateway.tracerInstance = () -> provider.get("qhorus-test");
 
         channelId = UUID.randomUUID();
         channelRef = new ChannelRef(channelId, "test-channel");
@@ -225,27 +216,19 @@ class FanOutTracingTest {
         QhorusChannelBackend agentBackend = new QhorusChannelBackend();
         DefaultInboundNormaliser normaliser = new DefaultInboundNormaliser();
 
-        @SuppressWarnings("unchecked")
-        Instance<io.opentelemetry.api.trace.Tracer> mockInstance = mock(Instance.class);
-        when(mockInstance.isResolvable()).thenReturn(false);
-
-        @SuppressWarnings("unchecked")
-        jakarta.enterprise.event.Event<io.casehub.qhorus.api.gateway.ChannelInitialisedEvent> mockEvent2 = mock(jakarta.enterprise.event.Event.class);
-
         ChannelGateway gatewayWithDelivery = new ChannelGateway(
                 agentBackend,
                 normaliser,
                 null,
                 null,
                 null,
-                mockEvent2,
-                null, // channelClosedEvents
+                e -> {},
+                e -> {},
                 enabledDeliveryConfig,
                 null,
                 null, // membershipService
-                mockInstance,
+                () -> provider.get("qhorus-test"),
                 tracingConfig);
-        gatewayWithDelivery.tracerInstance = () -> provider.get("qhorus-test");
         gatewayWithDelivery.initChannel(channelId, channelRef);
 
         RecordingBackend bestEffortBackend = new RecordingBackend("best-effort", ActorType.AGENT, DeliveryGuarantee.BEST_EFFORT);
