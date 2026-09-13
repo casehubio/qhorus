@@ -88,6 +88,13 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- Qhorus Runtime Core — framework-neutral POJOs -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-runtime-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- A2A protocol — JSON-RPC types, model records, client -->
     <dependency>
       <groupId>io.casehub</groupId>

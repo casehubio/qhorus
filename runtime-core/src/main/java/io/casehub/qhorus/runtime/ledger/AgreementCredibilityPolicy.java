@@ -4,11 +4,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CredibilityFlag;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.AttestorCredibilityPolicy;
-
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.quarkus.arc.DefaultBean;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
@@ -18,8 +14,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@DefaultBean
-@ApplicationScoped
 public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
 
     private static final Set<AttestationVerdict> PEER_VERDICTS =
@@ -27,25 +21,25 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
     private static final Set<AttestationVerdict> POLICY_VERDICTS =
             Set.of(AttestationVerdict.SOUND, AttestationVerdict.FLAGGED);
 
-    @Inject
-    LedgerEntryRepository ledger;
+    private final LedgerEntryRepository ledger;
+    private final int minDataPoints;
+    private final double lowAgreementThreshold;
 
-    int minDataPoints = 5;
-    double lowAgreementThreshold = 0.3;
-
-    @Inject
-    void configure(io.casehub.qhorus.runtime.config.QhorusConfig config) {
-        this.minDataPoints = config.attestation().credibilityMinDataPoints();
-        this.lowAgreementThreshold = config.attestation().credibilityLowAgreementThreshold();
+    public AgreementCredibilityPolicy(LedgerEntryRepository ledger,
+                                       int minDataPoints,
+                                       double lowAgreementThreshold) {
+        this.ledger = ledger;
+        this.minDataPoints = minDataPoints;
+        this.lowAgreementThreshold = lowAgreementThreshold;
     }
 
     @Override
-    public AttestorCredibilityPolicy.CredibilityAssessment assess(String attestorId) {
-        return assessBatch(Set.of(attestorId)).getOrDefault(attestorId, AttestorCredibilityPolicy.CredibilityAssessment.NEUTRAL);
+    public CredibilityAssessment assess(String attestorId) {
+        return assessBatch(Set.of(attestorId)).getOrDefault(attestorId, CredibilityAssessment.NEUTRAL);
     }
 
     @Override
-    public Map<String, AttestorCredibilityPolicy.CredibilityAssessment> assessBatch(Set<String> attestorIds) {
+    public Map<String, CredibilityAssessment> assessBatch(Set<String> attestorIds) {
         if (attestorIds == null || attestorIds.isEmpty()) {
             return Map.of();
         }
@@ -56,7 +50,7 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
         Map<String, List<LedgerAttestation>> byAttestor = peerAttestations.stream()
                 .collect(Collectors.groupingBy(a -> a.attestorId));
 
-        Map<String, AttestorCredibilityPolicy.CredibilityAssessment> result = new LinkedHashMap<>();
+        Map<String, CredibilityAssessment> result = new LinkedHashMap<>();
         for (String attestorId : attestorIds) {
             List<LedgerAttestation> attestorPeerAttestations = byAttestor.getOrDefault(attestorId, List.of());
             result.put(attestorId, computeCredibility(attestorId, attestorPeerAttestations));
@@ -64,7 +58,7 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
         return result;
     }
 
-    private AttestorCredibilityPolicy.CredibilityAssessment computeCredibility(String attestorId,
+    private CredibilityAssessment computeCredibility(String attestorId,
                                                       List<LedgerAttestation> peerAttestations) {
         double alpha = 1.0;
         double beta = 1.0;
@@ -102,7 +96,7 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
         }
 
         if (dataPoints < minDataPoints) {
-            return new AttestorCredibilityPolicy.CredibilityAssessment(1.0, "insufficient data (" + dataPoints + "/" + minDataPoints + ")",
+            return new CredibilityAssessment(1.0, "insufficient data (" + dataPoints + "/" + minDataPoints + ")",
                     Set.of(CredibilityFlag.INSUFFICIENT_DATA));
         }
 
@@ -116,7 +110,7 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
         String reason = String.format("agreement=%.2f (%d/%d agree, %d data points)",
                 score, (int) (alpha - 1.0), dataPoints, dataPoints);
 
-        return new AttestorCredibilityPolicy.CredibilityAssessment(score, reason, flags);
+        return new CredibilityAssessment(score, reason, flags);
     }
 
     private static boolean isAgreement(AttestationVerdict peerVerdict, AttestationVerdict policyVerdict) {
