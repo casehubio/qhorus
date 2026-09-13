@@ -1,0 +1,718 @@
+package io.casehub.qhorus.runtime.watchdog;
+
+import io.casehub.platform.api.identity.ActorType;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.instance.Instance;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
+import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
+import io.casehub.qhorus.api.store.CrossTenantMessageStore;
+import io.casehub.qhorus.api.store.CrossTenantWatchdogStore;
+import io.casehub.qhorus.api.store.InstanceStore;
+import io.casehub.qhorus.api.store.WatchdogStore;
+import io.casehub.qhorus.api.store.query.InstanceQuery;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.api.watchdog.AgentStaleContext;
+import io.casehub.qhorus.api.watchdog.AlertContext;
+import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
+import io.casehub.qhorus.api.watchdog.BarrierStuckContext;
+import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
+import io.casehub.qhorus.api.watchdog.CircularDelegationContext;
+import io.casehub.qhorus.api.watchdog.DeliveryLagContext;
+import io.casehub.qhorus.api.watchdog.ContextPressureContext;
+import io.casehub.qhorus.api.watchdog.ConversationStallContext;
+import io.casehub.qhorus.api.watchdog.EchoChamberContext;
+import io.casehub.qhorus.api.watchdog.LoopDetectedContext;
+import io.casehub.qhorus.api.watchdog.ObligationFanOutContext;
+import io.casehub.qhorus.api.watchdog.QueueDepthContext;
+import io.casehub.qhorus.api.watchdog.Watchdog;
+import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
+import io.casehub.qhorus.runtime.config.QhorusConfig;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.instance.InstanceService;
+import io.casehub.qhorus.runtime.message.CommitmentService;
+import io.casehub.qhorus.runtime.message.MessageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.transaction.Transactional;
+import org.jboss.logging.Logger;
+
+import java.time.Instant;
+import java.util.UUID;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.stream.Collectors;
+
+public class WatchdogEvaluationService {
+
+    public record ContextPressureEntry(String actorId, Integer contextWindowPct) {}
+
+    @FunctionalInterface
+    public interface ContextPressureQuery {
+        List<ContextPressureEntry> find(UUID channelId, String tenancyId);
+    }
+
+    private static final List<MessageType> RESOLUTION_TYPES = List.of(
+            MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE, MessageType.HANDOFF);
+
+    private static final Logger LOG = Logger.getLogger(WatchdogEvaluationService.class);
+
+    private final QhorusConfig config;
+    private final MessageService messageService;
+    private final WatchdogStore watchdogStore;
+    private final CrossTenantChannelStore crossTenantChannelStore;
+    private final CrossTenantMessageStore crossTenantMessageStore;
+    private final CrossTenantCommitmentStore crossTenantCommitmentStore;
+    private final CrossTenantWatchdogStore crossTenantWatchdogStore;
+    private final InstanceStore instanceStore;
+    private final Consumer<WatchdogAlertEvent> alertConsumer;
+    private final ContextPressureQuery contextPressureQuery;
+    private final io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+    private final ChannelService channelService;
+    private final InstanceService instanceService;
+    private final CommitmentService commitmentService;
+    private final ObjectMapper objectMapper;
+
+    public WatchdogEvaluationService(QhorusConfig config,
+                                     MessageService messageService,
+                                     WatchdogStore watchdogStore,
+                                     CrossTenantChannelStore crossTenantChannelStore,
+                                     CrossTenantMessageStore crossTenantMessageStore,
+                                     CrossTenantCommitmentStore crossTenantCommitmentStore,
+                                     CrossTenantWatchdogStore crossTenantWatchdogStore,
+                                     InstanceStore instanceStore,
+                                     Consumer<WatchdogAlertEvent> alertConsumer,
+                                     ContextPressureQuery contextPressureQuery,
+                                     io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore,
+                                     ChannelService channelService,
+                                     InstanceService instanceService,
+                                     CommitmentService commitmentService,
+                                     ObjectMapper objectMapper) {
+        this.config = config;
+        this.messageService = messageService;
+        this.watchdogStore = watchdogStore;
+        this.crossTenantChannelStore = crossTenantChannelStore;
+        this.crossTenantMessageStore = crossTenantMessageStore;
+        this.crossTenantCommitmentStore = crossTenantCommitmentStore;
+        this.crossTenantWatchdogStore = crossTenantWatchdogStore;
+        this.instanceStore = instanceStore;
+        this.alertConsumer = alertConsumer;
+        this.contextPressureQuery = contextPressureQuery;
+        this.channelMembershipStore = channelMembershipStore;
+        this.channelService = channelService;
+        this.instanceService = instanceService;
+        this.commitmentService = commitmentService;
+        this.objectMapper = objectMapper;
+    }
+
+    @Transactional
+    public void evaluateAll() {
+        if (!config.watchdog().enabled()) {
+            return;
+        }
+
+        List<Watchdog> watchdogs = crossTenantWatchdogStore.listAll().stream()
+                .filter(Objects::nonNull)
+                .toList();
+        Instant now = Instant.now();
+
+        for (Watchdog w : watchdogs) {
+            if (isDebounced(w, now)) {
+                continue;
+            }
+            boolean fired = switch (w.conditionType()) {
+                case BARRIER_STUCK -> evaluateBarrierStuck(w, now);
+                case APPROVAL_PENDING -> evaluateApprovalPending(w, now);
+                case AGENT_STALE -> evaluateAgentStale(w, now);
+                case CHANNEL_IDLE -> evaluateChannelIdle(w, now);
+                case QUEUE_DEPTH -> evaluateQueueDepth(w, now);
+                case CONTEXT_PRESSURE -> evaluateContextPressure(w, now);
+                case LOOP_DETECTED -> evaluateLoopDetected(w, now);
+                case OBLIGATION_FAN_OUT -> evaluateObligationFanOut(w, now);
+                case CONVERSATION_STALL -> evaluateConversationStall(w, now);
+                case ECHO_CHAMBER -> evaluateEchoChamber(w, now);
+                case CIRCULAR_DELEGATION -> evaluateCircularDelegation(w, now);
+                case DELIVERY_LAG -> evaluateDeliveryLag(w, now);
+            };
+            if (fired) {
+                Watchdog updated = w.toBuilder().lastFiredAt(now).build();
+                watchdogStore.put(updated);
+            }
+        }
+    }
+
+    private boolean isDebounced(Watchdog w, Instant now) {
+        if (w.lastFiredAt() == null) {
+            return false;
+        }
+        long windowSeconds = w.thresholdSeconds() != null && w.thresholdSeconds() > 0
+                             ? w.thresholdSeconds()
+                             : 1L;
+        return w.lastFiredAt().isAfter(now.minusSeconds(windowSeconds));
+    }
+
+    private boolean evaluateBarrierStuck(Watchdog w, Instant now) {
+        int     threshold = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+        Instant cutoff    = now.minusSeconds(threshold);
+
+        List<Channel> barriers = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> ch.semantic() == ChannelSemantic.BARRIER)
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> ch.lastActivityAt() == null || ch.lastActivityAt().isBefore(cutoff) || threshold == 0)
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : barriers) {
+            List<String> required = ch.barrierContributors() != null
+                                    ? ch.barrierContributors()
+                                    : List.of();
+            if (required.isEmpty()) { continue; }
+
+            List<String> written = crossTenantMessageStore.distinctSendersByChannel(ch.id(), MessageType.EVENT);
+            List<String> missing = required.stream()
+                    .map(String::trim)
+                    .filter(r -> !r.isBlank())
+                    .filter(r -> !written.contains(r))
+                    .toList();
+
+            if (!missing.isEmpty()) {
+                Instant effectiveActivity = ch.lastActivityAt() != null ? ch.lastActivityAt() : ch.createdAt();
+                long    elapsedSeconds    = now.getEpochSecond() - effectiveActivity.getEpochSecond();
+
+                List<String> notDelivered        = new ArrayList<>();
+                List<String> deliveredNoResponse = new ArrayList<>();
+                if (ChannelService.isDeliveryTrackingEnabled(ch)) {
+                    Long latestId = crossTenantMessageStore.findLastMessage(ch.id()).map(Message::id).orElse(null);
+                    for (String contributor : missing) {
+                        var membership = channelMembershipStore.find(ch.id(), contributor);
+                        if (membership.isPresent() && membership.get().lastDeliveredMessageId() != null
+                            && latestId != null && membership.get().lastDeliveredMessageId() >= latestId) {
+                            deliveredNoResponse.add(contributor);
+                        } else {
+                            notDelivered.add(contributor);
+                        }
+                    }
+                } else {
+                    notDelivered.addAll(missing);
+                }
+
+                String summary = "BARRIER_STUCK: channel='" + ch.name() + "' waiting for contributors";
+                fireAlert(w, summary,
+                          new BarrierStuckContext(ch.id(), ch.name(), missing, notDelivered, deliveredNoResponse, elapsedSeconds), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateApprovalPending(Watchdog w, Instant now) {
+        int threshold = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+
+        List<Commitment> pending = crossTenantCommitmentStore.findAllOpen()
+                .stream()
+                .filter(c -> c.expiresAt() != null)
+                .filter(c -> threshold == 0 || c.expiresAt().isBefore(now.plusSeconds(60 - threshold)))
+                .toList();
+
+        if (!pending.isEmpty()) {
+            Instant oldestExpiry = pending.stream()
+                    .map(Commitment::expiresAt)
+                    .min(Comparator.naturalOrder())
+                    .orElse(null);
+            String summary = "APPROVAL_PENDING: " + pending.size() + " approval(s) awaiting human response";
+            fireAlert(w, summary, new ApprovalPendingContext(pending.size(), oldestExpiry), now);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean evaluateAgentStale(Watchdog w, Instant now) {
+        int     threshold = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+        Instant cutoff    = now.minusSeconds(threshold);
+
+        List<Instance> staleInstances = instanceStore.scan(
+                InstanceQuery.builder().status("stale").staleOlderThan(cutoff).build());
+
+        if (!staleInstances.isEmpty()) {
+            List<String> ids = staleInstances.stream()
+                    .limit(10)
+                    .map(i -> i.id().toString())
+                    .toList();
+            String summary = "AGENT_STALE: " + staleInstances.size() + " stale agent(s) detected";
+            fireAlert(w, summary, new AgentStaleContext(staleInstances.size(), ids), now);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean evaluateChannelIdle(Watchdog w, Instant now) {
+        int     threshold = w.thresholdSeconds() != null ? w.thresholdSeconds() : 600;
+        Instant cutoff    = now.minusSeconds(threshold);
+
+        List<Channel> idle = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> threshold == 0 || ch.lastActivityAt() == null || ch.lastActivityAt().isBefore(cutoff))
+                .toList();
+
+        if (!idle.isEmpty()) {
+            List<String> names   = idle.stream().map(Channel::name).limit(3).toList();
+            String       joined  = String.join(", ", names);
+            String       summary = "CHANNEL_IDLE: channel(s) idle > " + threshold + "s: " + joined;
+            fireAlert(w, summary, new ChannelIdleContext(names, threshold), now);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean evaluateQueueDepth(Watchdog w, Instant now) {
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 100;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        for (Channel ch : channels) {
+            long count = crossTenantMessageStore.count(
+                    MessageQuery.builder()
+                                .channelId(ch.id())
+                                .excludeTypes(List.of(MessageType.EVENT))
+                                .build());
+            if (count >= threshold) {
+                String summary = "QUEUE_DEPTH: channel='" + ch.name() + "' has " + count
+                                 + " messages (threshold=" + threshold + ")";
+                fireAlert(w, summary, new QueueDepthContext(ch.name(), count, threshold), now);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void fireAlert(Watchdog w, String summary, AlertContext context, Instant now) {
+        fireAlert(w, summary, context, now, null);
+    }
+
+    void fireAlert(Watchdog w, String summary, AlertContext context, Instant now, UUID channelId) {
+        alertConsumer.accept(new WatchdogAlertEvent(
+                w.id(), w.targetName(), w.notificationChannel(), summary, now, context));
+
+        Optional<Channel> notifChannel = crossTenantChannelStore
+                .findByNameAndTenancy(w.notificationChannel(), w.tenancyId());
+        if (notifChannel.isEmpty()) {
+            executeContainmentAction(w, context, channelId, null);
+            return;
+        }
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(notifChannel.get().id())
+                .sender("system:watchdog")
+                .type(MessageType.STATUS)
+                .content(summary)
+                .actorType(ActorType.SYSTEM)
+                .tenancyId(w.tenancyId())
+                .build());
+        executeContainmentAction(w, context, channelId, notifChannel.get().id());
+    }
+
+    private void executeContainmentAction(Watchdog w, AlertContext context, UUID channelId, UUID notifChannelId) {
+        if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.ALERT) return;
+        try {
+            if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.PAUSE_CHANNEL
+                    || w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.QUARANTINE) {
+                if (channelId == null) {
+                    LOG.warnf("PAUSE_CHANNEL on cross-channel condition %s — no channelId, skipping", w.conditionType());
+                } else if (channelId.equals(notifChannelId)) {
+                    LOG.warnf("Skipping containment on notification channel %s — self-defeating", w.notificationChannel());
+                } else {
+                    channelService.pause(channelId);
+                    commitmentService.expireByChannel(channelId);
+                }
+            }
+            if (w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.DEREGISTER_AGENT
+                    || w.action() == io.casehub.qhorus.api.watchdog.WatchdogAction.QUARANTINE) {
+                List<String> agents = context.affectedAgentIds();
+                if (agents.isEmpty()) {
+                    LOG.warnf("DEREGISTER_AGENT on condition %s with no identified agents — skipping", w.conditionType());
+                } else {
+                    for (String agentId : agents) {
+                        instanceService.markOffline(agentId);
+                    }
+                }
+            }
+            dispatchContainmentEvent(w, context, channelId, notifChannelId);
+        } catch (Exception e) {
+            LOG.errorf(e, "Containment action %s failed for watchdog %s — alert was still sent", w.action(), w.id());
+        }
+    }
+
+    private void dispatchContainmentEvent(Watchdog w, AlertContext context, UUID channelId, UUID notifChannelId) {
+        if (notifChannelId == null) return;
+        try {
+            com.fasterxml.jackson.databind.node.ObjectNode telemetry = objectMapper.createObjectNode();
+            telemetry.put("containment_action", w.action().name());
+            telemetry.put("condition_type", w.conditionType().name());
+            telemetry.put("watchdog_id", w.id().toString());
+            if (channelId != null) telemetry.put("channel_id", channelId.toString());
+            telemetry.set("affected_agents", objectMapper.valueToTree(context.affectedAgentIds()));
+            messageService.dispatch(MessageDispatch.builder()
+                    .channelId(notifChannelId)
+                    .sender("system:watchdog")
+                    .type(MessageType.EVENT)
+                    .telemetry(telemetry.toString())
+                    .actorType(ActorType.SYSTEM)
+                    .tenancyId(w.tenancyId())
+                    .build());
+        } catch (Exception e) {
+            LOG.warnf(e, "Failed to dispatch containment EVENT for watchdog %s", w.id());
+        }
+    }
+
+    private boolean evaluateContextPressure(Watchdog w, Instant now) {
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 80;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            var entries = contextPressureQuery.find(ch.id(), w.tenancyId());
+            for (var entry : entries) {
+                if (entry.contextWindowPct() != null && entry.contextWindowPct() >= threshold) {
+                    String summary = "CONTEXT_PRESSURE: agent='" + entry.actorId()
+                                     + "' at " + entry.contextWindowPct() + "% on channel='" + ch.name() + "'";
+                    fireAlert(w, summary,
+                              new ContextPressureContext(ch.id(), ch.name(),
+                                                         entry.actorId(), entry.contextWindowPct()),
+                              now);
+                    fired = true;
+                }
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateLoopDetected(Watchdog w, Instant now) {
+        int     repetitionCount     = w.thresholdCount() != null ? w.thresholdCount() : 5;
+        int     windowSeconds       = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+        double  similarityThreshold = w.similarityPct() != null ? w.similarityPct() / 100.0 : 0.70;
+        Instant cutoff              = now.minusSeconds(windowSeconds);
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            List<Message> recent = crossTenantMessageStore.scan(
+                    MessageQuery.builder().channelId(ch.id())
+                                .excludeTypes(List.of(MessageType.EVENT))
+                                .limit(repetitionCount * 3).descending(true).build());
+
+            Map<String, List<Message>> bySender = recent.stream()
+                    .filter(m -> m.createdAt() != null && m.createdAt().isAfter(cutoff))
+                    .collect(Collectors.groupingBy(Message::sender));
+
+            for (var entry : bySender.entrySet()) {
+                List<Message> msgs = entry.getValue();
+                if (msgs.size() < repetitionCount) {
+                    continue;
+                }
+                msgs = new ArrayList<>(msgs);
+                msgs.sort(Comparator.comparing(Message::createdAt));
+
+                int    longestRun = 0;
+                int    currentRun = 0;
+                double maxSim     = 0.0;
+                for (int i = 1; i < msgs.size(); i++) {
+                    double sim = JaccardSimilarity.similarity(msgs.get(i - 1).content(), msgs.get(i).content());
+                    if (sim >= similarityThreshold) {
+                        currentRun++;
+                        maxSim = Math.max(maxSim, sim);
+                    } else {
+                        longestRun = Math.max(longestRun, currentRun);
+                        currentRun = 0;
+                    }
+                }
+                longestRun = Math.max(longestRun, currentRun);
+
+                if (longestRun >= repetitionCount - 1) {
+                    String summary = "LOOP_DETECTED: sender='" + entry.getKey()
+                                     + "' repeated " + (longestRun + 1) + " similar messages on '" + ch.name() + "'";
+                    fireAlert(w, summary,
+                              new LoopDetectedContext(ch.id(), ch.name(), entry.getKey(),
+                                                      longestRun + 1, maxSim), now);
+                    fired = true;
+                }
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateObligationFanOut(Watchdog w, Instant now) {
+        int     deadlineSeconds = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+        Instant cutoff          = now.minusSeconds(deadlineSeconds);
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            List<Commitment> stale = crossTenantCommitmentStore.findOpenByChannel(ch.id()).stream()
+                    .filter(c -> c.messageType() == MessageType.COMMAND)
+                    .filter(c -> c.acknowledgedAt() == null)
+                    .filter(c -> c.createdAt() != null && c.createdAt().isBefore(cutoff))
+                    .filter(c -> {
+                        long responseCount = crossTenantMessageStore.count(
+                                MessageQuery.builder().channelId(ch.id())
+                                            .correlationId(c.correlationId())
+                                            .excludeTypes(List.of(MessageType.COMMAND, MessageType.EVENT))
+                                            .build());
+                        return responseCount == 0;
+                    })
+                    .toList();
+
+            if (!stale.isEmpty()) {
+                List<String> corrIds = stale.stream()
+                        .map(Commitment::correlationId).limit(5).toList();
+                String summary = "OBLIGATION_FAN_OUT: " + stale.size()
+                                 + " unresponded obligation(s) on '" + ch.name() + "'";
+                fireAlert(w, summary,
+                          new ObligationFanOutContext(ch.id(), ch.name(), stale.size(), corrIds), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateConversationStall(Watchdog w, Instant now) {
+        int     stallSeconds = w.thresholdSeconds() != null ? w.thresholdSeconds() : 600;
+        Instant cutoff       = now.minusSeconds(stallSeconds);
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            List<Commitment> active = crossTenantCommitmentStore.findOpenByChannel(ch.id());
+            if (active.isEmpty()) {
+                continue;
+            }
+
+            List<Commitment> aged = active.stream()
+                    .filter(c -> c.createdAt() != null && c.createdAt().isBefore(cutoff))
+                    .toList();
+            if (aged.isEmpty()) {
+                continue;
+            }
+
+            List<Commitment> stalled = aged.stream()
+                    .filter(c -> {
+                        List<Message> resolutions = crossTenantMessageStore.scan(
+                                MessageQuery.builder().channelId(ch.id())
+                                        .correlationId(c.correlationId())
+                                        .limit(100).descending(true).build()).stream()
+                                .filter(m -> RESOLUTION_TYPES.contains(m.messageType()))
+                                .toList();
+                        if (resolutions.isEmpty()) {
+                            return true;
+                        }
+                        Message latest = resolutions.get(0);
+                        return latest.createdAt() != null && latest.createdAt().isBefore(cutoff);
+                    })
+                    .toList();
+
+            if (!stalled.isEmpty()) {
+                long maxStallSeconds = stalled.stream()
+                        .mapToLong(c -> now.getEpochSecond() - c.createdAt().getEpochSecond())
+                        .max().orElse(0L);
+                List<String> corrIds = stalled.stream()
+                        .map(Commitment::correlationId).limit(5).toList();
+
+                Boolean deliveryConfirmed = null;
+                if (ChannelService.isDeliveryTrackingEnabled(ch) && !stalled.isEmpty()) {
+                    Commitment firstStalled = stalled.get(0);
+                    String     obligor      = firstStalled.obligor();
+                    if (obligor != null) {
+                        var membership = channelMembershipStore.find(ch.id(), obligor);
+                        if (membership.isPresent()) {
+                            Long delivered    = membership.get().lastDeliveredMessageId();
+                            var commandMsg = crossTenantMessageStore.scan(
+                                    MessageQuery.builder().channelId(ch.id())
+                                            .correlationId(firstStalled.correlationId())
+                                            .limit(1).build()).stream().findFirst();
+                            Long commandMsgId = commandMsg.map(Message::id).orElse(null);
+                            if (delivered != null && commandMsgId != null) {
+                                deliveryConfirmed = delivered >= commandMsgId;
+                            } else {
+                                deliveryConfirmed = false;
+                            }
+                        }
+                    }
+                }
+
+                String summary = "CONVERSATION_STALL: " + stalled.size()
+                                 + " stalled correlation(s) on '" + ch.name() + "'";
+                fireAlert(w, summary,
+                          new ConversationStallContext(ch.id(), ch.name(), stalled.size(),
+                                                       corrIds, maxStallSeconds, deliveryConfirmed), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateEchoChamber(Watchdog w, Instant now) {
+        int     windowSeconds       = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
+        int     minAgents           = w.thresholdCount() != null ? w.thresholdCount() : 2;
+        double  similarityThreshold = w.similarityPct() != null ? w.similarityPct() / 100.0 : 0.70;
+        Instant cutoff              = now.minusSeconds(windowSeconds);
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            List<Message> recent = crossTenantMessageStore.scan(
+                    MessageQuery.builder().channelId(ch.id())
+                                .excludeTypes(List.of(MessageType.EVENT))
+                                .limit(50).descending(true).build()).stream()
+                    .filter(m -> m.createdAt() != null && m.createdAt().isAfter(cutoff))
+                    .toList();
+
+            Map<String, List<Message>> bySender = recent.stream()
+                    .collect(Collectors.groupingBy(Message::sender));
+
+            if (bySender.size() < minAgents) {
+                continue;
+            }
+
+            int          similarPairs = 0;
+            double       maxSim       = 0.0;
+            Set<String>  participants = new HashSet<>();
+            List<String> senders      = new ArrayList<>(bySender.keySet());
+            for (int i = 0; i < senders.size(); i++) {
+                for (int j = i + 1; j < senders.size(); j++) {
+                    for (Message ma : bySender.get(senders.get(i))) {
+                        for (Message mb : bySender.get(senders.get(j))) {
+                            double sim = JaccardSimilarity.similarity(ma.content(), mb.content());
+                            if (sim >= similarityThreshold) {
+                                similarPairs++;
+                                maxSim = Math.max(maxSim, sim);
+                                participants.add(senders.get(i));
+                                participants.add(senders.get(j));
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (similarPairs >= 2) {
+                String summary = "ECHO_CHAMBER: " + similarPairs
+                                 + " echoed message pair(s) on '" + ch.name() + "'";
+                fireAlert(w, summary,
+                          new EchoChamberContext(ch.id(), ch.name(),
+                                                 List.copyOf(participants), maxSim), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateCircularDelegation(Watchdog w, Instant now) {
+        int maxDepth = w.thresholdCount() != null ? w.thresholdCount() : 10;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            List<Commitment> open = crossTenantCommitmentStore.findOpenByChannel(ch.id()).stream()
+                    .filter(c -> c.parentCommitmentId() != null)
+                    .toList();
+
+            Set<String> checked = new HashSet<>();
+            for (Commitment c : open) {
+                if (!checked.add(c.correlationId())) { continue; }
+
+                List<Commitment> chain = crossTenantCommitmentStore.findAllByCorrelationId(c.correlationId());
+                if (chain.size() > maxDepth) { continue; }
+
+                java.util.LinkedHashSet<String> seen  = new java.util.LinkedHashSet<>();
+                List<String>                    cycle = null;
+                for (Commitment link : chain) {
+                    if (link.obligor() == null) { continue; }
+                    if (!seen.add(link.obligor())) {
+                        List<String> ordered = new ArrayList<>(seen);
+                        int          start   = ordered.indexOf(link.obligor());
+                        cycle = new ArrayList<>(ordered.subList(start, ordered.size()));
+                        cycle.add(link.obligor());
+                        break;
+                    }
+                }
+
+                if (cycle != null) {
+                    String summary = "CIRCULAR_DELEGATION: cycle detected on '"
+                                     + ch.name() + "' - " + String.join(" -> ", cycle);
+                    fireAlert(w, summary,
+                              new CircularDelegationContext(ch.id(), ch.name(),
+                                                            c.correlationId(), List.copyOf(cycle), chain.size()), now);
+                    fired = true;
+                }
+            }
+        }
+        return fired;
+    }
+
+    private boolean evaluateDeliveryLag(Watchdog w, Instant now) {
+        int threshold = w.thresholdCount() != null ? w.thresholdCount() : 10;
+
+        List<Channel> channels = crossTenantChannelStore.listAll().stream()
+                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> !ch.name().equals(w.notificationChannel()))
+                .filter(ch -> ChannelService.isDeliveryTrackingEnabled(ch))
+                .toList();
+
+        boolean fired = false;
+        for (Channel ch : channels) {
+            Optional<Message> head = crossTenantMessageStore.findLastMessage(ch.id());
+            if (head.isEmpty()) { continue; }
+            long latestId = head.get().id();
+
+            List<io.casehub.qhorus.api.channel.ChannelMembership> members =
+                    channelMembershipStore.findByChannel(ch.id());
+
+            List<DeliveryLagContext.LagDetail> lagging = members.stream()
+                    .filter(m -> m.lastDeliveredMessageId() != null)
+                    .map(m -> {
+                        long undelivered = crossTenantMessageStore.count(
+                                MessageQuery.builder().channelId(ch.id())
+                                        .afterId(m.lastDeliveredMessageId()).build());
+                        return new DeliveryLagContext.LagDetail(m.memberId(), m.lastDeliveredMessageId(), undelivered);
+                    })
+                    .filter(d -> d.lag() >= threshold)
+                    .toList();
+
+            if (!lagging.isEmpty()) {
+                String summary = "DELIVERY_LAG: " + lagging.size()
+                        + " participant(s) lagging on '" + ch.name() + "'";
+                fireAlert(w, summary,
+                        new DeliveryLagContext(ch.id(), ch.name(), lagging, latestId), now);
+                fired = true;
+            }
+        }
+        return fired;
+    }
+}
