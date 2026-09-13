@@ -12,8 +12,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.inject.Instance;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import io.opentelemetry.api.trace.Tracer;
 
@@ -49,11 +49,11 @@ class ChannelGatewayDeliverRemoteTest {
                 mock(MessageService.class),    // messageService — dispatchClusterObservers called by deliverRemote
                 null,                          // channelService (unused)
                 new StubCrossTenantChannelStore(),
-                mock(Event.class),             // channelInitialisedEvents
-                mock(Event.class),             // channelClosedEvents
+                mock(Consumer.class),          // channelInitialisedConsumer
+                mock(Consumer.class),          // channelClosedConsumer
                 new StubDeliveryConfig(),
                 messageStore,
-                null, mock(Instance.class),
+                null, mock(Supplier.class),
                 mock(QhorusTracingConfig.class));
     }
 

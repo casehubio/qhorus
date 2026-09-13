@@ -46,24 +46,10 @@ class RoutingBridgeTest {
         when(config.routing()).thenReturn(routingConfig);
         when(routingConfig.defaultTrustThreshold()).thenReturn(0.0);
 
-        jakarta.enterprise.inject.Instance<AgentRegistry> registryInstance = Mockito.mock(jakarta.enterprise.inject.Instance.class);
-        when(registryInstance.isResolvable()).thenReturn(true);
-        when(registryInstance.get()).thenReturn(registry);
-
-        jakarta.enterprise.inject.Instance<AgentSelector> selectorInstance = Mockito.mock(jakarta.enterprise.inject.Instance.class);
-        when(selectorInstance.isResolvable()).thenReturn(true);
-        when(selectorInstance.get()).thenReturn(selector);
-
         trustGateService = Mockito.mock(io.casehub.ledger.runtime.service.TrustGateService.class);
         when(trustGateService.currentScore(any(String.class))).thenReturn(java.util.OptionalDouble.of(0.5));
-        jakarta.enterprise.inject.Instance<io.casehub.ledger.runtime.service.TrustGateService> trustInstance = Mockito.mock(jakarta.enterprise.inject.Instance.class);
-        when(trustInstance.isResolvable()).thenReturn(true);
-        when(trustInstance.get()).thenReturn(trustGateService);
 
-        jakarta.enterprise.inject.Instance<io.casehub.platform.api.capacity.ActorCapacityView> capacityInstance = Mockito.mock(jakarta.enterprise.inject.Instance.class);
-        when(capacityInstance.isResolvable()).thenReturn(false);
-
-        bridge = new RoutingBridge(registryInstance, selectorInstance, trustInstance, capacityInstance, config);
+        bridge = new RoutingBridge(registry, selector, trustGateService, null, config);
     }
 
     @Test

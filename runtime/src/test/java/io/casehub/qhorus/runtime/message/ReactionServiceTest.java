@@ -28,7 +28,7 @@ class ReactionServiceTest {
         reactionStore = new StubReactionStore();
         service = new ReactionService();
         service.reactionStore = reactionStore;
-        service.reactionEvent = null;
+        service.reactionConsumer = null;
     }
 
     @Test

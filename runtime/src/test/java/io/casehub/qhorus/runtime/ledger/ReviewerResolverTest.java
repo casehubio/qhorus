@@ -5,7 +5,7 @@ import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.spi.PeerReviewRequestedEvent;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import jakarta.enterprise.event.Event;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +26,7 @@ class ReviewerResolverTest {
     private ChannelStore channelStore;
     private InstanceService instanceService;
     @SuppressWarnings("unchecked")
-    private final Event<PeerReviewRequestedEvent> reviewEvent = mock(Event.class);
+    private final Consumer<PeerReviewRequestedEvent> reviewEvent = mock(Consumer.class);
     private final UUID channelId = UUID.randomUUID();
     private final UUID entryId = UUID.randomUUID();
     private static final String TENANT = "test-tenant";
@@ -38,7 +38,7 @@ class ReviewerResolverTest {
         instanceService = mock(InstanceService.class);
         resolver.channelStore = channelStore;
         resolver.instanceService = instanceService;
-        resolver.reviewRequestedEvent = reviewEvent;
+        resolver.reviewRequestedConsumer = reviewEvent;
 
         when(channelStore.find(channelId)).thenReturn(Optional.of(
                 Channel.builder("test-ch").id(channelId).build()));
@@ -51,7 +51,7 @@ class ReviewerResolverTest {
                 List.of("rev-a", "rev-b"), entryId, TENANT);
 
         assertThat(result).containsExactly("rev-a", "rev-b");
-        verify(reviewEvent, never()).fireAsync(any());
+        verify(reviewEvent, never()).accept(any());
     }
 
     @Test
@@ -81,7 +81,7 @@ class ReviewerResolverTest {
         List<String> result = resolver.resolve(channelId, List.of(), entryId, TENANT);
 
         assertThat(result).isEmpty();
-        verify(reviewEvent).fireAsync(any(PeerReviewRequestedEvent.class));
+        verify(reviewEvent).accept(any(PeerReviewRequestedEvent.class));
     }
 
     @Test

@@ -12,7 +12,7 @@ import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.CommitmentService;
-import jakarta.enterprise.event.Event;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -29,7 +29,7 @@ class EnforcementExecutorTest {
     MessageDispatcher messageDispatcher;
     ChannelService channelService;
     CommitmentService commitmentService;
-    Event<EnforcementBlockedEvent> enforcementEvent;
+    Consumer<EnforcementBlockedEvent> enforcementEvent;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -37,7 +37,7 @@ class EnforcementExecutorTest {
         messageDispatcher = mock(MessageDispatcher.class);
         channelService = mock(ChannelService.class);
         commitmentService = mock(CommitmentService.class);
-        enforcementEvent = mock(Event.class);
+        enforcementEvent = mock(Consumer.class);
         when(messageDispatcher.dispatch(any())).thenReturn(
                 new DispatchResult(1L, UUID.randomUUID(), "system:enforcement",
                         MessageType.EVENT, null, null, List.of(), null,
@@ -46,7 +46,7 @@ class EnforcementExecutorTest {
         executor.messageDispatcher = messageDispatcher;
         executor.channelService = channelService;
         executor.commitmentService = commitmentService;
-        executor.enforcementBlockedEvent = enforcementEvent;
+        executor.enforcementBlockedConsumer = enforcementEvent;
         executor.objectMapper = new ObjectMapper();
     }
 
@@ -78,7 +78,7 @@ class EnforcementExecutorTest {
 
         verify(channelService, never()).pause(any());
         verify(commitmentService, never()).expireByChannel(any());
-        verify(enforcementEvent).fireAsync(any(EnforcementBlockedEvent.class));
+        verify(enforcementEvent).accept(any(EnforcementBlockedEvent.class));
     }
 
     @Test
@@ -95,7 +95,7 @@ class EnforcementExecutorTest {
         verify(messageDispatcher).dispatch(any());
         verify(channelService).pause(ch.id());
         verify(commitmentService).expireByChannel(ch.id());
-        verify(enforcementEvent).fireAsync(any(EnforcementBlockedEvent.class));
+        verify(enforcementEvent).accept(any(EnforcementBlockedEvent.class));
     }
 
     @Test
@@ -130,7 +130,7 @@ class EnforcementExecutorTest {
         executor.execute(ch, dispatch, violations, "default");
 
         var captor = ArgumentCaptor.forClass(EnforcementBlockedEvent.class);
-        verify(enforcementEvent).fireAsync(captor.capture());
+        verify(enforcementEvent).accept(captor.capture());
         EnforcementBlockedEvent event = captor.getValue();
         assertThat(event.channelId()).isEqualTo(ch.id());
         assertThat(event.channelName()).isEqualTo("test-ch");

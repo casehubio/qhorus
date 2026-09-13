@@ -8,8 +8,7 @@ import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,18 +35,19 @@ class QhorusRedistributionExecutorTest {
     private RedistributionDelegate delegate;
     private RedistributionPolicy policy;
     private CrossTenantCommitmentStore commitmentStore;
-    private MessageLedgerEntryRepository messageRepo;
+    @SuppressWarnings("unchecked")
+    private Function<String, Duration> timeSinceLastActivityFn;
     private QhorusRedistributionExecutor executor;
 
+    @SuppressWarnings("unchecked")
     @BeforeEach
     void setup() {
         delegate = mock(RedistributionDelegate.class);
         policy = mock(RedistributionPolicy.class);
         commitmentStore = mock(CrossTenantCommitmentStore.class);
-        messageRepo = mock(MessageLedgerEntryRepository.class);
-        executor = new QhorusRedistributionExecutor(delegate, policy, commitmentStore, messageRepo);
-
-        when(messageRepo.findLatestEntryByActor(anyString())).thenReturn(Optional.of(recentEntry()));
+        timeSinceLastActivityFn = mock(Function.class);
+        when(timeSinceLastActivityFn.apply(anyString())).thenReturn(Duration.ofMinutes(1));
+        executor = new QhorusRedistributionExecutor(delegate, policy, commitmentStore, timeSinceLastActivityFn);
     }
 
     @Test
@@ -169,7 +169,7 @@ class QhorusRedistributionExecutorTest {
     @Test
     void inactivityEscalation() {
         when(commitmentStore.findOpenByObligor("agent-1")).thenReturn(List.of());
-        when(messageRepo.findLatestEntryByActor("agent-1")).thenReturn(Optional.empty());
+        when(timeSinceLastActivityFn.apply("agent-1")).thenReturn(Duration.ofMinutes(6));
         when(policy.evaluate(any())).thenReturn(
                 new RedistributionDecision.Escalate("inactive for PT6M"));
 
@@ -241,9 +241,4 @@ class QhorusRedistributionExecutorTest {
                 .capabilityTag(capabilityTag).build();
     }
 
-    private static MessageLedgerEntry recentEntry() {
-        var entry = new MessageLedgerEntry();
-        entry.occurredAt = Instant.now().minusSeconds(30);
-        return entry;
-    }
 }

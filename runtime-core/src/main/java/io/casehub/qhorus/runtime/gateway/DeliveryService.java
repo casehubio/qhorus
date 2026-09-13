@@ -41,6 +41,9 @@ public class DeliveryService implements DeliveryBatchExecutor.HealthCallback {
 
     volatile boolean running;
 
+
+    DeliveryService() {}
+
     public DeliveryService(DeliverySignalQueue signalQueue,
                            DeliveryConfig config,
                            ChannelGateway gateway,

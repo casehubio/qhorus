@@ -8,9 +8,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-
-import jakarta.enterprise.event.Event;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,15 +26,13 @@ import io.cloudevents.CloudEvent;
  */
 class QhorusCloudEventAdapterTest {
 
-    private Event<CloudEvent> cloudEventBus;
+    private Consumer<CloudEvent> cloudEventBus;
     private QhorusCloudEventAdapter adapter;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
     void setUp() {
-        cloudEventBus = mock(Event.class);
-        when(cloudEventBus.fireAsync(any(CloudEvent.class)))
-                .thenReturn(CompletableFuture.completedFuture(null));
+        cloudEventBus = mock(Consumer.class);
         ObjectMapper mapper = new ObjectMapper();
         mapper.registerModule(new JavaTimeModule());
         adapter = new QhorusCloudEventAdapter(cloudEventBus, mapper);
@@ -163,7 +159,7 @@ class QhorusCloudEventAdapterTest {
 
     private CloudEvent captureCloudEvent() {
         ArgumentCaptor<CloudEvent> captor = ArgumentCaptor.forClass(CloudEvent.class);
-        verify(cloudEventBus).fireAsync(captor.capture());
+        verify(cloudEventBus).accept(captor.capture());
         return captor.getValue();
     }
 }

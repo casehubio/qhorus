@@ -18,9 +18,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import jakarta.enterprise.event.Event;
-
-import jakarta.enterprise.inject.Instance;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import io.opentelemetry.api.trace.Tracer;
 
@@ -85,9 +84,9 @@ class ChannelGatewayTest {
         deliveryConfig = mock(DeliveryConfig.class);
         when(deliveryConfig.enabled()).thenReturn(false);
         gateway = new ChannelGateway(agentBackend, normaliser, messageService,
-                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Event.class),
-                mock(Event.class), deliveryConfig, mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class), mock(QhorusTracingConfig.class));
+                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Consumer.class),
+                mock(Consumer.class), deliveryConfig, mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
+                null, mock(Supplier.class), mock(QhorusTracingConfig.class));
         channelId = UUID.randomUUID();
         channelRef = new ChannelRef(channelId, "test-channel");
         gateway.initChannel(channelId, channelRef);
@@ -143,9 +142,9 @@ class ChannelGatewayTest {
         QhorusChannelBackend spy = spy(agentBackend);
         // Re-init gateway with spy to observe post() calls
         ChannelGateway gw2 = new ChannelGateway(spy, normaliser, messageService,
-                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Event.class),
-                mock(Event.class), deliveryConfig, mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class), mock(QhorusTracingConfig.class));
+                mock(ChannelService.class), mock(CrossTenantChannelStore.class), mock(Consumer.class),
+                mock(Consumer.class), deliveryConfig, mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
+                null, mock(Supplier.class), mock(QhorusTracingConfig.class));
         UUID ch2 = UUID.randomUUID();
         gw2.initChannel(ch2, new ChannelRef(ch2, "ch2"));
 

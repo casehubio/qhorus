@@ -144,67 +144,7 @@ class CommitmentTracingTest {
         store = new StubCommitmentStore();
         service = new CommitmentService();
         service.store = store;
-        service.tracerInstance = new jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer>() {
-            @Override
-            public io.opentelemetry.api.trace.Tracer get() {
-                return provider.get("qhorus-test");
-            }
-
-            @Override
-            public boolean isResolvable() {
-                return true;
-            }
-
-            @Override
-            public boolean isAmbiguous() {
-                return false;
-            }
-
-            @Override
-            public boolean isUnsatisfied() {
-                return false;
-            }
-
-            @Override
-            public jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer> select(Annotation... qualifiers) {
-                return this;
-            }
-
-            @Override
-            public <U extends io.opentelemetry.api.trace.Tracer> jakarta.enterprise.inject.Instance<U> select(Class<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends io.opentelemetry.api.trace.Tracer> jakarta.enterprise.inject.Instance<U> select(TypeLiteral<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public jakarta.enterprise.inject.Instance.Handle<io.opentelemetry.api.trace.Tracer> getHandle() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Iterable<? extends jakarta.enterprise.inject.Instance.Handle<io.opentelemetry.api.trace.Tracer>> handles() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public java.util.stream.Stream<io.opentelemetry.api.trace.Tracer> stream() {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public void destroy(io.opentelemetry.api.trace.Tracer instance) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public java.util.Iterator<io.opentelemetry.api.trace.Tracer> iterator() {
-                throw new UnsupportedOperationException();
-            }
-        };
+        service.tracerSupplier = () -> provider.get("qhorus-test");
         service.tracingConfig = new QhorusTracingConfig() {
             @Override public boolean enabled() { return true; }
             @Override public boolean dispatch() { return true; }
@@ -214,66 +154,9 @@ class CommitmentTracingTest {
             @Override public boolean delivery() { return true; }
         };
 
-        // No-op event producers for decline/expire tests
-        service.declinedEvents = new Event<CommitmentDeclinedEvent>() {
-            @Override
-            public void fire(CommitmentDeclinedEvent event) {}
-
-            @Override
-            public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(U event) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(U event, NotificationOptions options) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentDeclinedEvent> Event<U> select(Class<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentDeclinedEvent> Event<U> select(TypeLiteral<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Event<CommitmentDeclinedEvent> select(Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-        };
-
-        service.expiredEvents = new Event<CommitmentExpiredEvent>() {
-            @Override
-            public void fire(CommitmentExpiredEvent event) {}
-
-            @Override
-            public <U extends CommitmentExpiredEvent> CompletionStage<U> fireAsync(U event) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentExpiredEvent> CompletionStage<U> fireAsync(U event, NotificationOptions options) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentExpiredEvent> Event<U> select(Class<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public <U extends CommitmentExpiredEvent> Event<U> select(TypeLiteral<U> subtype, Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Event<CommitmentExpiredEvent> select(Annotation... qualifiers) {
-                throw new UnsupportedOperationException();
-            }
-        };
+        // No-op consumers for decline/expire tests
+        service.declinedConsumer = e -> {};
+        service.expiredConsumer = e -> {};
     }
 
     @Test

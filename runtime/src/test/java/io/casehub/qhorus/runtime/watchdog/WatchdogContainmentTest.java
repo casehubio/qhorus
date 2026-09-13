@@ -23,7 +23,7 @@ import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.message.CommitmentService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import jakarta.enterprise.event.Event;
+import java.util.function.Consumer;
 
 class WatchdogContainmentTest {
 
@@ -33,7 +33,7 @@ class WatchdogContainmentTest {
     private CommitmentService commitmentService;
     private MessageService messageService;
     private CrossTenantChannelStore crossTenantChannelStore;
-    private Event<WatchdogAlertEvent> alertEvents;
+    private Consumer<WatchdogAlertEvent> alertConsumer;
 
     private static final String TID = "DEFAULT";
     private static final UUID CHANNEL_ID = UUID.randomUUID();
@@ -48,14 +48,14 @@ class WatchdogContainmentTest {
         commitmentService = mock(CommitmentService.class);
         messageService = mock(MessageService.class);
         crossTenantChannelStore = mock(CrossTenantChannelStore.class);
-        alertEvents = mock(Event.class);
+        alertConsumer = mock(Consumer.class);
 
         service.channelService = channelService;
         service.instanceService = instanceService;
         service.commitmentService = commitmentService;
         service.messageService = messageService;
         service.crossTenantChannelStore = crossTenantChannelStore;
-        service.alertEvents = alertEvents;
+        service.alertConsumer = alertConsumer;
         service.objectMapper = new ObjectMapper();
 
         Channel notifChannel = Channel.builder("notifications").id(NOTIF_CHANNEL_ID).build();
@@ -160,7 +160,7 @@ class WatchdogContainmentTest {
 
         service.fireAlert(w, "loop detected", ctx, Instant.now(), CHANNEL_ID);
 
-        verify(alertEvents).fireAsync(any());
+        verify(alertConsumer).accept(any());
     }
 
     @Test

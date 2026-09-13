@@ -7,7 +7,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.SummaryResult;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import jakarta.enterprise.event.Event;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,7 +42,7 @@ class ChannelSummaryServiceTest {
         service.crossTenantChannelStore = crossTenantChannelStore;
         service.messageStore            = messageStore;
         service.hook                    = ctx -> SummaryResult.ofText("generated summary for " + ctx.channelName());
-        service.summaryEvents           = Mockito.mock(Event.class);
+        service.summaryConsumer           = e -> {};
     }
 
     @Test

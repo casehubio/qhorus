@@ -9,9 +9,7 @@ import io.casehub.qhorus.api.watchdog.Watchdog;
 import io.casehub.qhorus.api.watchdog.WatchdogConditionType;
 import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
-import jakarta.enterprise.event.Event;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -30,16 +28,16 @@ class ContextPressureWatchdogTest {
     private WatchdogEvaluationService service;
     private CrossTenantChannelStore channelStore;
     private CrossTenantWatchdogStore watchdogStore;
-    private MessageLedgerEntryRepository messageRepo;
-    private Event<WatchdogAlertEvent> alertEvents;
+    private WatchdogEvaluationService.ContextPressureQuery contextPressureQuery;
+    private Consumer<WatchdogAlertEvent> alertConsumer;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setUp() {
         channelStore = mock(CrossTenantChannelStore.class);
         watchdogStore = mock(CrossTenantWatchdogStore.class);
-        messageRepo = mock(MessageLedgerEntryRepository.class);
-        alertEvents = mock(Event.class);
+        contextPressureQuery = mock(WatchdogEvaluationService.ContextPressureQuery.class);
+        alertConsumer = mock(Consumer.class);
 
         QhorusConfig config = mock(QhorusConfig.class);
         QhorusConfig.Watchdog watchdogConfig = mock(QhorusConfig.Watchdog.class);
@@ -50,8 +48,8 @@ class ContextPressureWatchdogTest {
         service.config = config;
         service.crossTenantChannelStore = channelStore;
         service.crossTenantWatchdogStore = watchdogStore;
-        service.messageRepo = messageRepo;
-        service.alertEvents = alertEvents;
+        service.contextPressureQuery = contextPressureQuery;
+        service.alertConsumer = alertConsumer;
         service.watchdogStore = mock(WatchdogStore.class);
     }
 
@@ -67,17 +65,12 @@ class ContextPressureWatchdogTest {
                 .notificationChannel("alerts").tenancyId("default").build();
         when(watchdogStore.listAll()).thenReturn(List.of(wd));
 
-        MessageLedgerEntry entry = new MessageLedgerEntry();
-        entry.channelId = channelId;
-        entry.contextWindowPct = 90;
-        entry.messageType = "EVENT";
-        entry.actorId = "agent-a";
-        when(messageRepo.findLatestContextPressure(channelId, "default"))
-                .thenReturn(List.of(entry));
+        when(contextPressureQuery.find(channelId, "default"))
+                .thenReturn(List.of(new WatchdogEvaluationService.ContextPressureEntry("agent-a", 90)));
 
         service.evaluateAll();
 
-        verify(alertEvents).fireAsync(argThat(event ->
+        verify(alertConsumer).accept(argThat(event ->
                 event.summary().contains("CONTEXT_PRESSURE")
                 && event.summary().contains("agent-a")
                 && event.summary().contains("90")));
@@ -95,17 +88,12 @@ class ContextPressureWatchdogTest {
                 .notificationChannel("alerts").tenancyId("default").build();
         when(watchdogStore.listAll()).thenReturn(List.of(wd));
 
-        MessageLedgerEntry entry = new MessageLedgerEntry();
-        entry.channelId = channelId;
-        entry.contextWindowPct = 50;
-        entry.messageType = "EVENT";
-        entry.actorId = "agent-a";
-        when(messageRepo.findLatestContextPressure(channelId, "default"))
-                .thenReturn(List.of(entry));
+        when(contextPressureQuery.find(channelId, "default"))
+                .thenReturn(List.of(new WatchdogEvaluationService.ContextPressureEntry("agent-a", 50)));
 
         service.evaluateAll();
 
-        verify(alertEvents, never()).fireAsync(any());
+        verify(alertConsumer, never()).accept(any());
     }
 
     @Test
@@ -120,12 +108,12 @@ class ContextPressureWatchdogTest {
                 .notificationChannel("alerts").tenancyId("default").build();
         when(watchdogStore.listAll()).thenReturn(List.of(wd));
 
-        when(messageRepo.findLatestContextPressure(channelId, "default"))
+        when(contextPressureQuery.find(channelId, "default"))
                 .thenReturn(List.of());
 
         service.evaluateAll();
 
-        verify(alertEvents, never()).fireAsync(any());
+        verify(alertConsumer, never()).accept(any());
     }
 
     @Test
@@ -143,19 +131,14 @@ class ContextPressureWatchdogTest {
                 .notificationChannel("alerts").tenancyId("default").build();
         when(watchdogStore.listAll()).thenReturn(List.of(wd));
 
-        MessageLedgerEntry entry1 = new MessageLedgerEntry();
-        entry1.channelId = ch1Id;
-        entry1.contextWindowPct = 95;
-        entry1.messageType = "EVENT";
-        entry1.actorId = "agent-x";
-        when(messageRepo.findLatestContextPressure(ch1Id, "default"))
-                .thenReturn(List.of(entry1));
-        when(messageRepo.findLatestContextPressure(ch2Id, "default"))
+        when(contextPressureQuery.find(ch1Id, "default"))
+                .thenReturn(List.of(new WatchdogEvaluationService.ContextPressureEntry("agent-x", 95)));
+        when(contextPressureQuery.find(ch2Id, "default"))
                 .thenReturn(List.of());
 
         service.evaluateAll();
 
-        verify(alertEvents).fireAsync(argThat(event ->
+        verify(alertConsumer).accept(argThat(event ->
                 event.summary().contains("agent-x")
                 && event.summary().contains("channel-a")));
     }

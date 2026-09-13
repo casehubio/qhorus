@@ -56,7 +56,7 @@ public class ChannelGateway implements BackendRegistry {
     final io.casehub.qhorus.runtime.channel.ChannelMembershipService membershipService;
     private final ConcurrentHashMap<UUID, List<BackendEntry>> registry = new ConcurrentHashMap<>();
     final Supplier<Tracer> tracerSupplier;
-    final QhorusTracingConfig tracingConfig;
+    QhorusTracingConfig tracingConfig;
 
     public ChannelGateway(AgentChannelBackend agentBackend,
                           InboundNormaliser normaliser,

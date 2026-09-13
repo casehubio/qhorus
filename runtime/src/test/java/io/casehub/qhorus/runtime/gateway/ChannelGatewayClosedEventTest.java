@@ -10,8 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.inject.Instance;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +35,7 @@ class ChannelGatewayClosedEventTest {
     @SuppressWarnings("unchecked")
     @BeforeEach
     void setUp() {
-        @SuppressWarnings("unchecked")
-        Event<ChannelClosedEvent> closedEvents = mock(Event.class);
-        doAnswer(inv -> { firedEvents.add(inv.getArgument(0)); return null; })
-                .when(closedEvents).fire(any());
+        Consumer<ChannelClosedEvent> closedEvents = e -> firedEvents.add(e);
         DeliveryConfig deliveryConfig = mock(DeliveryConfig.class);
         gateway = new ChannelGateway(
                 new QhorusChannelBackend(),
@@ -46,11 +43,11 @@ class ChannelGatewayClosedEventTest {
                 mock(MessageService.class),
                 null,
                 mock(CrossTenantChannelStore.class),
-                mock(Event.class),
+                mock(Consumer.class),
                 closedEvents,
                 deliveryConfig,
                 mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class),
+                null, mock(Supplier.class),
                 mock(QhorusTracingConfig.class));
     }
 

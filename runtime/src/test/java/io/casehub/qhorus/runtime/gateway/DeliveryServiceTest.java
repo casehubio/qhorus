@@ -262,7 +262,7 @@ class DeliveryServiceTest {
         channelStore = new StubCrossTenantChannelStore();
         deliveryConfig = new StubDeliveryConfig(true, 100, 3);
 
-        batchExecutor = new DeliveryBatchExecutor(messageStore, channelStore, cursorStore, deliveryConfig);
+        batchExecutor = new DeliveryBatchExecutor(messageStore, channelStore, cursorStore, deliveryConfig, new StubChannelMembershipStore(), null, null);
         meterRegistry = new SimpleMeterRegistry();
 
         channelId = UUID.randomUUID();
@@ -538,7 +538,7 @@ class DeliveryServiceTest {
         // But since we're using batchSize=100 from config, let's use a smaller batch for test
         StubDeliveryConfig smallBatchConfig = new StubDeliveryConfig(true, 2, 3);
         DeliveryBatchExecutor smallBatchExecutor =
-                new DeliveryBatchExecutor(messageStore, channelStore, cursorStore, smallBatchConfig);
+                new DeliveryBatchExecutor(messageStore, channelStore, cursorStore, smallBatchConfig, new StubChannelMembershipStore(), null, null);
 
         service.batchExecutor = smallBatchExecutor;
 
@@ -1125,28 +1125,23 @@ class DeliveryServiceTest {
      * Creates a stub ChannelGateway that returns the given entries from trackedEntries().
      * Uses a real QhorusChannelBackend and no-ops for all other gateway dependencies.
      */
-    @SuppressWarnings("unchecked")
     private ChannelGateway createStubGateway(List<ChannelGateway.BackendEntry> entries) {
-        jakarta.enterprise.inject.Instance<io.opentelemetry.api.trace.Tracer> mockTracerInstance =
-                mock(jakarta.enterprise.inject.Instance.class);
-        when(mockTracerInstance.isResolvable()).thenReturn(false);
-
         return new ChannelGateway(
                 new QhorusChannelBackend(),
                 new DefaultInboundNormaliser(),
                 null, // messageService — not used in these tests
                 null, // channelService — not used in these tests
                 channelStore,
-                null, // channelInitialisedEvents — not used in these tests
-                null, // channelClosedEvents — not used in these tests
+                null, // channelInitialisedConsumer — not used in these tests
+                null, // channelClosedConsumer — not used in these tests
                 deliveryConfig,
                 messageStore,
                 null, // membershipService — not used in these tests
-                mockTracerInstance,
-                null  // tracingConfig — not used when tracerInstance.isResolvable() == false
+                null, // tracerSupplier — not used in these tests
+                null  // tracingConfig — not used in these tests
         ) {
             @Override
-            List<BackendEntry> trackedEntries(UUID channelId) {
+            public List<BackendEntry> trackedEntries(UUID channelId) {
                 return entries;
             }
         };

@@ -7,8 +7,8 @@ import static org.mockito.Mockito.*;
 import java.util.List;
 import java.util.UUID;
 
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.inject.Instance;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import io.opentelemetry.api.trace.Tracer;
 
@@ -24,7 +24,7 @@ import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
-import io.quarkus.runtime.StartupEvent;
+
 
 class ChannelGatewayStartupTest {
 
@@ -36,11 +36,11 @@ class ChannelGatewayStartupTest {
                 mock(MessageService.class),
                 mock(ChannelService.class),
                 crossTenantChannelStore,
-                mock(Event.class),
-                mock(Event.class),
+                mock(Consumer.class),
+                mock(Consumer.class),
                 mock(DeliveryConfig.class),
                 mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class),
+                null, mock(Supplier.class),
                 mock(QhorusTracingConfig.class));
     }
 
@@ -56,7 +56,7 @@ class ChannelGatewayStartupTest {
         when(crossTenantChannelStore.listAll()).thenReturn(List.of(ch1, ch2));
         ChannelGateway gateway = gatewayWith(crossTenantChannelStore);
 
-        gateway.onStart(new StartupEvent());
+        gateway.initAllChannels();
 
         assertTrue(gateway.listBackends(ch1.id()).stream().anyMatch(b -> "qhorus-internal".equals(b.backendId())),
                 "ch1 should have agent backend after startup");
@@ -71,7 +71,7 @@ class ChannelGatewayStartupTest {
         when(crossTenantChannelStore.listAll()).thenReturn(List.of());
         ChannelGateway gateway = gatewayWith(crossTenantChannelStore);
 
-        assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()));
+        assertDoesNotThrow(() -> gateway.initAllChannels());
         verify(crossTenantChannelStore).listAll();
     }
 
@@ -81,11 +81,11 @@ class ChannelGatewayStartupTest {
         Channel good = channel("good-channel");
 
         @SuppressWarnings("unchecked")
-        Event<ChannelInitialisedEvent> throwingEvents = mock(Event.class);
-        // First fire throws, second succeeds
+        Consumer<ChannelInitialisedEvent> throwingConsumer = mock(Consumer.class);
+        // First accept throws, second succeeds
         doThrow(new RuntimeException("observer failure"))
                 .doNothing()
-                .when(throwingEvents).fire(any());
+                .when(throwingConsumer).accept(any());
 
         CrossTenantChannelStore crossTenantChannelStore = mock(CrossTenantChannelStore.class);
         when(crossTenantChannelStore.listAll()).thenReturn(List.of(bad, good));
@@ -96,14 +96,14 @@ class ChannelGatewayStartupTest {
                 mock(MessageService.class),
                 mock(ChannelService.class),
                 crossTenantChannelStore,
-                throwingEvents,
-                mock(Event.class),
+                throwingConsumer,
+                mock(Consumer.class),
                 mock(DeliveryConfig.class),
                 mock(io.casehub.qhorus.api.store.CrossTenantMessageStore.class),
-                null, mock(Instance.class),
+                null, mock(Supplier.class),
                 mock(QhorusTracingConfig.class));
 
-        assertDoesNotThrow(() -> gateway.onStart(new StartupEvent()),
+        assertDoesNotThrow(() -> gateway.initAllChannels(),
                 "onStart must not propagate observer exceptions");
         // good channel should still be registered despite bad channel failing
         assertTrue(gateway.listBackends(good.id()).stream()
@@ -121,7 +121,7 @@ class ChannelGatewayStartupTest {
         long countBefore = gateway.listBackends(ch.id()).stream()
                 .filter(b -> "qhorus-internal".equals(b.backendId())).count();
 
-        gateway.onStart(new StartupEvent());
+        gateway.initAllChannels();
 
         long countAfter = gateway.listBackends(ch.id()).stream()
                 .filter(b -> "qhorus-internal".equals(b.backendId())).count();

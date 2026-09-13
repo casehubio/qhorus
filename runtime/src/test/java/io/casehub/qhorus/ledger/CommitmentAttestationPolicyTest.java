@@ -63,15 +63,11 @@ class CommitmentAttestationPolicyTest {
     // ── StoredCommitmentAttestationPolicy tests ──
 
     static StoredCommitmentAttestationPolicy policyWithDefaults() {
-        QhorusConfig.Attestation att = mock(QhorusConfig.Attestation.class);
-        when(att.doneConfidence()).thenReturn(0.7);
-        when(att.failureConfidence()).thenReturn(0.6);
-        when(att.declineConfidence()).thenReturn(0.4);
-        when(att.responseConfidence()).thenReturn(0.3);
-        QhorusConfig cfg = mock(QhorusConfig.class);
-        when(cfg.attestation()).thenReturn(att);
         StoredCommitmentAttestationPolicy p = new StoredCommitmentAttestationPolicy();
-        p.config = cfg;
+        p.doneConfidence = 0.7;
+        p.failureConfidence = 0.6;
+        p.declineConfidence = 0.4;
+        p.responseConfidence = 0.3;
         return p;
     }
 
@@ -133,15 +129,11 @@ class CommitmentAttestationPolicyTest {
     @Test
     void stored_response_returnsFlagged_withResponseConfidence_fromSystem() {
         // RESPONSE on a COMMAND obligation uses wrong vocabulary — FLAGGED with low confidence
-        QhorusConfig.Attestation att = mock(QhorusConfig.Attestation.class);
-        when(att.doneConfidence()).thenReturn(0.7);
-        when(att.failureConfidence()).thenReturn(0.6);
-        when(att.declineConfidence()).thenReturn(0.4);
-        when(att.responseConfidence()).thenReturn(0.3);
-        QhorusConfig cfg = mock(QhorusConfig.class);
-        when(cfg.attestation()).thenReturn(att);
         StoredCommitmentAttestationPolicy p = new StoredCommitmentAttestationPolicy();
-        p.config = cfg;
+        p.doneConfidence = 0.7;
+        p.failureConfidence = 0.6;
+        p.declineConfidence = 0.4;
+        p.responseConfidence = 0.3;
 
         var result = p.attestationFor(MessageType.RESPONSE, "agent-b", null);
         assertTrue(result.isPresent());
@@ -153,14 +145,10 @@ class CommitmentAttestationPolicyTest {
 
     @Test
     void stored_customConfidence_usedFromConfig() {
-        QhorusConfig.Attestation att = mock(QhorusConfig.Attestation.class);
-        when(att.doneConfidence()).thenReturn(0.9);
-        when(att.failureConfidence()).thenReturn(0.6);
-        when(att.declineConfidence()).thenReturn(0.4);
-        QhorusConfig cfg = mock(QhorusConfig.class);
-        when(cfg.attestation()).thenReturn(att);
         StoredCommitmentAttestationPolicy p = new StoredCommitmentAttestationPolicy();
-        p.config = cfg;
+        p.doneConfidence = 0.9;
+        p.failureConfidence = 0.6;
+        p.declineConfidence = 0.4;
         var result = p.attestationFor(MessageType.DONE, "agent-x", null);
         assertEquals(0.9, result.get().confidence(), 1e-9);
     }
