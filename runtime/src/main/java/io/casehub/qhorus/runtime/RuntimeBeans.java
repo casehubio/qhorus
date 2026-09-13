@@ -539,34 +539,29 @@ public class RuntimeBeans {
         adapter.onMessageReceived(event);
     }
 
-    void onStartup(@Observes StartupEvent ev, ChannelGateway gateway) {
+    void onStartup(@Observes StartupEvent ev, ChannelGateway gateway, DeliveryService deliveryService) {
         gateway.initAllChannels();
+        deliveryService.start();
+    }
+
+    void onShutdown(@Observes io.quarkus.runtime.ShutdownEvent ev, DeliveryService deliveryService) {
+        deliveryService.stop();
     }
 
     // ── Scheduled tasks ────────────────────────────────────────────────────
 
-    @Inject ChannelSummaryScheduler summarySchedulerBean;
-    @Inject DeliveryService deliveryServiceBean;
-
-    @PostConstruct
-    void startDelivery() {
-        deliveryServiceBean.start();
-    }
-
-    @PreDestroy
-    void stopDelivery() {
-        deliveryServiceBean.stop();
-    }
+    @Inject Instance<ChannelSummaryScheduler> summarySchedulerInstance;
+    @Inject Instance<DeliveryService> deliveryServiceInstance;
 
     @Scheduled(every = "${casehub.qhorus.summary.check-interval-seconds:60}s",
                identity = "summary-update-check")
     void summarySweep() {
-        summarySchedulerBean.sweep();
+        summarySchedulerInstance.get().sweep();
     }
 
     @Scheduled(every = "${casehub.qhorus.delivery.reconciliation-interval:30s}",
                concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
     void deliveryReconcile() {
-        deliveryServiceBean.reconcileAll();
+        deliveryServiceInstance.get().reconcileAll();
     }
 }
