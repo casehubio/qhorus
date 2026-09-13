@@ -25,12 +25,12 @@ class PresenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new PresenceService(config, Clock.fixed(now, ZoneOffset.UTC));
+        service = new PresenceService(config, Clock.fixed(now, ZoneOffset.UTC), null, null, event -> {});
     }
 
     private void advanceTime(Duration d) {
         now = now.plus(d);
-        service = new PresenceService(service, config, Clock.fixed(now, ZoneOffset.UTC));
+        service = new PresenceService(service, config, Clock.fixed(now, ZoneOffset.UTC), null, null, event -> {});
     }
 
     @Test
@@ -96,7 +96,7 @@ class PresenceServiceTest {
             public Duration offlineTimeout() { return Duration.ofMinutes(10); }
             public Duration heartbeatInterval() { return Duration.ofSeconds(30); }
         };
-        assertThatThrownBy(() -> new PresenceService(badConfig, Clock.systemUTC()))
+        assertThatThrownBy(() -> new PresenceService(badConfig, Clock.systemUTC(), null, null, event -> {}))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("awayTimeout");
     }

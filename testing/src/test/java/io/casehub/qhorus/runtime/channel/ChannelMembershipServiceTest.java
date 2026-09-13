@@ -28,9 +28,7 @@ class ChannelMembershipServiceTest {
     void setUp() {
         membershipStore = new InMemoryChannelMembershipStore();
         messageStore = new InMemoryMessageStore();
-        service = new ChannelMembershipService();
-        service.membershipStore = membershipStore;
-        service.messageStore = messageStore;
+        service = new ChannelMembershipService(membershipStore, messageStore, null);
         channelId = UUID.randomUUID();
     }
 

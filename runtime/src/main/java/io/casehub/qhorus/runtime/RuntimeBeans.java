@@ -5,23 +5,15 @@ import io.casehub.platform.api.capacity.ActorCapacityView;
 import io.casehub.platform.api.capacity.CapacityPressureEvent;
 import io.casehub.platform.api.capacity.RedistributionPolicy;
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.api.capacity.RedistributionExecutedEvent;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
 import io.casehub.qhorus.api.channel.PresenceChangedEvent;
-import io.casehub.qhorus.api.event.ChannelMutationEvent;
 import io.casehub.qhorus.api.gateway.AgentChannelBackend;
-import io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster;
 import io.casehub.qhorus.api.gateway.ChannelClosedEvent;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
-import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
-import io.casehub.qhorus.api.message.CommitmentExpiredEvent;
-import io.casehub.qhorus.api.message.EnforcementBlockedEvent;
-import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.ReactionChangedEvent;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
-import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 import io.casehub.qhorus.api.spi.PeerReviewRequestedEvent;
 import io.casehub.qhorus.api.spi.RenderableProjection;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
@@ -34,16 +26,12 @@ import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 import io.casehub.qhorus.api.store.CrossTenantChannelSummaryStore;
 import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
 import io.casehub.qhorus.api.store.CrossTenantMessageStore;
-import io.casehub.qhorus.api.store.CrossTenantWatchdogStore;
 import io.casehub.qhorus.api.store.DataStore;
 import io.casehub.qhorus.api.store.DeliveryCursorStore;
 import io.casehub.qhorus.api.store.InstanceStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.ReactionStore;
-import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.api.store.TopicStore;
-import io.casehub.qhorus.api.store.WatchdogStore;
-import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
 import io.casehub.qhorus.runtime.capacity.QhorusRedistributionExecutor;
 import io.casehub.qhorus.runtime.capacity.RedistributionDelegate;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
@@ -52,11 +40,9 @@ import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.channel.*;
 import io.casehub.qhorus.runtime.gateway.*;
-import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.ledger.AgreementCredibilityPolicy;
-import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.ReviewerResolver;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
@@ -75,7 +61,6 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
-import jakarta.transaction.TransactionSynchronizationRegistry;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 import java.time.Clock;
@@ -319,6 +304,14 @@ public class RuntimeBeans {
     }
 
 // ── Stripped classes — @DefaultBean overridable defaults ───────────
+
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public InboundNormaliser inboundNormaliser() {
+        return new io.casehub.qhorus.runtime.gateway.DefaultInboundNormaliser();
+    }
 
     @Produces
     @DefaultBean

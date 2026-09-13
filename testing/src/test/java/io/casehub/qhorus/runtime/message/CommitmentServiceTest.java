@@ -3,13 +3,11 @@ package io.casehub.qhorus.runtime.message;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.lang.annotation.Annotation;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletionStage;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,9 +17,6 @@ import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.persistence.memory.InMemoryCommitmentStore;
-import jakarta.enterprise.event.Event;
-import jakarta.enterprise.event.NotificationOptions;
-import jakarta.enterprise.util.TypeLiteral;
 
 /**
  * Pure unit tests — no CDI, no database. Uses InMemoryCommitmentStore directly.
@@ -29,57 +24,23 @@ import jakarta.enterprise.util.TypeLiteral;
 class CommitmentServiceTest {
 
     private final InMemoryCommitmentStore store = new InMemoryCommitmentStore();
-    private final CommitmentService service = new CommitmentService();
     private final List<CommitmentDeclinedEvent> capturedDeclines = new ArrayList<>();
 
-    /** Recording Event<CommitmentDeclinedEvent> — captures fire() calls without CDI. */
-    private final Event<CommitmentDeclinedEvent> recordingDeclinedEvent = new Event<>() {
-        @Override
-        public void fire(final CommitmentDeclinedEvent event) {
-            capturedDeclines.add(event);
-        }
+    private static final io.casehub.qhorus.runtime.config.QhorusTracingConfig TRACING_OFF =
+            new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
+                public boolean enabled() { return false; }
+                public boolean dispatch() { return false; }
+                public boolean commitments() { return false; }
+                public boolean fanOut() { return false; }
+                public boolean ledgerWrite() { return false; }
+                public boolean delivery() { return false; }
+            };
 
-        @Override
-        public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(final U event) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <U extends CommitmentDeclinedEvent> CompletionStage<U> fireAsync(final U event,
-                final NotificationOptions options) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <U extends CommitmentDeclinedEvent> Event<U> select(final Class<U> subtype,
-                final Annotation... qualifiers) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public <U extends CommitmentDeclinedEvent> Event<U> select(final TypeLiteral<U> subtype,
-                final Annotation... qualifiers) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public Event<CommitmentDeclinedEvent> select(final Annotation... qualifiers) {
-            throw new UnsupportedOperationException();
-        }
-    };
+    private final CommitmentService service = new CommitmentService(
+            store, capturedDeclines::add, event -> {}, null, TRACING_OFF);
 
     @BeforeEach
     void setup() {
-        service.store = store;
-        service.declinedEvents = recordingDeclinedEvent;
-        service.tracingConfig = new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
-            public boolean enabled() { return false; }
-            public boolean dispatch() { return false; }
-            public boolean commitments() { return false; }
-            public boolean fanOut() { return false; }
-            public boolean ledgerWrite() { return false; }
-            public boolean delivery() { return false; }
-        };
         store.clear();
         capturedDeclines.clear();
     }
