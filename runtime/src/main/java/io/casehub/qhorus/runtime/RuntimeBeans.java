@@ -44,25 +44,23 @@ import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.api.store.WatchdogStore;
 import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
-import io.casehub.qhorus.runtime.audit.EvidentialChecker;
 import io.casehub.qhorus.runtime.capacity.QhorusRedistributionExecutor;
 import io.casehub.qhorus.runtime.capacity.RedistributionDelegate;
-import io.casehub.qhorus.runtime.channel.*;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.PresenceConfig;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.casehub.qhorus.runtime.channel.*;
 import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.runtime.gateway.*;
 import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import io.casehub.qhorus.runtime.instance.InstanceService;
+import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.ledger.AgreementCredibilityPolicy;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.ReviewerResolver;
-import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
-import io.casehub.qhorus.runtime.watchdog.ConfiguredWatchdogAlertRouter;
 import io.casehub.qhorus.runtime.watchdog.WatchdogEvaluationService;
 import io.cloudevents.CloudEvent;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -70,8 +68,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.quarkus.arc.DefaultBean;
 import io.quarkus.runtime.StartupEvent;
 import io.quarkus.scheduler.Scheduled;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
 import jakarta.enterprise.event.Observes;
@@ -527,6 +523,36 @@ public class RuntimeBeans {
         List<io.casehub.qhorus.api.watchdog.AlertDeliveryTarget> list =
                 StreamSupport.stream(targets.spliterator(), false).toList();
         return new io.casehub.qhorus.runtime.watchdog.ConfiguredWatchdogAlertRouter(list);
+    }
+
+
+// ── Protocol implementations ──────────────────────────────────────
+
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.runtime.message.protocol.RoundRobinProtocol roundRobinProtocol() {
+        return new io.casehub.qhorus.runtime.message.protocol.RoundRobinProtocol();
+    }
+
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.runtime.message.protocol.ContributionRequiredProtocol contributionRequiredProtocol(QhorusConfig config) {
+        return new io.casehub.qhorus.runtime.message.protocol.ContributionRequiredProtocol(
+                config.protocol().contributionRequired().maxConsecutive());
+    }
+
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.runtime.message.protocol.RequestResponseProtocol requestResponseProtocol(QhorusConfig config) {
+        return new io.casehub.qhorus.runtime.message.protocol.RequestResponseProtocol(
+                config.protocol().requestResponse().maxOpenQueries());
+    }
+
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.runtime.message.protocol.TaskCompletionProtocol taskCompletionProtocol(QhorusConfig config) {
+        return new io.casehub.qhorus.runtime.message.protocol.TaskCompletionProtocol(
+                config.protocol().taskCompletion().maxOpenCommands());
     }
 
     void onCapacityPressure(@ObservesAsync CapacityPressureEvent event,
