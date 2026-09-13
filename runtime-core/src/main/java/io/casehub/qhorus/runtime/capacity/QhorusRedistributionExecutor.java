@@ -1,0 +1,81 @@
+package io.casehub.qhorus.runtime.capacity;
+
+import io.casehub.platform.api.capacity.CapacityPressureEvent;
+import io.casehub.platform.api.capacity.RedistributionContext;
+import io.casehub.platform.api.capacity.RedistributionDecision;
+import io.casehub.platform.api.capacity.RedistributionPolicy;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
+import org.jboss.logging.Logger;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.function.Function;
+
+public class QhorusRedistributionExecutor {
+
+    private static final Logger LOG = Logger.getLogger(QhorusRedistributionExecutor.class);
+
+    private final RedistributionDelegate delegate;
+    private final RedistributionPolicy policy;
+    private final CrossTenantCommitmentStore commitmentStore;
+    private final Function<String, Duration> timeSinceLastActivityFn;
+
+    public QhorusRedistributionExecutor(RedistributionDelegate delegate,
+                                         RedistributionPolicy policy,
+                                         CrossTenantCommitmentStore commitmentStore,
+                                         Function<String, Duration> timeSinceLastActivityFn) {
+        this.delegate = delegate;
+        this.policy = policy;
+        this.commitmentStore = commitmentStore;
+        this.timeSinceLastActivityFn = timeSinceLastActivityFn;
+    }
+
+    public void onCapacityPressure(CapacityPressureEvent event) {
+        String actorId = event.actorId();
+
+        List<Commitment> obligations = commitmentStore.findOpenByObligor(actorId);
+
+        Duration timeSinceLastActivity = timeSinceLastActivityFn.apply(actorId);
+
+        RedistributionContext context = new RedistributionContext(
+                actorId, event.capacity(), event.triggerSignalType(),
+                obligations.size(), timeSinceLastActivity);
+
+        RedistributionDecision decision = policy.evaluate(context);
+
+        switch (decision) {
+            case RedistributionDecision.Compress c -> {
+                LOG.debugf("Compress for %s: %s", actorId, c.reason());
+                delegate.compress(actorId, obligations);
+            }
+            case RedistributionDecision.Redistribute r -> {
+                var lastDelegated = commitmentStore.findLatestDelegatedByObligor(actorId);
+                if (lastDelegated.isPresent()
+                        && !r.gracePeriod().isZero()
+                        && lastDelegated.get().resolvedAt() != null
+                        && Duration.between(lastDelegated.get().resolvedAt(), Instant.now())
+                                .compareTo(r.gracePeriod()) < 0) {
+                    LOG.debugf("Grace period active for %s — skipping redistribution", actorId);
+                    return;
+                }
+                LOG.infof("Redistributing for %s: %s", actorId, r.reason());
+                RedistributionResult result = delegate.redistribute(
+                        actorId, obligations, r, event.capacity().aggregatePressure());
+                if (result.successCount() == 0 && result.attemptedCount() > 0) {
+                    delegate.escalate(actorId, "redistribution requested but no targets available");
+                } else if (result.attemptedCount() == 0 && result.filteredCount() > 0) {
+                    LOG.infof("All obligations filtered by channel thresholds for %s — compressing", actorId);
+                    delegate.compress(actorId, obligations);
+                }
+            }
+            case RedistributionDecision.Hold h ->
+                    LOG.debugf("Hold for %s: %s", actorId, h.reason());
+            case RedistributionDecision.Escalate e -> {
+                LOG.warnf("Escalation for %s: %s", actorId, e.reason());
+                delegate.escalate(actorId, e.reason());
+            }
+        }
+    }
+}
