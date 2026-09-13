@@ -26,7 +26,7 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DeliverySignalQueue;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome;
-import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
+
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;

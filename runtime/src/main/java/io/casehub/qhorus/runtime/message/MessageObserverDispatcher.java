@@ -32,14 +32,14 @@ import java.util.UUID;
  * in response to this event. The {@link MessageReceivedEvent} payload is intentionally
  * self-contained to make a DB read unnecessary. JTA after-commit dispatch tracked in qhorus#166.
  */
-final class MessageObserverDispatcher {
+final public class MessageObserverDispatcher {
 
     private static final Logger LOG = Logger.getLogger(MessageObserverDispatcher.class);
 
     private MessageObserverDispatcher() {}
 
     /** Synchronous dispatch — used by tests and contexts with no active transaction. */
-    static void dispatch(final String channelName, final UUID channelId,
+    public static void dispatch(final String channelName, final UUID channelId,
             final String tenancyId,
             final Message message,
             final Iterable<? extends Instance.Handle<MessageObserver>> handles) {
@@ -57,7 +57,7 @@ final class MessageObserverDispatcher {
      * <p>When {@code tsr} is null (unit-test context or no active transaction),
      * observers are called synchronously in the current thread (original behaviour).
      */
-    static void dispatch(final String channelName, final UUID channelId,
+    public static void dispatch(final String channelName, final UUID channelId,
             final String tenancyId,
             final Message message,
             final Iterable<? extends Instance.Handle<MessageObserver>> handles,
@@ -111,7 +111,7 @@ final class MessageObserverDispatcher {
         });
     }
 
-    static void dispatchClusterOnly(final String channelName, final UUID channelId,
+    public static void dispatchClusterOnly(final String channelName, final UUID channelId,
                                     final String tenancyId,
                                     final Message message,
                                     final Iterable<? extends Instance.Handle<MessageObserver>> handles) {
