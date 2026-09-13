@@ -51,7 +51,6 @@ import io.casehub.qhorus.runtime.config.PresenceConfig;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.channel.*;
-import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.runtime.gateway.*;
 import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import io.casehub.qhorus.runtime.instance.InstanceService;
@@ -275,10 +274,7 @@ public class RuntimeBeans {
         return new InstanceService(instanceStore);
     }
 
-    @Produces @ApplicationScoped
-    public DataService dataService(DataStore dataStore) {
-        return new DataService(dataStore);
-    }
+    // DataService → CdiDataService (runtime/cdi/)
 
     @Produces @ApplicationScoped
     public TopicService topicService(TopicStore topicStore, MessageStore messageStore,
@@ -398,10 +394,11 @@ public class RuntimeBeans {
     @Produces
     @DefaultBean
     @ApplicationScoped
-    public io.casehub.qhorus.api.watchdog.WatchdogAlertRouter watchdogAlertRouter(
-            @Any Instance<io.casehub.qhorus.api.watchdog.AlertDeliveryTarget> targets) {
+    public io.casehub.qhorus.api.watchdog.WatchdogAlertRouter watchdogAlertRouter(QhorusConfig config) {
         List<io.casehub.qhorus.api.watchdog.AlertDeliveryTarget> list =
-                StreamSupport.stream(targets.spliterator(), false).toList();
+                config.watchdog().alert().endpoints().stream()
+                        .map(ep -> new io.casehub.qhorus.api.watchdog.AlertDeliveryTarget(ep.connectorId(), ep.destination()))
+                        .toList();
         return new io.casehub.qhorus.runtime.watchdog.ConfiguredWatchdogAlertRouter(list);
     }
 

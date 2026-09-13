@@ -1,20 +1,19 @@
 package io.casehub.qhorus.runtime.store.jpa;
 
+import io.casehub.qhorus.api.data.ArtefactClaim;
+import io.casehub.qhorus.api.data.SharedData;
+import io.casehub.qhorus.api.store.DataStore;
+import io.casehub.qhorus.api.store.query.DataQuery;
+import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
+import io.casehub.qhorus.runtime.data.SharedDataEntity;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.transaction.Transactional;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.transaction.Transactional;
-
-import io.casehub.qhorus.api.data.ArtefactClaim;
-import io.casehub.qhorus.api.data.SharedData;
-import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
-import io.casehub.qhorus.runtime.data.SharedDataEntity;
-import io.casehub.qhorus.api.store.DataStore;
-import io.casehub.qhorus.api.store.query.DataQuery;
 
 @ApplicationScoped
 public class JpaDataStore implements DataStore {
@@ -89,6 +88,12 @@ public class JpaDataStore implements DataStore {
     public int countClaims(UUID artefactId) {
         return (int) ArtefactClaimEntity.count("artefactId", artefactId);
     }
+
+    @Override
+    public boolean hasClaim(UUID artefactId, UUID instanceId) {
+        return ArtefactClaimEntity.count("artefactId = ?1 AND instanceId = ?2", artefactId, instanceId) > 0;
+    }
+
 
     @Override
     @Transactional

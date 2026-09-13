@@ -19,6 +19,11 @@ public class DataService {
         this.dataStore = dataStore;
     }
 
+    DataService() {
+        this.dataStore = null;
+    }
+
+
     @Transactional
     public SharedData store(String key, String description, String createdBy,
                             String content, boolean append, boolean lastChunk) {
@@ -82,7 +87,9 @@ public class DataService {
 
     @Transactional
     public void claim(UUID artefactId, UUID instanceId) {
-        dataStore.putClaim(new ArtefactClaim(null, artefactId, instanceId, null));
+        if (!dataStore.hasClaim(artefactId, instanceId)) {
+            dataStore.putClaim(new ArtefactClaim(null, artefactId, instanceId, null));
+        }
     }
 
     @Transactional

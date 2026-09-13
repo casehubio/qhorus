@@ -85,6 +85,7 @@ public class InMemoryDataStore implements DataStore {
                 .count();
     }
 
+    @Override
     public boolean hasClaim(UUID artefactId, UUID instanceId) {
         return claims.stream()
                 .anyMatch(c -> artefactId.equals(c.artefactId()) && instanceId.equals(c.instanceId()));
