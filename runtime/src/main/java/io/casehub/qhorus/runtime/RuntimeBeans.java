@@ -5,9 +5,9 @@ import io.casehub.platform.api.capacity.ActorCapacityView;
 import io.casehub.platform.api.capacity.CapacityPressureEvent;
 import io.casehub.platform.api.capacity.RedistributionPolicy;
 import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.capacity.RedistributionExecutedEvent;
 import io.casehub.qhorus.api.channel.ChannelSummaryUpdatedEvent;
 import io.casehub.qhorus.api.channel.PresenceChangedEvent;
-import io.casehub.qhorus.api.capacity.RedistributionExecutedEvent;
 import io.casehub.qhorus.api.event.ChannelMutationEvent;
 import io.casehub.qhorus.api.gateway.AgentChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster;
@@ -21,14 +21,30 @@ import io.casehub.qhorus.api.message.EnforcementBlockedEvent;
 import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.ReactionChangedEvent;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
-import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 import io.casehub.qhorus.api.spi.PeerReviewRequestedEvent;
 import io.casehub.qhorus.api.spi.RenderableProjection;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
-import io.casehub.qhorus.api.store.*;
-import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.api.store.ChannelBindingStore;
+import io.casehub.qhorus.api.store.ChannelMembershipStore;
+import io.casehub.qhorus.api.store.ChannelStore;
+import io.casehub.qhorus.api.store.ChannelSummaryStore;
+import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.api.store.CrossTenantChannelStore;
+import io.casehub.qhorus.api.store.CrossTenantChannelSummaryStore;
+import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
+import io.casehub.qhorus.api.store.CrossTenantMessageStore;
+import io.casehub.qhorus.api.store.CrossTenantWatchdogStore;
+import io.casehub.qhorus.api.store.DataStore;
+import io.casehub.qhorus.api.store.DeliveryCursorStore;
+import io.casehub.qhorus.api.store.InstanceStore;
+import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.ReactionStore;
+import io.casehub.qhorus.api.store.SpaceStore;
+import io.casehub.qhorus.api.store.TopicStore;
+import io.casehub.qhorus.api.store.WatchdogStore;
 import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
+import io.casehub.qhorus.runtime.audit.EvidentialChecker;
 import io.casehub.qhorus.runtime.capacity.QhorusRedistributionExecutor;
 import io.casehub.qhorus.runtime.capacity.RedistributionDelegate;
 import io.casehub.qhorus.runtime.channel.*;
@@ -36,18 +52,19 @@ import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.PresenceConfig;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
+import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.runtime.gateway.*;
 import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import io.casehub.qhorus.runtime.instance.InstanceService;
+import io.casehub.qhorus.runtime.ledger.AgreementCredibilityPolicy;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.ReviewerResolver;
 import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
+import io.casehub.qhorus.runtime.watchdog.ConfiguredWatchdogAlertRouter;
 import io.casehub.qhorus.runtime.watchdog.WatchdogEvaluationService;
 import io.cloudevents.CloudEvent;
-
-
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.quarkus.arc.DefaultBean;
@@ -364,6 +381,153 @@ public class RuntimeBeans {
     }
 
     // ── CDI event observers ────────────────────────────────────────────────
+
+
+// ── Stripped classes — simple constructor forwarding ───────────────
+
+    @Produces
+    @ApplicationScoped
+    public InstanceService instanceService(InstanceStore instanceStore) {
+        return new InstanceService(instanceStore);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public DataService dataService(DataStore dataStore) {
+        return new DataService(dataStore);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public TopicService topicService(TopicStore topicStore, MessageStore messageStore,
+                                     CommitmentStore commitmentStore, CurrentPrincipal currentPrincipal) {
+        return new TopicService(topicStore, messageStore, commitmentStore, currentPrincipal);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public CorrelationIntegrityChecker correlationIntegrityChecker(CommitmentStore commitmentStore,
+                                                                   MessageStore messageStore) {
+        return new CorrelationIntegrityChecker(commitmentStore, messageStore);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public ChannelMembershipService channelMembershipService(ChannelMembershipStore membershipStore,
+                                                             MessageStore messageStore,
+                                                             CurrentPrincipal currentPrincipal) {
+        return new ChannelMembershipService(membershipStore, messageStore, currentPrincipal);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public RateLimiter rateLimiter() {
+        return new RateLimiter();
+    }
+
+    @Produces
+    @ApplicationScoped
+    public DeliverySignalQueue deliverySignalQueue() {
+        return new DeliverySignalQueue();
+    }
+
+    @Produces
+    @ApplicationScoped
+    public ProjectionService projectionService(MessageStore messageStore,
+                                               QhorusEntityMapper mapper) {
+        return new ProjectionService(messageStore, mapper::toMessageView);
+    }
+
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.runtime.audit.EvidentialChecker evidentialChecker(DataStore dataStore,
+                                                                               MessageStore messageStore,
+                                                                               CommitmentStore commitmentStore) {
+        return new io.casehub.qhorus.runtime.audit.EvidentialChecker(dataStore, messageStore, commitmentStore);
+    }
+
+// ── Stripped classes — @DefaultBean overridable defaults ───────────
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.spi.SummaryUpdateHook summaryUpdateHook() {
+        return new io.casehub.qhorus.runtime.channel.NoOpSummaryUpdateHook();
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.spi.InstanceActorIdProvider instanceActorIdProvider() {
+        return new io.casehub.qhorus.runtime.ledger.DefaultInstanceActorIdProvider();
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster channelActivityBroadcaster() {
+        return new io.casehub.qhorus.runtime.gateway.NoOpChannelActivityBroadcaster();
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.gateway.AgentChannelBackend agentChannelBackend() {
+        return new QhorusChannelBackend();
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public MessageTypePolicy messageTypePolicy() {
+        return new StoredMessageTypePolicy();
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.spi.ObligorTrustPolicy obligorTrustPolicy(
+            QhorusConfig config,
+            Instance<io.casehub.ledger.runtime.service.TrustGateService> trustGateServiceInstance) {
+        return new DefaultObligorTrustPolicy(
+                config.commitment().minObligorTrust(),
+                trustGateServiceInstance.isResolvable() ? trustGateServiceInstance.get() : null);
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.spi.CommitmentAttestationPolicy commitmentAttestationPolicy(
+            QhorusConfig config,
+            io.casehub.qhorus.runtime.audit.EvidentialChecker evidentialChecker) {
+        return new io.casehub.qhorus.runtime.ledger.StoredCommitmentAttestationPolicy(
+                config.attestation().doneConfidence(),
+                config.attestation().failureConfidence(),
+                config.attestation().declineConfidence(),
+                config.attestation().responseConfidence(),
+                evidentialChecker);
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public AgreementCredibilityPolicy agreementCredibilityPolicy(
+            io.casehub.ledger.api.spi.LedgerEntryRepository ledger,
+            QhorusConfig config) {
+        return new AgreementCredibilityPolicy(ledger,
+                                              config.attestation().credibilityMinDataPoints(),
+                                              config.attestation().credibilityLowAgreementThreshold());
+    }
+
+    @Produces
+    @DefaultBean
+    @ApplicationScoped
+    public io.casehub.qhorus.api.watchdog.WatchdogAlertRouter watchdogAlertRouter(
+            @Any Instance<io.casehub.qhorus.api.watchdog.AlertDeliveryTarget> targets) {
+        List<io.casehub.qhorus.api.watchdog.AlertDeliveryTarget> list =
+                StreamSupport.stream(targets.spliterator(), false).toList();
+        return new io.casehub.qhorus.runtime.watchdog.ConfiguredWatchdogAlertRouter(list);
+    }
 
     void onCapacityPressure(@ObservesAsync CapacityPressureEvent event,
                             QhorusRedistributionExecutor executor) {
