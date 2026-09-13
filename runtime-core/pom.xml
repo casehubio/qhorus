@@ -49,6 +49,11 @@
       <optional>true</optional>
     </dependency>
     <dependency>
+      <groupId>io.smallrye.config</groupId>
+      <artifactId>smallrye-config-core</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
     </dependency>
