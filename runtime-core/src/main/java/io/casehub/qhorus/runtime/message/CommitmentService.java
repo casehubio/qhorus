@@ -28,11 +28,14 @@ public class CommitmentService {
 
     private static final Logger LOG = Logger.getLogger(CommitmentService.class);
 
-    private final CommitmentStore store;
-    private final Consumer<CommitmentDeclinedEvent> declinedConsumer;
-    private final Consumer<CommitmentExpiredEvent> expiredConsumer;
-    private final Supplier<Tracer> tracerSupplier;
-    private final QhorusTracingConfig tracingConfig;
+    CommitmentStore store;
+    Consumer<CommitmentDeclinedEvent> declinedConsumer;
+    Consumer<CommitmentExpiredEvent> expiredConsumer;
+    Supplier<Tracer> tracerSupplier;
+    QhorusTracingConfig tracingConfig;
+
+
+    CommitmentService() {}
 
     public CommitmentService(CommitmentStore store,
                              Consumer<CommitmentDeclinedEvent> declinedConsumer,

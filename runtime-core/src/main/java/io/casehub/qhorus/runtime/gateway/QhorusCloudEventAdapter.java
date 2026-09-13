@@ -11,8 +11,8 @@ public class QhorusCloudEventAdapter {
 
     private static final Logger LOG = Logger.getLogger(QhorusCloudEventAdapter.class);
 
-    private final Consumer<CloudEvent> cloudEventConsumer;
-    private final ObjectMapper objectMapper;
+    Consumer<CloudEvent> cloudEventConsumer;
+    ObjectMapper objectMapper;
 
     public QhorusCloudEventAdapter(Consumer<CloudEvent> cloudEventConsumer, ObjectMapper objectMapper) {
         this.cloudEventConsumer = cloudEventConsumer;

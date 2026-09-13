@@ -17,8 +17,11 @@ public class CorrelationIntegrityChecker {
             MessageType.DONE, MessageType.FAILURE, MessageType.DECLINE,
             MessageType.RESPONSE, MessageType.HANDOFF);
 
-    private final CommitmentStore commitmentStore;
-    private final MessageStore messageStore;
+    CommitmentStore commitmentStore;
+    MessageStore messageStore;
+
+
+    CorrelationIntegrityChecker() {}
 
     public CorrelationIntegrityChecker(CommitmentStore commitmentStore, MessageStore messageStore) {
         this.commitmentStore = commitmentStore;

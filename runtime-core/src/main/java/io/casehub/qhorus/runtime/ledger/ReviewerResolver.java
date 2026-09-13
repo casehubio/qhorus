@@ -10,9 +10,12 @@ import java.util.function.Consumer;
 
 public class ReviewerResolver {
 
-    private final ChannelStore channelStore;
-    private final InstanceService instanceService;
-    private final Consumer<PeerReviewRequestedEvent> reviewRequestedConsumer;
+    ChannelStore channelStore;
+    InstanceService instanceService;
+    Consumer<PeerReviewRequestedEvent> reviewRequestedConsumer;
+
+
+    ReviewerResolver() {}
 
     public ReviewerResolver(ChannelStore channelStore,
                             InstanceService instanceService,

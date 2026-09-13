@@ -11,11 +11,14 @@ import java.util.Optional;
 
 public class StoredCommitmentAttestationPolicy implements CommitmentAttestationPolicy {
 
-    private final double doneConfidence;
-    private final double failureConfidence;
-    private final double declineConfidence;
-    private final double responseConfidence;
-    private final EvidentialChecker evidentialChecker;
+    public double doneConfidence;
+    public double failureConfidence;
+    public double declineConfidence;
+    public double responseConfidence;
+    public EvidentialChecker evidentialChecker;
+
+
+    public StoredCommitmentAttestationPolicy() {}
 
     public StoredCommitmentAttestationPolicy(double doneConfidence, double failureConfidence,
                                               double declineConfidence, double responseConfidence,

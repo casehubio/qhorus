@@ -21,11 +21,14 @@ public class EnforcementExecutor {
 
     private static final Logger LOG = Logger.getLogger(EnforcementExecutor.class);
 
-    private final MessageDispatcher messageDispatcher;
-    private final ChannelService channelService;
-    private final CommitmentService commitmentService;
-    private final Consumer<EnforcementBlockedEvent> enforcementBlockedConsumer;
-    private final ObjectMapper objectMapper;
+    MessageDispatcher messageDispatcher;
+    ChannelService channelService;
+    CommitmentService commitmentService;
+    Consumer<EnforcementBlockedEvent> enforcementBlockedConsumer;
+    ObjectMapper objectMapper;
+
+
+    EnforcementExecutor() {}
 
     public EnforcementExecutor(MessageDispatcher messageDispatcher,
                                ChannelService channelService,

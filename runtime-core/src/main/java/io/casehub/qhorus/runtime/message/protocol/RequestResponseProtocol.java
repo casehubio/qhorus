@@ -10,7 +10,10 @@ import java.util.List;
 
 public class RequestResponseProtocol implements ChannelProtocol {
 
-    private final int maxOpenQueries;
+    int maxOpenQueries;
+
+
+    RequestResponseProtocol() {}
 
     public RequestResponseProtocol(int maxOpenQueries) {
         this.maxOpenQueries = maxOpenQueries;

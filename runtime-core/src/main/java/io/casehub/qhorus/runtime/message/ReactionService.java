@@ -15,9 +15,12 @@ import java.util.stream.Collectors;
 
 public class ReactionService implements ReactionManager {
 
-    private final ReactionStore reactionStore;
-    private final Consumer<ReactionChangedEvent> reactionConsumer;
-    private final CurrentPrincipal currentPrincipal;
+    ReactionStore reactionStore;
+    Consumer<ReactionChangedEvent> reactionConsumer;
+    CurrentPrincipal currentPrincipal;
+
+
+    ReactionService() {}
 
     public ReactionService(ReactionStore reactionStore,
                            Consumer<ReactionChangedEvent> reactionConsumer,

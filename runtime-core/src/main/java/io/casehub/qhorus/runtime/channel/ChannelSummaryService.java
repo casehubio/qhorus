@@ -20,12 +20,15 @@ import java.util.function.Consumer;
 
 public class ChannelSummaryService {
 
-    private final ChannelSummaryStore summaryStore;
-    private final ChannelService channelService;
-    private final CrossTenantChannelStore crossTenantChannelStore;
-    private final MessageStore messageStore;
-    private final SummaryUpdateHook hook;
-    private final Consumer<ChannelSummaryUpdatedEvent> summaryConsumer;
+    ChannelSummaryStore summaryStore;
+    ChannelService channelService;
+    CrossTenantChannelStore crossTenantChannelStore;
+    MessageStore messageStore;
+    SummaryUpdateHook hook;
+    Consumer<ChannelSummaryUpdatedEvent> summaryConsumer;
+
+
+    ChannelSummaryService() {}
 
     public ChannelSummaryService(ChannelSummaryStore summaryStore,
                                   ChannelService channelService,

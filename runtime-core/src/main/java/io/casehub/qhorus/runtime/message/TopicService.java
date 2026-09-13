@@ -20,10 +20,13 @@ public class TopicService implements TopicManager {
 
     static final String DEFAULT_TOPIC = "general";
 
-    private final TopicStore topicStore;
-    private final MessageStore messageStore;
-    private final CommitmentStore commitmentStore;
-    private final CurrentPrincipal currentPrincipal;
+    TopicStore topicStore;
+    MessageStore messageStore;
+    CommitmentStore commitmentStore;
+    CurrentPrincipal currentPrincipal;
+
+
+    TopicService() {}
 
     public TopicService(TopicStore topicStore, MessageStore messageStore,
                         CommitmentStore commitmentStore, CurrentPrincipal currentPrincipal) {

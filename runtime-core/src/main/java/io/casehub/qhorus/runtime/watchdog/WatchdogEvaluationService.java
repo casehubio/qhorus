@@ -67,21 +67,24 @@ public class WatchdogEvaluationService {
 
     private static final Logger LOG = Logger.getLogger(WatchdogEvaluationService.class);
 
-    private final QhorusConfig config;
-    private final MessageService messageService;
-    private final WatchdogStore watchdogStore;
-    private final CrossTenantChannelStore crossTenantChannelStore;
-    private final CrossTenantMessageStore crossTenantMessageStore;
-    private final CrossTenantCommitmentStore crossTenantCommitmentStore;
-    private final CrossTenantWatchdogStore crossTenantWatchdogStore;
-    private final InstanceStore instanceStore;
-    private final Consumer<WatchdogAlertEvent> alertConsumer;
-    private final ContextPressureQuery contextPressureQuery;
-    private final io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
-    private final ChannelService channelService;
-    private final InstanceService instanceService;
-    private final CommitmentService commitmentService;
-    private final ObjectMapper objectMapper;
+    QhorusConfig config;
+    MessageService messageService;
+    WatchdogStore watchdogStore;
+    CrossTenantChannelStore crossTenantChannelStore;
+    CrossTenantMessageStore crossTenantMessageStore;
+    CrossTenantCommitmentStore crossTenantCommitmentStore;
+    CrossTenantWatchdogStore crossTenantWatchdogStore;
+    InstanceStore instanceStore;
+    Consumer<WatchdogAlertEvent> alertConsumer;
+    ContextPressureQuery contextPressureQuery;
+    io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
+    ChannelService channelService;
+    InstanceService instanceService;
+    CommitmentService commitmentService;
+    ObjectMapper objectMapper;
+
+
+    WatchdogEvaluationService() {}
 
     public WatchdogEvaluationService(QhorusConfig config,
                                      MessageService messageService,

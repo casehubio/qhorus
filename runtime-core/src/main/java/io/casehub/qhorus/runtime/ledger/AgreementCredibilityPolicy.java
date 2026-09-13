@@ -21,9 +21,12 @@ public class AgreementCredibilityPolicy implements AttestorCredibilityPolicy {
     private static final Set<AttestationVerdict> POLICY_VERDICTS =
             Set.of(AttestationVerdict.SOUND, AttestationVerdict.FLAGGED);
 
-    private final LedgerEntryRepository ledger;
-    private final int minDataPoints;
-    private final double lowAgreementThreshold;
+    LedgerEntryRepository ledger;
+    int minDataPoints;
+    double lowAgreementThreshold;
+
+
+    AgreementCredibilityPolicy() {}
 
     public AgreementCredibilityPolicy(LedgerEntryRepository ledger,
                                        int minDataPoints,

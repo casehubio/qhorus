@@ -11,9 +11,12 @@ import java.util.List;
 
 public class EvidentialChecker {
 
-    private final DataStore dataStore;
-    private final MessageStore messageStore;
-    private final CommitmentStore commitmentStore;
+    public DataStore dataStore;
+    public MessageStore messageStore;
+    public CommitmentStore commitmentStore;
+
+
+    public EvidentialChecker() {}
 
     public EvidentialChecker(DataStore dataStore, MessageStore messageStore, CommitmentStore commitmentStore) {
         this.dataStore = dataStore;

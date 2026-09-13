@@ -10,7 +10,10 @@ import java.util.List;
 
 public class TaskCompletionProtocol implements ChannelProtocol {
 
-    private final int maxOpenCommands;
+    int maxOpenCommands;
+
+
+    TaskCompletionProtocol() {}
 
     public TaskCompletionProtocol(int maxOpenCommands) {
         this.maxOpenCommands = maxOpenCommands;

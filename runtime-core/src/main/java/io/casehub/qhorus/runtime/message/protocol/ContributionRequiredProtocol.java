@@ -9,7 +9,10 @@ import java.util.List;
 
 public class ContributionRequiredProtocol implements ChannelProtocol {
 
-    private final int maxConsecutive;
+    int maxConsecutive;
+
+
+    ContributionRequiredProtocol() {}
 
     public ContributionRequiredProtocol(int maxConsecutive) {
         this.maxConsecutive = maxConsecutive;

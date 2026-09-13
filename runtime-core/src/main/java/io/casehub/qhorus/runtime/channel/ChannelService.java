@@ -28,13 +28,16 @@ import java.util.stream.Collectors;
 
 public class ChannelService implements ChannelManager, ChannelReader {
 
-    private final CurrentPrincipal currentPrincipal;
-    private final ChannelStore channelStore;
-    private final MessageStore messageStore;
-    private final io.casehub.qhorus.api.store.ChannelMembershipStore membershipStore;
-    private final ChannelBindingStore channelBindingStore;
-    private final ChannelGateway channelGateway;
-    private final ChannelCreateHelper channelCreateHelper;
+    CurrentPrincipal currentPrincipal;
+    ChannelStore channelStore;
+    MessageStore messageStore;
+    io.casehub.qhorus.api.store.ChannelMembershipStore membershipStore;
+    ChannelBindingStore channelBindingStore;
+    ChannelGateway channelGateway;
+    ChannelCreateHelper channelCreateHelper;
+
+
+    ChannelService() {}
 
     public ChannelService(CurrentPrincipal currentPrincipal,
                           ChannelStore channelStore,

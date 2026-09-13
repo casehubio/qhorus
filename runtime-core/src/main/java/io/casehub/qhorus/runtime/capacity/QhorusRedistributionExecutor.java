@@ -17,10 +17,10 @@ public class QhorusRedistributionExecutor {
 
     private static final Logger LOG = Logger.getLogger(QhorusRedistributionExecutor.class);
 
-    private final RedistributionDelegate delegate;
-    private final RedistributionPolicy policy;
-    private final CrossTenantCommitmentStore commitmentStore;
-    private final Function<String, Duration> timeSinceLastActivityFn;
+    RedistributionDelegate delegate;
+    RedistributionPolicy policy;
+    CrossTenantCommitmentStore commitmentStore;
+    Function<String, Duration> timeSinceLastActivityFn;
 
     public QhorusRedistributionExecutor(RedistributionDelegate delegate,
                                          RedistributionPolicy policy,

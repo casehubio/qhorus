@@ -24,10 +24,13 @@ public class SpaceService {
 
     static final int MAX_DEPTH = 10;
 
-    private final SpaceStore spaceStore;
-    private final ChannelStore channelStore;
-    private final CurrentPrincipal currentPrincipal;
-    private final Consumer<ChannelMutationEvent> mutationConsumer;
+    SpaceStore spaceStore;
+    ChannelStore channelStore;
+    CurrentPrincipal currentPrincipal;
+    Consumer<ChannelMutationEvent> mutationConsumer;
+
+
+    SpaceService() {}
 
     public SpaceService(SpaceStore spaceStore,
                         ChannelStore channelStore,
