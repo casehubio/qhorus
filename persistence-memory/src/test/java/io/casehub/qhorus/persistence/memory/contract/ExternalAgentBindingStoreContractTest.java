@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +20,8 @@ abstract class ExternalAgentBindingStoreContractTest {
     void put_and_findByInstanceId() {
         ExternalAgentBinding binding = new ExternalAgentBinding(
             UUID.randomUUID(), "ext-agent-1", "https://example.com/a2a",
-            "ext.agent.token", "1.0", Instant.now());
+            "ext.agent.token", "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null);
         store().put(binding);
         Optional<ExternalAgentBinding> found = store().findByInstanceId("ext-agent-1");
         assertThat(found).isPresent();
@@ -36,9 +38,11 @@ abstract class ExternalAgentBindingStoreContractTest {
     @Test
     void findAll_returnsAllBindings() {
         store().put(new ExternalAgentBinding(
-            UUID.randomUUID(), "agent-a", "https://a.com/a2a", null, "1.0", Instant.now()));
+            UUID.randomUUID(), "agent-a", "https://a.com/a2a", null, "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         store().put(new ExternalAgentBinding(
-            UUID.randomUUID(), "agent-b", "https://b.com/a2a", null, "1.0", Instant.now()));
+            UUID.randomUUID(), "agent-b", "https://b.com/a2a", null, "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         assertThat(store().findAll()).hasSize(2);
     }
 
@@ -46,7 +50,8 @@ abstract class ExternalAgentBindingStoreContractTest {
     void delete_removesById() {
         UUID id = UUID.randomUUID();
         store().put(new ExternalAgentBinding(
-            id, "agent-del", "https://del.com/a2a", null, "1.0", Instant.now()));
+            id, "agent-del", "https://del.com/a2a", null, "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         store().delete(id);
         assertThat(store().findByInstanceId("agent-del")).isEmpty();
     }
@@ -55,7 +60,8 @@ abstract class ExternalAgentBindingStoreContractTest {
     void deleteByInstanceId_removesBinding() {
         store().put(new ExternalAgentBinding(
             UUID.randomUUID(), "agent-del2", "https://del2.com/a2a",
-            "token-key", "1.0", Instant.now()));
+            "token-key", "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         store().deleteByInstanceId("agent-del2");
         assertThat(store().findByInstanceId("agent-del2")).isEmpty();
     }
@@ -65,9 +71,11 @@ abstract class ExternalAgentBindingStoreContractTest {
         String instanceId = "agent-update-" + UUID.randomUUID();
         UUID id = UUID.randomUUID();
         store().put(new ExternalAgentBinding(
-            id, instanceId, "https://old.com/a2a", null, "1.0", Instant.now()));
+            id, instanceId, "https://old.com/a2a", null, "1.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         store().put(new ExternalAgentBinding(
-            id, instanceId, "https://new.com/a2a", "new-key", "2.0", Instant.now()));
+            id, instanceId, "https://new.com/a2a", "new-key", "2.0", Instant.now(),
+            VerificationStatus.UNVERIFIED, null, null));
         Optional<ExternalAgentBinding> found = store().findByInstanceId(instanceId);
         assertThat(found).isPresent();
         assertThat(found.get().endpoint()).isEqualTo("https://new.com/a2a");

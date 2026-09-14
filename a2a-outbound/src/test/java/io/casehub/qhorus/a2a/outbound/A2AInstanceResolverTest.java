@@ -1,6 +1,7 @@
 package io.casehub.qhorus.a2a.outbound;
 
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +28,8 @@ class A2AInstanceResolverTest {
     @Test
     void resolve_withExistingBinding_returnsBinding() {
         final ExternalAgentBinding binding = new ExternalAgentBinding(
-                UUID.randomUUID(), "ext-agent-1", "https://agent.example.com/", null, "1.0", Instant.now());
+                UUID.randomUUID(), "ext-agent-1", "https://agent.example.com/", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null);
         when(store.findByInstanceId("ext-agent-1")).thenReturn(Optional.of(binding));
 
         Optional<ExternalAgentBinding> result = resolver.resolve("ext-agent-1");
@@ -62,7 +64,8 @@ class A2AInstanceResolverTest {
     void isExternalAgent_withBinding_returnsTrue() {
         when(store.findByInstanceId("ext-agent-1")).thenReturn(
                 Optional.of(new ExternalAgentBinding(UUID.randomUUID(), "ext-agent-1",
-                        "https://agent.example.com/", null, "1.0", Instant.now())));
+                        "https://agent.example.com/", null, "1.0", Instant.now(),
+                        VerificationStatus.UNVERIFIED, null, null)));
 
         assertThat(resolver.isExternalAgent("ext-agent-1")).isTrue();
     }

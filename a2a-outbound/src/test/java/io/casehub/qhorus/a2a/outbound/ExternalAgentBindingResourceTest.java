@@ -18,6 +18,7 @@ import org.mockito.Mockito;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.persistence.memory.InMemoryExternalAgentBindingStore;
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
@@ -59,7 +60,8 @@ class ExternalAgentBindingResourceTest {
     @Test
     void put_updatesExistingBinding() {
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), "ext-update",
-                "https://old.com/a2a", null, "1.0", Instant.now()));
+                "https://old.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         given()
             .contentType(ContentType.JSON)
@@ -105,7 +107,8 @@ class ExternalAgentBindingResourceTest {
     @Test
     void get_existingBinding_returns200() {
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), "ext-get",
-                "https://get.example.com/a2a", "token-key", "1.0", Instant.now()));
+                "https://get.example.com/a2a", "token-key", "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         given()
         .when()
@@ -128,9 +131,11 @@ class ExternalAgentBindingResourceTest {
     @Test
     void list_returnsAllBindings() {
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), "ext-list-a",
-                "https://a.com/a2a", null, "1.0", Instant.now()));
+                "https://a.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), "ext-list-b",
-                "https://b.com/a2a", null, "1.0", Instant.now()));
+                "https://b.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         given()
         .when()
@@ -143,7 +148,8 @@ class ExternalAgentBindingResourceTest {
     @Test
     void delete_removesBinding() {
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), "ext-del",
-                "https://del.example.com/a2a", null, "1.0", Instant.now()));
+                "https://del.example.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         given()
         .when()

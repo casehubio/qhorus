@@ -17,6 +17,7 @@ import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageDispatcher;
@@ -164,7 +165,8 @@ class A2AOutboundBackendTest {
     void post_withCredentials_resolvesViaCredentialResolver() throws Exception {
         final String extAgentId = "ext-agent-1";
         final ExternalAgentBinding binding = new ExternalAgentBinding(UUID.randomUUID(), extAgentId,
-                "https://agent.example.com/", "my-auth-key", "1.0", Instant.now());
+                "https://agent.example.com/", "my-auth-key", "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null);
         when(bindingStore.findByInstanceId(extAgentId)).thenReturn(Optional.of(binding));
         when(bindingStore.findByInstanceId("internal-sender")).thenReturn(Optional.empty());
         when(credentialResolver.resolve("my-auth-key")).thenReturn(Map.of("token", "secret-token", "type", "bearer"));
@@ -262,7 +264,8 @@ class A2AOutboundBackendTest {
 
     private static ExternalAgentBinding binding(String instanceId) {
         return new ExternalAgentBinding(UUID.randomUUID(), instanceId,
-                "https://agent.example.com/", null, "1.0", Instant.now());
+                "https://agent.example.com/", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null);
     }
 
     private static DispatchResult dummyResult() {

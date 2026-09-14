@@ -9,5 +9,8 @@ public record ExternalAgentBinding(
     String endpoint,
     String authConfigKey,
     String protocolVersion,
-    Instant createdAt
+    Instant createdAt,
+    VerificationStatus verificationStatus,
+    Instant verifiedAt,
+    String verificationKeyId
 ) {}

@@ -19,6 +19,7 @@ import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.persistence.memory.InMemoryChannelStore;
@@ -95,7 +96,8 @@ class A2AOutboundIntegrationTest {
 
         String extInstanceId = "ext-analyst-fwd";
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), extInstanceId,
-                                                  "https://analyst.example.com/a2a", null, "1.0", Instant.now()));
+                                                  "https://analyst.example.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         A2AClient mockClient = Mockito.mock(A2AClient.class);
         when(clientRegistry.getOrCreate(anyString(), any())).thenReturn(mockClient);
@@ -155,7 +157,8 @@ class A2AOutboundIntegrationTest {
 
         String extInstanceId = "ext-loop-agent";
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), extInstanceId,
-                                                  "https://loop.example.com/a2a", null, "1.0", Instant.now()));
+                                                  "https://loop.example.com/a2a", null, "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         OutboundMessage outbound = new OutboundMessage(UUID.randomUUID(), 3L, extInstanceId,
                                                        MessageType.DONE, "Result", null, UUID.randomUUID().toString(), 1L,
@@ -178,7 +181,8 @@ class A2AOutboundIntegrationTest {
 
         String extInstanceId = "ext-secure-agent";
         bindingStore.put(new ExternalAgentBinding(UUID.randomUUID(), extInstanceId,
-                                                  "https://secure.example.com/a2a", "my-secret-key", "1.0", Instant.now()));
+                                                  "https://secure.example.com/a2a", "my-secret-key", "1.0", Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null));
 
         when(credentialResolver.resolve("my-secret-key"))
                 .thenReturn(Map.of("token", "bearer-token-123", "type", "bearer"));

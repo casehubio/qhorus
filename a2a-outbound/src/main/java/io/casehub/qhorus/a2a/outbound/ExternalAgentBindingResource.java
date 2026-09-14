@@ -18,6 +18,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
 
 @Path("/a2a-outbound/bindings")
@@ -46,7 +47,8 @@ public class ExternalAgentBindingResource {
         UUID id = existing != null ? existing.id() : UUID.randomUUID();
 
         ExternalAgentBinding binding = new ExternalAgentBinding(
-                id, instanceId, req.endpoint(), req.authConfigKey(), version, Instant.now());
+                id, instanceId, req.endpoint(), req.authConfigKey(), version, Instant.now(),
+                VerificationStatus.UNVERIFIED, null, null);
         store.put(binding);
         return binding;
     }

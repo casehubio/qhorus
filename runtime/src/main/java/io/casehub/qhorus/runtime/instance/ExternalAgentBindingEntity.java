@@ -1,16 +1,18 @@
 package io.casehub.qhorus.runtime.instance;
 
-import java.time.Instant;
-import java.util.UUID;
-
+import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import io.casehub.qhorus.api.instance.VerificationStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import io.casehub.qhorus.api.instance.ExternalAgentBinding;
+import java.time.Instant;
+import java.util.UUID;
 
 @Entity(name = "ExternalAgentBinding")
 @Table(name = "external_agent_binding",
@@ -34,6 +36,16 @@ public class ExternalAgentBindingEntity {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     public Instant createdAt;
+    @Column(name = "verification_status")
+    @Enumerated(EnumType.STRING)
+    public VerificationStatus verificationStatus;
+
+    @Column(name = "verified_at")
+    public Instant verifiedAt;
+
+    @Column(name = "verification_key_id")
+    public String verificationKeyId;
+
 
     @PrePersist
     void prePersist() {
@@ -50,10 +62,13 @@ public class ExternalAgentBindingEntity {
         e.authConfigKey = binding.authConfigKey();
         e.protocolVersion = binding.protocolVersion();
         e.createdAt = binding.createdAt();
+        e.verificationStatus = binding.verificationStatus();
+        e.verifiedAt = binding.verifiedAt();
+        e.verificationKeyId = binding.verificationKeyId();
         return e;
     }
 
     public ExternalAgentBinding toDomain() {
-        return new ExternalAgentBinding(id, instanceId, endpoint, authConfigKey, protocolVersion, createdAt);
+        return new ExternalAgentBinding(id, instanceId, endpoint, authConfigKey, protocolVersion, createdAt, verificationStatus, verifiedAt, verificationKeyId);
     }
 }
