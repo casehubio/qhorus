@@ -10,7 +10,7 @@
   </parent>
   <artifactId>casehub-qhorus-runtime-core</artifactId>
   <name>CaseHub Qhorus - Runtime Core</name>
-  <description>Framework-neutral runtime POJOs — zero CDI, zero Spring</description>
+  <description>Runtime core — SPI defaults with CDI producers for consumer discovery</description>
 
   <dependencies>
     <dependency>
@@ -32,6 +32,16 @@
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
       <version>0.2-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>jakarta.enterprise</groupId>
+      <artifactId>jakarta.enterprise.cdi-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-arc</artifactId>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>jakarta.transaction</groupId>

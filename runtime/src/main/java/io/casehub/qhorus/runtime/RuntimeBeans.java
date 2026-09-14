@@ -303,36 +303,7 @@ public class RuntimeBeans {
         return new io.casehub.qhorus.runtime.audit.EvidentialChecker(dataStore, messageStore, commitmentStore);
     }
 
-// ── Stripped classes — @DefaultBean overridable defaults ───────────
-
-
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public InboundNormaliser inboundNormaliser() {
-        return new io.casehub.qhorus.runtime.gateway.DefaultInboundNormaliser();
-    }
-
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public io.casehub.qhorus.api.spi.SummaryUpdateHook summaryUpdateHook() {
-        return new io.casehub.qhorus.runtime.channel.NoOpSummaryUpdateHook();
-    }
-
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public io.casehub.qhorus.api.spi.InstanceActorIdProvider instanceActorIdProvider() {
-        return new io.casehub.qhorus.runtime.ledger.DefaultInstanceActorIdProvider();
-    }
-
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster channelActivityBroadcaster() {
-        return new io.casehub.qhorus.runtime.gateway.NoOpChannelActivityBroadcaster();
-    }
+// ── @DefaultBean overridable defaults (runtime-only; SPI defaults moved to runtime-core DefaultBeans) ───────────
 
     @Produces
     @DefaultBean
@@ -346,17 +317,6 @@ public class RuntimeBeans {
     @ApplicationScoped
     public MessageTypePolicy messageTypePolicy() {
         return new StoredMessageTypePolicy();
-    }
-
-    @Produces
-    @DefaultBean
-    @ApplicationScoped
-    public io.casehub.qhorus.api.spi.ObligorTrustPolicy obligorTrustPolicy(
-            QhorusConfig config,
-            Instance<io.casehub.ledger.runtime.service.TrustGateService> trustGateServiceInstance) {
-        return new DefaultObligorTrustPolicy(
-                config.commitment().minObligorTrust(),
-                trustGateServiceInstance.isResolvable() ? trustGateServiceInstance.get() : null);
     }
 
     @Produces
