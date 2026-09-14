@@ -31,6 +31,7 @@ Any Quarkus app adds `io.casehub:casehub-qhorus` as a dependency and its agents 
 | `webhook-observer` | `casehub-qhorus-webhook-observer` | Optional -- HTTP POST webhook callbacks with HMAC-SHA256 signing |
 | `notification-bridge` | `casehub-qhorus-notification-bridge` | Optional -- commitment lifecycle to platform subscription engine |
 | `postgres-broadcaster` | `casehub-qhorus-postgres-broadcaster` | Optional -- cross-node delivery via PostgreSQL LISTEN/NOTIFY |
+| `agent-card-signing` | `casehub-qhorus-agent-card-signing` | Optional -- JWS (Ed25519) signing for agent cards at `/.well-known/agent.json`; JWKS endpoint at `/.well-known/jwks.json`; inbound card verification; trust score bonus for verified agents. Requires `SigningProvider` backend on classpath -- unsigned pass-through when absent |
 | `compliance-report` | `casehub-qhorus-compliance-report` | Optional -- EU AI Act compliance evidence export (attribution, obligation, violation, trust history, provenance, judgment attribution, judgment fulfillment reports). Supports JSON, CSV, HTML, and PDF formats via `Accept` header content negotiation. PDF requires `casehub-platform-pdf` on classpath for PDF/A-2b output. Digital signatures (PAdES embedded for PDF, CAdES detached .p7s for JSON/CSV) require `casehub-platform-signing` on classpath -- automatic when configured, unsigned pass-through when not |
 
 Optional modules activate by classpath presence -- no configuration needed beyond adding the dependency.
