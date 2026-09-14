@@ -1,6 +1,8 @@
 package io.casehub.qhorus.runtime.api;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.spi.AgentCardSigner;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -8,6 +10,7 @@ import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 
 import java.util.List;
 
@@ -26,11 +29,17 @@ public class AgentCardResource {
     @Inject
     jakarta.enterprise.inject.Instance<io.casehub.qhorus.api.store.PushNotificationConfigStore> pushStore;
 
+    @Inject
+    jakarta.enterprise.inject.Instance<AgentCardSigner> agentCardSigner;
+
+    @Inject
+    ObjectMapper objectMapper;
+
 
     @GET
     @Path("/agent.json")
     @Produces(MediaType.APPLICATION_JSON)
-    public io.casehub.a2a.model.AgentCard getAgentCard() {
+    public Response getAgentCard() {
         QhorusConfig.AgentCard cfg = config.agentCard();
 
         List<io.casehub.a2a.model.AgentCard.AgentRef> agents = instanceService.listAll().stream()
@@ -39,7 +48,7 @@ public class AgentCardResource {
                                                                                       "/.well-known/agents/" + inst.instanceId() + ".json"))
                                                                               .toList();
 
-        return new io.casehub.a2a.model.AgentCard(
+        var card = new io.casehub.a2a.model.AgentCard(
                 cfg.name(),
                 cfg.description(),
                 cfg.url().orElse(""),
@@ -49,6 +58,16 @@ public class AgentCardResource {
                 java.util.Map.of("schemes", java.util.List.of("bearer")),
                 currentPrincipal.tenancyId(),
                 agents);
+
+        if (agentCardSigner.isResolvable()) {
+            try {
+                String cardJson = objectMapper.valueToTree(card).toString();
+                return Response.ok(agentCardSigner.get().sign(cardJson)).build();
+            } catch (Exception e) {
+                // Fall through to unsigned — an unsigned card is better than no card
+            }
+        }
+        return Response.ok(card).build();
     }
 
     @GET
@@ -72,11 +91,35 @@ public class AgentCardResource {
                                           null,
                                           currentPrincipal.tenancyId(),
                                           null);
-                                  return jakarta.ws.rs.core.Response.ok(card).build();
+                                  if (agentCardSigner.isResolvable()) {
+                                      try {
+                                          String cardJson = objectMapper.valueToTree(card).toString();
+                                          return Response.ok(agentCardSigner.get().sign(cardJson)).build();
+                                      } catch (Exception e) {
+                                          // Fall through to unsigned
+                                      }
+                                  }
+                                  return Response.ok(card).build();
                               })
                               .orElse(jakarta.ws.rs.core.Response.status(jakarta.ws.rs.core.Response.Status.NOT_FOUND)
                                                                  .entity(new ErrorResponse("Instance not found: " + instanceId))
                                                                  .type(MediaType.APPLICATION_JSON).build());}
+
+    @GET
+    @Path("/jwks.json")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getJwks() {
+        if (!agentCardSigner.isResolvable()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        return Response.ok(agentCardSigner.get().jwks())
+                       .header("Cache-Control", "public, max-age=86400")
+                       .header("Access-Control-Allow-Origin", "*")
+                       .header("Access-Control-Allow-Methods", "GET")
+                       .header("Access-Control-Allow-Headers", "Accept")
+                       .build();
+    }
+
 
     private List<io.casehub.a2a.model.AgentSkill> buildSkills() {
         return List.of(

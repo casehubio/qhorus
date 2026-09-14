@@ -1,0 +1,5 @@
+<beans xmlns="https://jakarta.ee/xml/ns/jakartaee">
+    <decorators>
+        <class>io.casehub.qhorus.signing.IdentityVerificationTrustDecorator</class>
+    </decorators>
+</beans>
