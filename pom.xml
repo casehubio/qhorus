@@ -80,6 +80,7 @@
     <surefire-plugin.version>3.2.5</surefire-plugin.version>
     <openhtmltopdf.version>1.1.37</openhtmltopdf.version>
     <spring-boot.version>4.1.0</spring-boot.version>
+    <rest-assured.version>6.0.1</rest-assured.version>
   </properties>
 
   <dependencyManagement>
@@ -97,6 +98,12 @@
         <version>${spring-boot.version}</version>
         <type>pom</type>
         <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.rest-assured</groupId>
+        <artifactId>rest-assured</artifactId>
+        <version>${rest-assured.version}</version>
+        <scope>test</scope>
       </dependency>
       <dependency>
         <groupId>org.assertj</groupId>
