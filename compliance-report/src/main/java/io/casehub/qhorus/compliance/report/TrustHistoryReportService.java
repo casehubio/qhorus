@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.report;
 
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.compliance.report.ActorTrustTrajectory;
 import io.casehub.qhorus.api.compliance.report.TrustHistoryReport;
 import jakarta.enterprise.context.ApplicationScoped;

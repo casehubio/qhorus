@@ -169,7 +169,7 @@ public class RuntimeAutoConfiguration {
     @ConditionalOnMissingBean
     public ObligorTrustPolicy obligorTrustPolicy(
             QhorusConfig config,
-            Optional<io.casehub.ledger.runtime.service.TrustGateService> trustGateService) {
+            Optional<io.casehub.ledger.core.trust.TrustGateService> trustGateService) {
         return new DefaultObligorTrustPolicy(config.commitment().minObligorTrust(),
                 trustGateService.orElse(null));
     }
@@ -345,7 +345,7 @@ public class RuntimeAutoConfiguration {
     @Bean
     public RoutingBridge routingBridge(Optional<io.casehub.eidos.api.AgentRegistry> agentRegistry,
                                       Optional<io.casehub.eidos.api.AgentSelector> agentSelector,
-                                      Optional<io.casehub.ledger.runtime.service.TrustGateService> trustGateService,
+                                      Optional<io.casehub.ledger.core.trust.TrustGateService> trustGateService,
                                       Optional<ActorCapacityView> capacityView, QhorusConfig config) {
         return new RoutingBridge(agentRegistry.orElse(null), agentSelector.orElse(null),
                 trustGateService.orElse(null), capacityView.orElse(null), config);

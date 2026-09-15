@@ -195,7 +195,7 @@ public class RuntimeBeans {
     @Produces @ApplicationScoped
     public RoutingBridge routingBridge(Instance<io.casehub.eidos.api.AgentRegistry> agentRegistryInstance,
                                       Instance<io.casehub.eidos.api.AgentSelector> agentSelectorInstance,
-                                      Instance<io.casehub.ledger.runtime.service.TrustGateService> trustGateServiceInstance,
+                                      Instance<io.casehub.ledger.core.trust.TrustGateService> trustGateServiceInstance,
                                       Instance<ActorCapacityView> capacityViewInstance,
                                       QhorusConfig config) {
         return new RoutingBridge(

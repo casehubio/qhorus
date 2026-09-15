@@ -2,7 +2,7 @@ package io.casehub.qhorus.compliance.report;
 
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.judgment.JudgmentEventKinds;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph;

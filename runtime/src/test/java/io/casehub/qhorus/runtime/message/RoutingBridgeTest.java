@@ -31,7 +31,7 @@ class RoutingBridgeTest {
 
     private AgentRegistry registry;
     private AgentSelector selector;
-    private io.casehub.ledger.runtime.service.TrustGateService trustGateService;
+    private io.casehub.ledger.core.trust.TrustGateService trustGateService;
     private QhorusConfig config;
     private QhorusConfig.Routing routingConfig;
     private RoutingBridge bridge;
@@ -46,7 +46,7 @@ class RoutingBridgeTest {
         when(config.routing()).thenReturn(routingConfig);
         when(routingConfig.defaultTrustThreshold()).thenReturn(0.0);
 
-        trustGateService = Mockito.mock(io.casehub.ledger.runtime.service.TrustGateService.class);
+        trustGateService = Mockito.mock(io.casehub.ledger.core.trust.TrustGateService.class);
         when(trustGateService.currentScore(any(String.class))).thenReturn(java.util.OptionalDouble.of(0.5));
 
         bridge = new RoutingBridge(registry, selector, trustGateService, null, config);

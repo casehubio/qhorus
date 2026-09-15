@@ -6,7 +6,7 @@ import io.casehub.eidos.api.AgentRegistry;
 import io.casehub.eidos.api.AgentSelection;
 import io.casehub.eidos.api.AgentSelector;
 import io.casehub.eidos.api.SelectionContext;
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.RoutingRejectedException;

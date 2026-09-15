@@ -1,6 +1,6 @@
 package io.casehub.qhorus.runtime.message;
 
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 

@@ -1,7 +1,7 @@
 package io.casehub.qhorus.compliance.report;
 
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
-import io.casehub.ledger.runtime.service.TrustGateService;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;

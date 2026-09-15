@@ -1,6 +1,6 @@
 package io.casehub.qhorus.runtime;
 
-import io.casehub.ledger.runtime.service.TrustGateService;
+import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
