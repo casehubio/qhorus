@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.report;
 
-import io.casehub.qhorus.compliance.model.ProvenanceReport;
+import io.casehub.qhorus.api.compliance.report.ProvenanceReport;
 import io.casehub.qhorus.compliance.provdm.ProvJsonLdMapper;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import jakarta.enterprise.context.ApplicationScoped;

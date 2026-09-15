@@ -2,8 +2,8 @@ package io.casehub.qhorus.compliance.report;
 
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.qhorus.api.store.ChannelStore;
-import io.casehub.qhorus.compliance.model.ViolationEntry;
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.ViolationEntry;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.enterprise.context.ApplicationScoped;

@@ -1,5 +1,6 @@
 package io.casehub.qhorus.compliance.verification;
 
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,14 +34,14 @@ public class SafetyProperty implements VerificationProperty {
         List<MessageLedgerEntry> unattested =
                 messageRepo.findDoneEntriesWithoutAttestation(from, to, tenancyId);
         List<PropertyViolation> violations = unattested.stream()
-                .map(e -> new PropertyViolation(
+                                                       .map(e -> new PropertyViolation(
                         name(),
                         "DONE entry has no attestation",
                         "entryId=" + e.id + " correlationId=" + e.correlationId
                                 + " channelId=" + e.channelId,
                         e.occurredAt,
                         "HIGH"))
-                .toList();
+                                                       .toList();
         return new CheckResult(violations, 0);
     }
 }

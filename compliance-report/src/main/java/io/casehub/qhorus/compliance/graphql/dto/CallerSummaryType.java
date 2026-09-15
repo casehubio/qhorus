@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.CallerSummary;
+import io.casehub.qhorus.api.compliance.report.CallerSummary;
 import org.eclipse.microprofile.graphql.Type;
 
 @Type("CallerSummary")

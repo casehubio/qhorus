@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.JudgmentTypeSummary;
+import io.casehub.qhorus.api.compliance.report.JudgmentTypeSummary;
 import org.eclipse.microprofile.graphql.Type;
 
 @Type("JudgmentTypeSummary")

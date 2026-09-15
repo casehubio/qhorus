@@ -1,8 +1,8 @@
 package io.casehub.qhorus.compliance.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 import io.casehub.qhorus.compliance.signing.SignatureStatus;
 import io.casehub.qhorus.compliance.signing.SigningResult;
 import io.casehub.qhorus.runtime.data.DataService;

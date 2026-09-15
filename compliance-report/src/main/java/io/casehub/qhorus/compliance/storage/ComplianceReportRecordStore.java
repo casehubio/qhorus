@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.storage;
 
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;

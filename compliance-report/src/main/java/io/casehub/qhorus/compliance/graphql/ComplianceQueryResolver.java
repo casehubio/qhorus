@@ -10,7 +10,7 @@ import io.casehub.qhorus.compliance.graphql.dto.ObligationReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ProvenanceReportType;
 import io.casehub.qhorus.compliance.graphql.dto.TrustHistoryReportType;
 import io.casehub.qhorus.compliance.graphql.dto.ViolationReportType;
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 import io.casehub.qhorus.compliance.report.AttributionReportService;
 import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
 import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;

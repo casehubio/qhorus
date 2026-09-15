@@ -1,4 +1,4 @@
-package io.casehub.qhorus.compliance.model;
+package io.casehub.qhorus.api.compliance.report;
 
 import io.casehub.qhorus.api.spi.compliance.CompliancePosture;
 

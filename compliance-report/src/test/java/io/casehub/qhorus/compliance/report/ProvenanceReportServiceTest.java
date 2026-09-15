@@ -1,9 +1,8 @@
 package io.casehub.qhorus.compliance.report;
 
-import io.casehub.qhorus.compliance.model.ProvenanceReport;
+import io.casehub.qhorus.api.compliance.report.ProvenanceReport;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph;
-import io.casehub.qhorus.runtime.ledger.CausalGraphService.GraphEdge;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService.GraphNode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

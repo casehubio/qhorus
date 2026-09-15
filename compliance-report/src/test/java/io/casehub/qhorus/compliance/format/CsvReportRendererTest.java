@@ -1,21 +1,17 @@
 package io.casehub.qhorus.compliance.format;
 
 import io.casehub.qhorus.api.spi.compliance.CompliancePosture;
-import io.casehub.qhorus.compliance.model.AgentObligationSummary;
-import io.casehub.qhorus.compliance.model.AttributionEdge;
-import io.casehub.qhorus.compliance.model.AttributionNode;
-import io.casehub.qhorus.compliance.model.AttributionReport;
-import io.casehub.qhorus.compliance.model.ChannelObligationSummary;
-import io.casehub.qhorus.compliance.model.ObligationReport;
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ViolationEntry;
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.AgentObligationSummary;
+import io.casehub.qhorus.api.compliance.report.AttributionNode;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.ChannelObligationSummary;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;

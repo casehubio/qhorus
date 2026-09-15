@@ -1,4 +1,4 @@
-package io.casehub.qhorus.compliance.verification;
+package io.casehub.qhorus.api.compliance.report;
 
 import java.time.Instant;
 

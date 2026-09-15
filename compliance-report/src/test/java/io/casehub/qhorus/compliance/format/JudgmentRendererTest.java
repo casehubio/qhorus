@@ -1,10 +1,10 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.CallerSummary;
-import io.casehub.qhorus.compliance.model.JudgmentAttributionReport;
-import io.casehub.qhorus.compliance.model.JudgmentEvent;
-import io.casehub.qhorus.compliance.model.JudgmentFulfillmentReport;
-import io.casehub.qhorus.compliance.model.JudgmentTypeSummary;
+import io.casehub.qhorus.api.compliance.report.CallerSummary;
+import io.casehub.qhorus.api.compliance.report.JudgmentAttributionReport;
+import io.casehub.qhorus.api.compliance.report.JudgmentEvent;
+import io.casehub.qhorus.api.compliance.report.JudgmentFulfillmentReport;
+import io.casehub.qhorus.api.compliance.report.JudgmentTypeSummary;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

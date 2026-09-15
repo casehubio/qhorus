@@ -1,6 +1,6 @@
-package io.casehub.qhorus.compliance.model;
+package io.casehub.qhorus.api.compliance.report;
 
-import io.casehub.qhorus.compliance.verification.PropertyViolation;
+
 
 import java.util.List;
 

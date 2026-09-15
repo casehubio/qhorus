@@ -1,4 +1,4 @@
-package io.casehub.qhorus.compliance.model;
+package io.casehub.qhorus.api.compliance.report;
 
 public record AgentObligationSummary(
         String actorId,

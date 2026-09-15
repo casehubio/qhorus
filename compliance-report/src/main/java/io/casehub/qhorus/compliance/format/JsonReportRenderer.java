@@ -3,10 +3,8 @@ package io.casehub.qhorus.compliance.format;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import jakarta.enterprise.context.ApplicationScoped;
-
-import java.nio.charset.StandardCharsets;
 
 @ApplicationScoped
 public class JsonReportRenderer implements ReportRenderer {

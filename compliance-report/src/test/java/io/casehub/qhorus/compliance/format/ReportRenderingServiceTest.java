@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

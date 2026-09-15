@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;

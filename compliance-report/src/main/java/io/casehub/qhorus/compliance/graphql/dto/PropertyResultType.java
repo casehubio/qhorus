@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.PropertyResult;
+import io.casehub.qhorus.api.compliance.report.PropertyResult;
 
 import java.util.List;
 

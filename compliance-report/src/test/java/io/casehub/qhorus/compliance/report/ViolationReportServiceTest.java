@@ -4,7 +4,7 @@ import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.store.ChannelStore;
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.enterprise.inject.Instance;

@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.TrustHistoryReport;
+import io.casehub.qhorus.api.compliance.report.TrustHistoryReport;
 import org.eclipse.microprofile.graphql.Type;
 
 import java.time.Instant;

@@ -1,13 +1,13 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.AttributionReport;
-import io.casehub.qhorus.compliance.model.JudgmentAttributionReport;
-import io.casehub.qhorus.compliance.model.JudgmentFulfillmentReport;
-import io.casehub.qhorus.compliance.model.ObligationReport;
-import io.casehub.qhorus.compliance.model.ProvenanceReport;
-import io.casehub.qhorus.compliance.model.PropertyVerificationReport;
-import io.casehub.qhorus.compliance.model.TrustHistoryReport;
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.JudgmentAttributionReport;
+import io.casehub.qhorus.api.compliance.report.JudgmentFulfillmentReport;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ProvenanceReport;
+import io.casehub.qhorus.api.compliance.report.PropertyVerificationReport;
+import io.casehub.qhorus.api.compliance.report.TrustHistoryReport;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 
 import java.time.Instant;
 

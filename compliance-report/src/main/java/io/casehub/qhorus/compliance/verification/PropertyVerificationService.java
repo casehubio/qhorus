@@ -1,7 +1,7 @@
 package io.casehub.qhorus.compliance.verification;
 
-import io.casehub.qhorus.compliance.model.PropertyResult;
-import io.casehub.qhorus.compliance.model.PropertyVerificationReport;
+import io.casehub.qhorus.api.compliance.report.PropertyResult;
+import io.casehub.qhorus.api.compliance.report.PropertyVerificationReport;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;

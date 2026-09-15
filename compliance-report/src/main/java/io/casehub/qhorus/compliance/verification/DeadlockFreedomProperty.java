@@ -1,5 +1,6 @@
 package io.casehub.qhorus.compliance.verification;
 
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;

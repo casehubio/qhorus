@@ -8,7 +8,7 @@ import io.casehub.ledger.runtime.service.DecisionRecord;
 import io.casehub.ledger.runtime.service.LedgerComplianceReportService;
 import io.casehub.ledger.runtime.service.LedgerVerificationService;
 import io.casehub.ledger.runtime.service.TrustGateService;
-import io.casehub.qhorus.compliance.model.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService.GraphEdge;

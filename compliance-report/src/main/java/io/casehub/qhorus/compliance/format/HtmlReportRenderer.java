@@ -1,14 +1,14 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.AttributionNode;
-import io.casehub.qhorus.compliance.model.AttributionReport;
-import io.casehub.qhorus.compliance.model.ChannelObligationSummary;
-import io.casehub.qhorus.compliance.model.JudgmentAttributionReport;
-import io.casehub.qhorus.compliance.model.JudgmentFulfillmentReport;
-import io.casehub.qhorus.compliance.model.ObligationReport;
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ViolationEntry;
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.AttributionNode;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.ChannelObligationSummary;
+import io.casehub.qhorus.api.compliance.report.JudgmentAttributionReport;
+import io.casehub.qhorus.api.compliance.report.JudgmentFulfillmentReport;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ViolationEntry;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.nio.charset.StandardCharsets;

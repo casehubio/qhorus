@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.AgentObligationSummary;
+import io.casehub.qhorus.api.compliance.report.AgentObligationSummary;
 import org.eclipse.microprofile.graphql.Type;
 
 @Type("AgentObligationSummary")

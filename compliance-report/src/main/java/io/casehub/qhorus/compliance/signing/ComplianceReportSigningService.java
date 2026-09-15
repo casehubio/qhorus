@@ -2,7 +2,7 @@ package io.casehub.qhorus.compliance.signing;
 
 import io.casehub.platform.api.signing.document.DocumentSigningService;
 import io.casehub.platform.api.signing.document.SigningIdentity;
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

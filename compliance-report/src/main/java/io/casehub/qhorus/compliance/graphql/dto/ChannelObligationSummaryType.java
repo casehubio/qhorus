@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.ChannelObligationSummary;
+import io.casehub.qhorus.api.compliance.report.ChannelObligationSummary;
 import org.eclipse.microprofile.graphql.Type;
 
 import java.util.UUID;

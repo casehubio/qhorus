@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
 import org.eclipse.microprofile.graphql.Type;
 
 import java.time.Instant;

@@ -1,5 +1,6 @@
 package io.casehub.qhorus.compliance.verification;
 
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -36,14 +37,14 @@ public class LivenessProperty implements VerificationProperty {
         Instant cutoff = to.minus(DEFAULT_THRESHOLD);
         List<Commitment> stale = commitmentStore.findOpenOlderThan(cutoff, tenancyId);
         List<PropertyViolation> violations = stale.stream()
-                .map(c -> new PropertyViolation(
+                                                  .map(c -> new PropertyViolation(
                         name(),
                         "Commitment OPEN for >" + DEFAULT_THRESHOLD + " without resolution",
                         "correlationId=" + c.correlationId() + " state=" + c.state()
                                 + " createdAt=" + c.createdAt(),
                         c.createdAt(),
                         "HIGH"))
-                .toList();
+                                                  .toList();
         return new CheckResult(violations, 0);
     }
 }

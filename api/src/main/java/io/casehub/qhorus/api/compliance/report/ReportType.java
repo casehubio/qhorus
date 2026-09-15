@@ -1,4 +1,4 @@
-package io.casehub.qhorus.compliance.model;
+package io.casehub.qhorus.api.compliance.report;
 
 public enum ReportType {
     ATTRIBUTION, OBLIGATION, TRUST_HISTORY, VIOLATION, PROVENANCE,

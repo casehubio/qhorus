@@ -1,5 +1,18 @@
 package io.casehub.qhorus.compliance.model;
 
+import io.casehub.qhorus.api.compliance.report.ActorTrustTrajectory;
+import io.casehub.qhorus.api.compliance.report.AgentObligationSummary;
+import io.casehub.qhorus.api.compliance.report.AttributionEdge;
+import io.casehub.qhorus.api.compliance.report.AttributionNode;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.ChannelObligationSummary;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ProvenanceReport;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportType;
+import io.casehub.qhorus.api.compliance.report.TrustHistoryReport;
+import io.casehub.qhorus.api.compliance.report.ViolationEntry;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import io.casehub.qhorus.api.spi.compliance.CompliancePosture;
 import io.casehub.qhorus.api.spi.compliance.PostureEntry;
 import io.casehub.qhorus.api.spi.compliance.PostureStatus;

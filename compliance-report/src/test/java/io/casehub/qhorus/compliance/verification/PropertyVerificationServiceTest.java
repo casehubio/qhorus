@@ -1,6 +1,7 @@
 package io.casehub.qhorus.compliance.verification;
 
-import io.casehub.qhorus.compliance.model.PropertyVerificationReport;
+import io.casehub.qhorus.api.compliance.report.PropertyVerificationReport;
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 import jakarta.enterprise.inject.Instance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

@@ -1,9 +1,8 @@
 package io.casehub.qhorus.compliance.format;
 
-import io.casehub.qhorus.compliance.model.AttributionEdge;
-import io.casehub.qhorus.compliance.model.AttributionNode;
-import io.casehub.qhorus.compliance.model.AttributionReport;
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.AttributionNode;
+import io.casehub.qhorus.api.compliance.report.AttributionReport;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;

@@ -3,7 +3,7 @@ package io.casehub.qhorus.compliance.format;
 import io.casehub.platform.api.pdf.PdfAConformance;
 import io.casehub.platform.api.pdf.PdfGenerator;
 import io.casehub.platform.api.pdf.PdfOptions;
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 

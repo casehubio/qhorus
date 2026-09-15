@@ -1,7 +1,7 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
 import org.eclipse.microprofile.graphql.Type;
 

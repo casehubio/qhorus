@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.ViolationReport;
+import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import org.eclipse.microprofile.graphql.Type;
 
 import java.time.Instant;

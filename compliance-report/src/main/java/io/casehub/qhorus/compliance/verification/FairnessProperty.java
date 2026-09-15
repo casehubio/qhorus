@@ -1,5 +1,6 @@
 package io.casehub.qhorus.compliance.verification;
 
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -51,7 +52,7 @@ public class FairnessProperty implements VerificationProperty {
             selectionCounts.merge(e.routingSelectedAgent, 1, Integer::sum);
         }
 
-        double gini = computeGini(selectionCounts);
+        double                  gini       = computeGini(selectionCounts);
         List<PropertyViolation> violations = new ArrayList<>();
 
         if (gini > DEFAULT_GINI_THRESHOLD) {

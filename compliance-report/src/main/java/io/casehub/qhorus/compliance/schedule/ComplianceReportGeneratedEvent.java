@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.schedule;
 
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 
 import java.time.Instant;
 import java.util.Map;

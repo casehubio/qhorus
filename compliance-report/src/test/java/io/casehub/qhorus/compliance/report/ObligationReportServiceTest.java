@@ -13,7 +13,7 @@ import io.casehub.qhorus.api.spi.compliance.PostureEntry;
 import io.casehub.qhorus.api.spi.compliance.PostureStatus;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.CommitmentReader;
-import io.casehub.qhorus.compliance.model.ObligationReport;
+import io.casehub.qhorus.api.compliance.report.ObligationReport;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.enterprise.inject.Instance;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.verification.PropertyViolation;
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
 
 import java.time.Instant;
 

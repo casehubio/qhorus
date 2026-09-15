@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.AttributionNode;
+import io.casehub.qhorus.api.compliance.report.AttributionNode;
 import org.eclipse.microprofile.graphql.Type;
 
 @Type("AttributionNode")

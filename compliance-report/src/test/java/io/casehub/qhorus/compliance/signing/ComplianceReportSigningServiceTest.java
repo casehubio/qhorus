@@ -3,9 +3,8 @@ package io.casehub.qhorus.compliance.signing;
 import io.casehub.platform.api.signing.document.DetachedSignature;
 import io.casehub.platform.api.signing.document.DocumentSigningService;
 import io.casehub.platform.api.signing.document.SignedDocument;
-import io.casehub.platform.api.signing.document.SigningIdentity;
 import io.casehub.platform.api.signing.document.SigningProfile;
-import io.casehub.qhorus.compliance.model.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;

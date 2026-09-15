@@ -1,10 +1,8 @@
 package io.casehub.qhorus.compliance.api;
 
-import io.casehub.platform.api.signing.document.DocumentVerificationResult;
 import io.casehub.platform.api.signing.document.DocumentVerificationService;
-import io.casehub.platform.api.signing.document.VerificationStatus;
-import io.casehub.qhorus.compliance.model.ReportFormat;
-import io.casehub.qhorus.compliance.model.ReportType;
+import io.casehub.qhorus.api.compliance.report.ReportFormat;
+import io.casehub.qhorus.api.compliance.report.ReportType;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
 import io.casehub.qhorus.compliance.storage.ComplianceReportRecordStore;
 import io.casehub.qhorus.runtime.data.DataService;

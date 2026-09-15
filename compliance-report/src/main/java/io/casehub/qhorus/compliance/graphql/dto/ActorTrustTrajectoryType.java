@@ -1,6 +1,6 @@
 package io.casehub.qhorus.compliance.graphql.dto;
 
-import io.casehub.qhorus.compliance.model.ActorTrustTrajectory;
+import io.casehub.qhorus.api.compliance.report.ActorTrustTrajectory;
 import org.eclipse.microprofile.graphql.Type;
 
 import java.util.List;
