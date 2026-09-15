@@ -49,6 +49,13 @@ Optional module activated by classpath presence.</description>
     </dependency>
 
     <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-graphql-generator</artifactId>
+      <version>0.2-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-graphql</artifactId>
       <scope>provided</scope>
@@ -129,6 +136,27 @@ Optional module activated by classpath presence.</description>
 
   <build>
     <plugins>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>io.casehub</groupId>
+              <artifactId>casehub-platform-graphql-generator</artifactId>
+              <version>0.2-SNAPSHOT</version>
+            </path>
+            <path>
+              <groupId>io.casehub</groupId>
+              <artifactId>casehub-qhorus-api</artifactId>
+              <version>${project.version}</version>
+            </path>
+          </annotationProcessorPaths>
+          <compilerArgs>
+            <arg>-AdomainFilter=compliance</arg>
+          </compilerArgs>
+        </configuration>
+      </plugin>
+
       <plugin>
         <groupId>io.smallrye</groupId>
         <artifactId>jandex-maven-plugin</artifactId>

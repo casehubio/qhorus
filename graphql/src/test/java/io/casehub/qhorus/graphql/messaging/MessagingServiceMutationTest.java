@@ -1,11 +1,13 @@
 package io.casehub.qhorus.graphql.messaging;
 
-import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.ReactionManager;
+import io.casehub.qhorus.api.message.CancelWaitResult;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
+import io.casehub.qhorus.api.message.DeleteMessageResult;
+import io.casehub.qhorus.api.message.DispatchMessageRequest;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
@@ -13,13 +15,10 @@ import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.Reaction;
 import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.api.store.MessageReader;
 import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.ReactionReader;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.casehub.qhorus.graphql.dto.CancelWaitResultType;
-import io.casehub.qhorus.graphql.dto.DeleteMessageResultType;
-import io.casehub.qhorus.graphql.dto.DispatchMessageInput;
-import io.casehub.qhorus.graphql.dto.DispatchResultType;
-import io.casehub.qhorus.graphql.dto.ReactionType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -36,9 +35,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class MessagingMutationResolverTest {
+class MessagingServiceMutationTest {
 
-    private MessagingMutationResolver resolver;
+    private MessagingService service;
     private MessageDispatcher messageDispatcher;
     private CurrentPrincipal currentPrincipal;
     private ReactionManager reactionManager;
@@ -58,16 +57,11 @@ class MessagingMutationResolverTest {
         when(currentPrincipal.actorId()).thenReturn("test-actor");
         when(currentPrincipal.tenancyId()).thenReturn("default");
 
-        resolver = new MessagingMutationResolver();
-        resolver.messageDispatcher = messageDispatcher;
-        resolver.currentPrincipal = currentPrincipal;
-        resolver.reactionManager = reactionManager;
-        resolver.messageStore = messageStore;
-        resolver.consumerMessaging = consumerMessaging;
-        resolver.commitmentStore = commitmentStore;
+        service = new MessagingService(
+                consumerMessaging, mock(MessageReader.class), mock(ReactionReader.class),
+                messageDispatcher, currentPrincipal, reactionManager, messageStore,
+                commitmentStore);
     }
-
-    // --- dispatchMessage ---
 
     @Test
     void dispatchMessageBuildsDispatchFromInput() {
@@ -75,9 +69,9 @@ class MessagingMutationResolverTest {
         DispatchResult result = dispatchResult(1L, channelId, "test-actor", MessageType.STATUS);
         when(messageDispatcher.dispatch(any(MessageDispatch.class))).thenReturn(result);
 
-        DispatchMessageInput input = new DispatchMessageInput(
+        DispatchMessageRequest input = new DispatchMessageRequest(
                 channelId, "STATUS", "hello", null, null, null, null, null);
-        DispatchResultType actual = resolver.dispatchMessage(input);
+        DispatchResult actual = service.dispatchMessage(input);
 
         assertThat(actual).isNotNull();
         ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
@@ -93,9 +87,9 @@ class MessagingMutationResolverTest {
         DispatchResult result = dispatchResult(2L, channelId, "test-actor", MessageType.COMMAND);
         when(messageDispatcher.dispatch(any(MessageDispatch.class))).thenReturn(result);
 
-        DispatchMessageInput input = new DispatchMessageInput(
+        DispatchMessageRequest input = new DispatchMessageRequest(
                 channelId, "COMMAND", "do something", "corr-1", null, "role:worker", "general", null);
-        resolver.dispatchMessage(input);
+        service.dispatchMessage(input);
 
         ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
         verify(messageDispatcher).dispatch(captor.capture());
@@ -104,13 +98,11 @@ class MessagingMutationResolverTest {
         assertThat(captor.getValue().topic()).isEqualTo("general");
     }
 
-    // --- deleteMessage ---
-
     @Test
     void deleteMessageReturnsNotFoundWhenMissing() {
         when(messageStore.find(99L)).thenReturn(Optional.empty());
 
-        DeleteMessageResultType result = resolver.deleteMessage(99L);
+        DeleteMessageResult result = service.deleteMessage(99L);
 
         assertThat(result.deleted()).isFalse();
         assertThat(result.status()).contains("not found");
@@ -127,7 +119,7 @@ class MessagingMutationResolverTest {
         when(messageDispatcher.dispatch(any(MessageDispatch.class)))
                 .thenReturn(dispatchResult(12L, channelId, "system", MessageType.EVENT));
 
-        DeleteMessageResultType result = resolver.deleteMessage(10L);
+        DeleteMessageResult result = service.deleteMessage(10L);
 
         assertThat(result.deleted()).isTrue();
         assertThat(result.sender()).isEqualTo("agent-1");
@@ -148,19 +140,17 @@ class MessagingMutationResolverTest {
         when(messageDispatcher.dispatch(any(MessageDispatch.class)))
                 .thenReturn(dispatchResult(11L, channelId, "system", MessageType.EVENT));
 
-        DeleteMessageResultType result = resolver.deleteMessage(10L);
+        DeleteMessageResult result = service.deleteMessage(10L);
 
         assertThat(result.preview()).hasSize(81);
     }
-
-    // --- react / unreact ---
 
     @Test
     void reactDelegatesToReactionManager() {
         Reaction reaction = new Reaction(1L, 10L, "thumbsup", "test-actor", Instant.now(), "default");
         when(reactionManager.react(10L, "thumbsup")).thenReturn(reaction);
 
-        ReactionType result = resolver.react(10L, "thumbsup");
+        Reaction result = service.react(10L, "thumbsup");
 
         assertThat(result.emoji()).isEqualTo("thumbsup");
         assertThat(result.messageId()).isEqualTo(10L);
@@ -170,12 +160,10 @@ class MessagingMutationResolverTest {
     void unreactDelegatesToReactionManager() {
         when(reactionManager.unreact(10L, "thumbsup")).thenReturn(true);
 
-        boolean removed = resolver.unreact(10L, "thumbsup");
+        boolean removed = service.unreact(10L, "thumbsup");
 
         assertThat(removed).isTrue();
     }
-
-    // --- respondToApproval ---
 
     @Test
     void respondToApprovalDispatchesResponse() {
@@ -185,7 +173,7 @@ class MessagingMutationResolverTest {
         when(messageDispatcher.dispatch(any(MessageDispatch.class)))
                 .thenReturn(dispatchResult(6L, channelId, "human", MessageType.RESPONSE));
 
-        DispatchResultType result = resolver.respondToApproval("corr-1", "approved", channelId);
+        DispatchResult result = service.respondToApproval("corr-1", "approved", channelId);
 
         assertThat(result).isNotNull();
         ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
@@ -203,7 +191,7 @@ class MessagingMutationResolverTest {
         when(messageDispatcher.dispatch(any(MessageDispatch.class)))
                 .thenReturn(dispatchResult(6L, channelId, "human", MessageType.RESPONSE));
 
-        DispatchResultType result = resolver.respondToApproval("corr-1", "approved", channelId);
+        DispatchResult result = service.respondToApproval("corr-1", "approved", channelId);
 
         assertThat(result).isNotNull();
         ArgumentCaptor<MessageDispatch> captor = ArgumentCaptor.forClass(MessageDispatch.class);
@@ -211,15 +199,13 @@ class MessagingMutationResolverTest {
         assertThat(captor.getValue().inReplyTo()).isNull();
     }
 
-    // --- cancelWait ---
-
     @Test
     void cancelWaitDeletesCommitment() {
         UUID commitmentId = UUID.randomUUID();
         Commitment commitment = testCommitment(commitmentId, "corr-1", CommitmentState.OPEN);
         when(commitmentStore.findByCorrelationId("corr-1")).thenReturn(Optional.of(commitment));
 
-        CancelWaitResultType result = resolver.cancelWait("corr-1");
+        CancelWaitResult result = service.cancelWait("corr-1");
 
         assertThat(result.cancelled()).isTrue();
         verify(commitmentStore).deleteById(commitmentId);
@@ -229,12 +215,10 @@ class MessagingMutationResolverTest {
     void cancelWaitReturnsFalseWhenNotFound() {
         when(commitmentStore.findByCorrelationId("corr-1")).thenReturn(Optional.empty());
 
-        CancelWaitResultType result = resolver.cancelWait("corr-1");
+        CancelWaitResult result = service.cancelWait("corr-1");
 
         assertThat(result.cancelled()).isFalse();
     }
-
-    // --- helpers ---
 
     private Message testMessage(Long id, UUID channelId, String sender, MessageType type, String content) {
         return new Message(id, channelId, sender, type,

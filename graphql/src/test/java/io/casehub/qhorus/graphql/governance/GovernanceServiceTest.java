@@ -1,10 +1,10 @@
 package io.casehub.qhorus.graphql.governance;
 
-import io.casehub.platform.graphql.PageInput;
 import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentPage;
+import io.casehub.qhorus.api.message.CommitmentQuery;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.store.CommitmentReader;
-import io.casehub.qhorus.graphql.dto.CommitmentFilterInput;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,16 +16,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class GovernanceQueryResolverTest {
+class GovernanceServiceTest {
 
-    private GovernanceQueryResolver resolver;
+    private GovernanceService service;
     private CommitmentReader commitmentReader;
 
     @BeforeEach
     void setUp() {
         commitmentReader = mock(CommitmentReader.class);
-        resolver = new GovernanceQueryResolver();
-        resolver.commitmentReader = commitmentReader;
+        service = new GovernanceService(commitmentReader);
     }
 
     @Test
@@ -33,10 +32,10 @@ class GovernanceQueryResolverTest {
         Commitment c = createCommitment(CommitmentState.OPEN);
         when(commitmentReader.findAllOpen()).thenReturn(List.of(c));
 
-        var result = resolver.commitments(null, null);
+        CommitmentPage result = service.commitments(null);
 
         assertThat(result.items()).hasSize(1);
-        assertThat(result.pageInfo().totalCount()).isEqualTo(1);
+        assertThat(result.hasNext()).isFalse();
     }
 
     @Test
@@ -45,8 +44,8 @@ class GovernanceQueryResolverTest {
         Commitment c = createCommitment(CommitmentState.FULFILLED);
         when(commitmentReader.findByState(CommitmentState.FULFILLED, channelId)).thenReturn(List.of(c));
 
-        var filter = new CommitmentFilterInput(channelId, CommitmentState.FULFILLED, null, null);
-        var result = resolver.commitments(filter, new PageInput(0, 10, null));
+        var query = new CommitmentQuery(channelId, CommitmentState.FULFILLED, null, null, 0, 10, null);
+        CommitmentPage result = service.commitments(query);
 
         assertThat(result.items()).hasSize(1);
     }
@@ -56,8 +55,8 @@ class GovernanceQueryResolverTest {
         Commitment c = createCommitment(CommitmentState.OPEN);
         when(commitmentReader.findOpenByObligor("agent-1")).thenReturn(List.of(c));
 
-        var filter = new CommitmentFilterInput(null, null, "agent-1", null);
-        var result = resolver.commitments(filter, null);
+        var query = new CommitmentQuery(null, null, "agent-1", null, null, null, null);
+        CommitmentPage result = service.commitments(query);
 
         assertThat(result.items()).hasSize(1);
     }
@@ -70,11 +69,11 @@ class GovernanceQueryResolverTest {
                 createCommitment(CommitmentState.OPEN));
         when(commitmentReader.findAllOpen()).thenReturn(many);
 
-        var result = resolver.commitments(null, new PageInput(0, 2, null));
+        var query = new CommitmentQuery(null, null, null, null, 0, 2, null);
+        CommitmentPage result = service.commitments(query);
 
         assertThat(result.items()).hasSize(2);
-        assertThat(result.pageInfo().hasNext()).isTrue();
-        assertThat(result.pageInfo().totalCount()).isEqualTo(3);
+        assertThat(result.hasNext()).isTrue();
     }
 
     private Commitment createCommitment(CommitmentState state) {

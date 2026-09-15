@@ -30,6 +30,12 @@ presence. Thin-adapter pattern over Qhorus service layer.</description>
 
     <!-- Provided — consumer supplies the runtime -->
     <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-graphql-generator</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-smallrye-graphql</artifactId>
       <scope>provided</scope>
@@ -89,6 +95,27 @@ presence. Thin-adapter pattern over Qhorus service layer.</description>
             </goals>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>io.casehub</groupId>
+              <artifactId>casehub-platform-graphql-generator</artifactId>
+              <version>${project.version}</version>
+            </path>
+            <path>
+              <groupId>io.casehub</groupId>
+              <artifactId>casehub-qhorus-api</artifactId>
+              <version>${project.version}</version>
+            </path>
+          </annotationProcessorPaths>
+          <compilerArgs>
+            <arg>-AdomainFilter=channels,messaging,governance</arg>
+          </compilerArgs>
+        </configuration>
       </plugin>
 
       <plugin>

@@ -3,9 +3,9 @@ package io.casehub.qhorus.graphql.channels;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.ChannelReader;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.graphql.dto.ChannelType;
-import io.casehub.qhorus.graphql.dto.CreateChannelInput;
+import io.casehub.qhorus.api.message.ConsumerMessaging;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,16 +17,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class ChannelsMutationResolverTest {
+class ChannelsServiceMutationTest {
 
-    private ChannelsMutationResolver resolver;
+    private ChannelsService service;
     private ChannelManager channelManager;
 
     @BeforeEach
     void setUp() {
         channelManager = mock(ChannelManager.class);
-        resolver = new ChannelsMutationResolver();
-        resolver.channelManager = channelManager;
+        service = new ChannelsService(mock(ChannelReader.class), mock(ConsumerMessaging.class), channelManager);
     }
 
     @Test
@@ -34,9 +33,8 @@ class ChannelsMutationResolverTest {
         Channel created = createChannel("new-channel");
         when(channelManager.create(any(ChannelCreateRequest.class))).thenReturn(created);
 
-        CreateChannelInput input = new CreateChannelInput("new-channel", null,
-                null, null, null, null, null, null, null, null);
-        ChannelType result = resolver.createChannel(input);
+        ChannelCreateRequest input = ChannelCreateRequest.builder("new-channel").build();
+        Channel result = service.createChannel(input);
 
         assertThat(result.name()).isEqualTo("new-channel");
     }
@@ -46,7 +44,7 @@ class ChannelsMutationResolverTest {
         UUID id = UUID.randomUUID();
         when(channelManager.delete(id, true)).thenReturn(5L);
 
-        long result = resolver.deleteChannel(id, true);
+        long result = service.deleteChannel(id, true);
 
         assertThat(result).isEqualTo(5L);
     }
@@ -57,7 +55,7 @@ class ChannelsMutationResolverTest {
         Channel paused = createChannel("paused-ch");
         when(channelManager.pause(id)).thenReturn(paused);
 
-        ChannelType result = resolver.pauseChannel(id);
+        Channel result = service.pauseChannel(id);
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("paused-ch");
@@ -69,7 +67,7 @@ class ChannelsMutationResolverTest {
         Channel resumed = createChannel("resumed-ch");
         when(channelManager.resume(id)).thenReturn(resumed);
 
-        ChannelType result = resolver.resumeChannel(id);
+        Channel result = service.resumeChannel(id);
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("resumed-ch");

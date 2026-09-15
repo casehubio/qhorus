@@ -1,20 +1,24 @@
 package io.casehub.qhorus.graphql.messaging;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.channel.ReactionManager;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageDispatcher;
+import io.casehub.qhorus.api.message.MessageReactions;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.Reaction;
+import io.casehub.qhorus.api.message.ReactionGroup;
+import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.api.store.MessageReader;
+import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.ReactionReader;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.casehub.qhorus.graphql.dto.MessageReactionsType;
-import io.casehub.qhorus.graphql.dto.ReactionGroupType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,9 +31,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class MessagingQueryResolverTest {
+class MessagingServiceQueryTest {
 
-    private MessagingQueryResolver resolver;
+    private MessagingService service;
     private ConsumerMessaging consumerMessaging;
     private MessageReader messageReader;
     private ReactionReader reactionReader;
@@ -39,10 +43,11 @@ class MessagingQueryResolverTest {
         consumerMessaging = mock(ConsumerMessaging.class);
         messageReader = mock(MessageReader.class);
         reactionReader = mock(ReactionReader.class);
-        resolver = new MessagingQueryResolver();
-        resolver.consumerMessaging = consumerMessaging;
-        resolver.messageReader = messageReader;
-        resolver.reactionReader = reactionReader;
+        service = new MessagingService(
+                consumerMessaging, messageReader, reactionReader,
+                mock(MessageDispatcher.class), mock(CurrentPrincipal.class),
+                mock(ReactionManager.class), mock(MessageStore.class),
+                mock(CommitmentStore.class));
     }
 
     @Test
@@ -50,7 +55,7 @@ class MessagingQueryResolverTest {
         Message msg = testMessage(42L, "hello");
         when(consumerMessaging.findById(42L)).thenReturn(Optional.of(msg));
 
-        var result = resolver.message(42L);
+        var result = service.message(42L);
 
         assertThat(result.id()).isEqualTo(42L);
         assertThat(result.content()).isEqualTo("hello");
@@ -60,7 +65,7 @@ class MessagingQueryResolverTest {
     void messageThrowsWhenNotFound() {
         when(consumerMessaging.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> resolver.message(99L))
+        assertThatThrownBy(() -> service.message(99L))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("99");
     }
@@ -70,7 +75,7 @@ class MessagingQueryResolverTest {
         Message reply = testMessage(2L, "reply");
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of(reply));
 
-        var results = resolver.replies(1L, null, null);
+        var results = service.replies(1L, null, null);
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().content()).isEqualTo("reply");
@@ -85,7 +90,7 @@ class MessagingQueryResolverTest {
     void repliesRespectsLimitAndAfterId() {
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        resolver.replies(1L, 5L, 50);
+        service.replies(1L, 5L, 50);
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());
@@ -97,7 +102,7 @@ class MessagingQueryResolverTest {
     void repliesCapsLimitAt100() {
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        resolver.replies(1L, null, 999);
+        service.replies(1L, null, 999);
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());
@@ -109,7 +114,7 @@ class MessagingQueryResolverTest {
         Message msg = testMessage(1L, "found it");
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of(msg));
 
-        var results = resolver.searchMessages("found", null, null);
+        var results = service.searchMessages("found", null, null);
 
         assertThat(results).hasSize(1);
 
@@ -121,11 +126,11 @@ class MessagingQueryResolverTest {
     }
 
     @Test
-    void searchMessagesFiltersbyChannel() {
+    void searchMessagesFiltersByChannel() {
         UUID channelId = UUID.randomUUID();
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        resolver.searchMessages("query", channelId, 10);
+        service.searchMessages("query", channelId, 10);
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());
@@ -141,10 +146,10 @@ class MessagingQueryResolverTest {
                 new Reaction(3L, 10L, "heart", "alice", Instant.now(), "default"));
         when(reactionReader.findByMessage(10L)).thenReturn(reactions);
 
-        List<ReactionGroupType> result = resolver.reactions(10L);
+        List<ReactionGroup> result = service.reactions(10L);
 
         assertThat(result).hasSize(2);
-        ReactionGroupType thumbsup = result.stream()
+        ReactionGroup thumbsup = result.stream()
                 .filter(g -> g.emoji().equals("thumbsup")).findFirst().orElseThrow();
         assertThat(thumbsup.count()).isEqualTo(2);
         assertThat(thumbsup.actorIds()).containsExactlyInAnyOrder("alice", "bob");
@@ -156,7 +161,7 @@ class MessagingQueryResolverTest {
                 new Reaction(1L, 10L, "thumbsup", "alice", Instant.now(), "default"));
         when(reactionReader.findByMessages(any())).thenReturn(Map.of(10L, msg10Reactions));
 
-        List<MessageReactionsType> result = resolver.reactionsBatch(List.of(10L, 20L));
+        List<MessageReactions> result = service.reactionsBatch(List.of(10L, 20L));
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).messageId()).isEqualTo(10L);
@@ -167,7 +172,7 @@ class MessagingQueryResolverTest {
 
     @Test
     void reactionsBatchRejectsEmptyList() {
-        assertThatThrownBy(() -> resolver.reactionsBatch(List.of()))
+        assertThatThrownBy(() -> service.reactionsBatch(List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -176,7 +181,7 @@ class MessagingQueryResolverTest {
         List<Long> ids = new java.util.ArrayList<>();
         for (long i = 0; i < 201; i++) ids.add(i);
 
-        assertThatThrownBy(() -> resolver.reactionsBatch(ids))
+        assertThatThrownBy(() -> service.reactionsBatch(ids))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("200");
     }

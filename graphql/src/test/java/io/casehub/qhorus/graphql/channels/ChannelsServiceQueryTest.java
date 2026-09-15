@@ -1,13 +1,13 @@
 package io.casehub.qhorus.graphql.channels;
 
-import io.casehub.platform.graphql.PageInput;
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.ChannelQuery;
 import io.casehub.qhorus.api.channel.ChannelReader;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.graphql.dto.ChannelType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
@@ -22,19 +22,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class ChannelsQueryResolverTest {
+class ChannelsServiceQueryTest {
 
-    private ChannelsQueryResolver resolver;
+    private ChannelsService service;
     private ChannelReader channelReader;
     private ConsumerMessaging consumerMessaging;
 
     @BeforeEach
     void setUp() {
-        resolver = new ChannelsQueryResolver();
         channelReader = mock(ChannelReader.class);
         consumerMessaging = mock(ConsumerMessaging.class);
-        resolver.channelReader = channelReader;
-        resolver.consumerMessaging = consumerMessaging;
+        service = new ChannelsService(channelReader, consumerMessaging, mock(ChannelManager.class));
     }
 
     @Test
@@ -42,11 +40,11 @@ class ChannelsQueryResolverTest {
         Channel ch = createChannel("test-channel");
         when(channelReader.scan(ArgumentMatchers.any())).thenReturn(List.of(ch));
 
-        var result = resolver.channels(null, new PageInput(0, 10, null));
+        var result = service.channels(new ChannelQuery(null, null, null, null, null, 0, 10, null));
 
         assertThat(result.items()).hasSize(1);
         assertThat(result.items().get(0).name()).isEqualTo("test-channel");
-        assertThat(result.pageInfo().totalCount()).isEqualTo(1);
+        assertThat(result.hasNext()).isFalse();
     }
 
     @Test
@@ -55,7 +53,7 @@ class ChannelsQueryResolverTest {
         Channel ch = createChannel("found");
         when(channelReader.findById(id)).thenReturn(Optional.of(ch));
 
-        ChannelType result = resolver.channel(id, null);
+        Channel result = service.channel(id, null);
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("found");
@@ -66,7 +64,7 @@ class ChannelsQueryResolverTest {
         Channel ch = createChannel("by-name");
         when(channelReader.findByName("by-name")).thenReturn(Optional.of(ch));
 
-        ChannelType result = resolver.channel(null, "by-name");
+        Channel result = service.channel(null, "by-name");
 
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("by-name");
@@ -77,14 +75,14 @@ class ChannelsQueryResolverTest {
         UUID id = UUID.randomUUID();
         when(channelReader.findById(id)).thenReturn(Optional.empty());
 
-        ChannelType result = resolver.channel(id, null);
+        Channel result = service.channel(id, null);
 
         assertThat(result).isNull();
     }
 
     @Test
     void channelThrowsWhenNeitherIdNorName() {
-        assertThatThrownBy(() -> resolver.channel(null, null))
+        assertThatThrownBy(() -> service.channel(null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -94,7 +92,7 @@ class ChannelsQueryResolverTest {
         Message msg = createMessage(channelId, 1L);
         when(consumerMessaging.history(channelId, 0L, 50)).thenReturn(List.of(msg));
 
-        var result = resolver.channelMessages(channelId, null, null);
+        var result = service.channelMessages(channelId, null, null);
 
         assertThat(result).hasSize(1);
     }
@@ -104,7 +102,7 @@ class ChannelsQueryResolverTest {
         UUID channelId = UUID.randomUUID();
         when(consumerMessaging.history(channelId, 100L, 25)).thenReturn(List.of());
 
-        var result = resolver.channelMessages(channelId, 100L, 25);
+        var result = service.channelMessages(channelId, 100L, 25);
 
         assertThat(result).isEmpty();
     }
