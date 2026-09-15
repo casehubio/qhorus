@@ -79,4 +79,31 @@
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.casehub</groupId>
+                <artifactId>casehub-platform-spring-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate</id>
+                        <goals><goal>generate</goal></goals>
+                        <configuration>
+                            <quarkusModule>${project.basedir}/../runtime</quarkusModule>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-drift</id>
+                        <goals><goal>verify</goal></goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <quarkusModule>${project.basedir}/../runtime</quarkusModule>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
