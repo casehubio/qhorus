@@ -3,7 +3,6 @@ package io.casehub.qhorus.runtime.channel;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.MemberRole;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,7 +18,7 @@ import java.util.UUID;
 
 @Entity(name = "ChannelMembership")
 @Table(name = "channel_membership")
-public class ChannelMembershipEntity extends PanacheEntityBase {
+public class ChannelMembershipEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -2,7 +2,6 @@ package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.Space;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -15,7 +14,7 @@ import java.util.UUID;
 
 @Entity(name = "Space")
 @Table(name = "space", uniqueConstraints = @UniqueConstraint(name = "uq_space_name_parent_tenancy", columnNames = {"tenancy_id", "parent_space_id", "name"}))
-public class SpaceEntity extends PanacheEntityBase {
+public class SpaceEntity {
 
     @Id
     public UUID id;

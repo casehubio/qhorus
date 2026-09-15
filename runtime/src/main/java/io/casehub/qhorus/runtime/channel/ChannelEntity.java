@@ -3,7 +3,6 @@ package io.casehub.qhorus.runtime.channel;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,7 +17,7 @@ import java.util.UUID;
 
 @Entity(name = "Channel")
 @Table(name = "channel", uniqueConstraints = @UniqueConstraint(name = "uq_channel_name_tenancy", columnNames = { "tenancy_id", "name" }))
-public class ChannelEntity extends PanacheEntityBase {
+public class ChannelEntity {
 
     @Id
     public UUID id;

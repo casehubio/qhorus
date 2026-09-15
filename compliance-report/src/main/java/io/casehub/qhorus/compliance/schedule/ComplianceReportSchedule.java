@@ -2,7 +2,6 @@ package io.casehub.qhorus.compliance.schedule;
 
 import io.casehub.qhorus.compliance.model.ReportFormat;
 import io.casehub.qhorus.compliance.model.ReportType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,7 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "compliance_report_schedule")
-public class ComplianceReportSchedule extends PanacheEntityBase {
+public class ComplianceReportSchedule {
 
     @Id
     @GeneratedValue

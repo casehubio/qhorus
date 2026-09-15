@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
@@ -15,6 +17,9 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 @ApplicationScoped
 public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
 
+    @Inject
+    EntityManager em;
+
     @Override
     public List<Message> scan(MessageQuery q) {
         MessageQueryJpql mq = MessageQueryJpql.from(q);
@@ -23,9 +28,13 @@ public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
 
         List<MessageEntity> entities;
         if (q.limit() != null) {
-            entities = MessageEntity.find(jpql, mq.params()).page(0, q.limit()).list();
+            var query = em.createQuery("SELECT e " + jpql, MessageEntity.class);
+            Object[] ps = mq.params(); for (int i = 0; i < ps.length; i++) query.setParameter(i + 1, ps[i]);
+            entities = query.setMaxResults(q.limit()).getResultList();
         } else {
-            entities = MessageEntity.list(jpql, mq.params());
+            var query = em.createQuery("SELECT e " + jpql, MessageEntity.class);
+            Object[] ps = mq.params(); for (int i = 0; i < ps.length; i++) query.setParameter(i + 1, ps[i]);
+            entities = query.getResultList();
         }
         return entities.stream().map(MessageEntity::toDomain).toList();
     }
@@ -33,18 +42,21 @@ public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
     @Override
     public long count(MessageQuery q) {
         MessageQueryJpql mq = MessageQueryJpql.from(q);
-        return MessageEntity.count(mq.where(), mq.params());
+        var query = em.createQuery("SELECT COUNT(e) FROM Message e WHERE " + mq.where(), Long.class);
+        Object[] ps = mq.params(); for (int i = 0; i < ps.length; i++) query.setParameter(i + 1, ps[i]);
+        return query.getSingleResult();
     }
 
     @Override
     public int countByChannel(UUID channelId) {
-        return (int) MessageEntity.count("channelId", channelId);
+        return em.createQuery("SELECT COUNT(e) FROM Message e WHERE e.channelId = ?1", Long.class)
+                .setParameter(1, channelId).getSingleResult().intValue();
     }
 
     @Override
     public List<String> distinctSendersByChannel(UUID channelId, MessageType excludedType) {
         @SuppressWarnings("unchecked")
-        List<String> result = MessageEntity.getEntityManager()
+        List<String> result = em
                                            .createQuery("SELECT DISTINCT m.sender FROM Message m "
                         + "WHERE m.channelId = ?1 AND m.messageType != ?2 ORDER BY m.sender")
                                            .setParameter(1, channelId)
@@ -55,15 +67,15 @@ public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
 
     @Override
     public Optional<Message> findLastMessage(UUID channelId) {
-        return MessageEntity.<MessageEntity>find("channelId = ?1 ORDER BY id DESC", channelId)
-                            .page(0, 1)
-                            .<MessageEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM Message e WHERE e.channelId = ?1 ORDER BY e.id DESC", MessageEntity.class)
+                            .setParameter(1, channelId).setMaxResults(1)
+                            .getResultStream().findFirst()
                             .map(MessageEntity::toDomain);
     }
 
     @Override
     public Optional<Message> find(Long id) {
-        return MessageEntity.<MessageEntity>findByIdOptional(id)
+        return Optional.ofNullable(em.find(MessageEntity.class, id))
                 .map(MessageEntity::toDomain);
     }
 }

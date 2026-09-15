@@ -65,18 +65,10 @@
       <artifactId>quarkus-rest-jackson-common-deployment</artifactId>
     </dependency>
 
-    <!-- Hibernate ORM + Panache -->
+    <!-- Hibernate ORM -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-orm-deployment</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-hibernate-orm-panache-deployment</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>io.quarkus</groupId>
-      <artifactId>quarkus-hibernate-orm-panache-common-deployment</artifactId>
     </dependency>
 
     <!-- Flyway -->

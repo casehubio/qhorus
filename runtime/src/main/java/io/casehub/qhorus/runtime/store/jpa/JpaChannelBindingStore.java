@@ -6,6 +6,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
@@ -16,18 +18,20 @@ import io.casehub.qhorus.api.store.ChannelBindingStore;
 @ApplicationScoped
 public class JpaChannelBindingStore implements ChannelBindingStore {
 
+    @Inject
+    EntityManager em;
+
     @Override
     public Optional<ChannelConnectorBinding> findByChannelId(UUID channelId) {
-        return ChannelConnectorBindingEntity.<ChannelConnectorBindingEntity>findByIdOptional(channelId)
+        return Optional.ofNullable(em.find(ChannelConnectorBindingEntity.class, channelId))
                 .map(ChannelConnectorBindingEntity::toDomain);
     }
 
     @Override
     public Optional<ChannelConnectorBinding> findByKey(String inboundConnectorId, String externalKey) {
-        return ChannelConnectorBindingEntity
-                .<ChannelConnectorBindingEntity>find("inboundConnectorId = ?1 AND externalKey = ?2",
-                        inboundConnectorId, externalKey)
-                .<ChannelConnectorBindingEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM ChannelConnectorBindingEntity e WHERE e.inboundConnectorId = ?1 AND e.externalKey = ?2", ChannelConnectorBindingEntity.class)
+                .setParameter(1, inboundConnectorId).setParameter(2, externalKey)
+                .getResultStream().findFirst()
                 .map(ChannelConnectorBindingEntity::toDomain);
     }
 
@@ -36,10 +40,11 @@ public class JpaChannelBindingStore implements ChannelBindingStore {
     public void put(ChannelConnectorBinding binding) {
         ChannelConnectorBindingEntity entity = ChannelConnectorBindingEntity.fromDomain(binding);
         if (entity.channelId != null) {
-            entity = ChannelConnectorBindingEntity.getEntityManager().merge(entity);
-            ChannelConnectorBindingEntity.flush();
+            entity = em.merge(entity);
+            em.flush();
         } else {
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
         }
     }
 
@@ -52,10 +57,11 @@ public class JpaChannelBindingStore implements ChannelBindingStore {
         }
         try {
             ChannelConnectorBindingEntity entity = ChannelConnectorBindingEntity.fromDomain(binding);
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
             return Optional.empty();
         } catch (PersistenceException ex) {
-            ChannelConnectorBindingEntity.getEntityManager().clear();
+            em.clear();
             return findByKey(binding.inboundConnectorId(), binding.externalKey());
         }
     }
@@ -63,12 +69,13 @@ public class JpaChannelBindingStore implements ChannelBindingStore {
     @Override
     @Transactional
     public void delete(UUID channelId) {
-        ChannelConnectorBindingEntity.deleteById(channelId);
+        em.createQuery("DELETE FROM ChannelConnectorBindingEntity e WHERE e.channelId = ?1").setParameter(1, channelId).executeUpdate();
     }
 
     @Override
     public Map<UUID, ChannelConnectorBinding> findAll() {
-        return ChannelConnectorBindingEntity.<ChannelConnectorBindingEntity>listAll().stream()
+        return em.createQuery("SELECT e FROM ChannelConnectorBindingEntity e", ChannelConnectorBindingEntity.class)
+                .getResultList().stream()
                 .collect(Collectors.toUnmodifiableMap(b -> b.channelId, b -> b.toDomain()));
     }
 }

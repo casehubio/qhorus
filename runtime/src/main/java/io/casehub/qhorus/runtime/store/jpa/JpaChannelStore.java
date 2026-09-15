@@ -7,6 +7,7 @@ import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
@@ -22,30 +23,36 @@ public class JpaChannelStore implements ChannelStore {
     @Inject
     CurrentPrincipal currentPrincipal;
 
+    @Inject
+    EntityManager em;
+
     @Override
     @Transactional
     public Channel put(Channel channel) {
         ChannelEntity entity = ChannelEntity.fromDomain(channel);
         if (entity.id != null) {
-            entity = ChannelEntity.getEntityManager().merge(entity);
-            ChannelEntity.flush();
+            entity = em.merge(entity);
+            em.flush();
         } else {
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
         }
         return entity.toDomain();
     }
 
     @Override
     public Optional<Channel> find(UUID id) {
-        return ChannelEntity.<ChannelEntity>find("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId())
-                            .<ChannelEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM Channel e WHERE e.id = ?1 AND e.tenancyId = ?2", ChannelEntity.class)
+                            .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId())
+                            .getResultStream().findFirst()
                             .map(ChannelEntity::toDomain);
     }
 
     @Override
     public Optional<Channel> findByName(String name) {
-        return ChannelEntity.<ChannelEntity>find("name = ?1 AND tenancyId = ?2", name, currentPrincipal.tenancyId())
-                            .<ChannelEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM Channel e WHERE e.name = ?1 AND e.tenancyId = ?2", ChannelEntity.class)
+                            .setParameter(1, name).setParameter(2, currentPrincipal.tenancyId())
+                            .getResultStream().findFirst()
                             .map(ChannelEntity::toDomain);
     }
 
@@ -85,29 +92,33 @@ public class JpaChannelStore implements ChannelStore {
             jpql.append(" AND spaceId IS NULL");
         }
 
-        List<ChannelEntity> entities = ChannelEntity.list(jpql.toString(), params.toArray());
+        var query = em.createQuery("SELECT e " + jpql.toString(), ChannelEntity.class);
+        for (int i = 0; i < params.size(); i++) query.setParameter(i + 1, params.get(i));
+        List<ChannelEntity> entities = query.getResultList();
         return entities.stream().map(ChannelEntity::toDomain).toList();}
 
     @Override
     @Transactional
     public void delete(UUID id) {
-        ChannelEntity.delete("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId());
+        em.createQuery("DELETE FROM Channel e WHERE e.id = ?1 AND e.tenancyId = ?2")
+                .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId()).executeUpdate();
     }
 
     @Override
     @Transactional
     public void updateLastActivity(UUID channelId, String tenancyId) {
-        ChannelEntity.update("lastActivityAt = ?1 WHERE id = ?2 AND tenancyId = ?3",
-                             Instant.now(), channelId, tenancyId);
-        ChannelEntity.getEntityManager().flush();
-        ChannelEntity.<ChannelEntity>findByIdOptional(channelId)
-                .ifPresent(e -> ChannelEntity.getEntityManager().refresh(e));
+        em.createQuery("UPDATE Channel e SET e.lastActivityAt = ?1 WHERE e.id = ?2 AND e.tenancyId = ?3")
+                             .setParameter(1, Instant.now()).setParameter(2, channelId).setParameter(3, tenancyId).executeUpdate();
+        em.flush();
+        ChannelEntity found = em.find(ChannelEntity.class, channelId);
+        if (found != null) em.refresh(found);
     }
 
     @Override
     public void updateTrackDelivery(UUID channelId, Boolean trackDelivery) {
-        ChannelEntity.<ChannelEntity>find("id", channelId)
-                     .firstResultOptional()
+        em.createQuery("SELECT e FROM Channel e WHERE e.id = ?1", ChannelEntity.class)
+                     .setParameter(1, channelId)
+                     .getResultStream().findFirst()
                      .ifPresent(e -> e.trackDelivery = trackDelivery);
     }
 
@@ -115,15 +126,16 @@ public class JpaChannelStore implements ChannelStore {
     @Override
     public List<Channel> findByIds(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
-        List<ChannelEntity> entities = ChannelEntity.list("id IN ?1 AND tenancyId = ?2", new ArrayList<>(ids), currentPrincipal.tenancyId());
+        List<ChannelEntity> entities = em.createQuery("SELECT e FROM Channel e WHERE e.id IN ?1 AND e.tenancyId = ?2", ChannelEntity.class)
+                .setParameter(1, new ArrayList<>(ids)).setParameter(2, currentPrincipal.tenancyId()).getResultList();
         return entities.stream().map(ChannelEntity::toDomain).toList();
     }
 
     @Override
     public boolean hasChannelsInSpace(UUID spaceId) {
         if (spaceId == null) {return false;}
-        return ChannelEntity.count("spaceId = ?1 AND tenancyId = ?2",
-                                   spaceId, currentPrincipal.tenancyId()) > 0;
+        return em.createQuery("SELECT COUNT(e) FROM Channel e WHERE e.spaceId = ?1 AND e.tenancyId = ?2", Long.class)
+                                   .setParameter(1, spaceId).setParameter(2, currentPrincipal.tenancyId()).getSingleResult() > 0;
     }
 
 

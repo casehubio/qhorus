@@ -6,6 +6,7 @@ import io.casehub.qhorus.api.store.ChannelSummaryStore;
 import io.casehub.qhorus.runtime.channel.ChannelSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.util.Optional;
@@ -15,7 +16,7 @@ import java.util.UUID;
 public class JpaChannelSummaryStore implements ChannelSummaryStore {
 
     @Inject
-    ChannelSummaryPanacheRepo repo;
+    EntityManager em;
 
     @Inject
     CurrentPrincipal currentPrincipal;
@@ -25,23 +26,25 @@ public class JpaChannelSummaryStore implements ChannelSummaryStore {
     public ChannelSummary save(ChannelSummary summary) {
         ChannelSummaryEntity e = ChannelSummaryEntity.fromDomain(summary);
         if (e.id == null) {
-            repo.persist(e);
+            em.persist(e);
         } else {
-            e = repo.getEntityManager().merge(e);
+            e = em.merge(e);
         }
         return e.toDomain();
     }
 
     @Override
     public Optional<ChannelSummary> findByChannelId(UUID channelId) {
-        return repo.find("channelId = ?1 AND tenancyId = ?2", channelId, currentPrincipal.tenancyId())
-                   .firstResultOptional()
+        return em.createQuery("SELECT e FROM ChannelSummary e WHERE e.channelId = ?1 AND e.tenancyId = ?2", ChannelSummaryEntity.class)
+                   .setParameter(1, channelId).setParameter(2, currentPrincipal.tenancyId())
+                   .getResultStream().findFirst()
                    .map(ChannelSummaryEntity::toDomain);
     }
 
     @Override
     @Transactional
     public void deleteByChannelId(UUID channelId) {
-        repo.delete("channelId = ?1 AND tenancyId = ?2", channelId, currentPrincipal.tenancyId());
+        em.createQuery("DELETE FROM ChannelSummary e WHERE e.channelId = ?1 AND e.tenancyId = ?2")
+                .setParameter(1, channelId).setParameter(2, currentPrincipal.tenancyId()).executeUpdate();
     }
 }

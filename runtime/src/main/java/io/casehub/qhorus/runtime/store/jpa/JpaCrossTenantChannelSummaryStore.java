@@ -5,6 +5,7 @@ import io.casehub.qhorus.api.store.CrossTenantChannelSummaryStore;
 import io.casehub.qhorus.runtime.channel.ChannelSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import java.util.List;
 
@@ -12,17 +13,19 @@ import java.util.List;
 public class JpaCrossTenantChannelSummaryStore implements CrossTenantChannelSummaryStore {
 
     @Inject
-    ChannelSummaryPanacheRepo repo;
+    EntityManager em;
 
     @Override
     public List<ChannelSummary> findAll() {
-        return repo.listAll()
+        return em.createQuery("SELECT e FROM ChannelSummary e", ChannelSummaryEntity.class)
+                   .getResultList()
                    .stream().map(ChannelSummaryEntity::toDomain).toList();
     }
 
     @Override
     public List<ChannelSummary> findWithAutoUpdateConfigured() {
-        return repo.list("updateAfterMessages IS NOT NULL OR updateAfterSeconds IS NOT NULL")
+        return em.createQuery("SELECT e FROM ChannelSummary e WHERE e.updateAfterMessages IS NOT NULL OR e.updateAfterSeconds IS NOT NULL", ChannelSummaryEntity.class)
+                   .getResultList()
                    .stream().map(ChannelSummaryEntity::toDomain).toList();
     }
 }

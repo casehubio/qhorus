@@ -6,6 +6,7 @@ import io.casehub.qhorus.api.store.CrossTenantCommitmentStore;
 import io.casehub.qhorus.runtime.message.CommitmentEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
@@ -16,59 +17,60 @@ import java.util.UUID;
 public class JpaCrossTenantCommitmentStore implements CrossTenantCommitmentStore {
 
     @Inject
-    CommitmentPanacheRepo repo;
+    EntityManager em;
 
 
     @Override
     public List<Commitment> findAllOpen() {
-        return repo.<CommitmentEntity>list(
-                "state IN ?1 ORDER BY expiresAt ASC NULLS LAST",
-                List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.state IN ?1 ORDER BY e.expiresAt ASC NULLS LAST", CommitmentEntity.class)
+                .setParameter(1, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+                .getResultList()
                 .stream().map(CommitmentEntity::toDomain).toList();
     }
 
     @Override
     public List<Commitment> findOpenByChannel(UUID channelId) {
-        return repo.<CommitmentEntity>list(
-                "channelId = ?1 AND state NOT IN ?2",
-                channelId, terminalStates())
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.channelId = ?1 AND e.state NOT IN ?2", CommitmentEntity.class)
+                .setParameter(1, channelId).setParameter(2, terminalStates())
+                .getResultList()
                 .stream().map(CommitmentEntity::toDomain).toList();
     }
 
     @Override
     public List<Commitment> findAllByCorrelationId(String correlationId) {
-        return repo.<CommitmentEntity>list(
-                           "correlationId = ?1 ORDER BY createdAt ASC", correlationId)
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.correlationId = ?1 ORDER BY e.createdAt ASC", CommitmentEntity.class)
+                           .setParameter(1, correlationId)
+                           .getResultList()
                    .stream().map(CommitmentEntity::toDomain).toList();
     }
 
     @Override
     public List<Commitment> findOpenByObligor(String obligor) {
-        return repo.<CommitmentEntity>list(
-                           "obligor = ?1 AND state IN ?2 ORDER BY createdAt ASC",
-                           obligor, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.obligor = ?1 AND e.state IN ?2 ORDER BY e.createdAt ASC", CommitmentEntity.class)
+                           .setParameter(1, obligor).setParameter(2, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+                           .getResultList()
                    .stream().map(CommitmentEntity::toDomain).toList();
     }
 
     @Override
     public java.util.Optional<Commitment> findLatestDelegatedByObligor(String obligor) {
-        return repo.<CommitmentEntity>find(
-                           "obligor = ?1 AND state = ?2 ORDER BY resolvedAt DESC",
-                           obligor, CommitmentState.DELEGATED)
-                   .firstResultOptional()
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.obligor = ?1 AND e.state = ?2 ORDER BY e.resolvedAt DESC", CommitmentEntity.class)
+                           .setParameter(1, obligor).setParameter(2, CommitmentState.DELEGATED)
+                           .getResultStream().findFirst()
                    .map(CommitmentEntity::toDomain);
     }
 
     @Override
     public long countOpenByObligor(String obligor) {
-        return repo.count("obligor = ?1 AND state IN ?2",
-                          obligor, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED));
+        return em.createQuery("SELECT COUNT(e) FROM Commitment e WHERE e.obligor = ?1 AND e.state IN ?2", Long.class)
+                          .setParameter(1, obligor).setParameter(2, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED)).getSingleResult();
     }
 
     @Override
     public java.util.Map<String, Long> findObligorsExceedingCount(int minCount) {
-        return repo.<io.casehub.qhorus.runtime.message.CommitmentEntity>list(
-                        "state IN ?1", List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+        return em.createQuery("SELECT e FROM Commitment e WHERE e.state IN ?1", CommitmentEntity.class)
+                        .setParameter(1, List.of(CommitmentState.OPEN, CommitmentState.ACKNOWLEDGED))
+                        .getResultList()
                 .stream()
                 .filter(c -> c.obligor != null)
                 .collect(java.util.stream.Collectors.groupingBy(
@@ -84,14 +86,13 @@ public class JpaCrossTenantCommitmentStore implements CrossTenantCommitmentStore
     @Override
     @Transactional
     public void expireOverdue(Instant cutoff) {
-        List<CommitmentEntity> overdue = repo.list(
-                "expiresAt < ?1 AND state NOT IN ?2",
-                cutoff, terminalStates());
+        List<CommitmentEntity> overdue = em.createQuery("SELECT e FROM Commitment e WHERE e.expiresAt < ?1 AND e.state NOT IN ?2", CommitmentEntity.class)
+                .setParameter(1, cutoff).setParameter(2, terminalStates()).getResultList();
         Instant now = Instant.now();
         overdue.forEach(c -> {
             c.state = CommitmentState.EXPIRED;
             c.resolvedAt = now;
-            repo.getEntityManager().merge(c);
+            em.merge(c);
         });
     }
 

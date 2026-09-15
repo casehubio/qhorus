@@ -8,13 +8,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity
 @Table(name = "channel_connector_binding",
        uniqueConstraints = @UniqueConstraint(name = "uq_binding_key",
            columnNames = {"inbound_connector_id", "external_key"}))
-public class ChannelConnectorBindingEntity extends PanacheEntityBase {
+public class ChannelConnectorBindingEntity {
 
     public static ChannelConnectorBindingEntity fromDomain(io.casehub.qhorus.api.channel.ChannelConnectorBinding b) {
         ChannelConnectorBindingEntity e = new ChannelConnectorBindingEntity();

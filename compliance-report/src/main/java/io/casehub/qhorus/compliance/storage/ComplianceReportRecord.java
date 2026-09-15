@@ -2,7 +2,6 @@ package io.casehub.qhorus.compliance.storage;
 
 import io.casehub.qhorus.compliance.model.ReportFormat;
 import io.casehub.qhorus.compliance.model.ReportType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,7 +15,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "compliance_report")
-public class ComplianceReportRecord extends PanacheEntityBase {
+public class ComplianceReportRecord {
 
     @Id
     @GeneratedValue

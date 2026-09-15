@@ -7,6 +7,8 @@ import io.casehub.qhorus.api.store.query.DataQuery;
 import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
 import io.casehub.qhorus.runtime.data.SharedDataEntity;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.util.ArrayList;
@@ -18,36 +20,42 @@ import java.util.UUID;
 @ApplicationScoped
 public class JpaDataStore implements DataStore {
 
+    @Inject
+    EntityManager em;
+
     @Override
     @Transactional
     public SharedData put(SharedData data) {
         SharedDataEntity entity = SharedDataEntity.fromDomain(data);
         if (entity.id != null) {
-            entity = SharedDataEntity.getEntityManager().merge(entity);
-            SharedDataEntity.flush();
+            entity = em.merge(entity);
+            em.flush();
         } else {
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
         }
         return entity.toDomain();
     }
 
     @Override
     public Optional<SharedData> find(UUID id) {
-        return Optional.ofNullable(SharedDataEntity.<SharedDataEntity>findById(id))
+        return Optional.ofNullable(em.find(SharedDataEntity.class, id))
                 .map(SharedDataEntity::toDomain);
     }
 
     @Override
     public List<SharedData> findByIds(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
-        List<SharedDataEntity> entities = SharedDataEntity.list("id IN ?1", new ArrayList<>(ids));
+        List<SharedDataEntity> entities = em.createQuery("SELECT e FROM SharedData e WHERE e.id IN ?1", SharedDataEntity.class)
+                .setParameter(1, new ArrayList<>(ids)).getResultList();
         return entities.stream().map(SharedDataEntity::toDomain).toList();
     }
 
     @Override
     public Optional<SharedData> findByKey(String key) {
-        return SharedDataEntity.<SharedDataEntity>find("key", key)
-                .<SharedDataEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM SharedData e WHERE e.key = ?1", SharedDataEntity.class)
+                .setParameter(1, key)
+                .getResultStream().findFirst()
                 .map(SharedDataEntity::toDomain);
     }
 
@@ -66,7 +74,9 @@ public class JpaDataStore implements DataStore {
             params.add(q.complete());
         }
 
-        List<SharedDataEntity> entities = SharedDataEntity.list(jpql.toString(), params.toArray());
+        var query = em.createQuery("SELECT e " + jpql.toString(), SharedDataEntity.class);
+        for (int i = 0; i < params.size(); i++) query.setParameter(i + 1, params.get(i));
+        List<SharedDataEntity> entities = query.getResultList();
         return entities.stream().map(SharedDataEntity::toDomain).toList();
     }
 
@@ -74,31 +84,35 @@ public class JpaDataStore implements DataStore {
     @Transactional
     public ArtefactClaim putClaim(ArtefactClaim claim) {
         ArtefactClaimEntity entity = ArtefactClaimEntity.fromDomain(claim);
-        entity.persistAndFlush();
+        em.persist(entity);
+        em.flush();
         return entity.toDomain();
     }
 
     @Override
     @Transactional
     public void deleteClaim(UUID artefactId, UUID instanceId) {
-        ArtefactClaimEntity.delete("artefactId = ?1 AND instanceId = ?2", artefactId, instanceId);
+        em.createQuery("DELETE FROM ArtefactClaimEntity e WHERE e.artefactId = ?1 AND e.instanceId = ?2")
+                .setParameter(1, artefactId).setParameter(2, instanceId).executeUpdate();
     }
 
     @Override
     public int countClaims(UUID artefactId) {
-        return (int) ArtefactClaimEntity.count("artefactId", artefactId);
+        return em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = ?1", Long.class)
+                .setParameter(1, artefactId).getSingleResult().intValue();
     }
 
     @Override
     public boolean hasClaim(UUID artefactId, UUID instanceId) {
-        return ArtefactClaimEntity.count("artefactId = ?1 AND instanceId = ?2", artefactId, instanceId) > 0;
+        return em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = ?1 AND e.instanceId = ?2", Long.class)
+                .setParameter(1, artefactId).setParameter(2, instanceId).getSingleResult() > 0;
     }
 
 
     @Override
     @Transactional
     public void delete(UUID id) {
-        ArtefactClaimEntity.delete("artefactId", id);
-        SharedDataEntity.deleteById(id);
+        em.createQuery("DELETE FROM ArtefactClaimEntity e WHERE e.artefactId = ?1").setParameter(1, id).executeUpdate();
+        em.createQuery("DELETE FROM SharedData e WHERE e.id = ?1").setParameter(1, id).executeUpdate();
     }
 }

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.gateway.DeliveryCursor;
@@ -16,42 +17,47 @@ import io.casehub.qhorus.api.store.DeliveryCursorStore;
 public class JpaDeliveryCursorStore implements DeliveryCursorStore {
 
     @Inject
-    DeliveryCursorPanacheRepo repo;
+    EntityManager em;
 
     @Override
     @Transactional
     public DeliveryCursor save(DeliveryCursor cursor) {
         DeliveryCursorEntity c = DeliveryCursorEntity.fromDomain(cursor);
         if (c.id == null) {
-            repo.persist(c);
+            em.persist(c);
         } else {
-            c = repo.getEntityManager().merge(c);
+            c = em.merge(c);
         }
         return c.toDomain();
     }
 
     @Override
     public Optional<DeliveryCursor> findByChannelAndBackend(UUID channelId, String backendId) {
-        return repo.find("channelId = ?1 AND backendId = ?2", channelId, backendId)
-                .<DeliveryCursorEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM DeliveryCursorEntity e WHERE e.channelId = ?1 AND e.backendId = ?2", DeliveryCursorEntity.class)
+                .setParameter(1, channelId).setParameter(2, backendId)
+                .getResultStream().findFirst()
                 .map(DeliveryCursorEntity::toDomain);
     }
 
     @Override
     public List<DeliveryCursor> findByChannel(UUID channelId) {
-        return repo.<DeliveryCursorEntity>list("channelId", channelId)
+        return em.createQuery("SELECT e FROM DeliveryCursorEntity e WHERE e.channelId = ?1", DeliveryCursorEntity.class)
+                .setParameter(1, channelId)
+                .getResultList()
                 .stream().map(DeliveryCursorEntity::toDomain).toList();
     }
 
     @Override
     public List<DeliveryCursor> findAll() {
-        return repo.<DeliveryCursorEntity>listAll()
+        return em.createQuery("SELECT e FROM DeliveryCursorEntity e", DeliveryCursorEntity.class)
+                .getResultList()
                 .stream().map(DeliveryCursorEntity::toDomain).toList();
     }
 
     @Override
     @Transactional
     public void deleteByChannel(UUID channelId) {
-        repo.delete("channelId", channelId);
+        em.createQuery("DELETE FROM DeliveryCursorEntity e WHERE e.channelId = ?1")
+                .setParameter(1, channelId).executeUpdate();
     }
 }

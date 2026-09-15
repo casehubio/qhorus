@@ -9,11 +9,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity
 @Table(name = "artefact_claim")
-public class ArtefactClaimEntity extends PanacheEntityBase {
+public class ArtefactClaimEntity {
 
     @Id
     public UUID id;

@@ -3,7 +3,6 @@ package io.casehub.qhorus.runtime.message;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,7 +20,7 @@ import java.util.UUID;
 @Entity(name = "Message")
 @Table(name = "message")
 @SequenceGenerator(name = "message_seq", sequenceName = "message_seq", allocationSize = 50)
-public class MessageEntity extends PanacheEntityBase {
+public class MessageEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "message_seq")

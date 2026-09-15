@@ -2,7 +2,6 @@ package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ThreadSummary;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -18,7 +17,7 @@ import java.util.UUID;
 @Table(name = "thread_summary",
        uniqueConstraints = @UniqueConstraint(
                columnNames = {"channel_id", "correlation_id"}))
-public class ThreadSummaryEntity extends PanacheEntityBase {
+public class ThreadSummaryEntity {
 
     @Id
     public UUID id;

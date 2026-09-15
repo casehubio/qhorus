@@ -1536,13 +1536,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
             return List.of();
         }
         List<UUID> ids = instances.stream().map(i -> i.id()).toList();
-        Map<UUID, List<String>> capsByInstanceId = CapabilityEntity
-                .<CapabilityEntity> find("instanceId IN ?1", ids)
-                .list()
-                .stream()
-                .collect(Collectors.groupingBy(
-                        c -> c.instanceId,
-                        Collectors.mapping(c -> c.tag, Collectors.toList())));
+        Map<UUID, List<String>> capsByInstanceId = ids.stream()
+                .collect(Collectors.toMap(id -> id, id -> instanceStore.findCapabilities(id)));
 
         return instances.stream()
                 .map(i -> new InstanceInfo(

@@ -5,6 +5,7 @@ import io.casehub.qhorus.api.store.ThreadSummaryStore;
 import io.casehub.qhorus.runtime.channel.ThreadSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
@@ -15,22 +16,21 @@ import java.util.UUID;
 public class JpaThreadSummaryStore implements ThreadSummaryStore {
 
     @Inject
-    ThreadSummaryPanacheRepo repo;
+    EntityManager em;
 
     @Override
     @Transactional
     public ThreadSummary save(ThreadSummary summary) {
-        Optional<ThreadSummaryEntity> existing = repo.find(
-                "channelId = ?1 AND correlationId = ?2",
-                summary.channelId(), summary.correlationId())
-                .firstResultOptional();
+        Optional<ThreadSummaryEntity> existing = em.createQuery("SELECT e FROM ThreadSummary e WHERE e.channelId = ?1 AND e.correlationId = ?2", ThreadSummaryEntity.class)
+                .setParameter(1, summary.channelId()).setParameter(2, summary.correlationId())
+                .getResultStream().findFirst();
 
         ThreadSummaryEntity e = ThreadSummaryEntity.fromDomain(summary);
         if (existing.isPresent()) {
             e.id = existing.get().id;
-            e = repo.getEntityManager().merge(e);
+            e = em.merge(e);
         } else {
-            repo.persist(e);
+            em.persist(e);
         }
         return e.toDomain();
     }
@@ -38,15 +38,16 @@ public class JpaThreadSummaryStore implements ThreadSummaryStore {
     @Override
     public Optional<ThreadSummary> findByCorrelationId(UUID channelId,
                                                         String correlationId) {
-        return repo.find("channelId = ?1 AND correlationId = ?2",
-                         channelId, correlationId)
-                   .firstResultOptional()
+        return em.createQuery("SELECT e FROM ThreadSummary e WHERE e.channelId = ?1 AND e.correlationId = ?2", ThreadSummaryEntity.class)
+                   .setParameter(1, channelId).setParameter(2, correlationId)
+                   .getResultStream().findFirst()
                    .map(ThreadSummaryEntity::toDomain);
     }
 
     @Override
     public List<ThreadSummary> findByChannel(UUID channelId) {
-        return repo.find("channelId", channelId).list().stream()
+        return em.createQuery("SELECT e FROM ThreadSummary e WHERE e.channelId = ?1", ThreadSummaryEntity.class)
+                   .setParameter(1, channelId).getResultList().stream()
                    .map(ThreadSummaryEntity::toDomain)
                    .toList();
     }
@@ -54,7 +55,7 @@ public class JpaThreadSummaryStore implements ThreadSummaryStore {
     @Override
     @Transactional
     public void delete(UUID channelId, String correlationId) {
-        repo.delete("channelId = ?1 AND correlationId = ?2",
-                    channelId, correlationId);
+        em.createQuery("DELETE FROM ThreadSummary e WHERE e.channelId = ?1 AND e.correlationId = ?2")
+                    .setParameter(1, channelId).setParameter(2, correlationId).executeUpdate();
     }
 }

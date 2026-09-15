@@ -3,7 +3,6 @@ package io.casehub.qhorus.runtime.message;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -30,7 +29,7 @@ import java.util.UUID;
  */
 @Entity(name = "Commitment")
 @Table(name = "commitment")
-public class CommitmentEntity extends PanacheEntityBase {
+public class CommitmentEntity {
 
     @Id
     public UUID id;

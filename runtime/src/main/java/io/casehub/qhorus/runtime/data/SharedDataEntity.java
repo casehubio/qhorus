@@ -11,11 +11,10 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity(name = "SharedData")
 @Table(name = "shared_data", uniqueConstraints = @UniqueConstraint(name = "uq_shared_data_key", columnNames = "data_key"))
-public class SharedDataEntity extends PanacheEntityBase {
+public class SharedDataEntity {
 
     @Id
     public UUID id;

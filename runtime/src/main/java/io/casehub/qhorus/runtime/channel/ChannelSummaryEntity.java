@@ -2,7 +2,6 @@ package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSummary;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -15,7 +14,7 @@ import java.util.UUID;
 
 @Entity(name = "ChannelSummary")
 @Table(name = "channel_summary")
-public class ChannelSummaryEntity extends PanacheEntityBase {
+public class ChannelSummaryEntity {
 
     @Id
     public UUID id;

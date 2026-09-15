@@ -10,11 +10,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity(name = "Instance")
 @Table(name = "instance", uniqueConstraints = @UniqueConstraint(name = "uq_instance_instance_id", columnNames = "instance_id"))
-public class InstanceEntity extends PanacheEntityBase {
+public class InstanceEntity {
 
     @Id
     public UUID id;

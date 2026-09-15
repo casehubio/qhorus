@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
@@ -21,23 +22,28 @@ public class JpaWatchdogStore implements WatchdogStore {
     @Inject
     CurrentPrincipal currentPrincipal;
 
+    @Inject
+    EntityManager em;
+
     @Override
     @Transactional
     public Watchdog put(Watchdog watchdog) {
         WatchdogEntity entity = WatchdogEntity.fromDomain(watchdog);
         if (entity.id != null) {
-            entity = WatchdogEntity.getEntityManager().merge(entity);
-            WatchdogEntity.flush();
+            entity = em.merge(entity);
+            em.flush();
         } else {
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
         }
         return entity.toDomain();
     }
 
     @Override
     public Optional<Watchdog> find(UUID id) {
-        return WatchdogEntity.<WatchdogEntity>find("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId())
-                             .<WatchdogEntity>firstResultOptional()
+        return em.createQuery("SELECT e FROM Watchdog e WHERE e.id = ?1 AND e.tenancyId = ?2", WatchdogEntity.class)
+                             .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId())
+                             .getResultStream().findFirst()
                              .map(WatchdogEntity::toDomain);
     }
 
@@ -53,13 +59,16 @@ public class JpaWatchdogStore implements WatchdogStore {
             params.add(q.conditionType().name());
         }
 
-        List<WatchdogEntity> entities = WatchdogEntity.list(jpql.toString(), params.toArray());
+        var query = em.createQuery("SELECT e " + jpql.toString(), WatchdogEntity.class);
+        for (int i = 0; i < params.size(); i++) query.setParameter(i + 1, params.get(i));
+        List<WatchdogEntity> entities = query.getResultList();
         return entities.stream().map(WatchdogEntity::toDomain).filter(java.util.Objects::nonNull).toList();
     }
 
     @Override
     @Transactional
     public void delete(UUID id) {
-        WatchdogEntity.delete("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId());
+        em.createQuery("DELETE FROM Watchdog e WHERE e.id = ?1 AND e.tenancyId = ?2")
+                .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId()).executeUpdate();
     }
 }

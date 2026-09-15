@@ -6,6 +6,7 @@ import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.runtime.channel.SpaceEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
 import java.util.Collection;
@@ -19,30 +20,36 @@ public class JpaSpaceStore implements SpaceStore {
     @Inject
     CurrentPrincipal currentPrincipal;
 
+    @Inject
+    EntityManager em;
+
     @Override
     @Transactional
     public Space put(Space space) {
         SpaceEntity entity = SpaceEntity.fromDomain(space);
-        if (entity.id != null && SpaceEntity.<SpaceEntity>findByIdOptional(entity.id).isPresent()) {
-            entity = SpaceEntity.getEntityManager().merge(entity);
-            SpaceEntity.flush();
+        if (entity.id != null && em.find(SpaceEntity.class, entity.id) != null) {
+            entity = em.merge(entity);
+            em.flush();
         } else {
-            entity.persistAndFlush();
+            em.persist(entity);
+            em.flush();
         }
         return entity.toDomain();
     }
 
     @Override
     public Optional<Space> find(UUID id) {
-        return SpaceEntity.<SpaceEntity>find("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId())
-                          .firstResultOptional()
+        return em.createQuery("SELECT e FROM Space e WHERE e.id = ?1 AND e.tenancyId = ?2", SpaceEntity.class)
+                          .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId())
+                          .getResultStream().findFirst()
                           .map(SpaceEntity::toDomain);
     }
 
     @Override
     public List<Space> findByName(String name) {
-        return SpaceEntity.<SpaceEntity>find("name = ?1 AND tenancyId = ?2", name, currentPrincipal.tenancyId())
-                          .list()
+        return em.createQuery("SELECT e FROM Space e WHERE e.name = ?1 AND e.tenancyId = ?2", SpaceEntity.class)
+                          .setParameter(1, name).setParameter(2, currentPrincipal.tenancyId())
+                          .getResultList()
                           .stream()
                           .map(SpaceEntity::toDomain)
                           .toList();
@@ -50,10 +57,9 @@ public class JpaSpaceStore implements SpaceStore {
 
     @Override
     public List<Space> listByParent(UUID parentSpaceId) {
-        return SpaceEntity.<SpaceEntity>find(
-                                  "parentSpaceId = ?1 AND tenancyId = ?2 ORDER BY name",
-                                  parentSpaceId, currentPrincipal.tenancyId())
-                          .list()
+        return em.createQuery("SELECT e FROM Space e WHERE e.parentSpaceId = ?1 AND e.tenancyId = ?2 ORDER BY e.name", SpaceEntity.class)
+                          .setParameter(1, parentSpaceId).setParameter(2, currentPrincipal.tenancyId())
+                          .getResultList()
                           .stream()
                           .map(SpaceEntity::toDomain)
                           .toList();
@@ -61,9 +67,9 @@ public class JpaSpaceStore implements SpaceStore {
 
     @Override
     public List<Space> listRoots() {
-        return SpaceEntity.<SpaceEntity>find(
-                                  "parentSpaceId IS NULL AND tenancyId = ?1 ORDER BY name", currentPrincipal.tenancyId())
-                          .list()
+        return em.createQuery("SELECT e FROM Space e WHERE e.parentSpaceId IS NULL AND e.tenancyId = ?1 ORDER BY e.name", SpaceEntity.class)
+                          .setParameter(1, currentPrincipal.tenancyId())
+                          .getResultList()
                           .stream()
                           .map(SpaceEntity::toDomain)
                           .toList();
@@ -71,21 +77,22 @@ public class JpaSpaceStore implements SpaceStore {
 
     @Override
     public boolean hasChildren(UUID spaceId) {
-        return SpaceEntity.count("parentSpaceId = ?1 AND tenancyId = ?2",
-                                 spaceId, currentPrincipal.tenancyId()) > 0;
+        return em.createQuery("SELECT COUNT(e) FROM Space e WHERE e.parentSpaceId = ?1 AND e.tenancyId = ?2", Long.class)
+                                 .setParameter(1, spaceId).setParameter(2, currentPrincipal.tenancyId()).getSingleResult() > 0;
     }
 
     @Override
     @Transactional
     public void delete(UUID id) {
-        SpaceEntity.delete("id = ?1 AND tenancyId = ?2", id, currentPrincipal.tenancyId());
+        em.createQuery("DELETE FROM Space e WHERE e.id = ?1 AND e.tenancyId = ?2")
+                .setParameter(1, id).setParameter(2, currentPrincipal.tenancyId()).executeUpdate();
     }
 
     @Override
     public List<Space> findByIds(Collection<UUID> ids) {
         if (ids == null || ids.isEmpty()) {return List.of();}
-        List<SpaceEntity> entities = SpaceEntity.list("id IN ?1 AND tenancyId = ?2",
-                                                      new java.util.ArrayList<>(ids), currentPrincipal.tenancyId());
+        List<SpaceEntity> entities = em.createQuery("SELECT e FROM Space e WHERE e.id IN ?1 AND e.tenancyId = ?2", SpaceEntity.class)
+                                                      .setParameter(1, new java.util.ArrayList<>(ids)).setParameter(2, currentPrincipal.tenancyId()).getResultList();
         return entities.stream().map(SpaceEntity::toDomain).toList();
     }
 }

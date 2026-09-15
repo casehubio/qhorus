@@ -12,11 +12,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity(name = "Reaction")
 @Table(name = "reaction")
-public class ReactionEntity extends PanacheEntityBase {
+public class ReactionEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

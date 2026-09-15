@@ -1,7 +1,6 @@
 package io.casehub.qhorus.runtime.watchdog;
 
 import io.casehub.platform.api.identity.TenancyConstants;
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,7 +22,7 @@ import java.util.UUID;
  */
 @Entity(name = "Watchdog")
 @Table(name = "watchdog")
-public class WatchdogEntity extends PanacheEntityBase {
+public class WatchdogEntity {
 
     @Id
     public UUID id;

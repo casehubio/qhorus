@@ -8,11 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
-import io.quarkus.hibernate.orm.panache.PanacheEntityBase;
 
 @Entity(name = "Capability")
 @Table(name = "capability")
-public class CapabilityEntity extends PanacheEntityBase {
+public class CapabilityEntity {
 
     @Id
     public UUID id;
