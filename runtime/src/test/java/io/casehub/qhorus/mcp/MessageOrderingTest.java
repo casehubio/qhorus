@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +39,9 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 class MessageOrderingTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -96,8 +100,8 @@ class MessageOrderingTest {
                     "First delivered message must have the first written ID");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                channelService.findByName(ch).ifPresent(c -> MessageEntity.delete("channelId", c.id()));
-                ChannelEntity.delete("name", ch);
+                channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }
@@ -144,8 +148,8 @@ class MessageOrderingTest {
             }
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                channelService.findByName(ch).ifPresent(c -> MessageEntity.delete("channelId", c.id()));
-                ChannelEntity.delete("name", ch);
+                channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }
@@ -204,8 +208,8 @@ class MessageOrderingTest {
             }
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                channelService.findByName(ch).ifPresent(c -> MessageEntity.delete("channelId", c.id()));
-                ChannelEntity.delete("name", ch);
+                channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }
@@ -270,8 +274,8 @@ class MessageOrderingTest {
             }
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                channelService.findByName(ch).ifPresent(c -> MessageEntity.delete("channelId", c.id()));
-                ChannelEntity.delete("name", ch);
+                channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }
@@ -326,8 +330,8 @@ class MessageOrderingTest {
             }
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                channelService.findByName(ch).ifPresent(c -> MessageEntity.delete("channelId", c.id()));
-                ChannelEntity.delete("name", ch);
+                channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }

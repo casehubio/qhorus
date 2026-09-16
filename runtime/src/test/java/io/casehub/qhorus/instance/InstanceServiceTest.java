@@ -9,13 +9,16 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.instance.Instance;
-import io.casehub.qhorus.runtime.instance.InstanceEntity;
 import io.casehub.qhorus.runtime.instance.InstanceService;
+import jakarta.persistence.EntityManager;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class InstanceServiceTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     InstanceService instanceService;
@@ -125,7 +128,7 @@ class InstanceServiceTest {
         instanceService.markStaleOlderThan(1);
 
         // Bulk JPQL update bypasses Hibernate's first-level cache — clear it to see DB state
-        InstanceEntity.getEntityManager().clear();
+        em.clear();
 
         Instance inst = instanceService.findByInstanceId("stale-agent").orElseThrow();
         assertEquals("stale", inst.status(),
@@ -139,7 +142,7 @@ class InstanceServiceTest {
 
         // threshold = 60s, agent was just registered — should NOT be marked stale
         instanceService.markStaleOlderThan(60);
-        InstanceEntity.getEntityManager().clear();
+        em.clear();
 
         Instance inst = instanceService.findByInstanceId("fresh-agent").orElseThrow();
         assertEquals("online", inst.status(),

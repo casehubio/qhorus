@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,6 +24,9 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class JpaChannelStoreTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     ChannelStore channelStore;
@@ -133,7 +137,7 @@ class JpaChannelStoreTest {
 
         Instant before = Instant.now();
         channelStore.updateLastActivity(ch.id(), TenancyConstants.DEFAULT_TENANT_ID);
-        ChannelEntity.getEntityManager().clear();
+        em.clear();
 
         Channel found = channelStore.find(ch.id()).orElseThrow();
         assertThat(found.lastActivityAt()).isAfterOrEqualTo(before);

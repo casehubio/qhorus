@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
@@ -31,6 +32,9 @@ import io.quarkus.test.junit.QuarkusTest;
 class InstanceReRegistrationTest {
 
     @Inject
+    EntityManager em;
+
+    @Inject
     QhorusMcpTools tools;
 
     @Inject
@@ -54,7 +58,7 @@ class InstanceReRegistrationTest {
                 "re-registration must update claudonySessionId from null to a value");
 
         // Confirm only one instance row (no duplicates)
-        long count = InstanceEntity.count("instanceId", "rereg-session-agent");
+        long count = em.createQuery("SELECT COUNT(e) FROM Instance e WHERE e.instanceId = :p1", Long.class).setParameter("p1", "rereg-session-agent").getSingleResult();
         assertEquals(1, count, "re-registration must not create a duplicate instance row");
     }
 
@@ -106,7 +110,7 @@ class InstanceReRegistrationTest {
 
         // Confirm the capability table has exactly 2 rows for this instance
         Instance inst     = instanceService.findByInstanceId("rereg-caps").orElseThrow();
-        long     capCount = CapabilityEntity.count("instanceId", inst.id());
+        long     capCount = em.createQuery("SELECT COUNT(e) FROM Capability e WHERE e.instanceId = :p1", Long.class).setParameter("p1", inst.id()).getSingleResult();
         assertEquals(2, capCount,
                 "exactly 2 capability rows after re-registration with 2 tags");
     }
@@ -128,7 +132,7 @@ class InstanceReRegistrationTest {
         assertTrue(instanceService.findByCapability("python").isEmpty());
 
         Instance inst     = instanceService.findByInstanceId("rereg-drop-all-caps").orElseThrow();
-        long     capCount = CapabilityEntity.count("instanceId", inst.id());
+        long     capCount = em.createQuery("SELECT COUNT(e) FROM Capability e WHERE e.instanceId = :p1", Long.class).setParameter("p1", inst.id()).getSingleResult();
         assertEquals(0, capCount,
                 "capability table must have 0 rows after re-registration with empty tag list");
     }
@@ -144,7 +148,7 @@ class InstanceReRegistrationTest {
         tools.register("rereg-same-caps", "Agent", List.of("java", "quarkus"), null, null);
 
         Instance inst     = instanceService.findByInstanceId("rereg-same-caps").orElseThrow();
-        long     capCount = CapabilityEntity.count("instanceId", inst.id());
+        long     capCount = em.createQuery("SELECT COUNT(e) FROM Capability e WHERE e.instanceId = :p1", Long.class).setParameter("p1", inst.id()).getSingleResult();
         assertEquals(2, capCount,
                 "re-registration with the same tag list must result in exactly 2 capability rows, " +
                         "not 4 (not accumulated)");
@@ -181,7 +185,7 @@ class InstanceReRegistrationTest {
         // Force stale status with 0s threshold (any lastSeen in the past is stale)
         Thread.sleep(10); // ensure lastSeen is actually in the past
         instanceService.markStaleOlderThan(0);
-        InstanceEntity.getEntityManager().clear();
+        em.clear();
 
         Instance stale = instanceService.findByInstanceId("rereg-stale-recovery").orElseThrow();
         assertEquals("stale", stale.status(), "instance should be stale after markStaleOlderThan(0)");

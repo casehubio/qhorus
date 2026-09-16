@@ -12,6 +12,7 @@ import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import jakarta.persistence.EntityManager;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.api.channel.ChannelDetail;
@@ -22,6 +23,9 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class ChannelToolTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -72,7 +76,7 @@ class ChannelToolTest {
             assertThrows(Exception.class,
                     () -> QuarkusTransaction.requiringNew().run(() -> tools.createChannel(name, "Second", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null)));
         } finally {
-            QuarkusTransaction.requiringNew().run(() -> ChannelEntity.delete("name", name));
+            QuarkusTransaction.requiringNew().run(() -> em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", name).executeUpdate());
         }
     }
 

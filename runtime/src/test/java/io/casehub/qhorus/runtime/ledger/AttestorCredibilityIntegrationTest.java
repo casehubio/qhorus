@@ -7,6 +7,7 @@ import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.message.DispatchResult;
+import jakarta.persistence.EntityManager;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
@@ -25,6 +26,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 @QuarkusTest
 @TestTransaction
 class AttestorCredibilityIntegrationTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -220,10 +224,11 @@ class AttestorCredibilityIntegrationTest {
     }
 
     private UUID channelId(String channelName) {
-        return ChannelEntity.<ChannelEntity>find("name", channelName)
-                .firstResultOptional()
-                .map(ch -> ch.id)
-                .orElseThrow(() -> new IllegalStateException("Channel not found: " + channelName));
+        return em.createQuery("SELECT c FROM Channel c WHERE c.name = :p1", ChannelEntity.class)
+                 .setParameter("p1", channelName)
+                 .getResultStream().findFirst()
+                 .map(ch -> ch.id)
+                 .orElseThrow(() -> new IllegalStateException("Channel not found: " + channelName));
     }
 
     private MessageLedgerEntry dispatchCommandDone(String channel, String commander, String doer) {

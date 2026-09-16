@@ -8,6 +8,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import jakarta.persistence.EntityManager;
 import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
 import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.api.data.SharedData;
@@ -32,6 +33,9 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 class SharedDataEdgeCaseTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -85,8 +89,7 @@ class SharedDataEdgeCaseTest {
         tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
         tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
 
-        long claimCount = ArtefactClaimEntity.count("artefactId = ?1 AND instanceId = ?2",
-                                                    artefact.artefactId(), claimant.id());
+        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaim e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class).setParameter("p1", artefact.artefactId()).setParameter("p2", claimant.id()).getSingleResult();
         assertEquals(1, claimCount,
                 "Double claim must be idempotent — only one ArtefactClaim row should exist");
 

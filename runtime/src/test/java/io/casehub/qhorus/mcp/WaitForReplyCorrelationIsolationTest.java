@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.UUID;
 
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
@@ -46,6 +47,9 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 class WaitForReplyCorrelationIsolationTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -302,13 +306,13 @@ class WaitForReplyCorrelationIsolationTest {
         QuarkusTransaction.requiringNew().run(() -> {
             for (String corrId : corrIds) {
                 if (corrId != null) {
-                    CommitmentEntity.delete("correlationId", corrId);
+                    em.createQuery("DELETE FROM Commitment e WHERE e.correlationId = :p1").setParameter("p1", corrId).executeUpdate();
                 }
             }
             channelService.findByName(channelName).ifPresent(c -> {
-                MessageEntity.delete("channelId", c.id());
+                em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate();
             });
-            ChannelEntity.delete("name", channelName);
+            em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", channelName).executeUpdate();
         });
     }
 }

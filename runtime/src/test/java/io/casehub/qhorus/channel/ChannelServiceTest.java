@@ -19,7 +19,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.runtime.channel.ChannelEntity;
+import jakarta.persistence.EntityManager;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
@@ -29,6 +29,9 @@ import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class ChannelServiceTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     ChannelService channelService;
@@ -177,7 +180,7 @@ class ChannelServiceTest {
             assertEquals(Set.of(MessageType.EVENT), ch.deniedTypes());
             assertNull(ch.allowedTypes());
         });
-        QuarkusTransaction.requiringNew().run(() -> ChannelEntity.delete("name", name));
+        QuarkusTransaction.requiringNew().run(() -> em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", name).executeUpdate());
     }
 
     @Test
@@ -222,7 +225,7 @@ class ChannelServiceTest {
                         .actorType(ActorTypeResolver.resolve("overseer"))
                         .build()));
 
-        QuarkusTransaction.requiringNew().run(() -> ChannelEntity.delete("name", name));
+        QuarkusTransaction.requiringNew().run(() -> em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", name).executeUpdate());
     }
 
     @Test
@@ -236,7 +239,7 @@ class ChannelServiceTest {
                 .run(() -> channelService.create(ChannelCreateRequest.builder(uniqueName).description("Second").build())));
 
         // Cleanup the committed first record
-        QuarkusTransaction.requiringNew().run(() -> ChannelEntity.delete("name", uniqueName));
+        QuarkusTransaction.requiringNew().run(() -> em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", uniqueName).executeUpdate());
     }
 
     @Test

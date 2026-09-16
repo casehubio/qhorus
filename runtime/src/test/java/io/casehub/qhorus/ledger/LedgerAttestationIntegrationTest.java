@@ -13,6 +13,7 @@ import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
+import jakarta.persistence.EntityManager;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
@@ -37,6 +38,9 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 @TestTransaction
 class LedgerAttestationIntegrationTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -219,9 +223,10 @@ class LedgerAttestationIntegrationTest {
     }
 
     private UUID channelId(final String channelName) {
-        return ChannelEntity.<ChannelEntity> find("name", channelName)
-                            .firstResultOptional()
-                            .map(ch -> ch.id)
-                            .orElseThrow(() -> new IllegalStateException("Channel not found: " + channelName));
+        return em.createQuery("SELECT c FROM Channel c WHERE c.name = :p1", ChannelEntity.class)
+                 .setParameter("p1", channelName)
+                 .getResultStream().findFirst()
+                 .map(ch -> ch.id)
+                 .orElseThrow(() -> new IllegalStateException("Channel not found: " + channelName));
     }
 }

@@ -2,9 +2,8 @@ package io.casehub.qhorus.mcp;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.casehub.qhorus.runtime.channel.ChannelEntity;
-import io.casehub.qhorus.runtime.message.CommitmentEntity;
 import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +34,9 @@ import io.quarkus.test.junit.QuarkusTest;
  */
 @QuarkusTest
 class EphemeralEdgeCaseTest {
+
+    @Inject
+    EntityManager em;
 
     @Inject
     QhorusMcpTools tools;
@@ -135,8 +137,8 @@ class EphemeralEdgeCaseTest {
                     "RESPONSE should be in the checkMessages result");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
-                CommitmentEntity.delete("correlationId", corrId);
-                ChannelEntity.delete("name", ch);
+                em.createQuery("DELETE FROM Commitment e WHERE e.correlationId = :p1").setParameter("p1", corrId).executeUpdate();
+                em.createQuery("DELETE FROM Channel e WHERE e.name = :p1").setParameter("p1", ch).executeUpdate();
             });
         }
     }
