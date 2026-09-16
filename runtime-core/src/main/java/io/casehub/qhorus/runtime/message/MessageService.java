@@ -415,7 +415,7 @@ public class MessageService implements ConsumerMessaging {
                     return new DispatchResult(saved.id(), ch.id(), saved.sender(),
                             saved.messageType(), saved.correlationId(), saved.inReplyTo(),
                             saved.artefactRefs(), saved.target(),
-                            null, null, null, 0, advisories);
+                            null, null, null, 0, saved.correctsMessageId(), advisories);
                 } else {
                     throw new IllegalStateException(
                             "LAST_WRITE channel '" + ch.name() + "' already has a message from '"
@@ -444,6 +444,8 @@ public class MessageService implements ConsumerMessaging {
                 .deadline(dispatch.deadline())
                 .tenancyId(effectiveTenancyId)
                 .commitmentId(commitmentId)
+                .correctsMessageId(dispatch.correctsMessageId())
+                .retraction(dispatch.retraction())
                 .build();
         Message saved = messageStore.put(message);
 
@@ -509,7 +511,8 @@ public class MessageService implements ConsumerMessaging {
                         dispatch.content(), dispatch.payload(), dispatch.correlationId(), dispatch.inReplyTo(),
                         dispatch.artefactRefs(), dispatch.target(), dispatch.subjectId(),
                         dispatch.causedByEntryId(), dispatch.actorType(), dispatch.deadline(),
-                        dispatch.telemetry(), effectiveTenancyId, dispatch.topic());
+                        dispatch.telemetry(), effectiveTenancyId, dispatch.topic(),
+                        dispatch.correctsMessageId(), dispatch.retraction());
         final LedgerWriteOutcome ledgerOutcome =
                 ledgerRecorder.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt, routingOutcome);
 
@@ -561,7 +564,7 @@ public class MessageService implements ConsumerMessaging {
                 messageId, dispatch.channelId(), dispatch.sender(), dispatch.type(),
                 dispatch.correlationId(), dispatch.inReplyTo(), dispatch.artefactRefs(), dispatch.target(),
                 ledgerOutcome.entryId(), ledgerOutcome.subjectId(), ledgerOutcome.causedByEntryId(),
-                parentReplyCount, advisories);
+                parentReplyCount, dispatch.correctsMessageId(), advisories);
         } catch (Exception e) {
             if (span != null) {
                 span.setStatus(StatusCode.ERROR);
