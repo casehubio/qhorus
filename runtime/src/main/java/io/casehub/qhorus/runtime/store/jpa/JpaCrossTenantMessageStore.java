@@ -18,6 +18,7 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
 
     @Inject
+    @io.quarkus.hibernate.orm.PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override
