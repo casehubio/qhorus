@@ -61,16 +61,16 @@ public class JpaDataStore implements DataStore {
 
     @Override
     public List<SharedData> scan(DataQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM SharedData WHERE 1=1");
+        StringBuilder jpql = new StringBuilder("FROM SharedData e WHERE 1=1");
         List<Object> params = new ArrayList<>();
         int idx = 1;
 
         if (q.createdBy() != null) {
-            jpql.append(" AND createdBy = ?").append(idx++);
+            jpql.append(" AND e.createdBy = ?").append(idx++);
             params.add(q.createdBy());
         }
         if (q.complete() != null) {
-            jpql.append(" AND complete = ?").append(idx++);
+            jpql.append(" AND e.complete = ?").append(idx++);
             params.add(q.complete());
         }
 

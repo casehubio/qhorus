@@ -19,56 +19,56 @@ record MessageQueryJpql(String where, Object[] params) {
         int           idx    = 1;
 
         if (q.channelId() != null) {
-            where.append(" AND channelId = ?").append(idx++);
+            where.append(" AND e.channelId = ?").append(idx++);
             params.add(q.channelId());
         }
         if (q.afterId() != null) {
             if (q.afterVersion() != null) {
-                where.append(" AND (id > ?").append(idx++);
+                where.append(" AND (e.id > ?").append(idx++);
                 params.add(q.afterId());
-                where.append(" OR (id = ?").append(idx++);
+                where.append(" OR (e.id = ?").append(idx++);
                 params.add(q.afterId());
-                where.append(" AND version > ?").append(idx++).append("))");
+                where.append(" AND e.version > ?").append(idx++).append("))");
                 params.add(q.afterVersion());
             } else {
-                where.append(" AND id > ?").append(idx++);
+                where.append(" AND e.id > ?").append(idx++);
                 params.add(q.afterId());
             }
         }
         if (q.beforeId() != null) {
-            where.append(" AND id <= ?").append(idx++);
+            where.append(" AND e.id <= ?").append(idx++);
             params.add(q.beforeId());
         }
         if (q.sender() != null) {
-            where.append(" AND sender = ?").append(idx++);
+            where.append(" AND e.sender = ?").append(idx++);
             params.add(q.sender());
         }
         if (q.target() != null) {
-            where.append(" AND target = ?").append(idx++);
+            where.append(" AND e.target = ?").append(idx++);
             params.add(q.target());
         }
         if (q.inReplyTo() != null) {
-            where.append(" AND inReplyTo = ?").append(idx++);
+            where.append(" AND e.inReplyTo = ?").append(idx++);
             params.add(q.inReplyTo());
         }
         if (q.messageType() != null) {
-            where.append(" AND messageType = ?").append(idx++);
+            where.append(" AND e.messageType = ?").append(idx++);
             params.add(q.messageType());
         }
         if (q.correlationId() != null) {
-            where.append(" AND correlationId = ?").append(idx++);
+            where.append(" AND e.correlationId = ?").append(idx++);
             params.add(q.correlationId());
         }
         if (q.excludeTypes() != null && !q.excludeTypes().isEmpty()) {
-            where.append(" AND messageType NOT IN ?").append(idx++);
+            where.append(" AND e.messageType NOT IN ?").append(idx++);
             params.add(q.excludeTypes());
         }
         if (q.contentPattern() != null) {
-            where.append(" AND LOWER(content) LIKE ?").append(idx++);
+            where.append(" AND LOWER(e.content) LIKE ?").append(idx++);
             params.add("%" + q.contentPattern().toLowerCase() + "%");
         }
         if (q.topic() != null) {
-            where.append(" AND LOWER(topic) = LOWER(?").append(idx++).append(")");
+            where.append(" AND LOWER(e.topic) = LOWER(?").append(idx++).append(")");
             params.add(q.topic());
         }
 
@@ -76,62 +76,62 @@ record MessageQueryJpql(String where, Object[] params) {
 
     /** Tenant-scoped factory — used by {@link JpaMessageStore}. */
     static MessageQueryJpql from(MessageQuery q, String tenancyId) {
-        StringBuilder where  = new StringBuilder("tenancyId = ?1");
+        StringBuilder where  = new StringBuilder("e.tenancyId = ?1");
         List<Object>  params = new ArrayList<>();
         params.add(tenancyId);
         int idx = 2;
 
         if (q.channelId() != null) {
-            where.append(" AND channelId = ?").append(idx++);
+            where.append(" AND e.channelId = ?").append(idx++);
             params.add(q.channelId());
         }
         if (q.afterId() != null) {
             if (q.afterVersion() != null) {
-                where.append(" AND (id > ?").append(idx++);
+                where.append(" AND (e.id > ?").append(idx++);
                 params.add(q.afterId());
-                where.append(" OR (id = ?").append(idx++);
+                where.append(" OR (e.id = ?").append(idx++);
                 params.add(q.afterId());
-                where.append(" AND version > ?").append(idx++).append("))");
+                where.append(" AND e.version > ?").append(idx++).append("))");
                 params.add(q.afterVersion());
             } else {
-                where.append(" AND id > ?").append(idx++);
+                where.append(" AND e.id > ?").append(idx++);
                 params.add(q.afterId());
             }
         }
         if (q.beforeId() != null) {
-            where.append(" AND id <= ?").append(idx++);
+            where.append(" AND e.id <= ?").append(idx++);
             params.add(q.beforeId());
         }
         if (q.sender() != null) {
-            where.append(" AND sender = ?").append(idx++);
+            where.append(" AND e.sender = ?").append(idx++);
             params.add(q.sender());
         }
         if (q.target() != null) {
-            where.append(" AND target = ?").append(idx++);
+            where.append(" AND e.target = ?").append(idx++);
             params.add(q.target());
         }
         if (q.inReplyTo() != null) {
-            where.append(" AND inReplyTo = ?").append(idx++);
+            where.append(" AND e.inReplyTo = ?").append(idx++);
             params.add(q.inReplyTo());
         }
         if (q.messageType() != null) {
-            where.append(" AND messageType = ?").append(idx++);
+            where.append(" AND e.messageType = ?").append(idx++);
             params.add(q.messageType());
         }
         if (q.correlationId() != null) {
-            where.append(" AND correlationId = ?").append(idx++);
+            where.append(" AND e.correlationId = ?").append(idx++);
             params.add(q.correlationId());
         }
         if (q.excludeTypes() != null && !q.excludeTypes().isEmpty()) {
-            where.append(" AND messageType NOT IN ?").append(idx++);
+            where.append(" AND e.messageType NOT IN ?").append(idx++);
             params.add(q.excludeTypes());
         }
         if (q.contentPattern() != null) {
-            where.append(" AND LOWER(content) LIKE ?").append(idx++);
+            where.append(" AND LOWER(e.content) LIKE ?").append(idx++);
             params.add("%" + q.contentPattern().toLowerCase() + "%");
         }
         if (q.topic() != null) {
-            where.append(" AND LOWER(topic) = LOWER(?").append(idx++).append(")");
+            where.append(" AND LOWER(e.topic) = LOWER(?").append(idx++).append(")");
             params.add(q.topic());
         }
 

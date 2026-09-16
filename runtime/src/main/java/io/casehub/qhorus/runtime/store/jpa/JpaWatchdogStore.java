@@ -49,13 +49,13 @@ public class JpaWatchdogStore implements WatchdogStore {
 
     @Override
     public List<Watchdog> scan(WatchdogQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM Watchdog WHERE tenancyId = ?1");
+        StringBuilder jpql = new StringBuilder("FROM Watchdog e WHERE e.tenancyId = ?1");
         List<Object> params = new ArrayList<>();
         params.add(currentPrincipal.tenancyId());
         int idx = 2;
 
         if (q.conditionType() != null) {
-            jpql.append(" AND conditionType = ?").append(idx++);
+            jpql.append(" AND e.conditionType = ?").append(idx++);
             params.add(q.conditionType().name());
         }
 

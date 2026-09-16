@@ -58,38 +58,38 @@ public class JpaChannelStore implements ChannelStore {
 
     @Override
     public List<Channel> scan(ChannelQuery q) {
-        StringBuilder jpql   = new StringBuilder("FROM Channel WHERE tenancyId = ?1");
+        StringBuilder jpql   = new StringBuilder("FROM Channel e WHERE e.tenancyId = ?1");
         List<Object>  params = new ArrayList<>();
         params.add(currentPrincipal.tenancyId());
         int idx = 2;
 
         if (q.paused() != null) {
-            jpql.append(" AND paused = ?").append(idx++);
+            jpql.append(" AND e.paused = ?").append(idx++);
             params.add(q.paused());
         }
         if (q.semantic() != null) {
-            jpql.append(" AND semantic = ?").append(idx++);
+            jpql.append(" AND e.semantic = ?").append(idx++);
             params.add(q.semantic());
         }
         if (q.namePattern() != null) {
-            jpql.append(" AND name LIKE ?").append(idx++);
+            jpql.append(" AND e.name LIKE ?").append(idx++);
             params.add(q.namePattern().replace("*", "%"));
         }
         if (q.namePrefix() != null) {
-            jpql.append(" AND name LIKE ?").append(idx++).append(" ESCAPE '!'");
+            jpql.append(" AND e.name LIKE ?").append(idx++).append(" ESCAPE '!'");
             params.add(escapeLikePrefix(q.namePrefix()) + "%");
         }
         if (q.keyword() != null) {
-            jpql.append(" AND (LOWER(name) LIKE ?").append(idx).append(" OR LOWER(description) LIKE ?").append(idx).append(")");
+            jpql.append(" AND (LOWER(e.name) LIKE ?").append(idx).append(" OR LOWER(e.description) LIKE ?").append(idx).append(")");
             params.add("%" + q.keyword().toLowerCase() + "%");
             idx++;
         }
         if (q.spaceId() != null) {
-            jpql.append(" AND spaceId = ?").append(idx++);
+            jpql.append(" AND e.spaceId = ?").append(idx++);
             params.add(q.spaceId());
         }
         if (q.topLevelOnly()) {
-            jpql.append(" AND spaceId IS NULL");
+            jpql.append(" AND e.spaceId IS NULL");
         }
 
         var query = em.createQuery("SELECT e " + jpql.toString(), ChannelEntity.class);

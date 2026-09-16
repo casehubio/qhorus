@@ -12,7 +12,7 @@ class MessageQueryJpqlTopicTest {
         MessageQuery q = MessageQuery.builder().topic("design").build();
         MessageQueryJpql jpql = MessageQueryJpql.from(q);
 
-        assertThat(jpql.where()).contains("LOWER(topic) = LOWER(");
+        assertThat(jpql.where()).contains("LOWER(e.topic) = LOWER(");
         assertThat(jpql.params()).contains("design");
     }
 
@@ -29,7 +29,7 @@ class MessageQueryJpqlTopicTest {
         MessageQuery q = MessageQuery.builder().topic("Review").build();
         MessageQueryJpql jpql = MessageQueryJpql.from(q, "tenant-1");
 
-        assertThat(jpql.where()).contains("LOWER(topic) = LOWER(");
+        assertThat(jpql.where()).contains("LOWER(e.topic) = LOWER(");
         assertThat(jpql.params()).contains("Review");
     }
 

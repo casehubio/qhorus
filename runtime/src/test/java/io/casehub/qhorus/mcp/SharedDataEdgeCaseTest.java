@@ -89,7 +89,7 @@ class SharedDataEdgeCaseTest {
         tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
         tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
 
-        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaim e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class).setParameter("p1", artefact.artefactId()).setParameter("p2", claimant.id()).getSingleResult();
+        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class).setParameter("p1", artefact.artefactId()).setParameter("p2", claimant.id()).getSingleResult();
         assertEquals(1, claimCount,
                 "Double claim must be idempotent — only one ArtefactClaim row should exist");
 

@@ -52,20 +52,20 @@ public class JpaInstanceStore implements InstanceStore {
 
     @Override
     public List<Instance> scan(InstanceQuery q) {
-        StringBuilder jpql = new StringBuilder("FROM Instance WHERE 1=1");
+        StringBuilder jpql = new StringBuilder("FROM Instance e WHERE 1=1");
         List<Object> params = new ArrayList<>();
         int idx = 1;
 
         if (q.status() != null) {
-            jpql.append(" AND status = ?").append(idx++);
+            jpql.append(" AND e.status = ?").append(idx++);
             params.add(q.status());
         }
         if (q.staleOlderThan() != null) {
-            jpql.append(" AND lastSeen < ?").append(idx++);
+            jpql.append(" AND e.lastSeen < ?").append(idx++);
             params.add(q.staleOlderThan());
         }
         if (q.capability() != null) {
-            jpql.append(" AND id IN (SELECT c.instanceId FROM Capability c WHERE c.tag = ?").append(idx++).append(")");
+            jpql.append(" AND e.id IN (SELECT c.instanceId FROM Capability c WHERE c.tag = ?").append(idx++).append(")");
             params.add(q.capability());
         }
 

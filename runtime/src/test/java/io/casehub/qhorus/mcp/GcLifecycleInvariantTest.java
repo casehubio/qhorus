@@ -66,7 +66,7 @@ class GcLifecycleInvariantTest {
         tools.releaseArtefact(artefact.artefactId().toString(), nonClaimant.id().toString());
 
         // claimant's claim must still exist
-        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaim e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class)
+        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class)
                 .setParameter("p1", artefact.artefactId()).setParameter("p2", claimant.id()).getSingleResult();
         assertEquals(1, claimCount,
                 "releasing by a different instance must not remove the original claimant's claim");
@@ -182,7 +182,7 @@ class GcLifecycleInvariantTest {
         tools.claimArtefact(id, a3.id().toString());
 
         // 3 distinct claims (a1 double-claim is idempotent)
-        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaim e WHERE e.artefactId = :p1", Long.class)
+        long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = :p1", Long.class)
                 .setParameter("p1", artefact.artefactId()).getSingleResult();
         assertEquals(3, claimCount,
                 "double-claim by a1 must be idempotent — exactly 3 distinct claims");
