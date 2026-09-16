@@ -364,7 +364,8 @@ public class RuntimeAutoConfiguration {
                                          ProtocolRegistry protocolRegistry, CommitmentStore commitmentStore,
                                          ChannelActivityBroadcaster broadcaster,
                                          Optional<Tracer> tracer, QhorusTracingConfig tracingConfig,
-                                         EnforcementExecutor enforcementExecutor, RoutingBridge routingBridge) {
+                                         EnforcementExecutor enforcementExecutor, RoutingBridge routingBridge,
+                                         ChannelMembershipStore channelMembershipStore) {
         Supplier<Tracer> tracerSupplier = tracer.map(t -> (Supplier<Tracer>) () -> t).orElse(null);
         return new MessageService(channelService, crossTenantChannelStore, currentPrincipal,
                 messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
@@ -375,7 +376,8 @@ public class RuntimeAutoConfiguration {
                 (channelName, channelId, tenancyId, message) -> {},
                 (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
                         new io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome(null, null, null),
-                null, null);
+                null, null,
+                channelMembershipStore, config.correction().maxPerMessage());
     }
 
     // ── Strip classes ─────────────────────────────────────────────────────
