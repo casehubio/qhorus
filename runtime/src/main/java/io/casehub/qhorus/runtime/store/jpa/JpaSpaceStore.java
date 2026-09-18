@@ -7,6 +7,7 @@ import io.casehub.qhorus.runtime.channel.SpaceEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.util.Collection;
@@ -21,6 +22,7 @@ public class JpaSpaceStore implements SpaceStore {
     CurrentPrincipal currentPrincipal;
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import org.junit.jupiter.api.Test;
 
@@ -27,6 +28,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class CollectEdgeCaseTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

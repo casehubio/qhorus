@@ -8,6 +8,7 @@ import io.casehub.qhorus.runtime.message.CommitmentEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.time.Instant;
@@ -20,6 +21,7 @@ import java.util.UUID;
 public class JpaCommitmentStore implements CommitmentStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

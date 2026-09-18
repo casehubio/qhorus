@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.message.Topic;
@@ -20,6 +21,7 @@ public class JpaTopicStore implements TopicStore {
     CurrentPrincipal currentPrincipal;
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

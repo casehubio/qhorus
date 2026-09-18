@@ -8,6 +8,7 @@ import io.casehub.qhorus.runtime.channel.ChannelMembershipEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,7 @@ public class JpaChannelMembershipStore implements ChannelMembershipStore {
     CurrentPrincipal currentPrincipal;
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

@@ -8,6 +8,7 @@ import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.message.DispatchResult;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
@@ -28,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class AttestorCredibilityIntegrationTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

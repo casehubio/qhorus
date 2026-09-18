@@ -7,6 +7,7 @@ import io.casehub.qhorus.runtime.channel.ChannelSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.util.Optional;
@@ -16,6 +17,7 @@ import java.util.UUID;
 public class JpaChannelSummaryStore implements ChannelSummaryStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

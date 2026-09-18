@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
@@ -16,6 +17,7 @@ import io.casehub.qhorus.api.store.CrossTenantChannelStore;
 public class JpaCrossTenantChannelStore implements CrossTenantChannelStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

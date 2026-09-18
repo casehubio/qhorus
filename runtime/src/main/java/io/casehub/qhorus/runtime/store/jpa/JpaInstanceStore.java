@@ -8,6 +8,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.instance.Instance;
@@ -20,6 +21,7 @@ import io.casehub.qhorus.api.store.query.InstanceQuery;
 public class JpaInstanceStore implements InstanceStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override
@@ -106,6 +108,9 @@ public class JpaInstanceStore implements InstanceStore {
     @Transactional
     public void delete(UUID id) {
         em.createQuery("DELETE FROM Capability e WHERE e.instanceId = ?1").setParameter(1, id).executeUpdate();
-        em.createQuery("DELETE FROM Instance e WHERE e.id = ?1").setParameter(1, id).executeUpdate();
+        InstanceEntity entity = em.find(InstanceEntity.class, id);
+        if (entity != null) {
+            em.remove(entity);
+        }
     }
 }

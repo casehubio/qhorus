@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
@@ -18,12 +19,13 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 public class JpaCrossTenantMessageStore implements CrossTenantMessageStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override
     public List<Message> scan(MessageQuery q) {
         MessageQueryJpql mq = MessageQueryJpql.from(q);
-        String jpql = "FROM Message WHERE " + mq.where()
+        String jpql = "FROM Message e WHERE " + mq.where()
                 + (q.descending() ? " ORDER BY id DESC" : " ORDER BY id ASC");
 
         List<MessageEntity> entities;

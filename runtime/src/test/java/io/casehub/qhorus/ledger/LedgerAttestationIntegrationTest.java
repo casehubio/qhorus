@@ -14,6 +14,7 @@ import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
@@ -40,6 +41,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class LedgerAttestationIntegrationTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

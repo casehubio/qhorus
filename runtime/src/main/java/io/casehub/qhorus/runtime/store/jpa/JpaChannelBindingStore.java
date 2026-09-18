@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
@@ -19,6 +20,7 @@ import io.casehub.qhorus.api.store.ChannelBindingStore;
 public class JpaChannelBindingStore implements ChannelBindingStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

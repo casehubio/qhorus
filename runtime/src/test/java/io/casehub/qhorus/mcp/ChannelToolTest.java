@@ -13,6 +13,7 @@ import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.api.channel.ChannelDetail;
@@ -25,6 +26,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class ChannelToolTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

@@ -9,6 +9,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
 import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.api.data.SharedData;
@@ -35,6 +36,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class SharedDataEdgeCaseTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

@@ -5,6 +5,7 @@ import java.util.List;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import io.casehub.qhorus.api.store.CrossTenantWatchdogStore;
 import io.casehub.qhorus.api.watchdog.Watchdog;
@@ -14,6 +15,7 @@ import io.casehub.qhorus.runtime.watchdog.WatchdogEntity;
 public class JpaCrossTenantWatchdogStore implements CrossTenantWatchdogStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

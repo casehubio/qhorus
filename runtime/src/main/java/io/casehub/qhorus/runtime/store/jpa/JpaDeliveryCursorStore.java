@@ -7,6 +7,7 @@ import java.util.UUID;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import io.casehub.qhorus.api.gateway.DeliveryCursor;
@@ -17,6 +18,7 @@ import io.casehub.qhorus.api.store.DeliveryCursorStore;
 public class JpaDeliveryCursorStore implements DeliveryCursorStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

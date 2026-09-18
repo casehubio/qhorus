@@ -2,6 +2,7 @@ package io.casehub.qhorus.compliance.schedule;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 
@@ -14,6 +15,7 @@ import java.util.UUID;
 public class ComplianceReportScheduleStore {
 
     @PersistenceContext(unitName = "qhorus")
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Transactional

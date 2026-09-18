@@ -9,6 +9,7 @@ import io.casehub.qhorus.runtime.data.SharedDataEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.util.ArrayList;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class JpaDataStore implements DataStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override
@@ -113,6 +115,9 @@ public class JpaDataStore implements DataStore {
     @Transactional
     public void delete(UUID id) {
         em.createQuery("DELETE FROM ArtefactClaimEntity e WHERE e.artefactId = ?1").setParameter(1, id).executeUpdate();
-        em.createQuery("DELETE FROM SharedData e WHERE e.id = ?1").setParameter(1, id).executeUpdate();
+        SharedDataEntity entity = em.find(SharedDataEntity.class, id);
+        if (entity != null) {
+            em.remove(entity);
+        }
     }
 }

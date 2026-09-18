@@ -6,6 +6,7 @@ import io.casehub.qhorus.runtime.channel.ThreadSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.UUID;
 public class JpaThreadSummaryStore implements ThreadSummaryStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

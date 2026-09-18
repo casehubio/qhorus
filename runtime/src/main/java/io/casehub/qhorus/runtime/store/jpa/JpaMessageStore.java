@@ -9,6 +9,7 @@ import io.casehub.qhorus.runtime.message.MessageEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import jakarta.transaction.Transactional;
 
 import java.util.List;
@@ -24,6 +25,7 @@ public class JpaMessageStore implements MessageStore {
     CurrentPrincipal currentPrincipal;
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

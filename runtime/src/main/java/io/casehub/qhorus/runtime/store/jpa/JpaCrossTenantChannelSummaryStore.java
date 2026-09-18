@@ -6,6 +6,7 @@ import io.casehub.qhorus.runtime.channel.ChannelSummaryEntity;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 
 import java.util.List;
 
@@ -13,6 +14,7 @@ import java.util.List;
 public class JpaCrossTenantChannelSummaryStore implements CrossTenantChannelSummaryStore {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Override

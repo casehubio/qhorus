@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.ArtefactDetail;
 import io.quarkus.test.TestTransaction;
@@ -34,6 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class GcLifecycleInvariantTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject

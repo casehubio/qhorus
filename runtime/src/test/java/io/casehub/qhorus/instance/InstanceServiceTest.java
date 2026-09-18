@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import jakarta.persistence.EntityManager;
+import io.quarkus.hibernate.orm.PersistenceUnit;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -18,6 +19,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class InstanceServiceTest {
 
     @Inject
+    @PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject
