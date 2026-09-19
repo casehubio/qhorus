@@ -107,5 +107,7 @@ public class JpaInstanceStore implements InstanceStore {
     public void delete(UUID id) {
         em.createQuery("DELETE FROM Capability e WHERE e.instanceId = ?1").setParameter(1, id).executeUpdate();
         em.createQuery("DELETE FROM Instance e WHERE e.id = ?1").setParameter(1, id).executeUpdate();
+        em.flush();
+        em.clear();
     }
 }

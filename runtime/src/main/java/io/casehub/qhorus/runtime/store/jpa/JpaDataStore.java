@@ -114,5 +114,7 @@ public class JpaDataStore implements DataStore {
     public void delete(UUID id) {
         em.createQuery("DELETE FROM ArtefactClaimEntity e WHERE e.artefactId = ?1").setParameter(1, id).executeUpdate();
         em.createQuery("DELETE FROM SharedData e WHERE e.id = ?1").setParameter(1, id).executeUpdate();
+        em.flush();
+        em.clear();
     }
 }
