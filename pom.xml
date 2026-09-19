@@ -34,7 +34,8 @@
     <module>a2a-push-notification</module>
     <module>agent-card-signing</module>
     <module>persistence-memory</module>
-    <module>runtime-spring</module>
+    <!-- runtime-spring disabled until casehub-platform-spring-generator SNAPSHOT is published (platform CI blocked by Quarkus GACT ClassCastException on Java 26) -->
+    <!-- <module>runtime-spring</module> -->
     <module>testing</module>
     <module>examples</module>
   </modules>
