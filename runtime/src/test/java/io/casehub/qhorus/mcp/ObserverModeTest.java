@@ -1,18 +1,23 @@
 package io.casehub.qhorus.mcp;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.qhorus.api.instance.Instance;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.instance.InstanceManager;
+import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.quarkiverse.mcp.server.ToolCallException;
+import io.quarkus.test.TestTransaction;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
-import io.quarkiverse.mcp.server.ToolCallException;
-import io.casehub.qhorus.api.instance.InstanceInfo;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkus.test.TestTransaction;
-import io.quarkus.test.junit.QuarkusTest;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Issue #49, #121-G — Read-only observer mode via read_only flag on Instance.
@@ -36,6 +41,9 @@ class ObserverModeTest {
 
     @Inject
     QhorusMcpTools tools;
+    @Inject
+    InstanceManager instanceManager;
+
 
     // =========================================================================
     // Unit — registration contract
@@ -46,8 +54,8 @@ class ObserverModeTest {
     void registerReadOnlyInstanceCreatesInstanceRecord() {
         tools.createChannel("obs-reg-1", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        QhorusMcpTools.RegisterResponse result = tools.register(
-                "dashboard-obs", "Dashboard observer", List.of(), null, true);
+        Instance result = instanceManager.register(
+                "dashboard-obs", "Dashboard observer", List.of(), true);
 
         assertNotNull(result, "register should return a result");
         assertEquals("dashboard-obs", result.instanceId());
@@ -57,10 +65,10 @@ class ObserverModeTest {
     @TestTransaction
     void readOnlyInstanceAppearsInListInstances() {
         tools.createChannel("obs-reg-2", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("obs-visible", "Visible observer", List.of(), null, true);
+        instanceManager.register("obs-visible", "Visible observer", List.of(), true);
 
         // The read_only instance SHOULD appear in list_instances (unlike old ObserverRegistry)
-        List<InstanceInfo> instances = tools.listInstances(null);
+        List<InstanceInfo> instances = instanceManager.listInfo();
         assertTrue(instances.stream()
                 .anyMatch(i -> "obs-visible".equals(i.instanceId()) && i.readOnly()),
                 "read_only instance should appear in list_instances with readOnly=true");
@@ -70,10 +78,10 @@ class ObserverModeTest {
     @TestTransaction
     void listInstancesShowsReadOnlyFlag() {
         // Register a regular instance AND a read_only instance
-        tools.register("regular-agent", "Normal agent", List.of(), null, false);
-        tools.register("monitor-obs", "Monitor", List.of(), null, true);
+        instanceManager.register("regular-agent", "Normal agent", List.of(), false);
+        instanceManager.register("monitor-obs", "Monitor", List.of(), true);
 
-        List<InstanceInfo> instances = tools.listInstances(null);
+        List<InstanceInfo> instances = instanceManager.listInfo();
 
         InstanceInfo regular = instances.stream()
                 .filter(i -> "regular-agent".equals(i.instanceId()))
@@ -94,7 +102,7 @@ class ObserverModeTest {
     @TestTransaction
     void readOnlyInstanceCannotSendMessages() {
         tools.createChannel("obs-send-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("readonly-obs", "Read-only observer", List.of(), null, true);
+        instanceManager.register("readonly-obs", "Read-only observer", List.of(), true);
 
         ToolCallException ex = assertThrows(ToolCallException.class,
                 () -> tools.sendMessage("obs-send-1", "readonly-obs", "status", "intrude", null, null, null, null, null, null, null, null, null),
@@ -111,7 +119,7 @@ class ObserverModeTest {
     @TestTransaction
     void readOnlyInstanceCannotSendEventMessages() {
         tools.createChannel("obs-send-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("readonly-obs-2", "Read-only observer", List.of(), null, true);
+        instanceManager.register("readonly-obs-2", "Read-only observer", List.of(), true);
 
         // Even EVENT messages cannot be sent by read_only instances
         assertThrows(ToolCallException.class,
@@ -127,7 +135,7 @@ class ObserverModeTest {
     @TestTransaction
     void readOnlyInstanceCanReadEventMessagesViaIncludeEvents() {
         tools.createChannel("obs-read-1", "Monitored channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("watcher-obs", "Watcher", List.of(), null, true);
+        instanceManager.register("watcher-obs", "Watcher", List.of(), true);
 
         // Agents post messages — only EVENT ones visible with include_events=true
         tools.sendMessage("obs-read-1", "agent-a", "status", "status update", null, null, null, null, null, null, null, null, null);
@@ -185,14 +193,14 @@ class ObserverModeTest {
     @TestTransaction
     void reRegisterClearsReadOnlyFlag() {
         tools.createChannel("obs-dereg-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("was-observer", "Was observer", List.of(), null, true);
+        instanceManager.register("was-observer", "Was observer", List.of(), true);
 
         // Blocked as read_only
         assertThrows(ToolCallException.class,
                 () -> tools.sendMessage("obs-dereg-2", "was-observer", "status", "blocked", null, null, null, null, null, null, null, null, null));
 
         // Re-register as not read_only
-        tools.register("was-observer", "Now active", List.of(), null, false);
+        instanceManager.register("was-observer", "Now active", List.of(), false);
 
         // Now free to send (no longer read_only)
         assertDoesNotThrow(
@@ -208,11 +216,11 @@ class ObserverModeTest {
     @TestTransaction
     void e2eDashboardObserverWatchesAgentWorkflow() {
         tools.createChannel("obs-e2e-1", "Agent work channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("agent-alpha", "Alpha agent", List.of("capability:worker"), null, false);
-        tools.register("agent-beta", "Beta agent", List.of("capability:worker"), null, false);
+        instanceManager.register("agent-alpha", "Alpha agent", List.of("capability:worker"), false);
+        instanceManager.register("agent-beta", "Beta agent", List.of("capability:worker"), false);
 
         // Dashboard registers as read_only — creates a visible Instance record
-        tools.register("dashboard", "Dashboard", List.of(), null, true);
+        instanceManager.register("dashboard", "Dashboard", List.of(), true);
 
         // Agents work normally
         var cmdA = tools.sendMessage("obs-e2e-1", "agent-alpha", "command", "job A", null, null, null, null, null, null, null, null, null);
@@ -232,7 +240,7 @@ class ObserverModeTest {
                 "agents see only non-event messages via check_messages (EVENT excluded by default)");
 
         // Dashboard IS visible in list_instances (unlike old ObserverRegistry which hid observers)
-        List<InstanceInfo> instances = tools.listInstances(null);
+        List<InstanceInfo> instances = instanceManager.listInfo();
         assertEquals(3, instances.size(), "alpha, beta, and dashboard should all be in the registry");
         assertTrue(instances.stream().anyMatch(i -> "dashboard".equals(i.instanceId()) && i.readOnly()));
     }
@@ -245,8 +253,8 @@ class ObserverModeTest {
     @TestTransaction
     void e2eReadOnlyBlockedDoesNotAffectRegularSenders() {
         tools.createChannel("obs-e2e-2", "Mixed channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("worker", "Worker agent", List.of(), null, false);
-        tools.register("watcher", "Watcher", List.of(), null, true);
+        instanceManager.register("worker", "Worker agent", List.of(), false);
+        instanceManager.register("watcher", "Watcher", List.of(), true);
 
         // Worker sends freely
         tools.sendMessage("obs-e2e-2", "worker", "command", "task", null, null, null, null, null, null, null, null, null);

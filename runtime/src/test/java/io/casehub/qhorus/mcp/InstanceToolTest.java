@@ -1,21 +1,22 @@
 package io.casehub.qhorus.mcp;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
-import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.api.instance.Instance;
-import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.instance.InstanceManager;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @QuarkusTest
 class InstanceToolTest {
@@ -28,29 +29,27 @@ class InstanceToolTest {
 
     @Inject
     InstanceService instanceService;
+    @Inject
+    InstanceManager instanceManager;
+
 
     @Test
     @TestTransaction
-    void registerCreatesInstanceAndReturnsContextSnapshot() {
-        channelService.create(ChannelCreateRequest.builder("welcome-ch").description("General channel").build());
+    void registerCreatesInstance() {
+        Instance result = instanceManager.register("test-agent", "A test agent", List.of("code-review", "java"), false);
 
-        QhorusMcpTools.RegisterResponse resp = tools.register("test-agent", "A test agent", List.of("code-review", "java"), null, null);
-
-        assertEquals("test-agent", resp.instanceId());
-        assertTrue(resp.activeChannels().stream().anyMatch(c -> "welcome-ch".equals(c.name())),
-                "register response should include active channels");
-        assertTrue(resp.onlineInstances().stream().anyMatch(i -> "test-agent".equals(i.instanceId())),
-                "register response should include the registered instance in online list");
+        assertEquals("test-agent", result.instanceId());
+        assertTrue(instanceManager.listInfo().stream().anyMatch(i -> "test-agent".equals(i.instanceId())),
+                "registered instance should appear in list");
     }
 
     @Test
     @TestTransaction
     void registerUpsertsSameInstanceIdWithoutDuplicate() {
-        tools.register("upsert-agent", "First", List.of("python"), null, null);
-        QhorusMcpTools.RegisterResponse second = tools.register("upsert-agent", "Updated description", List.of("ml"), null, null);
+        instanceManager.register("upsert-agent", "First", List.of("python"), false);
+        instanceManager.register("upsert-agent", "Updated description", List.of("ml"), false);
 
-        assertEquals("upsert-agent", second.instanceId());
-        long count = second.onlineInstances().stream()
+        long count = instanceManager.listInfo().stream()
                 .filter(i -> "upsert-agent".equals(i.instanceId())).count();
         assertEquals(1, count, "re-registering same instance_id should not create duplicates");
     }
@@ -58,12 +57,10 @@ class InstanceToolTest {
     @Test
     @TestTransaction
     void registerReplacesCapabilityTagsOnUpsert() {
-        tools.register("cap-upsert-agent", "Agent", List.of("python"), null, null);
+        instanceManager.register("cap-upsert-agent", "Agent", List.of("python"), false);
 
-        // Re-register with different tags
-        tools.register("cap-upsert-agent", "Agent", List.of("ml"), null, null);
+        instanceManager.register("cap-upsert-agent", "Agent", List.of("ml"), false);
 
-        // Old tag must be gone, new tag must be present
         assertTrue(instanceService.findByCapability("python").isEmpty(),
                 "'python' tag should be removed after re-register");
         assertEquals(1, instanceService.findByCapability("ml").size(),
@@ -73,9 +70,8 @@ class InstanceToolTest {
     @Test
     @TestTransaction
     void registerStoresClaudonySessionId() {
-        tools.register("claudony-agent", "Claudony-managed", List.of(), "claudony-session-xyz", null);
+        instanceService.register("claudony-agent", "Claudony-managed", List.of(), "claudony-session-xyz", false);
 
-        // Verify the claudonySessionId was actually persisted to the entity
         Instance inst = instanceService.findByInstanceId("claudony-agent").orElseThrow();
         assertEquals("claudony-session-xyz", inst.claudonySessionId(),
                 "claudonySessionId should be persisted when provided");
@@ -84,7 +80,7 @@ class InstanceToolTest {
     @Test
     @TestTransaction
     void registerWithNoClaudonySessionIdLeavesFieldNull() {
-        tools.register("plain-agent", "No claudony", List.of(), null, null);
+        instanceManager.register("plain-agent", "No claudony", List.of(), false);
 
         Instance inst = instanceService.findByInstanceId("plain-agent").orElseThrow();
         assertNull(inst.claudonySessionId(),
@@ -93,11 +89,11 @@ class InstanceToolTest {
 
     @Test
     @TestTransaction
-    void listInstancesReturnsAllOnline() {
-        tools.register("l-agent-1", "Agent 1", List.of("skill-a"), null, null);
-        tools.register("l-agent-2", "Agent 2", List.of("skill-b"), null, null);
+    void listInfoReturnsAllOnline() {
+        instanceManager.register("l-agent-1", "Agent 1", List.of("skill-a"), false);
+        instanceManager.register("l-agent-2", "Agent 2", List.of("skill-b"), false);
 
-        List<InstanceInfo> all = tools.listInstances(null);
+        List<InstanceInfo> all = instanceManager.listInfo();
 
         assertTrue(all.stream().anyMatch(i -> "l-agent-1".equals(i.instanceId())));
         assertTrue(all.stream().anyMatch(i -> "l-agent-2".equals(i.instanceId())));
@@ -105,11 +101,11 @@ class InstanceToolTest {
 
     @Test
     @TestTransaction
-    void listInstancesFiltersByCapabilityTag() {
-        tools.register("py-agent", "Python expert", List.of("python"), null, null);
-        tools.register("jv-agent", "Java expert", List.of("java"), null, null);
+    void findInfoByCapabilityFilters() {
+        instanceManager.register("py-agent", "Python expert", List.of("python"), false);
+        instanceManager.register("jv-agent", "Java expert", List.of("java"), false);
 
-        List<InstanceInfo> pythonOnly = tools.listInstances("python");
+        List<InstanceInfo> pythonOnly = instanceManager.findInfoByCapability("python");
 
         assertEquals(1, pythonOnly.size());
         assertEquals("py-agent", pythonOnly.get(0).instanceId());
@@ -117,10 +113,10 @@ class InstanceToolTest {
 
     @Test
     @TestTransaction
-    void listInstancesIncludesCapabilitiesOnEachEntry() {
-        tools.register("multi-agent", "Multi-skill", List.of("code-review", "testing"), null, null);
+    void listInfoIncludesCapabilities() {
+        instanceManager.register("multi-agent", "Multi-skill", List.of("code-review", "testing"), false);
 
-        List<InstanceInfo> all = tools.listInstances(null);
+        List<InstanceInfo> all = instanceManager.listInfo();
         InstanceInfo agent = all.stream()
                 .filter(i -> "multi-agent".equals(i.instanceId()))
                 .findFirst().orElseThrow();
@@ -131,10 +127,10 @@ class InstanceToolTest {
 
     @Test
     @TestTransaction
-    void listInstancesWithNoMatchingCapabilityReturnsEmpty() {
-        tools.register("solo-agent", "Solo", List.of("python"), null, null);
+    void findInfoByCapabilityWithNoMatchReturnsEmpty() {
+        instanceManager.register("solo-agent", "Solo", List.of("python"), false);
 
-        List<InstanceInfo> result = tools.listInstances("no-such-cap");
+        List<InstanceInfo> result = instanceManager.findInfoByCapability("no-such-cap");
 
         assertTrue(result.isEmpty());
     }

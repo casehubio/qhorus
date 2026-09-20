@@ -1,20 +1,24 @@
 package io.casehub.qhorus.mcp;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
-
-import jakarta.inject.Inject;
-
-import org.junit.jupiter.api.Test;
-
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.instance.InstanceManager;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase;
+import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Issue #42 — Message and instance management: delete_message, clear_channel, deregister_instance.
@@ -35,6 +39,9 @@ class MessageInstanceManagementTest {
 
     @Inject
     QhorusMcpTools tools;
+    @Inject
+    InstanceManager instanceManager;
+
 
     // =========================================================================
     // delete_message
@@ -162,39 +169,34 @@ class MessageInstanceManagementTest {
     @Test
     @TestTransaction
     void deregisterInstanceRemovesFromRegistry() {
-        tools.register("mim-agent-1", "Test agent", List.of(), null, null);
+        instanceManager.register("mim-agent-1", "Test agent", List.of(), false);
 
-        QhorusMcpTools.DeregisterResult result = tools.deregisterInstance("mim-agent-1");
-
-        assertTrue(result.deregistered());
-        assertEquals("mim-agent-1", result.instanceId());
+        instanceManager.deregister("mim-agent-1");
 
         // No longer in list
-        boolean stillPresent = tools.listInstances(null).stream()
+        boolean stillPresent = instanceManager.listInfo().stream()
                 .anyMatch(i -> "mim-agent-1".equals(i.instanceId()));
-        assertFalse(stillPresent, "deregistered instance should not appear in list_instances");
+        assertFalse(stillPresent, "deregistered instance should not appear in list");
     }
 
     @Test
     @TestTransaction
     void deregisterInstanceRemovesCapabilityTags() {
-        tools.register("mim-agent-2", "Agent with caps", List.of("capability:code-review", "role:reviewer"), null, null);
+        instanceManager.register("mim-agent-2", "Agent with caps", List.of("capability:code-review", "role:reviewer"), false);
 
-        tools.deregisterInstance("mim-agent-2");
+        instanceManager.deregister("mim-agent-2");
 
         // Capabilities should be cleaned up
-        List<InstanceInfo> remaining = tools.listInstances("capability:code-review");
+        List<InstanceInfo> remaining = instanceManager.findInfoByCapability("capability:code-review");
         assertFalse(remaining.stream().anyMatch(i -> "mim-agent-2".equals(i.instanceId())),
                 "deregistered instance capabilities should be cleaned up");
     }
 
     @Test
     @TestTransaction
-    void deregisterUnknownInstanceReturnsFalse() {
-        QhorusMcpTools.DeregisterResult result = tools.deregisterInstance("no-such-agent");
-
-        assertFalse(result.deregistered(), "deregistering unknown instance should return deregistered=false");
-        assertNotNull(result.message());
+    void deregisterUnknownInstanceIsNoOp() {
+        // Deregistering a non-existent instance is a silent no-op
+        assertDoesNotThrow(() -> instanceManager.deregister("no-such-agent"));
     }
 
     // =========================================================================
@@ -244,16 +246,15 @@ class MessageInstanceManagementTest {
     @Test
     @TestTransaction
     void e2eHumanDeregistersRogueAgent() {
-        tools.register("rogue-agent", "Misbehaving agent", List.of("capability:code-review"), null, null);
+        instanceManager.register("rogue-agent", "Misbehaving agent", List.of("capability:code-review"), false);
         tools.createChannel("mim-e2e-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         tools.sendMessage("mim-e2e-2", "rogue-agent", "status", "rogue message", null, null, null, null, null, null, null, null, null);
 
         // Human deregisters the rogue agent
-        QhorusMcpTools.DeregisterResult result = tools.deregisterInstance("rogue-agent");
-        assertTrue(result.deregistered());
+        instanceManager.deregister("rogue-agent");
 
         // Agent gone from registry
-        assertFalse(tools.listInstances(null).stream()
+        assertFalse(instanceManager.listInfo().stream()
                 .anyMatch(i -> "rogue-agent".equals(i.instanceId())));
 
         // Its past messages still exist (deregister doesn't delete messages)

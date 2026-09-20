@@ -9,8 +9,6 @@ import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.ChannelSlugValidator;
-import io.casehub.qhorus.api.channel.Presence;
-import io.casehub.qhorus.api.channel.PresenceStatus;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.data.SharedData;
 import io.casehub.qhorus.api.gateway.ChannelRef;
@@ -42,7 +40,6 @@ import io.casehub.qhorus.api.watchdog.Watchdog;
 import io.casehub.qhorus.runtime.channel.ChannelSummaryService;
 import io.casehub.qhorus.runtime.channel.PresenceService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.instance.CapabilityEntity;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
@@ -182,34 +179,41 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Instance management tools
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "register", description = "Register an agent instance with capability tags. "
-            + "Set read_only=true for dashboard/observer instances that only read EVENT messages. "
-            + "Returns active channels and online instances as immediate context.")
-    @Transactional
-    public RegisterResponse register(
-            @ToolArg(name = "instance_id", description = "Unique human-readable identifier for this agent") String instanceId,
-            @ToolArg(name = "description", description = "Description of this agent's role") String description,
-            @ToolArg(name = "capabilities", description = "Capability tags for peer discovery", required = false) List<String> capabilities,
-            @ToolArg(name = "claudony_session_id", description = "Optional Claudony session ID for managed workers", required = false) String claudonySessionId,
-            @ToolArg(name = "read_only", description = "If true, instance is read-only: cannot send messages, and check_messages with include_events=true returns EVENT messages. Default false.", required = false) Boolean readOnly) {
-        List<String> caps = capabilities != null ? capabilities : List.of();
-        boolean        ro       = readOnly != null && readOnly;
-        Instance instance = instanceService.register(instanceId, description, caps, claudonySessionId, ro);
 
+    @Transactional
+    public RegisterResponse register(String instanceId, String description, List<String> capabilities,
+                              String claudonySessionId, Boolean readOnly) {
+        List<String> caps     = capabilities != null ? capabilities : List.of();
+        boolean      ro       = readOnly != null && readOnly;
+        Instance     instance = instanceService.register(instanceId, description, caps, claudonySessionId, ro);
         List<ChannelInfo> channels = channelService.listAll().stream()
                                                    .map(ch -> new ChannelInfo(ch.name(), ch.description(), ch.semantic().name()))
                                                    .toList();
-
         List<InstanceInfo> onlineInstances = buildInstanceInfoList(instanceService.listAll());
-
         return new RegisterResponse(instance.instanceId(), channels, onlineInstances);
     }
 
-    /** Backward-compat overload — no read_only param. */
+    public List<InstanceInfo> listInstances(String capability) {
+        List<Instance> instances = (capability != null && !capability.isBlank())
+                                   ? instanceService.findByCapability(capability)
+                                   : instanceService.listAll();
+        return buildInstanceInfoList(instances);
+    }
+
     @Transactional
-    RegisterResponse register(String instanceId, String description, List<String> capabilities,
-            String claudonySessionId) {
-        return register(instanceId, description, capabilities, claudonySessionId, null);
+    public InstanceInfo getInstance(String instanceId) {
+        Instance instance = instanceService.findByInstanceId(instanceId)
+                                           .orElseThrow(() -> new IllegalArgumentException("Instance not found: " + instanceId));
+        return buildInstanceInfoList(java.util.List.of(instance)).get(0);
+    }
+
+    public DeregisterResult deregisterInstance(String instanceId) {
+        Instance instance = instanceStore.findByInstanceId(instanceId).orElse(null);
+        if (instance == null) {
+            return new DeregisterResult(instanceId, false, "Instance not found: " + instanceId);
+        }
+        instanceStore.delete(instance.id());
+        return new DeregisterResult(instanceId, true, "Instance '" + instanceId + "' deregistered");
     }
 
     /**
@@ -242,28 +246,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
         List<InstanceInfo> onlineInstances = buildInstanceInfoList(instanceService.listAll());
         return new RegisterResponse(instance.instanceId(), channels, onlineInstances);
-    }
-
-    @Tool(name = "list_instances", description = "List registered agent instances. "
-            + "Optionally filter by capability tag.")
-    public List<InstanceInfo> listInstances(
-            @ToolArg(name = "capability", description = "Filter by capability tag (optional)", required = false) String capability) {
-        List<Instance> instances = (capability != null && !capability.isBlank())
-                ? instanceService.findByCapability(capability)
-                : instanceService.listAll();
-        return buildInstanceInfoList(instances);
-    }
-
-    @Tool(name = "get_instance", description = "Look up a registered instance by its ID. "
-            + "Returns full instance details including capabilities and status. "
-            + "Throws an error if the instance is not found.")
-    @Transactional
-    public InstanceInfo getInstance(
-            @ToolArg(name = "instance_id", description = "Instance ID to look up") String instanceId) {
-        Instance instance = instanceService.findByInstanceId(instanceId)
-                                                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Instance not found: " + instanceId));
-        return buildInstanceInfoList(java.util.List.of(instance)).get(0);
     }
 
     // ---------------------------------------------------------------------------
@@ -1748,21 +1730,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return new ClearChannelResult(ch.name(), (int) deleted, true);
     }
 
-    @Tool(name = "deregister_instance", description = "Force-remove an agent instance and its capability tags from the registry. "
-            + "Use for misbehaving agents that won't self-deregister. Does not delete past messages.")
-    @Transactional
-    public DeregisterResult deregisterInstance(
-            @ToolArg(name = "instance_id", description = "Human-readable instance ID of the agent to remove") String instanceId) {
-        Instance instance = instanceStore.findByInstanceId(instanceId).orElse(null);
-        if (instance == null) {
-            return new DeregisterResult(instanceId, false,
-                    "Instance not found: " + instanceId);
-        }
-        instanceStore.delete(instance.id());
-        return new DeregisterResult(instanceId, true,
-                "Instance '" + instanceId + "' deregistered");
-    }
-
     @Tool(name = "get_channel_digest", description = "Return a structured human-readable summary of a channel's recent activity. "
             + "Useful for human dashboards to understand state before intervening. "
             + "Includes message count, sender/type breakdowns, artefact refs, recent messages (truncated), and timestamps.")
@@ -2370,30 +2337,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
-
-    @Tool(name = "set_presence", description = "Report presence status (heartbeat). Accepted statuses: ONLINE, AVAILABLE, BUSY. AWAY and OFFLINE are computed from heartbeat absence.")
-    public Presence setPresence(
-            @ToolArg(name = "status", description = "Presence status: ONLINE, AVAILABLE, or BUSY") String status,
-            @ToolArg(name = "status_message", description = "Optional status message", required = false) String statusMessage,
-            @ToolArg(name = "member_id", description = "Member ID. Defaults to caller identity.", required = false) String memberId) {
-        String member = memberId != null ? memberId : currentPrincipal.actorId();
-        PresenceStatus ps = PresenceStatus.valueOf(status.toUpperCase());
-        presenceService.heartbeat(member, ps, statusMessage);
-        return presenceService.getPresence(member);
-    }
-
-    @Tool(name = "get_presence", description = "Get presence status for a member")
-    public Presence getPresenceTool(
-            @ToolArg(name = "member_id", description = "Member ID to query") String memberId) {
-        return presenceService.getPresence(memberId);
-    }
-
-    @Tool(name = "get_channel_presence", description = "Get presence status for all members of a channel")
-    public java.util.List<Presence> getChannelPresence(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
-        Channel ch = resolveChannel(channel);
-        return presenceService.getChannelPresence(ch.id());
-    }
 
     @Tool(name = "join_channel", description = "Join a channel as a member. Creates or updates membership with the specified role.")
     @jakarta.transaction.Transactional

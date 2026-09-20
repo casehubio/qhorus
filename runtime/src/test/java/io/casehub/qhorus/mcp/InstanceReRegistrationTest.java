@@ -1,22 +1,21 @@
 package io.casehub.qhorus.mcp;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.util.List;
-
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.qhorus.api.instance.Instance;
-import io.casehub.qhorus.runtime.instance.CapabilityEntity;
-import io.casehub.qhorus.runtime.instance.InstanceEntity;
-import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.instance.InstanceManager;
+import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests for instance re-registration behaviour.
@@ -39,6 +38,9 @@ class InstanceReRegistrationTest {
 
     @Inject
     InstanceService instanceService;
+    @Inject
+    InstanceManager instanceManager;
+
 
     /**
      * IMPORTANT: re-registering updates the claudonySessionId field.
@@ -48,10 +50,10 @@ class InstanceReRegistrationTest {
     @Test
     @TestTransaction
     void reRegisterUpdatesClaudonySessionIdFromNullToValue() {
-        tools.register("rereg-session-agent", "Agent", List.of(), null, null);
+        instanceManager.register("rereg-session-agent", "Agent", List.of(), false);
 
         // Re-register with a new session ID
-        tools.register("rereg-session-agent", "Agent", List.of(), "new-session-123", null);
+        instanceService.register("rereg-session-agent", "Agent", List.of(), "new-session-123", false);
 
         Instance inst = instanceService.findByInstanceId("rereg-session-agent").orElseThrow();
         assertEquals("new-session-123", inst.claudonySessionId(),
@@ -69,10 +71,10 @@ class InstanceReRegistrationTest {
     @Test
     @TestTransaction
     void reRegisterClearsClaudonySessionIdWhenOmitted() {
-        tools.register("rereg-clear-session", "Agent", List.of(), "existing-session", null);
+        instanceService.register("rereg-clear-session", "Agent", List.of(), "existing-session", false);
 
         // Re-register without claudonySessionId
-        tools.register("rereg-clear-session", "Agent", List.of(), null, null);
+        instanceService.register("rereg-clear-session", "Agent", List.of(), null, false);
 
         Instance inst = instanceService.findByInstanceId("rereg-clear-session").orElseThrow();
         assertNull(inst.claudonySessionId(),
@@ -91,10 +93,10 @@ class InstanceReRegistrationTest {
     @TestTransaction
     void reRegisterAtomicallyReplacesCapabilityTagsNoStaleTags() {
         // Register with tags A, B, C
-        tools.register("rereg-caps", "Agent", List.of("tag-a", "tag-b", "tag-c"), null, null);
+        instanceManager.register("rereg-caps", "Agent", List.of("tag-a", "tag-b", "tag-c"), false);
 
         // Re-register with tags D, E — A, B, C must be gone; D, E must be present
-        tools.register("rereg-caps", "Agent", List.of("tag-d", "tag-e"), null, null);
+        instanceManager.register("rereg-caps", "Agent", List.of("tag-d", "tag-e"), false);
 
         assertTrue(instanceService.findByCapability("tag-a").isEmpty(),
                 "stale tag 'tag-a' must be removed on re-registration");
@@ -122,10 +124,10 @@ class InstanceReRegistrationTest {
     @Test
     @TestTransaction
     void reRegisterWithEmptyCapabilityListRemovesAllPriorTags() {
-        tools.register("rereg-drop-all-caps", "Agent", List.of("java", "python"), null, null);
+        instanceManager.register("rereg-drop-all-caps", "Agent", List.of("java", "python"), false);
 
         // Re-register with no tags
-        tools.register("rereg-drop-all-caps", "Agent", List.of(), null, null);
+        instanceManager.register("rereg-drop-all-caps", "Agent", List.of(), false);
 
         assertTrue(instanceService.findByCapability("java").isEmpty(),
                 "all prior capability tags must be removed when re-registering with empty list");
@@ -144,8 +146,8 @@ class InstanceReRegistrationTest {
     @Test
     @TestTransaction
     void reRegisterWithSameCapabilityListResultsInSameTagCount() {
-        tools.register("rereg-same-caps", "Agent", List.of("java", "quarkus"), null, null);
-        tools.register("rereg-same-caps", "Agent", List.of("java", "quarkus"), null, null);
+        instanceManager.register("rereg-same-caps", "Agent", List.of("java", "quarkus"), false);
+        instanceManager.register("rereg-same-caps", "Agent", List.of("java", "quarkus"), false);
 
         Instance inst     = instanceService.findByInstanceId("rereg-same-caps").orElseThrow();
         long     capCount = em.createQuery("SELECT COUNT(e) FROM Capability e WHERE e.instanceId = :p1", Long.class).setParameter("p1", inst.id()).getSingleResult();
@@ -162,10 +164,10 @@ class InstanceReRegistrationTest {
     @Test
     @TestTransaction
     void twoAgentsWithSameCapabilityTagAreBothFindable() {
-        tools.register("multi-cap-a", "Agent A", List.of("shared-skill"), null, null);
-        tools.register("multi-cap-b", "Agent B", List.of("shared-skill"), null, null);
+        instanceManager.register("multi-cap-a", "Agent A", List.of("shared-skill"), false);
+        instanceManager.register("multi-cap-b", "Agent B", List.of("shared-skill"), false);
 
-        List<InstanceInfo> found = tools.listInstances("shared-skill");
+        List<InstanceInfo> found = instanceManager.findInfoByCapability("shared-skill");
 
         assertEquals(2, found.size(),
                 "both agents with 'shared-skill' must be returned by listInstances");
@@ -191,7 +193,7 @@ class InstanceReRegistrationTest {
         assertEquals("stale", stale.status(), "instance should be stale after markStaleOlderThan(0)");
 
         // Agent re-registers — status must return to online
-        tools.register("rereg-stale-recovery", "Agent reconnected", List.of("recovered"), null, null);
+        instanceManager.register("rereg-stale-recovery", "Agent reconnected", List.of("recovered"), false);
 
         Instance recovered = instanceService.findByInstanceId("rereg-stale-recovery").orElseThrow();
         assertEquals("online", recovered.status(),

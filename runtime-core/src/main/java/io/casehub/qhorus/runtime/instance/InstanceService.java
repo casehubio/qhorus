@@ -1,16 +1,17 @@
 package io.casehub.qhorus.runtime.instance;
 
+import io.casehub.qhorus.api.instance.Instance;
+import io.casehub.qhorus.api.instance.InstanceInfo;
+import io.casehub.qhorus.api.instance.InstanceManager;
+import io.casehub.qhorus.api.store.InstanceStore;
+import io.casehub.qhorus.api.store.query.InstanceQuery;
+import jakarta.transaction.Transactional;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.transaction.Transactional;
-
-import io.casehub.qhorus.api.instance.Instance;
-import io.casehub.qhorus.api.store.InstanceStore;
-import io.casehub.qhorus.api.store.query.InstanceQuery;
-
-public class InstanceService {
+public class InstanceService implements InstanceManager {
 
     private final InstanceStore instanceStore;
 
@@ -101,4 +102,44 @@ public class InstanceService {
         instanceStore.findByInstanceId(instanceId)
                 .ifPresent(i -> instanceStore.put(i.toBuilder().status("offline").build()));
     }
+
+    @Override
+    public Instance register(String instanceId, String description,
+                             List<String> capabilities, boolean readOnly) {
+        return register(instanceId, description, capabilities, null, readOnly);
+    }
+
+    @Override
+    public List<InstanceInfo> listInfo() {
+        return toInfoList(listAll());
+    }
+
+    @Override
+    public List<InstanceInfo> findInfoByCapability(String capability) {
+        return toInfoList(findByCapability(capability));
+    }
+
+    @Override
+    public InstanceInfo findInfo(String instanceId) {
+        Instance inst = findByInstanceId(instanceId)
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                        "Instance not found: " + instanceId));
+        return toInfo(inst);
+    }
+
+    private List<InstanceInfo> toInfoList(List<Instance> instances) {
+        return instances.stream().map(this::toInfo).toList();
+    }
+
+    private InstanceInfo toInfo(Instance i) {
+        List<String> caps = instanceStore.findCapabilities(i.id());
+        return new InstanceInfo(
+                i.instanceId(),
+                i.description(),
+                i.status(),
+                caps,
+                i.lastSeen() != null ? i.lastSeen().toString() : null,
+                i.readOnly());
+    }
+
 }
