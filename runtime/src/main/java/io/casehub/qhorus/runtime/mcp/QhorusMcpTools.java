@@ -1459,9 +1459,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         }
     }
 
-    @Tool(name = "list_pending_commitments", description = "List non-terminal commitments across all channels. "
-            + "Returns oldest first. Use cancel_wait to unblock a specific wait, "
-            + "or respond_to_approval to answer an approval request.")
     @Transactional
     public List<CommitmentDetail> listPendingCommitments() {
         return commitmentStore.findAllOpen().stream()
@@ -1473,10 +1470,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Commitment observability
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "list_my_commitments", description = "List non-terminal commitments on a channel involving this agent. "
-            + "role=obligor: obligations you owe (must respond or decline). "
-            + "role=requester: obligations others owe you. "
-            + "role=both (default): all non-terminal commitments involving you.")
     @Transactional
     public List<CommitmentDetail> listMyCommitments(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -1498,8 +1491,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return results.stream().map(CommitmentDetail::from).toList();
     }
 
-    @Tool(name = "get_commitment", description = "Get the current state of a specific commitment by correlationId. "
-            + "Shows full lifecycle: state, acknowledgedAt, resolvedAt, delegatedTo, parentCommitmentId.")
     @Transactional
     public CommitmentDetail getCommitment(
             @ToolArg(name = "correlation_id", description = "The correlation_id of the QUERY or COMMAND") String correlationId) {
@@ -2206,10 +2197,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         }
     }
 
-    @Tool(name = "register_watchdog", description = "Register a watchdog condition that fires alert events to a notification channel "
-                                                    + "when the condition is met. Condition types: BARRIER_STUCK, APPROVAL_PENDING, AGENT_STALE, CHANNEL_IDLE, QUEUE_DEPTH, "
-                                                    + "CONTEXT_PRESSURE, LOOP_DETECTED, OBLIGATION_FAN_OUT, CONVERSATION_STALL, ECHO_CHAMBER, DELIVERY_LAG. "
-                                                    + "Requires casehub.qhorus.watchdog.enabled=true.")
     @Transactional
     public WatchdogSummary registerWatchdog(
             @ToolArg(name = "condition_type", description = "BARRIER_STUCK | APPROVAL_PENDING | AGENT_STALE | CHANNEL_IDLE | QUEUE_DEPTH | CONTEXT_PRESSURE | LOOP_DETECTED | OBLIGATION_FAN_OUT | CONVERSATION_STALL | ECHO_CHAMBER | DELIVERY_LAG") String conditionType,
@@ -2240,8 +2227,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toWatchdogSummary(w);
     }
 
-    @Tool(name = "list_watchdogs", description = "List all registered watchdog conditions. "
-            + "Requires casehub.qhorus.watchdog.enabled=true.")
     @Transactional
     public List<WatchdogSummary> listWatchdogs() {
         requireWatchdogEnabled();
@@ -2250,8 +2235,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .toList();
     }
 
-    @Tool(name = "delete_watchdog", description = "Remove a registered watchdog by its ID. "
-            + "Requires casehub.qhorus.watchdog.enabled=true.")
     @Transactional
     public DeleteWatchdogResult deleteWatchdog(
             @ToolArg(name = "watchdog_id", description = "UUID of the watchdog to delete") String watchdogId) {
