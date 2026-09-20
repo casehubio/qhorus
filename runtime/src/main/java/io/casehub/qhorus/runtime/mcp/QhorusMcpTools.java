@@ -535,8 +535,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
-    @Tool(name = "attest", description = "Record a peer attestation (ENDORSED or CHALLENGED) "
-                                         + "on a COMMAND or HANDOFF ledger entry. Self-attestation is rejected.")
     @Transactional
     public Map<String, Object> attest(
             @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
@@ -552,7 +550,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                       "entry_id", id, "verdict", v.name(), "attestor_id", attestorId);
     }
 
-    @Tool(name = "list_attestations", description = "List all attestations (policy and peer) on a ledger entry.")
+
     public List<Map<String, Object>> listAttestations(
             @ToolArg(name = "entry_id", description = "UUID of the ledger entry") String entryId) {
         UUID   id        = UUID.fromString(entryId);
@@ -572,8 +570,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                                     .toList();
     }
 
-    @Tool(name = "request_peer_review", description = "Send peer review QUERYs to reviewers for a COMMAND/HANDOFF entry. "
-                                                      + "Reviewers resolved from explicit list, channel config, capability routing, or CDI event.")
     @Transactional
     public Map<String, Object> requestPeerReview(
             @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
@@ -1809,12 +1805,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 null, null, limit);
     }
 
-    @Tool(name = "list_ledger_entries", description = "Query the immutable audit ledger for a channel. "
-            + "Returns all ledger entries in chronological order — every speech act, every tool invocation. "
-            + "Use type_filter to narrow by message type: 'COMMAND,DONE,FAILURE' for obligation lifecycle, "
-            + "'EVENT' for telemetry only, omit for the full channel history. "
-            + "Supports optional filters for sender, since (ISO-8601), correlation_id, sort (asc/desc), "
-            + "and cursor-based pagination via after_id.")
     @Transactional
     public List<Map<String, Object>> listLedgerEntries(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -1866,10 +1856,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return entries.stream().map(this::toLedgerEntryMap).toList();
     }
 
-    @Tool(name = "get_obligation_chain", description = "Return computed enrichment for an obligation identified by correlation_id: "
-            + "initiator, participants, handoff count, elapsed time, resolution, and live commitment state. "
-            + "For raw ledger entries use list_ledger_entries(correlation_id=X). "
-            + "Returns null fields (not an error) for unknown correlation IDs.")
     @Transactional
     public ObligationChainSummary getObligationChain(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -1922,12 +1908,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 elapsedSeconds, resolution, participants, handoffCount, commitment);
     }
 
-    @Tool(name = "get_causal_chain", description = "Compliance and audit tool. Takes a ledger_entry_id (UUID from list_ledger_entries) "
-            + "and walks causedByEntryId links upward to the root. "
-            + "Returns the chain ordered oldest-first. "
-            + "When channel is omitted, walks across channel boundaries (cross-channel attribution). "
-            + "Cross-tenant delegation traces stop at the tenant boundary. "
-            + "Returns empty list for unknown entry IDs (never throws on missing chain).")
     @Transactional
     public List<CausalChainEntry> getCausalChain(
             @ToolArg(name = "channel", description = "Channel name or UUID. When omitted, walks across channel boundaries.", required = false) String channel,
@@ -1983,11 +1963,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .toList();
     }
 
-    @Tool(name = "get_causal_graph", description = "Build a cross-channel causal graph for a correlation_id. "
-            + "Returns nodes (ledger entries with channel, type, actor, depth) and edges (causedByEntryId links with elapsed time). "
-            + "Edges are derived from causedByEntryId links — for complete cross-channel graphs, agents must pass "
-            + "caused_by_entry_id when sending messages that continue delegations from other channels. "
-            + "Cross-tenant delegation traces stop at the tenant boundary.")
     @Transactional
     public io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph getCausalGraph(
             @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
@@ -1997,9 +1972,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
     }
 
-    @Tool(name = "render_causal_graph", description = "Render a correlation ID's causal graph as readable indented text. "
-                                                      + "Shows cross-channel attribution tree with message types, actors, content snippets, depth, and timing. "
-                                                      + "Designed for LLM consumption — structured text is easier to reason about than raw JSON nodes+edges.")
     @Transactional
     public String renderCausalGraph(
             @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
@@ -2010,10 +1982,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
-    @Tool(name = "list_stalled_obligations", description = "Return COMMAND entries with no terminal sibling "
-            + "(DONE / FAILURE / DECLINE / HANDOFF) sharing the same correlation_id, "
-            + "whose timestamp is older than the given threshold. "
-            + "Useful for detecting obligations that an obligor has not responded to.")
     @Transactional
     public List<StalledObligation> listStalledObligations(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -2040,10 +2008,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .toList();
     }
 
-    @Tool(name = "get_obligation_stats", description = "Return obligation outcome statistics for a channel: "
-            + "total commands, fulfilled, failed, declined, delegated, still open, stalled, and fulfillment rate. "
-            + "'Still open' = commands with no terminal outcome. "
-            + "'Stalled' = subset of still-open whose timestamp is older than 30 seconds.")
     @Transactional
     public ObligationStats getObligationStats(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
@@ -2066,10 +2030,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 (int) delegated, (int) stillOpen, (int) stalled, rate);
     }
 
-    @Tool(name = "get_telemetry_summary", description = "Aggregate EVENT telemetry for a channel, grouped by tool name. "
-            + "Returns total event count, per-tool counts with average duration and total tokens, "
-            + "and channel-wide totals. EVENT entries with no tool_name are counted under a null key. "
-            + "Optional since parameter (ISO-8601) to restrict the time window.")
     @Transactional
     public TelemetrySummary getTelemetrySummary(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -2117,10 +2077,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return new TelemetrySummary(events.size(), byTool, totalTokens, totalDuration);
     }
 
-    @Tool(name = "get_channel_timeline", description = "Return all messages for a channel in chronological order, "
-            + "interleaving regular messages and EVENT telemetry entries. "
-            + "Each entry has a 'type' discriminator: 'MESSAGE' or 'EVENT'. "
-            + "Supports cursor-based pagination via after_id (message.id() cursor).")
     @Transactional
     public List<Map<String, Object>> getChannelTimeline(
             @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
@@ -2150,13 +2106,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .toList();
     }
 
-    @Tool(name = "get_obligation_activity", description = "Return all ledger entries across ALL channels that share a given correlation_id, "
-            + "ordered chronologically. Each entry includes a 'channel' field showing which channel it was sent on. "
-            + "Use this to reconstruct the full cross-channel picture of an obligation: the COMMAND on work, "
-            + "the tool-call EVENTs on observe (when agents pass the correlationId on EVENT messages), "
-            + "any oversight escalation, and the terminal DONE/FAILURE/DECLINE. "
-            + "Tip: agents should pass correlation_id when sending EVENT messages to the observe channel "
-            + "so those entries appear here alongside the obligation they relate to.")
     @Transactional
     public List<Map<String, Object>> getObligationActivity(
             @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to trace across channels") String correlationId,

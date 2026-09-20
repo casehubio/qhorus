@@ -4,11 +4,13 @@ import io.casehub.qhorus.api.spi.PeerReviewRequestedEvent;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 
+import io.casehub.qhorus.api.audit.ReviewerProvider;
+
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public class ReviewerResolver {
+public class ReviewerResolver implements ReviewerProvider {
 
     ChannelStore channelStore;
     InstanceService instanceService;

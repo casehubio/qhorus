@@ -10,7 +10,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
-import io.quarkiverse.mcp.server.ToolCallException;
+
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
@@ -132,7 +132,7 @@ class ListLedgerEntriesTest {
 
     @Test
     void listLedgerEntries_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.listLedgerEntries("no-such-channel", null, null, null, null, null, null, 20));
     }
 
@@ -254,7 +254,7 @@ class ListLedgerEntriesTest {
     void listLedgerEntries_invalidSinceTimestamp_throws() {
         setup("lle-since-bad-1", "agent-a");
 
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.listLedgerEntries("lle-since-bad-1", null, null, "not-a-date", null, null, null, 20));
     }
 

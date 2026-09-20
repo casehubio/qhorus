@@ -10,7 +10,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
-import io.quarkiverse.mcp.server.ToolCallException;
+
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
@@ -146,7 +146,7 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_invalidSort_throws() {
         setup("lle-sort-bad-1", "agent-a");
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.listLedgerEntries("lle-sort-bad-1", null, null, null, null, null, "sideways", 20));
     }
 
@@ -217,7 +217,7 @@ class LedgerQueryToolsTest {
 
     @Test
     void getObligationChain_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getObligationChain("no-such-channel", "corr-x"));
     }
 
@@ -302,13 +302,13 @@ class LedgerQueryToolsTest {
     @Test
     void getCausalChain_invalidUuid_throws() {
         setup("gcc-5", "agent-a");
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getCausalChain("gcc-5", "not-a-uuid"));
     }
 
     @Test
     void getCausalChain_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getCausalChain("no-channel", "00000000-0000-0000-0000-000000000000"));
     }
 
@@ -385,7 +385,7 @@ class LedgerQueryToolsTest {
 
     @Test
     void listStalledObligations_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.listStalledObligations("no-channel", null));
     }
 
@@ -467,7 +467,7 @@ class LedgerQueryToolsTest {
 
     @Test
     void getObligationStats_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getObligationStats("no-channel"));
     }
 
@@ -537,7 +537,7 @@ class LedgerQueryToolsTest {
 
     @Test
     void getTelemetrySummary_unknownChannel_throws() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getTelemetrySummary("no-channel", null));
     }
 

@@ -10,7 +10,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorType;
-import io.quarkiverse.mcp.server.ToolCallException;
+
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
@@ -171,7 +171,7 @@ class ChannelTimelineTest {
 
     @Test
     void timeline_unknownChannel_throwsOrReturnsError() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> tools.getChannelTimeline("no-such-channel", null, 50));
     }
 
