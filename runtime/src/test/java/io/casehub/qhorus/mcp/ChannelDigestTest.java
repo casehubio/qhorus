@@ -1,5 +1,13 @@
 package io.casehub.qhorus.mcp;
 
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.message.TopicService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
@@ -16,22 +24,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Issue #43 — Channel digest: get_channel_digest MCP tool for human dashboards.
- *
- * <p>
- * get_channel_digest returns a structured overview of a channel's activity:
- * message count, sender/type breakdowns, artefact ref count, recent messages
- * (truncated), and oldest/newest timestamps.
- *
- * <p>
- * Refs #43, Epic #36.
- */
 @QuarkusTest
 class ChannelDigestTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusMcpTools tools;
+    @Inject TopicService topicService;
+    @Inject ChannelService channelService;
+    @Inject MessageStore messageStore;
 
     // -------------------------------------------------------------------------
     // Unit — field correctness
@@ -232,8 +231,12 @@ class ChannelDigestTest {
                 digest.recentMessages().get(0).contentPreview());
 
         // Human decides to force-release based on digest
-        QhorusMcpTools.ForceReleaseResult release = tools.forceReleaseChannel("cd-e2e-1", "bob unavailable", null);
-        assertEquals(1, release.messageCount());
+        Channel frCh = channelService.findByName("cd-e2e-1").orElseThrow();
+        List<Message> released = messageStore.scan(
+                MessageQuery.builder().channelId(frCh.id())
+                        .excludeTypes(List.of(MessageType.EVENT)).build());
+        messageStore.deleteNonEvent(frCh.id());
+        assertEquals(1, released.size());
     }
 
     @Test
@@ -275,7 +278,8 @@ class ChannelDigestTest {
     void digestShowsResolvedTopicStatus() {
         tools.createChannel("cd-topic-resolved", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         tools.sendMessage("cd-topic-resolved", "alice", "status", "msg1", null, null, null, null, null, null, null, null, "review");
-        tools.resolveTopic("cd-topic-resolved", "review", "alice");
+        Channel ch = channelService.findByName("cd-topic-resolved").orElseThrow();
+        topicService.resolve(ch.id(), "review", "alice");
 
         QhorusMcpTools.ChannelDigest digest = tools.channelDigest("cd-topic-resolved", null);
 

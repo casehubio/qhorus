@@ -119,10 +119,12 @@ class SendMessageFanOutTest {
 
     @Test
     void listBackends_returnsQhorusInternal() {
-        var result = tools.listBackends("fanout-1");
+        var ch = tools.listChannels().stream()
+                .filter(c -> "fanout-1".equals(c.name())).findFirst().orElseThrow();
+        var result = gateway.listBackends(ch.channelId());
         assertEquals(1, result.size());
         assertEquals("qhorus-internal", result.get(0).backendId());
-        assertEquals("agent", result.get(0).backendType());
+        assertEquals("agent", result.get(0).actorType().name().toLowerCase());
     }
 
     @Test
@@ -133,9 +135,9 @@ class SendMessageFanOutTest {
         RecordingBackend obs = new RecordingBackend("to-remove", ActorType.HUMAN);
         gateway.registerBackend(ch.channelId(), obs, "human_observer");
 
-        tools.deregisterBackend("fanout-1", "to-remove");
+        gateway.deregisterBackend(ch.channelId(), "to-remove");
 
-        var backends = tools.listBackends("fanout-1");
+        var backends = gateway.listBackends(ch.channelId());
         assertEquals(1, backends.size());
         assertEquals("qhorus-internal", backends.get(0).backendId());
     }

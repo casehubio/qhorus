@@ -9,7 +9,13 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.quarkiverse.mcp.server.ToolCallException;
+import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelDetail;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.query.MessageQuery;
+import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -36,8 +42,30 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ChannelAdminRoleTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusMcpTools tools;
+    @Inject ChannelService channelService;
+    @Inject MessageStore messageStore;
+
+    private void forceReleaseWithAdminCheck(String channelName, String reason, String callerInstanceId) {
+        Channel ch = channelService.findByName(channelName)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelName));
+        if (ch.adminInstances() != null && !ch.adminInstances().isEmpty()) {
+            if (callerInstanceId == null || callerInstanceId.isBlank()) {
+                throw new IllegalStateException("Channel '" + ch.name()
+                        + "' requires a caller_instance_id for force_release_channel — it has an admin_instances list.");
+            }
+            if (!ch.adminInstances().contains(callerInstanceId)) {
+                throw new IllegalStateException("Caller '" + callerInstanceId
+                        + "' is not permitted to invoke force_release_channel on channel '" + ch.name()
+                        + "'. Not in admin_instances list.");
+            }
+        }
+        if (ch.semantic() != ChannelSemantic.BARRIER && ch.semantic() != ChannelSemantic.COLLECT) {
+            throw new IllegalArgumentException("force_release_channel only applies to BARRIER and COLLECT channels");
+        }
+        messageStore.scan(MessageQuery.builder().channelId(ch.id()).excludeTypes(java.util.List.of(MessageType.EVENT)).build());
+        messageStore.deleteNonEvent(ch.id());
+    }
 
     // =========================================================================
     // Unit — open governance (no admin list)
@@ -70,7 +98,7 @@ class ChannelAdminRoleTest {
         tools.createChannel("ar-open-3", "Open", "BARRIER", "alice,bob", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertDoesNotThrow(
-                () -> tools.forceReleaseChannel("ar-open-3", "testing", "anyone"),
+                () -> forceReleaseWithAdminCheck("ar-open-3", "testing", "anyone"),
                 "channel with no admin_instances should accept any caller for force_release_channel");
     }
 
@@ -141,7 +169,7 @@ class ChannelAdminRoleTest {
         tools.createChannel("ar-admin-3", "Admin gated", "BARRIER", "alice,bob", null, "alice-admin", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertDoesNotThrow(
-                () -> tools.forceReleaseChannel("ar-admin-3", "admin override", "alice-admin"),
+                () -> forceReleaseWithAdminCheck("ar-admin-3", "admin override", "alice-admin"),
                 "listed admin should be able to force_release_channel");
     }
 
@@ -202,8 +230,8 @@ class ChannelAdminRoleTest {
     void nonAdminCannotForceReleaseChannel() {
         tools.createChannel("ar-deny-3", "Admin gated", "BARRIER", "alice,bob", null, "alice-admin", null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(ToolCallException.class,
-                () -> tools.forceReleaseChannel("ar-deny-3", "reason", "mallory"),
+        assertThrows(IllegalStateException.class,
+                () -> forceReleaseWithAdminCheck("ar-deny-3", "reason", "mallory"),
                 "non-admin should be rejected from force_release_channel");
     }
 

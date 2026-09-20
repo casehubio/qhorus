@@ -8,6 +8,7 @@ import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.Topic;
+import io.casehub.qhorus.api.channel.TopicManager;
 import io.casehub.platform.api.identity.ActorType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,7 +55,7 @@ class TopicMoveTest {
         addMessage(srcChannel, "bugs");
         addMessage(srcChannel, "bugs");
 
-        TopicService.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
+        TopicManager.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
 
         assertThat(result.messagesUpdated()).isEqualTo(2);
         assertThat(result.sourceChannelId()).isEqualTo(srcChannel);
@@ -69,7 +70,7 @@ class TopicMoveTest {
         addTopic(tgtChannel, "bugs");
         addMessage(srcChannel, "bugs");
 
-        TopicService.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
+        TopicManager.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
 
         assertThat(result.messagesUpdated()).isEqualTo(1);
         assertThat(topicStore.find(srcChannel, "bugs")).isEmpty();
@@ -103,7 +104,7 @@ class TopicMoveTest {
                 .actorType(ActorType.AGENT).content("cmd").topic("bugs")
                 .commitmentId(saved.id()).build());
 
-        TopicService.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
+        TopicManager.MoveResult result = topicService.move(srcChannel, "bugs", tgtChannel, "admin");
         assertThat(result.messagesUpdated()).isEqualTo(1);
     }
 
@@ -127,7 +128,7 @@ class TopicMoveTest {
     void moveNoMessagesReturnsZero() {
         addTopic(srcChannel, "empty-topic");
 
-        TopicService.MoveResult result = topicService.move(srcChannel, "empty-topic", tgtChannel, "admin");
+        TopicManager.MoveResult result = topicService.move(srcChannel, "empty-topic", tgtChannel, "admin");
 
         assertThat(result.messagesUpdated()).isZero();
         assertThat(topicStore.find(srcChannel, "empty-topic")).isEmpty();

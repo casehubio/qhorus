@@ -66,10 +66,12 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
                 null, channelId, memberId, role, tenancyId, Instant.now(), maxId));
     }
 
+    @Override
     public List<ChannelMembership> listMembers(UUID channelId) {
         return membershipStore.findByChannel(channelId);
     }
 
+    @Override
     public void markRead(UUID channelId, String memberId, Long messageId) {
         var m = membershipStore.find(channelId, memberId);
         if (m.isPresent() && messageId != null) {

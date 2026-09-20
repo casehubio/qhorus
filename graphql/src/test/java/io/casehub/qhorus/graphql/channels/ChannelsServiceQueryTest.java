@@ -32,7 +32,14 @@ class ChannelsServiceQueryTest {
     void setUp() {
         channelReader = mock(ChannelReader.class);
         consumerMessaging = mock(ConsumerMessaging.class);
-        service = new ChannelsService(channelReader, consumerMessaging, mock(ChannelManager.class));
+        service = new ChannelsService(channelReader, consumerMessaging, mock(ChannelManager.class),
+                mock(io.casehub.qhorus.api.channel.TopicManager.class),
+                mock(io.casehub.qhorus.api.channel.MembershipManager.class),
+                mock(io.casehub.qhorus.api.channel.UnreadCountProvider.class),
+                mock(io.casehub.qhorus.api.channel.SpaceManager.class),
+                mock(io.casehub.qhorus.api.gateway.BackendRegistry.class),
+                mock(io.casehub.qhorus.api.store.MessageReader.class),
+                mock(io.casehub.platform.api.identity.CurrentPrincipal.class));
     }
 
     @Test

@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -24,7 +23,7 @@ class WatchdogDisabledTest {
     @Test
     @TestTransaction
     void registerWatchdogDisabledThrows() {
-        ToolCallException ex = assertThrows(ToolCallException.class,
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
                 () -> tools.registerWatchdog("BARRIER_STUCK", "test-channel", 300, null, null,
                         "alerts", "human", null));
         assertTrue(ex.getMessage().toLowerCase().contains("watchdog"),
@@ -34,13 +33,13 @@ class WatchdogDisabledTest {
     @Test
     @TestTransaction
     void listWatchdogsDisabledThrows() {
-        assertThrows(ToolCallException.class, () -> tools.listWatchdogs());
+        assertThrows(IllegalStateException.class, () -> tools.listWatchdogs());
     }
 
     @Test
     @TestTransaction
     void deleteWatchdogDisabledThrows() {
-        assertThrows(ToolCallException.class,
+        assertThrows(IllegalStateException.class,
                 () -> tools.deleteWatchdog(java.util.UUID.randomUUID().toString()));
     }
 }

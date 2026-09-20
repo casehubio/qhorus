@@ -20,7 +20,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-public class SpaceService {
+public class SpaceService implements io.casehub.qhorus.api.channel.SpaceManager {
 
     static final int MAX_DEPTH = 10;
 

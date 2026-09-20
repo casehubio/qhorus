@@ -25,7 +25,14 @@ class ChannelsServiceMutationTest {
     @BeforeEach
     void setUp() {
         channelManager = mock(ChannelManager.class);
-        service = new ChannelsService(mock(ChannelReader.class), mock(ConsumerMessaging.class), channelManager);
+        service = new ChannelsService(mock(ChannelReader.class), mock(ConsumerMessaging.class), channelManager,
+                mock(io.casehub.qhorus.api.channel.TopicManager.class),
+                mock(io.casehub.qhorus.api.channel.MembershipManager.class),
+                mock(io.casehub.qhorus.api.channel.UnreadCountProvider.class),
+                mock(io.casehub.qhorus.api.channel.SpaceManager.class),
+                mock(io.casehub.qhorus.api.gateway.BackendRegistry.class),
+                mock(io.casehub.qhorus.api.store.MessageReader.class),
+                mock(io.casehub.platform.api.identity.CurrentPrincipal.class));
     }
 
     @Test

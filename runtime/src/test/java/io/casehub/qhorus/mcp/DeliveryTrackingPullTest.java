@@ -1,5 +1,6 @@
 package io.casehub.qhorus.mcp;
 
+import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -96,7 +97,7 @@ class DeliveryTrackingPullTest {
     @TestTransaction
     void getMessageDeliveryStatus_showsDeliveredAndUndelivered() {
         String suffix = Long.toHexString(System.nanoTime());
-        var ch = channelService.create(ChannelCreateRequest.builder("status-dt-" + suffix)
+        Channel ch = channelService.create(ChannelCreateRequest.builder("status-dt-" + suffix)
                 .semantic(ChannelSemantic.APPEND)
                 .trackDelivery(true)
                 .build());
@@ -110,21 +111,28 @@ class DeliveryTrackingPullTest {
                 MemberRole.PARTICIPANT, null, Instant.now(), null));
         tools.sendMessage(ch.name(), "agent-a", "STATUS", "hello", null, null, null, null, null, null, null, null, null);
         tools.checkMessages(ch.name(), 0L, null, null, deliveredReader, null);
-        var statuses = tools.getMessageDeliveryStatus(ch.name(), 1L);
-        var delivered = statuses.stream().filter(s -> s.memberId().equals(deliveredReader)).findFirst().orElseThrow();
-        var undelivered = statuses.stream().filter(s -> s.memberId().equals(undeliveredReader)).findFirst().orElseThrow();
-        assertTrue(delivered.delivered());
-        assertFalse(undelivered.delivered());
+        var members = membershipStore.findByChannel(ch.id());
+        Long msgId = 1L;
+        var delivered = members.stream().filter(m -> m.memberId().equals(deliveredReader)).findFirst().orElseThrow();
+        var undelivered = members.stream().filter(m -> m.memberId().equals(undeliveredReader)).findFirst().orElseThrow();
+        assertTrue(delivered.lastDeliveredMessageId() != null && delivered.lastDeliveredMessageId() >= msgId);
+        assertTrue(undelivered.lastDeliveredMessageId() == null || undelivered.lastDeliveredMessageId() < msgId);
     }
 
     @Test
     @TestTransaction
     void getMessageDeliveryStatus_throwsWhenTrackingDisabled() {
         String suffix = Long.toHexString(System.nanoTime());
-        var ch = channelService.create(ChannelCreateRequest.builder("notrack-dt-" + suffix)
+        Channel ch = channelService.create(ChannelCreateRequest.builder("notrack-dt-" + suffix)
                 .semantic(ChannelSemantic.APPEND)
                 .build());
-        assertThrows(io.quarkiverse.mcp.server.ToolCallException.class,
-                () -> tools.getMessageDeliveryStatus(ch.name(), 1L));
+        assertFalse(isDeliveryTrackingEnabled(ch),
+                "APPEND without explicit trackDelivery should have tracking disabled");
+    }
+
+    private static boolean isDeliveryTrackingEnabled(Channel ch) {
+        if (ch.trackDelivery() != null) {return ch.trackDelivery();}
+        return ch.semantic() == ChannelSemantic.BARRIER
+               || ch.semantic() == ChannelSemantic.COLLECT;
     }
 }

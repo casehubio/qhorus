@@ -1,14 +1,14 @@
 package io.casehub.qhorus.runtime.message;
 
-import io.casehub.qhorus.api.message.Message;
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.TopicManager;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.message.TopicSummary;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
-import io.casehub.platform.api.identity.CurrentPrincipal;
 
 import java.time.Instant;
 import java.util.List;
@@ -56,6 +56,11 @@ public class TopicService implements TopicManager {
         return merge(channelId, sourceTopic, targetTopic, currentPrincipal.actorId());
     }
 
+    @Override
+    public TopicManager.MoveResult move(UUID sourceChannelId, String topicName, UUID targetChannelId) {
+        return move(sourceChannelId, topicName, targetChannelId, currentPrincipal.actorId());
+    }
+
 
     public Topic ensureExists(UUID channelId, String topicName, String tenancyId) {
         String name = normalise(topicName);
@@ -80,6 +85,7 @@ public class TopicService implements TopicManager {
         }).toList();
     }
 
+    @Override
     public Topic resolve(UUID channelId, String topicName, String actorId) {
         String name = normalise(topicName);
         if (DEFAULT_TOPIC.equalsIgnoreCase(name)) {
@@ -101,6 +107,7 @@ public class TopicService implements TopicManager {
         return topicStore.put(unresolved);
     }
 
+    @Override
     public TopicManager.RenameResult rename(UUID channelId, String oldName, String newName, String actorId) {
         String normalOld = normalise(oldName);
         String normalNew = normalise(newName);
@@ -118,6 +125,7 @@ public class TopicService implements TopicManager {
         return new TopicManager.RenameResult(normalOld, normalNew, messagesUpdated);
     }
 
+    @Override
     public TopicManager.MergeResult merge(UUID channelId, String sourceTopic, String targetTopic, String actorId) {
         String normalSource = normalise(sourceTopic);
         String normalTarget = normalise(targetTopic);
@@ -138,7 +146,7 @@ public class TopicService implements TopicManager {
         return new TopicManager.MergeResult(normalSource, normalTarget, messagesUpdated);
     }
 
-    public MoveResult move(UUID sourceChannelId, String topicName, UUID targetChannelId, String actorId) {
+    public TopicManager.MoveResult move(UUID sourceChannelId, String topicName, UUID targetChannelId, String actorId) {
         String normalTopic = normalise(topicName);
         if (DEFAULT_TOPIC.equalsIgnoreCase(normalTopic)) {
             throw new IllegalArgumentException("Cannot move the default topic 'general'");
@@ -150,19 +158,19 @@ public class TopicService implements TopicManager {
         var messages = messageStore.scan(
                 MessageQuery.builder().channelId(sourceChannelId).topic(normalTopic).build());
         var commitmentIds = messages.stream()
-                .map(Message::commitmentId)
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
+                                    .map(Message::commitmentId)
+                                    .filter(java.util.Objects::nonNull)
+                                    .distinct()
+                                    .toList();
         if (!commitmentIds.isEmpty()) {
             var commitments = commitmentStore.findByIds(commitmentIds);
             var openCommitments = commitments.stream()
-                    .filter(c -> c.state().isActive())
-                    .toList();
+                                             .filter(c -> c.state().isActive())
+                                             .toList();
             if (!openCommitments.isEmpty()) {
                 String blocking = openCommitments.stream()
-                        .map(io.casehub.qhorus.api.message.Commitment::correlationId)
-                        .collect(Collectors.joining(", "));
+                                                 .map(io.casehub.qhorus.api.message.Commitment::correlationId)
+                                                 .collect(Collectors.joining(", "));
                 throw new IllegalStateException(
                         "Cannot move topic — open commitments exist: " + blocking);
             }
@@ -175,7 +183,7 @@ public class TopicService implements TopicManager {
         }
         topicStore.delete(sourceChannelId, normalTopic);
 
-        return new MoveResult(normalTopic, sourceChannelId, targetChannelId, moved);
+        return new TopicManager.MoveResult(normalTopic, sourceChannelId, targetChannelId, moved);
     }
 
     static String normalise(String topicName) {
@@ -186,7 +194,5 @@ public class TopicService implements TopicManager {
         }
         return trimmed;
     }
-
-    public record MoveResult(String topicName, UUID sourceChannelId, UUID targetChannelId, int messagesUpdated) {}
 
 }
