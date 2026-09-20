@@ -1,17 +1,17 @@
 package io.casehub.qhorus.runtime.data;
 
+import io.casehub.qhorus.api.data.ArtefactClaim;
+import io.casehub.qhorus.api.data.DataManager;
+import io.casehub.qhorus.api.data.SharedData;
+import io.casehub.qhorus.api.store.DataStore;
+import io.casehub.qhorus.api.store.query.DataQuery;
+import jakarta.transaction.Transactional;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import jakarta.transaction.Transactional;
-
-import io.casehub.qhorus.api.data.ArtefactClaim;
-import io.casehub.qhorus.api.data.SharedData;
-import io.casehub.qhorus.api.store.DataStore;
-import io.casehub.qhorus.api.store.query.DataQuery;
-
-public class DataService {
+public class DataService implements DataManager {
 
     private final DataStore dataStore;
 
@@ -103,4 +103,16 @@ public class DataService {
                 .map(d -> dataStore.countClaims(artefactId) == 0)
                 .orElse(false);
     }
+
+    @Override
+    public int countClaims(UUID artefactId) {
+        return dataStore.countClaims(artefactId);
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID artefactId) {
+        dataStore.delete(artefactId);
+    }
+
 }

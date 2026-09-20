@@ -1536,9 +1536,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Shared data tools
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "share_artefact", description = "Store a large artefact by key. "
-            + "Supports chunked upload via append=true; last_chunk=true marks the artefact complete. "
-            + "Returns the artefact UUID for use in message artefact_refs.")
     @Transactional
     public ArtefactDetail shareArtefact(
             @ToolArg(name = "key", description = "Unique key for this artefact") String key,
@@ -1553,9 +1550,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
-    @Tool(name = "begin_artefact", description = "Begin a chunked artefact upload. "
-            + "Creates the artefact in incomplete state with the first chunk of content. "
-            + "Follow with append_chunk for additional chunks and finalize_artefact to complete.")
     @Transactional
     public ArtefactDetail beginArtefact(
             @ToolArg(name = "key", description = "Unique key for this artefact") String key,
@@ -1566,8 +1560,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
-    @Tool(name = "append_chunk", description = "Append a chunk to an in-progress artefact upload. "
-            + "The artefact must have been created with begin_artefact and not yet finalized.")
     @Transactional
     public ArtefactDetail appendChunk(
             @ToolArg(name = "key", description = "Artefact key (from begin_artefact)") String key,
@@ -1576,8 +1568,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
-    @Tool(name = "finalize_artefact", description = "Finalize a chunked artefact upload, optionally appending a last chunk. "
-            + "Marks the artefact complete. Returns the final artefact UUID for use in message artefact_refs.")
     @Transactional
     public ArtefactDetail finalizeArtefact(
             @ToolArg(name = "key", description = "Artefact key (from begin_artefact)") String key,
@@ -1587,7 +1577,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
-    @Tool(name = "get_artefact", description = "Retrieve a shared artefact by key or UUID. Exactly one of key or id must be provided.")
     public ArtefactDetail getArtefact(
             @ToolArg(name = "key", description = "Artefact key", required = false) String key,
             @ToolArg(name = "id", description = "Artefact UUID", required = false) String id) {
@@ -1604,7 +1593,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return toArtefactDetail(data);
     }
 
-    @Tool(name = "get_artefact_refs", description = "Get artefact references attached to a message.")
     public java.util.List<io.casehub.qhorus.api.message.ArtefactRef> getArtefactRefs(
             @ToolArg(name = "message_id", description = "Message ID") Long messageId) {
         io.casehub.qhorus.api.message.Message msg = messageStore.find(messageId)
@@ -1613,13 +1601,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
-    @Tool(name = "list_artefacts", description = "List all artefacts with metadata.")
     public List<ArtefactDetail> listArtefacts() {
         return dataService.listAll().stream().map(this::toArtefactDetail).toList();
     }
 
-    @Tool(name = "claim_artefact", description = "Manually claim an artefact reference. Prevents GC. "
-            + "Usually not needed — send_message with artefact_refs auto-claims for the sender.")
     @Transactional
     public String claimArtefact(
             @ToolArg(name = "artefact_id", description = "Artefact UUID") String artefactId,
@@ -1632,8 +1617,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         }
     }
 
-    @Tool(name = "release_artefact", description = "Manually release an artefact reference. GC-eligible when all claims released. "
-            + "Usually not needed — commitment resolution (RESPONSE/DONE/DECLINE/FAILURE) auto-releases.")
     @Transactional
     public String releaseArtefact(
             @ToolArg(name = "artefact_id", description = "Artefact UUID") String artefactId,
@@ -1651,9 +1634,6 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return dataService.isGcEligible(java.util.UUID.fromString(artefactId));
     }
 
-    @Tool(name = "revoke_artefact", description = "Force-delete a shared artefact and release all its claims. "
-            + "Use for data breaches, PII removal, or invalid data. "
-            + "get_shared_data will fail after revocation. Does not cascade to messages that reference this artefact.")
     @Transactional
     public RevokeResult revokeArtefact(
             @ToolArg(name = "artefact_id", description = "UUID of the artefact to revoke") String artefactId) {

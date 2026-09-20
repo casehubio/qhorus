@@ -3,6 +3,7 @@ package io.casehub.qhorus.graphql;
 import io.casehub.platform.api.mcp.McpDomain;
 import io.casehub.qhorus.api.spi.agents.AgentsApi;
 import io.casehub.qhorus.api.spi.channels.ChannelsApi;
+import io.casehub.qhorus.api.spi.data.DataApi;
 import io.casehub.qhorus.api.spi.governance.GovernanceApi;
 import io.casehub.qhorus.api.spi.messaging.MessagingApi;
 import io.casehub.qhorus.graphql.channels.ChannelsModelEnricher;
@@ -49,10 +50,15 @@ class DomainRegistrationTest {
         assertDomain(AgentsApi.class, "agents");
     }
 
+    @Test
+    void dataSpiAnnotationsPresent() {
+        assertDomain(DataApi.class, "data");
+    }
+
 
     @Test
     void noQhorusDomainRemains() {
-        Class<?>[] spiInterfaces = {ChannelsApi.class, GovernanceApi.class, MessagingApi.class, AgentsApi.class};
+        Class<?>[] spiInterfaces = {ChannelsApi.class, GovernanceApi.class, MessagingApi.class, AgentsApi.class, DataApi.class};
         for (Class<?> cls : spiInterfaces) {
             McpDomain ann = cls.getAnnotation(McpDomain.class);
             assertThat(ann.value())
