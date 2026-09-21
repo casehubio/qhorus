@@ -61,7 +61,7 @@ class ContainmentScenarioTest {
         assertThatThrownBy(() ->
                 helper.sendMessage("gov-contain-ch", "agent-worker", "STATUS",
                         "Trying to send on paused channel", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("paused");
         System.out.println("Dispatch blocked on paused channel: confirmed");
 

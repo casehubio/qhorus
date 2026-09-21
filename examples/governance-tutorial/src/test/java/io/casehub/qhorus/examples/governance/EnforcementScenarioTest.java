@@ -49,14 +49,13 @@ class EnforcementScenarioTest {
         assertThatThrownBy(() ->
                 helper.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
                         "What is the forecast?", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasCauseInstanceOf(EnforcementBlockedException.class)
+                .isInstanceOf(EnforcementBlockedException.class)
                 .satisfies(ex -> {
-                    var cause = (EnforcementBlockedException) ex.getCause();
-                    assertThat(cause.mode().name()).isEqualTo("BLOCKING");
-                    assertThat(cause.violationSources()).contains("REQUEST_RESPONSE");
-                    System.out.println("BLOCKED: " + cause.getMessage());
-                    System.out.println("Violation sources: " + cause.violationSources());
+                    var ebe = (EnforcementBlockedException) ex;
+                    assertThat(ebe.mode().name()).isEqualTo("BLOCKING");
+                    assertThat(ebe.violationSources()).contains("REQUEST_RESPONSE");
+                    System.out.println("BLOCKED: " + ebe.getMessage());
+                    System.out.println("Violation sources: " + ebe.violationSources());
                 });
 
         // Channel should NOT be paused in BLOCKING mode
@@ -87,12 +86,11 @@ class EnforcementScenarioTest {
         assertThatThrownBy(() ->
                 helper.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
                         "Third query — this triggers quarantine", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasCauseInstanceOf(EnforcementBlockedException.class)
+                .isInstanceOf(EnforcementBlockedException.class)
                 .satisfies(ex -> {
-                    var cause = (EnforcementBlockedException) ex.getCause();
-                    assertThat(cause.mode().name()).isEqualTo("QUARANTINE");
-                    System.out.println("\nQUARANTINED: " + cause.getMessage());
+                    var ebe = (EnforcementBlockedException) ex;
+                    assertThat(ebe.mode().name()).isEqualTo("QUARANTINE");
+                    System.out.println("\nQUARANTINED: " + ebe.getMessage());
                 });
 
         // Channel should be paused after QUARANTINE containment
