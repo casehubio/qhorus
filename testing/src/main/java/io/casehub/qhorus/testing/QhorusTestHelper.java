@@ -1305,7 +1305,11 @@ public class QhorusTestHelper {
         Channel ch = findChannel(channel);
         Instant sinceInstant = null;
         if (since != null && !since.isBlank()) {
-            sinceInstant = Instant.parse(since);
+            try {
+                sinceInstant = Instant.parse(since);
+            } catch (java.time.format.DateTimeParseException e) {
+                throw new IllegalArgumentException("Invalid 'since' timestamp: " + since, e);
+            }
         }
         List<MessageLedgerEntry> events = ledgerRepo.findEventsSince(
                 ch.id(), sinceInstant, currentPrincipal.tenancyId());
