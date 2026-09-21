@@ -40,7 +40,11 @@ class ChannelsServiceSpaceTest {
                 mock(ChannelManager.class), mock(TopicManager.class),
                 mock(MembershipManager.class), mock(UnreadCountProvider.class),
                 spaceManager, mock(BackendRegistry.class),
-                mock(MessageReader.class), mock(CurrentPrincipal.class));
+                mock(io.casehub.qhorus.api.store.MessageStore.class), mock(CurrentPrincipal.class),
+                mock(io.casehub.qhorus.api.channel.ChannelSummaryManager.class),
+                mock(io.casehub.qhorus.api.channel.ProjectionReader.class),
+                mock(io.casehub.qhorus.api.channel.ProtocolReader.class),
+                mock(io.casehub.qhorus.api.channel.RoutingDiagnostics.class));
     }
 
     @Test

@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
-public class ProtocolRegistry {
+public class ProtocolRegistry implements io.casehub.qhorus.api.channel.ProtocolReader {
 
     private static final Logger LOG = Logger.getLogger(ProtocolRegistry.class);
 
@@ -59,5 +59,10 @@ public class ProtocolRegistry {
 
     public Set<String> allNames() {
         return Collections.unmodifiableSet(new TreeSet<>(registry.keySet()));
+    }
+
+    @Override
+    public List<String> registeredProtocols() {
+        return new ArrayList<>(allNames());
     }
 }

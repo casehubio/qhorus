@@ -37,7 +37,7 @@ class ChannelsServiceMembershipTest {
     private MembershipManager membershipManager;
     private UnreadCountProvider unreadCountProvider;
     private ChannelReader channelReader;
-    private MessageReader messageReader;
+    private io.casehub.qhorus.api.store.MessageStore messageStore;
     private CurrentPrincipal currentPrincipal;
 
     @BeforeEach
@@ -45,14 +45,18 @@ class ChannelsServiceMembershipTest {
         membershipManager = mock(MembershipManager.class);
         unreadCountProvider = mock(UnreadCountProvider.class);
         channelReader = mock(ChannelReader.class);
-        messageReader = mock(MessageReader.class);
+        messageStore = mock(io.casehub.qhorus.api.store.MessageStore.class);
         currentPrincipal = mock(CurrentPrincipal.class);
         service = new ChannelsService(
                 channelReader, mock(ConsumerMessaging.class),
                 mock(ChannelManager.class), mock(TopicManager.class),
                 membershipManager, unreadCountProvider,
                 mock(SpaceManager.class), mock(BackendRegistry.class),
-                messageReader, currentPrincipal);
+                messageStore, currentPrincipal,
+                mock(io.casehub.qhorus.api.channel.ChannelSummaryManager.class),
+                mock(io.casehub.qhorus.api.channel.ProjectionReader.class),
+                mock(io.casehub.qhorus.api.channel.ProtocolReader.class),
+                mock(io.casehub.qhorus.api.channel.RoutingDiagnostics.class));
     }
 
     @Test
@@ -140,7 +144,7 @@ class ChannelsServiceMembershipTest {
                 .content("c")
                 .createdAt(Instant.now())
                 .build();
-        when(messageReader.findLastMessage(channelId)).thenReturn(Optional.of(msg));
+        when(messageStore.findLastMessage(channelId)).thenReturn(Optional.of(msg));
 
         service.markChannelRead(channelId, "agent-1", null);
 

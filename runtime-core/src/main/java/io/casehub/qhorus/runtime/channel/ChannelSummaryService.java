@@ -18,58 +18,61 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-public class ChannelSummaryService {
+public class ChannelSummaryService implements io.casehub.qhorus.api.channel.ChannelSummaryManager {
 
-    ChannelSummaryStore summaryStore;
-    ChannelService channelService;
-    CrossTenantChannelStore crossTenantChannelStore;
-    MessageStore messageStore;
-    SummaryUpdateHook hook;
+    ChannelSummaryStore                  summaryStore;
+    ChannelService                       channelService;
+    CrossTenantChannelStore              crossTenantChannelStore;
+    MessageStore                         messageStore;
+    SummaryUpdateHook                    hook;
     Consumer<ChannelSummaryUpdatedEvent> summaryConsumer;
 
 
     ChannelSummaryService() {}
 
     public ChannelSummaryService(ChannelSummaryStore summaryStore,
-                                  ChannelService channelService,
-                                  CrossTenantChannelStore crossTenantChannelStore,
-                                  MessageStore messageStore,
-                                  SummaryUpdateHook hook,
-                                  Consumer<ChannelSummaryUpdatedEvent> summaryConsumer) {
-        this.summaryStore = summaryStore;
-        this.channelService = channelService;
+                                 ChannelService channelService,
+                                 CrossTenantChannelStore crossTenantChannelStore,
+                                 MessageStore messageStore,
+                                 SummaryUpdateHook hook,
+                                 Consumer<ChannelSummaryUpdatedEvent> summaryConsumer) {
+        this.summaryStore            = summaryStore;
+        this.channelService          = channelService;
         this.crossTenantChannelStore = crossTenantChannelStore;
-        this.messageStore = messageStore;
-        this.hook = hook;
-        this.summaryConsumer = summaryConsumer;
+        this.messageStore            = messageStore;
+        this.hook                    = hook;
+        this.summaryConsumer         = summaryConsumer;
     }
 
+    @Override
     public Optional<ChannelSummary> getSummary(UUID channelId) {
         return summaryStore.findByChannelId(channelId);
     }
 
+    @Override
     public ChannelSummary setSummary(UUID channelId, String content, String updatedBy) {
         Channel ch = channelService.findById(channelId)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+                                   .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
 
         Long maxMessageId = currentMaxMessageId(channelId);
 
         ChannelSummary existing = summaryStore.findByChannelId(channelId).orElse(null);
         ChannelSummary.Builder b = existing != null
-                ? existing.toBuilder()
-                : ChannelSummary.builder(channelId).tenancyId(ch.tenancyId());
+                                   ? existing.toBuilder()
+                                   : ChannelSummary.builder(channelId).tenancyId(ch.tenancyId());
 
         ChannelSummary saved = summaryStore.save(b
-                .content(content)
-                .updatedAt(Instant.now())
-                .updatedBy(updatedBy)
-                .lastUpdatedMessageId(maxMessageId)
-                .build());
+                                                         .content(content)
+                                                         .updatedAt(Instant.now())
+                                                         .updatedBy(updatedBy)
+                                                         .lastUpdatedMessageId(maxMessageId)
+                                                         .build());
 
         summaryConsumer.accept(new ChannelSummaryUpdatedEvent(channelId, ch.name(), updatedBy));
         return saved;
     }
 
+    @Override
     public ChannelSummary configureSummary(UUID channelId, Integer updateAfterMessages, Integer updateAfterSeconds) {
         if (updateAfterMessages != null && updateAfterMessages < 1) {
             throw new IllegalArgumentException("updateAfterMessages must be >= 1 or null");
@@ -79,19 +82,20 @@ public class ChannelSummaryService {
         }
 
         Channel ch = channelService.findById(channelId)
-                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+                                   .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
 
         ChannelSummary existing = summaryStore.findByChannelId(channelId).orElse(null);
         ChannelSummary.Builder b = existing != null
-                ? existing.toBuilder()
-                : ChannelSummary.builder(channelId).tenancyId(ch.tenancyId());
+                                   ? existing.toBuilder()
+                                   : ChannelSummary.builder(channelId).tenancyId(ch.tenancyId());
 
         return summaryStore.save(b
-                .updateAfterMessages(updateAfterMessages)
-                .updateAfterSeconds(updateAfterSeconds)
-                .build());
+                                         .updateAfterMessages(updateAfterMessages)
+                                         .updateAfterSeconds(updateAfterSeconds)
+                                         .build());
     }
 
+    @Override
     public Optional<ChannelSummary> triggerUpdate(UUID channelId) {
         ChannelSummary existing = summaryStore.findByChannelId(channelId).orElse(null);
         if (existing == null) {
@@ -99,7 +103,7 @@ public class ChannelSummaryService {
         }
 
         Channel ch = crossTenantChannelStore.findById(channelId)
-                                   .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+                                            .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
 
         long          messagesSince = countMessagesSince(channelId, existing.lastUpdatedMessageId());
         List<Message> recent        = fetchMessagesSince(channelId, existing.lastUpdatedMessageId());
@@ -128,28 +132,17 @@ public class ChannelSummaryService {
         return Optional.of(saved);
     }
 
-    public void deleteSummary(UUID channelId) {
-        summaryStore.deleteByChannelId(channelId);
-    }
-
     public long countMessagesSince(UUID channelId, Long afterId) {
-        if (afterId == null) {
-            return messageStore.count(MessageQuery.builder().channelId(channelId).build());
-        }
-        return messageStore.count(MessageQuery.builder().channelId(channelId).afterId(afterId).build());
+        long cursor = afterId != null ? afterId : 0L;
+        return messageStore.count(MessageQuery.builder().channelId(channelId).afterId(cursor).build());
     }
 
-    private List<Message> fetchMessagesSince(UUID channelId, Long afterId) {
-        MessageQuery.Builder qb = MessageQuery.builder().channelId(channelId);
-        if (afterId != null) {
-            qb.afterId(afterId);
-        }
-        return messageStore.scan(qb.build());
+    List<Message> fetchMessagesSince(UUID channelId, Long afterId) {
+        long cursor = afterId != null ? afterId : 0L;
+        return messageStore.scan(MessageQuery.builder().channelId(channelId).afterId(cursor).build());
     }
 
     Long currentMaxMessageId(UUID channelId) {
-        var msgs = messageStore.scan(MessageQuery.builder()
-                .channelId(channelId).limit(1).descending(true).build());
-        return msgs.isEmpty() ? null : msgs.get(0).id();
+        return messageStore.findLastMessage(channelId).map(Message::id).orElse(null);
     }
 }

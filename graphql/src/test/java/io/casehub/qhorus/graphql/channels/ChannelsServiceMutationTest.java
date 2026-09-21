@@ -31,8 +31,12 @@ class ChannelsServiceMutationTest {
                 mock(io.casehub.qhorus.api.channel.UnreadCountProvider.class),
                 mock(io.casehub.qhorus.api.channel.SpaceManager.class),
                 mock(io.casehub.qhorus.api.gateway.BackendRegistry.class),
-                mock(io.casehub.qhorus.api.store.MessageReader.class),
-                mock(io.casehub.platform.api.identity.CurrentPrincipal.class));
+                mock(io.casehub.qhorus.api.store.MessageStore.class),
+                mock(io.casehub.platform.api.identity.CurrentPrincipal.class),
+                mock(io.casehub.qhorus.api.channel.ChannelSummaryManager.class),
+                mock(io.casehub.qhorus.api.channel.ProjectionReader.class),
+                mock(io.casehub.qhorus.api.channel.ProtocolReader.class),
+                mock(io.casehub.qhorus.api.channel.RoutingDiagnostics.class));
     }
 
     @Test
