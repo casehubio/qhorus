@@ -5,7 +5,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.CommitmentService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
+import io.quarkiverse.mcp.server.IllegalArgumentException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -61,7 +61,7 @@ class ContainmentScenarioTest {
         assertThatThrownBy(() ->
                 tools.sendMessage("gov-contain-ch", "agent-worker", "STATUS",
                         "Trying to send on paused channel", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("paused");
         System.out.println("Dispatch blocked on paused channel: confirmed");
 

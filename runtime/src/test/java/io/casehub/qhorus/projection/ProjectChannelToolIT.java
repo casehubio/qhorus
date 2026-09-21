@@ -21,7 +21,6 @@ import io.casehub.qhorus.api.spi.RenderableProjection;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -97,22 +96,19 @@ class ProjectChannelToolIT {
     void projectChannel_unknownProjectionName_throwsToolCallException() {
         Channel ch = createChannel();
 
-        assertThrows(ToolCallException.class,
-                () -> tools.projectChannel(ch.name(), "no-such-projection", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.projectChannel(ch.name(), "no-such-projection", null, null));
     }
 
     @Test
     void projectChannel_unknownChannelName_throwsToolCallException() {
-        assertThrows(ToolCallException.class,
-                () -> tools.projectChannel("channel-that-does-not-exist", "it-summary", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.projectChannel("channel-that-does-not-exist", "it-summary", null, null));
     }
 
     @Test
     void projectChannel_nonExistentUUID_throwsToolCallException() {
         String fakeUuid = UUID.randomUUID().toString();
 
-        assertThrows(ToolCallException.class,
-                () -> tools.projectChannel(fakeUuid, "it-summary", null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.projectChannel(fakeUuid, "it-summary", null, null));
     }
 
     @Test

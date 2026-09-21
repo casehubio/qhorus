@@ -10,7 +10,6 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -56,9 +55,9 @@ class ConnectorBindingToolTest {
     void createChannel_withPartialBinding_throwsToolCallException() {
         String name = "ch-partial-binding-" + UUID.randomUUID();
 
-        ToolCallException ex = assertThrows(ToolCallException.class, () ->
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
                 tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", null, null, null));
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+
     }
 
     // ── update_channel_binding ─────────────────────────────────────────────────
@@ -83,17 +82,16 @@ class ConnectorBindingToolTest {
         String name = "ch-nobind-upd-" + UUID.randomUUID();
         tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        ToolCallException ex = assertThrows(ToolCallException.class, () ->
+        assertThrows(IllegalStateException.class, () ->
                 tools.updateChannelBinding(name, "vonage-out", "+447999888777"));
-        assertInstanceOf(IllegalStateException.class, ex.getCause());
     }
 
     @Test
     @TestTransaction
     void updateChannelBinding_onNonExistentChannel_throwsToolCallException() {
-        ToolCallException ex = assertThrows(ToolCallException.class, () ->
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
                 tools.updateChannelBinding("does-not-exist-" + UUID.randomUUID(),
                         "vonage-out", "+447999888777"));
-        assertInstanceOf(IllegalArgumentException.class, ex.getCause());
+
     }
 }

@@ -2,7 +2,7 @@ package io.casehub.qhorus.examples.governance;
 
 import io.casehub.qhorus.api.message.EnforcementBlockedException;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
+import io.quarkiverse.mcp.server.IllegalArgumentException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -49,7 +49,7 @@ class EnforcementScenarioTest {
         assertThatThrownBy(() ->
                 tools.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
                         "What is the forecast?", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(EnforcementBlockedException.class)
                 .satisfies(ex -> {
                     var cause = (EnforcementBlockedException) ex.getCause();
@@ -87,7 +87,7 @@ class EnforcementScenarioTest {
         assertThatThrownBy(() ->
                 tools.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
                         "Third query — this triggers quarantine", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(EnforcementBlockedException.class)
                 .satisfies(ex -> {
                     var cause = (EnforcementBlockedException) ex.getCause();

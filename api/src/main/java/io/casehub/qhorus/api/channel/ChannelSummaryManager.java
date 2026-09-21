@@ -12,4 +12,7 @@ public interface ChannelSummaryManager {
     ChannelSummary configureSummary(UUID channelId, Integer updateAfterMessages, Integer updateAfterSeconds);
 
     Optional<ChannelSummary> triggerUpdate(UUID channelId);
+
+    void deleteSummary(UUID channelId);
+
 }

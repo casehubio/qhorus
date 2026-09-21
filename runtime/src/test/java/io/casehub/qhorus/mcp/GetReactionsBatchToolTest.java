@@ -43,20 +43,20 @@ class GetReactionsBatchToolTest {
     @Test
     void emptyListRejected() {
         assertThatThrownBy(() -> tools.getReactionsBatch(List.of()))
-                .isInstanceOf(io.quarkiverse.mcp.server.ToolCallException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void nullListRejected() {
         assertThatThrownBy(() -> tools.getReactionsBatch(null))
-                .isInstanceOf(io.quarkiverse.mcp.server.ToolCallException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void oversizedListRejected() {
         var ids = java.util.stream.LongStream.rangeClosed(1, 201).boxed().toList();
         assertThatThrownBy(() -> tools.getReactionsBatch(ids))
-                .isInstanceOf(io.quarkiverse.mcp.server.ToolCallException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

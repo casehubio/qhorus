@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -28,8 +27,7 @@ class MessageTypeValidationTest {
     void declineWithEmptyContentIsRejected() {
         tools.createChannel("validate-decline-empty", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("validate-decline-empty", "alice", "decline", "", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-decline-empty", "alice", "decline", "", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
@@ -37,8 +35,7 @@ class MessageTypeValidationTest {
     void failureWithBlankContentIsRejected() {
         tools.createChannel("validate-failure-blank", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("validate-failure-blank", "alice", "failure", "   ", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-failure-blank", "alice", "failure", "   ", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
@@ -46,8 +43,7 @@ class MessageTypeValidationTest {
     void handoffWithoutTargetIsRejected() {
         tools.createChannel("validate-handoff-notarget", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("validate-handoff-notarget", "alice", "handoff", "Please handle this", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-handoff-notarget", "alice", "handoff", "Please handle this", null, null, null, null, null, null, null, null, null));
     }
 
     // -----------------------------------------------------------------------

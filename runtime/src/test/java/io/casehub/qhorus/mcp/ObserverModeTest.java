@@ -4,7 +4,6 @@ import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.instance.InstanceManager;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -104,9 +103,7 @@ class ObserverModeTest {
         tools.createChannel("obs-send-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("readonly-obs", "Read-only observer", List.of(), true);
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("obs-send-1", "readonly-obs", "status", "intrude", null, null, null, null, null, null, null, null, null),
-                "read_only instance should be rejected from send_message");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-send-1", "readonly-obs", "status", "intrude", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected from send_message");
 
         String msg = ex.getMessage().toLowerCase();
         assertTrue(msg.contains("read-only") || msg.contains("read_only") || msg.contains("not permitted"),
@@ -122,9 +119,7 @@ class ObserverModeTest {
         instanceManager.register("readonly-obs-2", "Read-only observer", List.of(), true);
 
         // Even EVENT messages cannot be sent by read_only instances
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("obs-send-2", "readonly-obs-2", "event", "audit", null, null, null, null, null, null, null, null, null),
-                "read_only instance should be rejected even for EVENT type messages");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-send-2", "readonly-obs-2", "event", "audit", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected even for EVENT type messages");
     }
 
     // =========================================================================
@@ -196,8 +191,7 @@ class ObserverModeTest {
         instanceManager.register("was-observer", "Was observer", List.of(), true);
 
         // Blocked as read_only
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("obs-dereg-2", "was-observer", "status", "blocked", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-dereg-2", "was-observer", "status", "blocked", null, null, null, null, null, null, null, null, null));
 
         // Re-register as not read_only
         instanceManager.register("was-observer", "Now active", List.of(), false);
@@ -261,8 +255,7 @@ class ObserverModeTest {
         tools.sendMessage("obs-e2e-2", "worker", "status", "in progress", null, null, null, null, null, null, null, null, null);
 
         // Watcher cannot send
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("obs-e2e-2", "watcher", "status", "observer intrusion", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-e2e-2", "watcher", "status", "observer intrusion", null, null, null, null, null, null, null, null, null));
 
         // Worker messages still there
         QhorusMcpTools.CheckResult result = tools.checkMessages("obs-e2e-2", 0L, 10, null, null, null);

@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
@@ -95,9 +94,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-ch-3", "alice", "status", "1", null, null, null, null, null, null, null, null, null);
         tools.sendMessage("rl-ch-3", "alice", "status", "2", null, null, null, null, null, null, null, null, null);
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-ch-3", "alice", "status", "3", null, null, null, null, null, null, null, null, null),
-                "message over per-channel limit should be rejected");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-ch-3", "alice", "status", "3", null, null, null, null, null, null, null, null, null), "message over per-channel limit should be rejected");
 
         String msg = ex.getMessage().toLowerCase();
         assertTrue(msg.contains("rate") || msg.contains("limit"),
@@ -116,9 +113,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-ch-4", "bob", "status", "from bob", null, null, null, null, null, null, null, null, null);
 
         // Third message from anyone is rejected
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-ch-4", "carol", "status", "from carol", null, null, null, null, null, null, null, null, null),
-                "per-channel limit counts across all senders");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-ch-4", "carol", "status", "from carol", null, null, null, null, null, null, null, null, null), "per-channel limit counts across all senders");
     }
 
     @Test
@@ -130,13 +125,10 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-ch-5", "alice", "status", "2", null, null, null, null, null, null, null, null, null);
 
         // Third is rejected
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-ch-5", "alice", "status", "3", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-ch-5", "alice", "status", "3", null, null, null, null, null, null, null, null, null));
 
         // Fourth is also rejected — count should not have incremented on the rejected message
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-ch-5", "alice", "status", "4", null, null, null, null, null, null, null, null, null),
-                "rejected messages should not increment the rate limit counter");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-ch-5", "alice", "status", "4", null, null, null, null, null, null, null, null, null), "rejected messages should not increment the rate limit counter");
     }
 
     // =========================================================================
@@ -160,9 +152,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-inst-2", "alice", "status", "1", null, null, null, null, null, null, null, null, null);
         tools.sendMessage("rl-inst-2", "alice", "status", "2", null, null, null, null, null, null, null, null, null);
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-inst-2", "alice", "status", "3", null, null, null, null, null, null, null, null, null),
-                "message over per-instance limit should be rejected");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-inst-2", "alice", "status", "3", null, null, null, null, null, null, null, null, null), "message over per-instance limit should be rejected");
 
         String msg = ex.getMessage().toLowerCase();
         assertTrue(msg.contains("rate") || msg.contains("limit"),
@@ -182,9 +172,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-inst-3", "alice", "status", "a2", null, null, null, null, null, null, null, null, null);
 
         // Alice's 3rd is rejected
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-inst-3", "alice", "status", "a3", null, null, null, null, null, null, null, null, null),
-                "alice should be rate-limited");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-inst-3", "alice", "status", "a3", null, null, null, null, null, null, null, null, null), "alice should be rate-limited");
 
         // Bob still has his own quota — can send 2 freely
         assertDoesNotThrow(() -> tools.sendMessage("rl-inst-3", "bob", "status", "b1", null, null, null, null, null, null, null, null, null),
@@ -207,9 +195,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-both-1", "alice", "status", "3", null, null, null, null, null, null, null, null, null);
 
         // Channel limit hit (3) — even though alice's instance limit (5) is not reached
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-both-1", "alice", "status", "4", null, null, null, null, null, null, null, null, null),
-                "per-channel limit should fire even when per-instance limit not reached");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-both-1", "alice", "status", "4", null, null, null, null, null, null, null, null, null), "per-channel limit should fire even when per-instance limit not reached");
     }
 
     @Test
@@ -222,9 +208,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-both-2", "alice", "status", "2", null, null, null, null, null, null, null, null, null);
 
         // Alice's instance limit hit — even though channel is only at 2 of 10
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-both-2", "alice", "status", "3", null, null, null, null, null, null, null, null, null),
-                "per-instance limit should fire even when per-channel limit not reached");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-both-2", "alice", "status", "3", null, null, null, null, null, null, null, null, null), "per-instance limit should fire even when per-channel limit not reached");
 
         // Error should name alice (instance limit), not just the channel
         assertTrue(ex.getMessage().contains("alice"),
@@ -274,8 +258,7 @@ class ChannelRateLimitTest {
         tools.createChannel("rl-scrl-2", "Limited", null, null, null, null, 1, null, null, null, null, null, null, null, null, null, null, null, null);
         // Hit the limit
         tools.sendMessage("rl-scrl-2", "alice", "status", "1", null, null, null, null, null, null, null, null, null);
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-scrl-2", "alice", "status", "2", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-scrl-2", "alice", "status", "2", null, null, null, null, null, null, null, null, null));
 
         // Remove limits
         ChannelDetail updated = tools.setChannelRateLimits("rl-scrl-2", null, null);
@@ -285,8 +268,7 @@ class ChannelRateLimitTest {
     @Test
     @TestTransaction
     void setChannelRateLimitsOnUnknownChannelThrows() {
-        assertThrows(ToolCallException.class,
-                () -> tools.setChannelRateLimits("no-such-channel", 5, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.setChannelRateLimits("no-such-channel", 5, null));
     }
 
     // =========================================================================
@@ -332,9 +314,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-e2e-1", "bob", "status", "b2", null, null, null, null, null, null, null, null, null);
 
         // Carol's message is rejected — channel budget gone
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-e2e-1", "carol", "status", "c1", null, null, null, null, null, null, null, null, null),
-                "channel budget should be exhausted after alice and bob fill it");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-e2e-1", "carol", "status", "c1", null, null, null, null, null, null, null, null, null), "channel budget should be exhausted after alice and bob fill it");
 
         // Exactly 4 messages stored (not 5)
         QhorusMcpTools.CheckResult result = tools.checkMessages("rl-e2e-1", 0L, 20, null, null, null);
@@ -352,8 +332,7 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-e2e-2", "alice", "command", "a2", null, null, null, null, null, null, null, null, null);
 
         // Alice is blocked
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-e2e-2", "alice", "command", "a3", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-e2e-2", "alice", "command", "a3", null, null, null, null, null, null, null, null, null));
 
         // Bob and Carol each have independent quotas and can send freely
         for (int i = 0; i < 2; i++) {
@@ -382,12 +361,10 @@ class ChannelRateLimitTest {
         tools.sendMessage("rl-e2e-3", "alice", "status", "2", null, null, null, null, null, null, null, null, null);
 
         // alice is now rate-limited
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-e2e-3", "alice", "status", "3", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-e2e-3", "alice", "status", "3", null, null, null, null, null, null, null, null, null));
 
         // bob is still rejected by write ACL (not rate limiting)
-        ToolCallException aclEx = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("rl-e2e-3", "bob", "status", "intrude", null, null, null, null, null, null, null, null, null));
+        IllegalStateException aclEx = assertThrows(IllegalStateException.class, () -> tools.sendMessage("rl-e2e-3", "bob", "status", "intrude", null, null, null, null, null, null, null, null, null));
         // ACL check fires before rate limit check — error should be about ACL, not rate limit
         assertTrue(aclEx.getMessage().contains("bob"),
                 "bob should be rejected by ACL, error should name bob");

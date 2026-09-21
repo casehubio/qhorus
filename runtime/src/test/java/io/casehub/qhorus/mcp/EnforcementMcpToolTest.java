@@ -62,8 +62,7 @@ class EnforcementMcpToolTest {
         tools.createChannel("enforce-test-4", null, null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         assertThatThrownBy(() -> tools.setEnforcementMode("enforce-test-4", "INVALID"))
-                .isInstanceOf(io.quarkiverse.mcp.server.ToolCallException.class)
-                .hasCauseInstanceOf(IllegalArgumentException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid enforcement mode");
     }
 }

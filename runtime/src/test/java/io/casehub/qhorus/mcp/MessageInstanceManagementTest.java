@@ -5,7 +5,6 @@ import io.casehub.qhorus.api.instance.InstanceManager;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -146,8 +145,7 @@ class MessageInstanceManagementTest {
     @Test
     @TestTransaction
     void clearChannelUnknownChannelThrows() {
-        assertThrows(ToolCallException.class,
-                () -> tools.clearChannel("no-such-channel", null));
+        assertThrows(IllegalArgumentException.class, () -> tools.clearChannel("no-such-channel", null));
     }
 
     @Test

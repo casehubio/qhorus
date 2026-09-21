@@ -7,7 +7,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -112,24 +111,21 @@ class MessageTaxonomyTest {
     @TestTransaction
     void declineWithoutContentIsRejected() {
         tools.createChannel("ts-decline-empty", "DECLINE without content", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("ts-decline-empty", "agent-a", "decline", "", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("ts-decline-empty", "agent-a", "decline", "", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
     @TestTransaction
     void failureWithoutContentIsRejected() {
         tools.createChannel("ts-failure-blank", "FAILURE without content", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("ts-failure-blank", "agent-a", "failure", "   ", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("ts-failure-blank", "agent-a", "failure", "   ", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
     @TestTransaction
     void handoffWithoutTargetIsRejected() {
         tools.createChannel("ts-handoff-notarget", "HANDOFF without target", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("ts-handoff-notarget", "agent-a", "handoff",
+        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("ts-handoff-notarget", "agent-a", "handoff",
                         "please take over", null, null, null, null, null, null, null, null, null));
     }
 

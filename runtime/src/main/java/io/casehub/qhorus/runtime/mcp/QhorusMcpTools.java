@@ -49,10 +49,6 @@ import io.casehub.qhorus.runtime.message.ProjectionRegistry;
 import io.casehub.qhorus.runtime.message.ReactionService;
 import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.TopicService;
-import io.quarkiverse.mcp.server.McpServer;
-import io.quarkiverse.mcp.server.Tool;
-import io.quarkiverse.mcp.server.ToolArg;
-import io.quarkiverse.mcp.server.WrapBusinessError;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -66,16 +62,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * All business logic exceptions ({@link IllegalArgumentException} and
- * {@link IllegalStateException}) thrown from any {@code @Tool} method are
- * automatically wrapped in {@link io.quarkiverse.mcp.server.ToolCallException}
- * by the quarkus-mcp-server interceptor, producing an {@code isError: true}
- * tool response with the exception message as text content. This gives Claude
- * readable errors without changing the happy-path return types of the 37
- * structured-return tools. See ADR-0001.
+ * Test infrastructure — convenience methods used by integration tests.
+ * MCP tool exposure is via @McpDomain APIs (ChannelsApi, MessagingApi, etc.).
  */
-@McpServer("qhorus")
-@WrapBusinessError({ IllegalArgumentException.class, IllegalStateException.class })
 @ApplicationScoped
 public class QhorusMcpTools extends QhorusMcpToolsBase {
 
@@ -253,32 +242,26 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Channel management tools
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "create_channel", description = "Create a new communication channel for agents to exchange messages. " +
-                                                 "Returns channel details including the generated UUID and configured properties.")
     public ChannelDetail createChannel(
-            @ToolArg(name = "name", description = "Unique channel name. Each /-delimited segment must match " +
-                                                  "[a-z][a-z0-9]*(-[a-z0-9]+)* — lowercase letters and digits, hyphens only between " +
-                                                  "alphanumeric groups. No leading, trailing, or consecutive hyphens. Max 80 chars per " +
-                                                  "segment, 200 chars total. UUID-shaped names are rejected. " +
-                                                  "Examples: \"billing-output\", \"case-abc/work\".") String name,
-            @ToolArg(name = "description", description = "Channel purpose description") String description,
-            @ToolArg(name = "semantic", description = "Channel semantic: APPEND (default), COLLECT, BARRIER, EPHEMERAL, LAST_WRITE", required = false) String semantic,
-            @ToolArg(name = "barrier_contributors", description = "Comma-separated contributor names (BARRIER channels only)", required = false) String barrierContributors,
-            @ToolArg(name = "allowed_writers", description = "Comma-separated allowed writers: bare instance IDs and/or capability:tag / role:name patterns. Null = open to all.", required = false) String allowedWriters,
-            @ToolArg(name = "admin_instances", description = "Comma-separated instance IDs permitted to manage this channel (pause/resume/force_release/clear). Null = open to any caller.", required = false) String adminInstances,
-            @ToolArg(name = "rate_limit_per_channel", description = "Max messages per minute across all senders. Null = unlimited.", required = false) Integer rateLimitPerChannel,
-            @ToolArg(name = "rate_limit_per_instance", description = "Max messages per minute from a single sender. Null = unlimited.", required = false) Integer rateLimitPerInstance,
-            @ToolArg(name = "allowed_types", description = "Comma-separated MessageType names permitted on this channel. Null = all types permitted.", required = false) String allowedTypes,
-            @ToolArg(name = "denied_types", description = "Comma-separated MessageType names explicitly denied on this channel. Denial wins if a type appears in both.", required = false) String deniedTypes,
-            @ToolArg(name = "space_id", description = "Space UUID to place this channel in. Null = top-level channel.", required = false) String spaceId,
-            @ToolArg(name = "reviewer_ids", description = "Comma-separated reviewer instance IDs for automatic peer review after DONE. Null = no auto-review.", required = false) String reviewerIds,
-            @ToolArg(name = "protocols", description = "Comma-separated protocol names to enforce on this channel (e.g. ROUND_ROBIN,CONTRIBUTION_REQUIRED). Null = no protocols.", required = false) String protocols,
-            @ToolArg(name = "protocol_participants", description = "Comma-separated ordered participant IDs for protocol enforcement. Required for ROUND_ROBIN.", required = false) String protocolParticipants,
-            @ToolArg(name = "inbound_connector_id", description = "Inbound connector type identifier. All four connector fields must be set together or left null.", required = false) String inboundConnectorId,
-            @ToolArg(name = "external_key", description = "Connector-specific lookup key.", required = false) String externalKey,
-            @ToolArg(name = "outbound_connector_id", description = "Outbound connector type identifier.", required = false) String outboundConnectorId,
-            @ToolArg(name = "outbound_destination", description = "Outbound destination address.", required = false) String outboundDestination,
-            @ToolArg(name = "track_delivery", description = "Enable per-participant delivery tracking. Null = semantic default (on for BARRIER/COLLECT, off for others). true = explicit opt-in, false = explicit opt-out.", required = false) Boolean trackDelivery) {
+            String name,
+            String description,
+            String semantic,
+            String barrierContributors,
+            String allowedWriters,
+            String adminInstances,
+            Integer rateLimitPerChannel,
+            Integer rateLimitPerInstance,
+            String allowedTypes,
+            String deniedTypes,
+            String spaceId,
+            String reviewerIds,
+            String protocols,
+            String protocolParticipants,
+            String inboundConnectorId,
+            String externalKey,
+            String outboundConnectorId,
+            String outboundDestination,
+            Boolean trackDelivery) {
         ChannelSemantic sem;
         if (semantic == null || semantic.isBlank()) {
             sem = ChannelSemantic.APPEND;
@@ -314,13 +297,195 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
+    @Transactional
+    public ChannelDetail updateChannelBinding(
+            String channel,
+            String outboundConnectorId,
+            String outboundDestination) {
+        Channel ch = resolveChannel(channel);
+        channelService.updateConnectorBinding(ch.id(), outboundConnectorId, outboundDestination);
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    @Transactional
+    public ChannelDetail setChannelRateLimits(
+            String channel,
+            Integer rateLimitPerChannel,
+            Integer rateLimitPerInstance) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch       = channelService.setRateLimits(resolved.id(), rateLimitPerChannel, rateLimitPerInstance);
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    @Transactional
+    public String setDeliveryTracking(
+            String channel,
+            Boolean tracking) {
+        Channel ch = resolveChannel(channel);
+        channelService.setTrackDelivery(ch.id(), tracking);
+        Channel updated   = ch.toBuilder().trackDelivery(tracking).build();
+        boolean effective = io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(updated);
+        return "Delivery tracking " + (effective ? "enabled" : "disabled")
+               + " on channel '" + ch.name() + "'";
+    }
+
+
+    @Transactional
+    public ChannelDetail setChannelWriters(
+            String channel,
+            String allowedWriters) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch       = channelService.setAllowedWriters(resolved.id(), splitCsv(allowedWriters));
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    @Transactional
+    public ChannelDetail setChannelAdmins(
+            String channel,
+            String adminInstances) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch       = channelService.setAdminInstances(resolved.id(), splitCsv(adminInstances));
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    @Transactional
+    public ChannelDetail setChannelReviewers(
+            String channel,
+            String reviewerIds) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch       = channelService.setReviewerInstances(resolved.id(), splitCsv(reviewerIds));
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    public List<String> listProtocols() {
+        return new java.util.ArrayList<>(protocolRegistry.allNames());
+    }
+
+    public ChannelDetail setChannelProtocols(
+            String channel,
+            String protocols) {
+        Channel      ch           = resolveChannel(channel);
+        List<String> protocolList = splitCsv(protocols);
+        if (protocolList.contains("ROUND_ROBIN") && ch.protocolParticipants().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "ROUND_ROBIN requires protocolParticipants — set them first with set_protocol_participants");
+        }
+        Channel updated = channelService.setProtocols(ch.id(), protocolList);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    public ChannelDetail setProtocolParticipants(
+            String channel,
+            String participants) {
+        Channel ch      = resolveChannel(channel);
+        Channel updated = channelService.setProtocolParticipants(ch.id(), splitCsv(participants));
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    public java.util.Map<String, Object> getChannelProtocols(
+            String channel) {
+        Channel ch = resolveChannel(channel);
+        return java.util.Map.of(
+                "protocols", ch.protocols(),
+                "protocol_participants", ch.protocolParticipants());
+    }
+
+    public ChannelDetail setEnforcementMode(
+            String channel,
+            String mode) {
+        Channel                                       ch = resolveChannel(channel);
+        io.casehub.qhorus.api.channel.EnforcementMode enforcementMode;
+        try {
+            enforcementMode = io.casehub.qhorus.api.channel.EnforcementMode.valueOf(mode.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid enforcement mode: " + mode
+                                               + ". Valid values: ADVISORY, BLOCKING, QUARANTINE");
+        }
+        Channel updated = channelService.setEnforcementMode(ch.id(), enforcementMode);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    public ChannelDetail setEnforcementExclusions(
+            String channel,
+            String exclusions) {
+        Channel      ch            = resolveChannel(channel);
+        List<String> exclusionList = splitCsv(exclusions);
+        Channel      updated       = channelService.setEnforcementExclusions(ch.id(), exclusionList);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    public java.util.Map<String, Object> getChannelEnforcement(
+            String channel) {
+        Channel      ch               = resolveChannel(channel);
+        List<String> availableSources = new java.util.ArrayList<>();
+        availableSources.add("TYPE_POLICY");
+        availableSources.add("CORRELATION_INTEGRITY");
+        availableSources.addAll(protocolRegistry.allNames());
+        return java.util.Map.of(
+                "enforcement_mode", ch.enforcementMode() != null ? ch.enforcementMode().name() : "ADVISORY",
+                "enforcement_exclusions", ch.enforcementExclusions(),
+                "available_sources", availableSources);
+    }
+
+    public ChannelDetail setRoutingConfig(
+            String channel,
+            Double trustThreshold) {
+        Channel ch = resolveChannel(channel);
+        if (trustThreshold != null && (trustThreshold < 0.0 || trustThreshold > 1.0)) {
+            throw new IllegalArgumentException("trust_threshold must be between 0.0 and 1.0, got: " + trustThreshold);
+        }
+        Channel updated = channelService.setRoutingTrustThreshold(ch.id(), trustThreshold);
+        return toChannelDetail(updated, messageStore.countByChannel(ch.id()));
+    }
+
+    public java.util.Map<String, Object> getRoutingConfig(
+            String channel) {
+        Channel                       ch                 = resolveChannel(channel);
+        double                        effectiveThreshold = routingBridge.effectiveThreshold(ch);
+        java.util.Map<String, Object> result             = new java.util.LinkedHashMap<>();
+        result.put("channel", ch.name());
+        result.put("trust_threshold", ch.routingTrustThreshold());
+        result.put("effective_threshold", effectiveThreshold);
+        result.put("global_default", qhorusConfig.routing().defaultTrustThreshold());
+        return result;
+    }
+
+    public java.util.Map<String, Object> getRoutingCandidates(
+            String capability,
+            String channel) {
+        Channel                         ch        = channel != null && !channel.isBlank() ? resolveChannel(channel) : null;
+        String                          tenancyId = currentPrincipal.tenancyId();
+        RoutingBridge.RoutingDiagnostic diag      = routingBridge.diagnose(capability, ch, tenancyId);
+
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("capability", capability);
+        result.put("routing_available", diag.routingAvailable());
+        result.put("effective_threshold", diag.effectiveThreshold());
+        result.put("candidate_count", diag.candidates().size());
+        result.put("candidates", diag.candidates().stream()
+                                     .map(c -> java.util.Map.of(
+                                             "agent_id", c.agentId(),
+                                             "name", c.name() != null ? c.name() : c.agentId(),
+                                             "trust_score", c.trustScore(),
+                                             "passes_threshold", c.passesThreshold()))
+                                     .toList());
+        result.put("selection_outcome", diag.selectionOutcome());
+        if (diag.selectedAgentId() != null) {
+            result.put("selected_agent", diag.selectedAgentId());
+            result.put("selected_trust_score", diag.selectedTrustScore());
+        }
+        if (diag.reason() != null) {
+            result.put("reason", diag.reason());
+        }
+        return result;
+    }
 
 
     @Transactional
     public Map<String, Object> attest(
-            @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
-            @ToolArg(name = "verdict", description = "ENDORSED or CHALLENGED") String verdict,
-            @ToolArg(name = "evidence", description = "Free-text evidence for the attestation", required = false) String evidence) {
+            String entryId,
+            String verdict,
+            String evidence) {
         UUID id = UUID.fromString(entryId);
         io.casehub.ledger.api.model.AttestationVerdict v =
                 io.casehub.ledger.api.model.AttestationVerdict.valueOf(verdict.toUpperCase());
@@ -333,7 +498,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
 
     public List<Map<String, Object>> listAttestations(
-            @ToolArg(name = "entry_id", description = "UUID of the ledger entry") String entryId) {
+            String entryId) {
         UUID   id        = UUID.fromString(entryId);
         String tenancyId = currentPrincipal.tenancyId();
         return ledgerEntryRepository.findAttestationsByEntryId(id, tenancyId).stream()
@@ -353,9 +518,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public Map<String, Object> requestPeerReview(
-            @ToolArg(name = "entry_id", description = "UUID of the COMMAND/HANDOFF ledger entry") String entryId,
-            @ToolArg(name = "reviewer_ids", description = "Comma-separated reviewer instance IDs. Resolved automatically if omitted.", required = false) String reviewerIds,
-            @ToolArg(name = "channel", description = "Channel for the review QUERYs. Defaults to the entry's channel.", required = false) String channel) {
+            String entryId,
+            String reviewerIds,
+            String channel) {
         UUID   id        = UUID.fromString(entryId);
         String tenancyId = currentPrincipal.tenancyId();
         var entry = (io.casehub.qhorus.runtime.ledger.MessageLedgerEntry) ledgerEntryRepository
@@ -409,6 +574,36 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
 
+    public ChannelDetail setChannelTypeConstraints(
+            String channel,
+            String allowedTypes,
+            String deniedTypes) {
+        Channel resolved = resolveChannel(channel);
+        Channel ch = channelService.setTypeConstraints(resolved.id(),
+                                                             MessageType.parseTypes(allowedTypes), MessageType.parseTypes(deniedTypes));
+        return toChannelDetail(ch, messageStore.countByChannel(ch.id()));
+    }
+
+    public List<ChannelDetail> listChannels() {
+        List<Channel> channels = channelService.listAll();
+        if (channels.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, Long>                    countByChannel = messageStore.countAllByChannel();
+        Map<UUID, ChannelConnectorBinding> allBindings    = bindingStore.findAll();
+        Map<UUID, String>                  spaceNames     = buildSpaceNameMap(channels);
+        return channels.stream()
+                       .map(ch -> toChannelDetail(ch, countByChannel.getOrDefault(ch.id(), 0L), allBindings, spaceNames))
+                       .toList();}
+
+    public List<ChannelDetail> findChannel(
+            String keyword) {
+        List<Channel> matches = channelStore.scan(ChannelQuery.byKeyword(keyword));
+        return matches.stream()
+                .map(ch -> toChannelDetail(ch, messageStore.countByChannel(ch.id())))
+                .toList();
+    }
+
     // ---------------------------------------------------------------------------
     // Human-in-the-loop — channel flow control
     // ---------------------------------------------------------------------------
@@ -418,12 +613,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return pauseChannel(channel, null);
     }
 
-    @Tool(name = "pause_channel", description = "Pause a channel — blocks send_message and returns empty on check_messages. "
-            + "Idempotent. Use to stop agent work flowing through a channel for human review.")
     @Transactional
     public ChannelDetail pauseChannel(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
+            String channel,
+            String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "pause_channel");
         ch = channelService.pause(ch.id());
@@ -435,12 +628,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return resumeChannel(channel, null);
     }
 
-    @Tool(name = "resume_channel", description = "Resume a paused channel — re-enables send_message and check_messages. "
-            + "Idempotent.")
     @Transactional
     public ChannelDetail resumeChannel(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
+            String channel,
+            String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "resume_channel");
         ch = channelService.resume(ch.id());
@@ -452,16 +643,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return deleteChannel(channel, force, null);
     }
 
-    @Tool(name = "delete_channel", description = "Delete a named channel. "
-            + "Rejects with an error if the channel has messages unless force=true. "
-            + "When force=true, all messages in the channel are deleted before the channel is removed. "
-            + "Subject to admin_instances check if the channel has an admin list.")
     @Transactional
     public DeleteChannelResult deleteChannel(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "force", description = "When true, deletes all messages in the channel then "
-                    + "deletes the channel. When false (default), rejects if messages exist.", required = false) Boolean force,
-            @ToolArg(name = "caller_instance_id", description = "Instance ID of the caller. Required when the channel has an admin_instances list.", required = false) String callerInstanceId) {
+            String channel,
+            Boolean force,
+            String callerInstanceId) {
         Channel ch = resolveChannel(channel);
         checkAdminAccess(ch, callerInstanceId, "delete_channel");
         membershipStore.deleteAll(ch.id());
@@ -481,23 +667,21 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // ---------------------------------------------------------------------------
 
 
-    @Tool(name = "send_message", description = "Post a typed message to a channel. "
-            + "For QUERY, COMMAND, and PROPOSE types, correlation_id is auto-generated if not supplied.")
     @Transactional
     public DispatchResult sendMessage(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "sender", description = "Sender identifier") String sender,
-            @ToolArg(name = "type", description = "The message type. Choose: QUERY (asking for information, no side effects), COMMAND (asking for action to be taken, side effects expected), RESPONSE (answering a QUERY, carries correlationId), STATUS (reporting progress on a COMMAND, extends deadline), DECLINE (refusing a QUERY or COMMAND, content must explain why), HANDOFF (transferring obligation to another agent, target required), DONE (signalling successful completion of a COMMAND), FAILURE (signalling unsuccessful termination, content must explain why), PROPOSE (offering conditional commitment — sender binds to action contingent on receiver's acceptance; RESPONSE does not auto-fulfill, only DONE accepts), EVENT (telemetry only, not delivered to agents)") String type,
-            @ToolArg(name = "content", description = "Message content") String content,
-            @ToolArg(name = "payload", description = "Structured data payload (JSON string). Carried alongside content for machine-readable data (tool results, parameters). Not analyzed by governance.", required = false) String payload,
-            @ToolArg(name = "correlation_id", description = "Correlation ID (auto-generated for QUERY, COMMAND, and PROPOSE if omitted)", required = false) String correlationId,
-            @ToolArg(name = "in_reply_to", description = "ID of the message being replied to", required = false) Long inReplyTo,
-            @ToolArg(name = "artefact_refs", description = "UUIDs of shared artefacts to attach. Auto-claims each artefact for the sender; auto-released on commitment resolution (RESPONSE/DONE/DECLINE/FAILURE).", required = false) List<String> artefactRefs,
-            @ToolArg(name = "target", description = "Addressing target: instance:<id>, capability:<tag>, or role:<name>. Null/omitted = broadcast to all.", required = false) String target,
-            @ToolArg(name = "deadline", description = "Optional deadline as ISO-8601 duration (e.g. PT30M for 30 minutes). Only meaningful for QUERY, COMMAND, and PROPOSE. Defaults to channel config when not provided.", required = false) String deadline,
-            @ToolArg(name = "subject_id", description = "Optional UUID of the domain aggregate this message concerns (for ledger indexing).", required = false) String subjectId,
-            @ToolArg(name = "caused_by_entry_id", description = "Optional UUID of the ledger entry that triggered this dispatch (for causal chain tracing).", required = false) String causedByEntryId,
-            @ToolArg(name = "topic", description = "Topic name for this message. Groups messages into named sub-conversations within the channel. Defaults to 'general' if omitted.", required = false) String topic) {
+            String channel,
+            String sender,
+            String type,
+            String content,
+            String payload,
+            String correlationId,
+            Long inReplyTo,
+            List<String> artefactRefs,
+            String target,
+            String deadline,
+            String subjectId,
+            String causedByEntryId,
+            String topic) {
         Channel ch = resolveChannel(channel);
 
         // Read-only instance check — read_only instances cannot send any messages (MCP-specific)
@@ -635,6 +819,127 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return dispatchResult;
     }
 
+    /** Backward-compat overload — no reader_instance_id filter, no include_events. */
+    CheckResult checkMessages(String channelName, Long afterId, Integer limit, String sender) {
+        return checkMessages(channelName, afterId, limit, sender, null, null);
+    }
+
+    /** Backward-compat overload — no include_events. */
+    CheckResult checkMessages(String channelName, Long afterId, Integer limit, String sender,
+            String readerInstanceId) {
+        return checkMessages(channelName, afterId, limit, sender, readerInstanceId, null);
+    }
+
+    @Transactional
+    public CheckResult checkMessages(
+            String channel,
+            Long afterId,
+            Integer limit,
+            String sender,
+            String readerInstanceId,
+            Boolean includeEvents) {
+        Channel ch = resolveChannel(channel);
+
+        if (ch.paused()) {
+            return new CheckResult(List.of(), afterId != null ? afterId : 0L, "Channel is paused");
+        }
+
+        long cursor = afterId != null ? afterId : 0L;
+        int pageSize = limit != null ? limit : 20;
+        boolean events = includeEvents != null && includeEvents;
+
+        return switch (ch.semantic()) {
+            case EPHEMERAL -> checkMessagesEphemeral(ch, cursor, pageSize, readerInstanceId);
+            case COLLECT -> checkMessagesCollect(ch, readerInstanceId);
+            case BARRIER -> checkMessagesBarrier(ch, readerInstanceId);
+            default -> checkMessagesAppend(ch, cursor, pageSize, sender, readerInstanceId, events);
+        };
+    }
+
+
+    private void advanceDeliveryCursorIfTracked(Channel ch, String readerInstanceId, Long lastId) {
+        if (lastId == null || lastId <= 0) {return;}
+        if (readerInstanceId == null || readerInstanceId.isBlank()) {return;}
+        if (!io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(ch)) {return;}
+        membershipStore.updateLastDeliveredMessageId(ch.id(), readerInstanceId, lastId);
+    }
+
+    /** EPHEMERAL: deliver messages visible to this reader then delete only those. */
+    private CheckResult checkMessagesEphemeral(Channel ch, long cursor, int pageSize, String readerInstanceId) {
+        List<Message> fetched = messageService.pollAfter(ch.id(), cursor, pageSize);
+        List<Message> visible = fetched.stream()
+                                       .filter(m -> isVisibleToReader(m, readerInstanceId,
+                                                                      () -> instanceService.findCapabilityTagsForInstance(readerInstanceId)))
+                                       .toList();
+        List<MessageSummary> summaries = visible.stream().map(this::toMessageSummary).toList();
+        Long                 lastId    = summaries.isEmpty() ? cursor : summaries.getLast().messageId();
+        advanceDeliveryCursorIfTracked(ch, readerInstanceId, lastId);
+        if (!visible.isEmpty()) {
+            List<Long> ids = visible.stream().map(m -> m.id()).toList();
+            ids.forEach(messageStore::delete);
+        }
+        return new CheckResult(summaries, lastId, null);}
+
+    /** COLLECT: deliver ALL accumulated messages atomically and clear the channel; filter returned view. */
+    private CheckResult checkMessagesCollect(Channel ch, String readerInstanceId) {
+        List<Message> messages = messageStore.scan(MessageQuery.builder()
+                                                               .channelId(ch.id()).excludeTypes(List.of(MessageType.EVENT)).build());
+        List<MessageSummary> summaries = messages.stream()
+                                                 .filter(m -> isVisibleToReader(m, readerInstanceId,
+                                                                                () -> instanceService.findCapabilityTagsForInstance(readerInstanceId)))
+                                                 .map(this::toMessageSummary).toList();
+        Long lastId = summaries.isEmpty() ? 0L : summaries.getLast().messageId();
+        advanceDeliveryCursorIfTracked(ch, readerInstanceId, lastId);
+        if (!messages.isEmpty()) {
+            messageStore.deleteNonEvent(ch.id());
+        }
+        return new CheckResult(summaries, lastId, null);}
+
+    /** BARRIER: block until all declared contributors have written; then deliver and reset. */
+    private CheckResult checkMessagesBarrier(Channel ch, String readerInstanceId) {
+        Set<String> required = ch.barrierContributors() != null
+                               ? new java.util.HashSet<>(ch.barrierContributors())
+                               : Set.of();
+
+        if (required.isEmpty()) {
+            return new CheckResult(List.of(), 0L, "Waiting for: (no contributors declared — check channel configuration)");
+        }
+
+        List<String> written = messageStore.distinctSendersByChannel(ch.id(), MessageType.EVENT);
+
+        Set<String> pending = required.stream()
+                                      .filter(r -> !written.contains(r))
+                                      .collect(Collectors.toSet());
+
+        if (!pending.isEmpty()) {
+            String status = "Waiting for: " + String.join(", ", pending.stream().sorted().toList());
+            return new CheckResult(List.of(), 0L, status);
+        }
+
+        List<Message> messages = messageStore.scan(MessageQuery.builder()
+                                                               .channelId(ch.id()).excludeTypes(List.of(MessageType.EVENT)).build());
+        List<MessageSummary> summaries = messages.stream()
+                                                 .filter(m -> isVisibleToReader(m, readerInstanceId,
+                                                                                () -> instanceService.findCapabilityTagsForInstance(readerInstanceId)))
+                                                 .map(this::toMessageSummary).toList();
+        Long lastId = summaries.isEmpty() ? 0L : summaries.getLast().messageId();
+        advanceDeliveryCursorIfTracked(ch, readerInstanceId, lastId);
+        messageStore.deleteNonEvent(ch.id());
+        return new CheckResult(summaries, lastId, null);}
+
+    /** APPEND / LAST_WRITE: standard cursor-based polling with optional target filter. */
+    private CheckResult checkMessagesAppend(Channel ch, long cursor, int pageSize, String sender,
+                                            String readerInstanceId, boolean includeEvents) {
+        List<Message> messages = (sender != null && !sender.isBlank())
+                                 ? messageService.pollAfterBySender(ch.id(), cursor, pageSize, sender, includeEvents)
+                                 : messageService.pollAfter(ch.id(), cursor, pageSize, includeEvents);
+        List<MessageSummary> summaries = messages.stream()
+                                                 .filter(m -> isVisibleToReader(m, readerInstanceId,
+                                                                                () -> instanceService.findCapabilityTagsForInstance(readerInstanceId)))
+                                                 .map(this::toMessageSummary).toList();
+        Long lastId = summaries.isEmpty() ? cursor : summaries.getLast().messageId();
+        advanceDeliveryCursorIfTracked(ch, readerInstanceId, lastId);
+        return new CheckResult(summaries, lastId, null);}
 
     /** Backward-compat overload — no reader_instance_id filter. */
     List<MessageSummary> getReplies(Long messageId) {
@@ -645,13 +950,12 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return getReplies(messageId, readerInstanceId, null, null);
     }
 
-    @Tool(name = "get_replies", description = "Retrieve direct replies to a specific message.")
     @Transactional
     public List<MessageSummary> getReplies(
-            @ToolArg(name = "message_id", description = "ID of the parent message") Long messageId,
-            @ToolArg(name = "reader_instance_id", description = "Calling agent's instance ID for target filtering", required = false) String readerInstanceId,
-            @ToolArg(name = "after_id", description = "Return replies with id > after_id (cursor pagination)", required = false) Long afterId,
-            @ToolArg(name = "limit", description = "Maximum replies to return (default 20, max 100)", required = false) Integer limit) {
+            Long messageId,
+            String readerInstanceId,
+            Long afterId,
+            Integer limit) {
         final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 100) : 20;
         final String query = afterId != null
                 ? "inReplyTo = ?1 AND id > ?2 ORDER BY id ASC"
@@ -671,12 +975,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return searchMessages(query, channel, limit, null);
     }
 
-    @Tool(name = "search_messages", description = "Full-text keyword search across messages. Excludes EVENT type.")
     public List<MessageSummary> searchMessages(
-            @ToolArg(name = "query", description = "Keyword to search for (case-insensitive)") String query,
-            @ToolArg(name = "channel", description = "Channel name or UUID", required = false) String channel,
-            @ToolArg(name = "limit", description = "Maximum results (default 20)", required = false) Integer limit,
-            @ToolArg(name = "reader_instance_id", description = "Calling agent's instance ID for target filtering (optional)", required = false) String readerInstanceId) {
+            String query,
+            String channel,
+            Integer limit,
+            String readerInstanceId) {
         String pattern = "%" + query.toLowerCase() + "%";
         int pageSize = limit != null ? limit : 20;
 
@@ -699,11 +1002,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 .map(this::toMessageSummary).toList();
     }
 
-    @Tool(name = "get_message", description = "Look up a message by its numeric ID. "
-            + "Returns the message summary including content, type, sender, and metadata. "
-            + "Throws an error if the message is not found.")
     public MessageSummary getMessage(
-            @ToolArg(name = "message_id", description = "Numeric message ID") Long messageId) {
+            Long messageId) {
         Message message = messageService.findById(messageId)
                                               .orElseThrow(() -> new IllegalArgumentException(
                         "Message not found: " + messageId));
@@ -714,14 +1014,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Correlation / wait_for_reply
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "wait_for_reply", description = "Block until a RESPONSE message with the given correlation_id "
-            + "arrives on the channel, or until timeout_seconds seconds elapse. "
-            + "Returns immediately if a matching response already exists.")
     public WaitResult waitForReply(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "correlation_id", description = "UUID matching the correlation_id on the expected RESPONSE") String correlationId,
-            @ToolArg(name = "timeout_seconds", description = "Seconds to wait before timing out (default 90)", required = false) Integer timeoutS,
-            @ToolArg(name = "instance_id", description = "Waiting agent's instance ID for tracking (optional)", required = false) String instanceId) {
+            String channel,
+            String correlationId,
+            Integer timeoutS,
+            String instanceId) {
         Channel ch = resolveChannel(channel);
 
         int timeout = timeoutS != null ? timeoutS : 90;
@@ -788,13 +1085,10 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Human-in-the-loop — approval gate
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "request_approval", description = "Send an approval request to a channel and block until a human responds. "
-            + "Returns the human's response or a timeout result. "
-            + "Pair with list_pending_commitments (for human to discover) and respond_to_approval (for human to answer).")
     public WaitResult requestApproval(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "content", description = "The approval request content shown to the human") String content,
-            @ToolArg(name = "timeout_seconds", description = "Seconds to wait for human response (default 300)", required = false) Integer timeoutS) {
+            String channel,
+            String content,
+            Integer timeoutS) {
         Channel ch            = resolveChannel(channel);
         String        correlationId = UUID.randomUUID().toString();
         return requestApprovalWithCorrelationId(ch.name(), content, correlationId, timeoutS);
@@ -811,13 +1105,11 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
         return waitForReply(channelName, correlationId, timeout, null);
     }
 
-    @Tool(name = "respond_to_approval", description = "Human-callable: send a response to a pending approval request. "
-            + "Use correlation_id from list_pending_commitments to identify which request to answer.")
     @Transactional
     public DispatchResult respondToApproval(
-            @ToolArg(name = "correlation_id", description = "Correlation ID of the approval request (from list_pending_commitments)") String correlationId,
-            @ToolArg(name = "response_text", description = "The approval decision or message to send back") String responseText,
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+            String correlationId,
+            String responseText,
+            String channel) {
         Channel ch = resolveChannel(channel);
         // Look up the original request message to supply inReplyTo (required by RESPONSE type).
         // Use canonical MessageDispatch constructor to bypass builder validation when no prior message exists
@@ -838,12 +1130,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Human-in-the-loop — wait management
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "cancel_wait", description = "Cancel a pending wait_for_reply by its correlation_id. "
-            + "The waiting agent receives status='cancelled' instead of timing out. "
-            + "Use list_pending_commitments to discover what is blocked.")
     @Transactional
     public CancelWaitResult cancelWait(
-            @ToolArg(name = "correlation_id", description = "Correlation ID of the pending wait to cancel") String correlationId) {
+            String correlationId) {
         Optional<Commitment> opt = commitmentStore.findByCorrelationId(correlationId);
         if (opt.isPresent()) {
             commitmentStore.deleteById(opt.get().id());
@@ -868,9 +1157,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<CommitmentDetail> listMyCommitments(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "sender", description = "Your agent identity") String sender,
-            @ToolArg(name = "role", description = "Filter: 'obligor', 'requester', or 'both' (default: both)", required = false) String role) {
+            String channel,
+            String sender,
+            String role) {
         Channel ch = resolveChannel(channel);
         String        r  = role == null ? "both" : role.toLowerCase();
         List<Commitment> results = switch (r) {
@@ -889,7 +1178,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public CommitmentDetail getCommitment(
-            @ToolArg(name = "correlation_id", description = "The correlation_id of the QUERY or COMMAND") String correlationId) {
+            String correlationId) {
         return commitmentStore.findByCorrelationId(correlationId)
                 .map(CommitmentDetail::from)
                 .orElseThrow(() -> new IllegalArgumentException(
@@ -925,12 +1214,12 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public ArtefactDetail shareArtefact(
-            @ToolArg(name = "key", description = "Unique key for this artefact") String key,
-            @ToolArg(name = "description", description = "Human-readable description", required = false) String description,
-            @ToolArg(name = "created_by", description = "Owner instance identifier") String createdBy,
-            @ToolArg(name = "content", description = "Content to store or append") String content,
-            @ToolArg(name = "append", description = "Append to existing content (default false)", required = false) Boolean append,
-            @ToolArg(name = "last_chunk", description = "Mark artefact complete (default true)", required = false) Boolean lastChunk) {
+            String key,
+            String description,
+            String createdBy,
+            String content,
+            Boolean append,
+            Boolean lastChunk) {
         boolean doAppend = append != null && append;
         boolean isLastChunk = lastChunk == null || lastChunk;
         var data = dataService.store(key, description, createdBy, content, doAppend, isLastChunk);
@@ -939,34 +1228,34 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public ArtefactDetail beginArtefact(
-            @ToolArg(name = "key", description = "Unique key for this artefact") String key,
-            @ToolArg(name = "description", description = "Human-readable description", required = false) String description,
-            @ToolArg(name = "created_by", description = "Owner instance identifier") String createdBy,
-            @ToolArg(name = "content", description = "First chunk of content") String content) {
+            String key,
+            String description,
+            String createdBy,
+            String content) {
         var data = dataService.store(key, description, createdBy, content, false, false);
         return toArtefactDetail(data);
     }
 
     @Transactional
     public ArtefactDetail appendChunk(
-            @ToolArg(name = "key", description = "Artefact key (from begin_artefact)") String key,
-            @ToolArg(name = "content", description = "Content chunk to append") String content) {
+            String key,
+            String content) {
         var data = dataService.store(key, null, null, content, true, false);
         return toArtefactDetail(data);
     }
 
     @Transactional
     public ArtefactDetail finalizeArtefact(
-            @ToolArg(name = "key", description = "Artefact key (from begin_artefact)") String key,
-            @ToolArg(name = "content", description = "Optional final chunk of content to append", required = false) String content) {
+            String key,
+            String content) {
         String chunk = content != null ? content : "";
         var data = dataService.store(key, null, null, chunk, true, true);
         return toArtefactDetail(data);
     }
 
     public ArtefactDetail getArtefact(
-            @ToolArg(name = "key", description = "Artefact key", required = false) String key,
-            @ToolArg(name = "id", description = "Artefact UUID", required = false) String id) {
+            String key,
+            String id) {
         boolean hasKey = key != null && !key.isBlank();
         boolean hasId = id != null && !id.isBlank();
         if (!hasKey && !hasId) {
@@ -981,7 +1270,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     }
 
     public java.util.List<io.casehub.qhorus.api.message.ArtefactRef> getArtefactRefs(
-            @ToolArg(name = "message_id", description = "Message ID") Long messageId) {
+            Long messageId) {
         io.casehub.qhorus.api.message.Message msg = messageStore.find(messageId)
                                                                 .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
         return msg.artefactRefs() != null ? msg.artefactRefs() : java.util.List.of();
@@ -994,8 +1283,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public String claimArtefact(
-            @ToolArg(name = "artefact_id", description = "Artefact UUID") String artefactId,
-            @ToolArg(name = "instance_id", description = "Claiming instance UUID") String instanceId) {
+            String artefactId,
+            String instanceId) {
         try {
             dataService.claim(java.util.UUID.fromString(artefactId), java.util.UUID.fromString(instanceId));
             return "claimed";
@@ -1006,8 +1295,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public String releaseArtefact(
-            @ToolArg(name = "artefact_id", description = "Artefact UUID") String artefactId,
-            @ToolArg(name = "instance_id", description = "Releasing instance UUID") String instanceId) {
+            String artefactId,
+            String instanceId) {
         try {
             dataService.release(java.util.UUID.fromString(artefactId), java.util.UUID.fromString(instanceId));
             return "released";
@@ -1023,7 +1312,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public RevokeResult revokeArtefact(
-            @ToolArg(name = "artefact_id", description = "UUID of the artefact to revoke") String artefactId) {
+            String artefactId) {
         java.util.UUID   uuid = java.util.UUID.fromString(artefactId);
         SharedData data = dataStore.find(uuid).orElse(null);
         if (data == null) {
@@ -1045,11 +1334,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Human-in-the-loop — message and instance management
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "delete_message", description = "Delete a single message by its sequence ID. "
-            + "Use for PII removal, bad data, or agent mistakes. Does not cascade to replies.")
     @Transactional
     public DeleteMessageResult deleteMessage(
-            @ToolArg(name = "message_id", description = "Sequence ID of the message to delete") Long messageId) {
+            Long messageId) {
         Message msg = messageStore.find(messageId).orElse(null);
         if (msg == null) {
             return new DeleteMessageResult(messageId, false, null, null, null,
@@ -1072,6 +1359,122 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
                 "Message " + messageId + " deleted");
     }
 
+    /** Convenience overload — no caller identity (open governance assumed). */
+    ClearChannelResult clearChannel(String channel) {
+        return clearChannel(channel, null);
+    }
+
+    @Transactional
+    public ClearChannelResult clearChannel(
+            String channel,
+            String callerInstanceId) {
+        Channel ch = resolveChannel(channel);
+        checkAdminAccess(ch, callerInstanceId, "clear_channel");
+        long deleted = messageStore.scan(MessageQuery.builder()
+                .channelId(ch.id()).excludeTypes(List.of(MessageType.EVENT)).build()).size();
+        messageStore.deleteNonEvent(ch.id());
+        // Post audit event (survives the clear)
+        messageService.dispatch(MessageDispatch.builder()
+                .channelId(ch.id()).sender("system").type(MessageType.EVENT)
+                .actorType(ActorType.SYSTEM).build());
+        channelService.updateLastActivity(ch.id(), ch.tenancyId());
+        return new ClearChannelResult(ch.name(), (int) deleted, true);
+    }
+
+    @Transactional
+    public ChannelDigest channelDigest(
+            String channel,
+            Integer limit) {
+        Channel ch = resolveChannel(channel);
+
+        int pageSize = limit != null ? limit : 10;
+        List<Message> allMessages = messageStore.scan(MessageQuery.builder()
+                                                                  .channelId(ch.id()).excludeTypes(List.of(MessageType.EVENT)).build());
+
+        // Topic resolved status from Topic records
+        Map<String, io.casehub.qhorus.api.message.TopicSummary> topicSummaries =
+                topicService.listTopics(ch.id()).stream()
+                            .collect(java.util.stream.Collectors.toMap(
+                                    io.casehub.qhorus.api.message.TopicSummary::name, t -> t, (a, b) -> a));
+
+        if (allMessages.isEmpty()) {
+            List<TopicDigest> emptyTopics = topicSummaries.values().stream()
+                                                          .map(t -> new TopicDigest(t.name(), 0,
+                                                                                    t.lastActivityAt() != null ? t.lastActivityAt().toString() : null,
+                                                                                    t.resolved(), t.resolvedAt() != null ? t.resolvedAt().toString() : null))
+                                                          .toList();
+            return new ChannelDigest(ch.name(), ch.semantic().name(), ch.paused(),
+                                     0L, Map.of(), Map.of(), 0, List.of(), List.of(), null, null, emptyTopics);
+        }
+
+        // Per-topic counts from non-EVENT messages
+        Map<String, Long>              topicCounts       = new java.util.LinkedHashMap<>();
+        Map<String, java.time.Instant> topicLastActivity = new java.util.LinkedHashMap<>();
+        for (Message m : allMessages) {
+            String topic = m.topic() != null ? m.topic() : "general";
+            topicCounts.merge(topic, 1L, Long::sum);
+            if (m.createdAt() != null) {
+                topicLastActivity.merge(topic, m.createdAt(),
+                                        (a, b) -> a.isAfter(b) ? a : b);
+            }
+        }
+
+        List<TopicDigest> topicBreakdown = topicCounts.entrySet().stream()
+                                                      .map(e -> {
+                                                          String                                     name    = e.getKey();
+                                                          io.casehub.qhorus.api.message.TopicSummary summary = topicSummaries.get(name);
+                                                          java.time.Instant                          lastAct = topicLastActivity.get(name);
+                                                          return new TopicDigest(name, e.getValue(),
+                                                                                 lastAct != null ? lastAct.toString() : null,
+                                                                                 summary != null && summary.resolved(),
+                                                                                 summary != null && summary.resolvedAt() != null
+                                                                                 ? summary.resolvedAt().toString() : null);
+                                                      })
+                                                      .toList();
+
+        // Sender and type breakdowns
+        Map<String, Integer>  senderBreakdown = new java.util.LinkedHashMap<>();
+        Map<String, Integer>  typeBreakdown   = new java.util.LinkedHashMap<>();
+        java.util.Set<String> artefactUuids   = new java.util.LinkedHashSet<>();
+
+        for (Message m : allMessages) {
+            senderBreakdown.merge(m.sender(), 1, Integer::sum);
+            typeBreakdown.merge(m.messageType().name(), 1, Integer::sum);
+            if (m.artefactRefs() != null && !m.artefactRefs().isEmpty()) {
+                m.artefactRefs().forEach(ref -> artefactUuids.add(ref.uri()));
+            }
+        }
+
+        java.time.Instant cutoff = java.time.Instant.now().minusSeconds(300);
+        List<String> activeAgents = allMessages.stream()
+                                               .filter(m -> m.createdAt() != null && m.createdAt().isAfter(cutoff))
+                                               .map(m -> m.sender())
+                                               .distinct()
+                                               .toList();
+
+        List<MessagePreview> recent = allMessages.stream()
+                                                 .skip(Math.max(0, allMessages.size() - pageSize))
+                                                 .map(m -> {
+                                                     String content = m.content() != null ? m.content() : "";
+                                                     String preview = content.length() > 120
+                                                                      ? content.substring(0, 120) + "…"
+                                                                      : content;
+                                                     return new MessagePreview(m.id(), m.sender(), m.messageType().name(),
+                                                                               preview, m.createdAt() != null ? m.createdAt().toString() : null);
+                                                 })
+                                                 .toList();
+
+        String oldest = allMessages.get(0).createdAt() != null
+                        ? allMessages.get(0).createdAt().toString()
+                        : null;
+        String newest = allMessages.get(allMessages.size() - 1).createdAt() != null
+                        ? allMessages.get(allMessages.size() - 1).createdAt().toString()
+                        : null;
+
+        return new ChannelDigest(ch.name(), ch.semantic().name(), ch.paused(),
+                                 allMessages.size(), senderBreakdown, typeBreakdown,
+                                 artefactUuids.size(), activeAgents, recent, oldest, newest, topicBreakdown);}
+
     // ---------------------------------------------------------------------------
     // Ledger audit trail tools
     // ---------------------------------------------------------------------------
@@ -1085,15 +1488,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<Map<String, Object>> listLedgerEntries(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "type_filter", description = "Comma-separated MessageType names to include "
-                    + "(e.g. 'COMMAND,DONE,FAILURE'). Omit to return all types.", required = false) String typeFilter,
-            @ToolArg(name = "sender", description = "Filter by sender — returns only entries from this agent", required = false) String agentId,
-            @ToolArg(name = "since", description = "ISO-8601 timestamp — return only entries at or after this time", required = false) String since,
-            @ToolArg(name = "after_id", description = "Return entries with sequence_number > after_id (cursor pagination)", required = false) Long afterId,
-            @ToolArg(name = "correlation_id", description = "Filter by correlation ID — returns only entries for this obligation", required = false) String correlationId,
-            @ToolArg(name = "sort", description = "Sort order: 'asc' (default, oldest first) or 'desc' (newest first)", required = false) String sort,
-            @ToolArg(name = "limit", description = "Maximum entries to return (default 20, max 100)", required = false) Integer limit) {
+            String channel,
+            String typeFilter,
+            String agentId,
+            String since,
+            Long afterId,
+            String correlationId,
+            String sort,
+            Integer limit) {
 
         final Channel ch = resolveChannel(channel);
 
@@ -1136,8 +1538,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public ObligationChainSummary getObligationChain(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to inspect") String correlationId) {
+            String channel,
+            String correlationId) {
 
         final Channel ch = resolveChannel(channel);
 
@@ -1188,8 +1590,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<CausalChainEntry> getCausalChain(
-            @ToolArg(name = "channel", description = "Channel name or UUID. When omitted, walks across channel boundaries.", required = false) String channel,
-            @ToolArg(name = "ledger_entry_id", description = "UUID of the ledger entry (from list_ledger_entries entry_id field)") String ledgerEntryId) {
+            String channel,
+            String ledgerEntryId) {
 
         final UUID entryUuid;
         try {
@@ -1243,8 +1645,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public io.casehub.qhorus.runtime.ledger.CausalGraphService.CausalGraph getCausalGraph(
-            @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
-            @ToolArg(name = "limit", description = "Maximum entries to include (default 100, max 500)", required = false) Integer limit) {
+            String correlationId,
+            Integer limit) {
 
         final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 100;
         return causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
@@ -1252,8 +1654,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public String renderCausalGraph(
-            @ToolArg(name = "correlation_id", description = "Correlation ID to trace across all channels") String correlationId,
-            @ToolArg(name = "limit", description = "Maximum entries to include (default 200, max 500)", required = false) Integer limit) {
+            String correlationId,
+            Integer limit) {
         final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 200;
         var       graph          = causalGraphService.buildGraph(correlationId, effectiveLimit, currentPrincipal.tenancyId());
         return io.casehub.qhorus.runtime.ledger.CausalGraphRenderer.render(graph);
@@ -1262,8 +1664,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<StalledObligation> listStalledObligations(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "older_than_seconds", description = "Minimum age in seconds to consider stalled (default 30)", required = false) Integer olderThanSeconds) {
+            String channel,
+            Integer olderThanSeconds) {
 
         final Channel ch = resolveChannel(channel);
 
@@ -1288,7 +1690,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public ObligationStats getObligationStats(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel) {
+            String channel) {
 
         final Channel ch = resolveChannel(channel);
 
@@ -1310,8 +1712,8 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public TelemetrySummary getTelemetrySummary(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "since", description = "ISO-8601 timestamp — include only events at or after this time", required = false) String since) {
+            String channel,
+            String since) {
 
         final Channel ch = resolveChannel(channel);
 
@@ -1357,9 +1759,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<Map<String, Object>> getChannelTimeline(
-            @ToolArg(name = "channel", description = "Channel name or UUID") String channel,
-            @ToolArg(name = "after_id", description = "Return messages with id > after_id (cursor pagination)", required = false) Long afterId,
-            @ToolArg(name = "limit", description = "Maximum messages to return (default 50, max 200)", required = false) Integer limit) {
+            String channel,
+            Long afterId,
+            Integer limit) {
 
         Channel ch = resolveChannel(channel);
 
@@ -1386,9 +1788,9 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public List<Map<String, Object>> getObligationActivity(
-            @ToolArg(name = "correlation_id", description = "Correlation ID of the obligation to trace across channels") String correlationId,
-            @ToolArg(name = "include_content_search", description = "Deprecated — reserved for future use. Has no effect.", required = false) Boolean includeContentSearch,
-            @ToolArg(name = "limit", description = "Maximum entries to return (default 100, max 500)", required = false) Integer limit) {
+            String correlationId,
+            Boolean includeContentSearch,
+            Integer limit) {
 
         final int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 500) : 100;
 
@@ -1426,14 +1828,14 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public WatchdogSummary registerWatchdog(
-            @ToolArg(name = "condition_type", description = "BARRIER_STUCK | APPROVAL_PENDING | AGENT_STALE | CHANNEL_IDLE | QUEUE_DEPTH | CONTEXT_PRESSURE | LOOP_DETECTED | OBLIGATION_FAN_OUT | CONVERSATION_STALL | ECHO_CHAMBER | DELIVERY_LAG") String conditionType,
-            @ToolArg(name = "target_name", description = "Channel name, instance_id, or '*' for all") String targetName,
-            @ToolArg(name = "threshold_seconds", description = "Time threshold in seconds (for time-based conditions)", required = false) Integer thresholdSeconds,
-            @ToolArg(name = "threshold_count", description = "Count threshold (for QUEUE_DEPTH, LOOP_DETECTED repetitions, ECHO_CHAMBER min agents)", required = false) Integer thresholdCount,
-            @ToolArg(name = "similarity_pct", description = "Content similarity percentage threshold 0-100 (for LOOP_DETECTED, ECHO_CHAMBER)", required = false) Integer similarityPct,
-            @ToolArg(name = "notification_channel", description = "Channel to post alert events to") String notificationChannel,
-            @ToolArg(name = "created_by", description = "Who is registering this watchdog") String createdBy,
-            @ToolArg(name = "action", description = "Action on trigger: ALERT (default, notify only), PAUSE_CHANNEL (pause affected channel), DEREGISTER_AGENT (mark agent offline), QUARANTINE (pause + deregister + containment EVENT)", required = false) String action) {
+            String conditionType,
+            String targetName,
+            Integer thresholdSeconds,
+            Integer thresholdCount,
+            Integer similarityPct,
+            String notificationChannel,
+            String createdBy,
+            String action) {
         requireWatchdogEnabled();
         io.casehub.qhorus.api.watchdog.WatchdogConditionType type = io.casehub.qhorus.api.watchdog.WatchdogConditionType.fromString(conditionType)
                                                                                                                         .orElseThrow(() -> new IllegalArgumentException("Unknown condition_type '" + conditionType + "'. Valid: " + java.util.Arrays.toString(io.casehub.qhorus.api.watchdog.WatchdogConditionType.values())));
@@ -1464,7 +1866,7 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
 
     @Transactional
     public DeleteWatchdogResult deleteWatchdog(
-            @ToolArg(name = "watchdog_id", description = "UUID of the watchdog to delete") String watchdogId) {
+            String watchdogId) {
         requireWatchdogEnabled();
         final UUID watchdogUuid;
         try {
@@ -1487,36 +1889,32 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // Reaction tools
     // ---------------------------------------------------------------------------
 
-    @Tool(name = "react", description = "Add an emoji reaction to a message. Idempotent — reacting twice is a no-op.")
     @Transactional
     public Reaction react(
-            @ToolArg(name = "message_id", description = "ID of the message to react to") Long messageId,
-            @ToolArg(name = "emoji", description = "Emoji character or shortcode") String emoji,
-            @ToolArg(name = "actor_id", description = "Who is reacting. Defaults to caller identity.", required = false) String actorId) {
+            Long messageId,
+            String emoji,
+            String actorId) {
         String actor = actorId != null ? actorId : currentPrincipal.actorId();
         return reactionService.react(messageId, emoji, actor, currentPrincipal.tenancyId());
     }
 
-    @Tool(name = "unreact", description = "Remove an emoji reaction from a message. Idempotent — unreacting when not reacted is a no-op.")
     @Transactional
     public ReactionResult unreact(
-            @ToolArg(name = "message_id", description = "ID of the message") Long messageId,
-            @ToolArg(name = "emoji", description = "Emoji character or shortcode") String emoji,
-            @ToolArg(name = "actor_id", description = "Who is unreacting. Defaults to caller identity.", required = false) String actorId) {
+            Long messageId,
+            String emoji,
+            String actorId) {
         String actor = actorId != null ? actorId : currentPrincipal.actorId();
         boolean removed = reactionService.unreact(messageId, emoji, actor);
         return new ReactionResult(messageId, emoji, removed);
     }
 
-    @Tool(name = "get_reactions", description = "Get all reactions for a message, grouped by emoji with actor lists")
     public List<ReactionGroup> getReactions(
-            @ToolArg(name = "message_id", description = "ID of the message") Long messageId) {
+            Long messageId) {
         return reactionService.getReactions(messageId);
     }
 
-    @Tool(name = "get_reactions_batch", description = "Get reactions for multiple messages in one call, grouped by emoji with actor lists per message")
     public Map<Long, List<ReactionGroup>> getReactionsBatch(
-            @ToolArg(name = "message_ids", description = "List of message IDs to fetch reactions for (max 200)") List<Long> messageIds) {
+            List<Long> messageIds) {
         if (messageIds == null || messageIds.isEmpty()) {
             throw new IllegalArgumentException("message_ids must be non-null and non-empty");
         }
@@ -1531,6 +1929,161 @@ public class QhorusMcpTools extends QhorusMcpToolsBase {
     // ---------------------------------------------------------------------------
     // Projection tools
     // ---------------------------------------------------------------------------
+
+
+    public ChannelSummaryResult get_channel_summary(String channel) {
+        Channel ch = resolveChannel(channel);
+        return channelSummaryService.getSummary(ch.id())
+                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
+                                                                       s.updatedAt() != null ? s.updatedAt().toString() : null,
+                                                                       s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds()))
+                                    .orElse(new ChannelSummaryResult(ch.name(), null, Map.of(), null, null, null, null));
+    }
+
+    public ChannelSummaryResult update_channel_summary(String channel, String summary) {
+        Channel ch = resolveChannel(channel);
+        var     s  = channelSummaryService.setSummary(ch.id(), summary, currentPrincipal.actorId());
+        return new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
+                                        s.updatedAt() != null ? s.updatedAt().toString() : null,
+                                        s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds());
+    }
+
+    public ChannelSummaryResult configure_channel_summary(String channel,
+                                                          Integer update_after_messages, Integer update_after_seconds) {
+        Channel ch = resolveChannel(channel);
+        var     s  = channelSummaryService.configureSummary(ch.id(), update_after_messages, update_after_seconds);
+        return new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
+                                        s.updatedAt() != null ? s.updatedAt().toString() : null,
+                                        s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds());
+    }
+
+    public ChannelSummaryResult trigger_channel_summary_update(String channel) {
+        Channel ch = resolveChannel(channel);
+        return channelSummaryService.triggerUpdate(ch.id())
+                                    .map(s -> new ChannelSummaryResult(ch.name(), s.content(), s.annotations(),
+                                                                       s.updatedAt() != null ? s.updatedAt().toString() : null,
+                                                                       s.updatedBy(), s.updateAfterMessages(), s.updateAfterSeconds()))
+                                    .orElseThrow(() -> new IllegalArgumentException(
+                                            "No summary configured for channel '" + ch.name() + "'. Use configure_channel_summary first."));
+    }
+
+    public List<String> listProjections() {
+        return projectionRegistry.registeredNames().stream().sorted().toList();
+    }
+
+    public String projectChannel(
+            String channel,
+            String projectionName,
+            Integer maxMessages,
+            String topic) {
+        return projectAndRender(resolveChannel(channel).id(), projectionRegistry.get(projectionName), maxMessages, topic);
+    }
+
+    String getActorCapacity(
+            String actorId) {
+        if (!capacityView.isResolvable()) {return "Capacity view not available";}
+        var capacity = capacityView.get().getCapacity(actorId);
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "actorId", capacity.actorId(),
+                    "aggregatePressure", capacity.aggregatePressure(),
+                    "pressureBySignalType", capacity.pressureBySignalType(),
+                    "observedAt", capacity.observedAt().toString()));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize capacity", e);
+        }
+    }
+
+    String listOverloadedActors(
+            Double threshold) {
+        if (!capacityView.isResolvable()) {return "Capacity view not available";}
+        double t          = threshold != null ? threshold : 0.7;
+        var    overloaded = capacityView.get().getOverloaded(t);
+        var items = overloaded.stream()
+                              .map(c -> java.util.Map.of(
+                                      "actorId", (Object) c.actorId(),
+                                      "aggregatePressure", (Object) c.aggregatePressure(),
+                                      "pressureBySignalType", (Object) c.pressureBySignalType()))
+                              .toList();
+        try {
+            return mapper.writeValueAsString(java.util.Map.of("overloaded_actors", items));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize overloaded actors", e);
+        }
+    }
+
+    String getRedistributionHistory(
+            String actorId,
+            String channel,
+            Integer limit) {
+        int maxEntries = limit != null ? Math.min(limit, 100) : 20;
+        var ch = resolveChannel(channel);
+        String tenancyId = currentPrincipal.tenancyId();
+        var entries = ledgerRepo.findByActorIdInChannel(ch.id(), "system:redistribution", maxEntries, tenancyId);
+        var filtered = entries.stream()
+                              .filter(e -> actorId == null || actorId.equals(e.routingOriginalTarget))
+                              .map(this::toLedgerEntryMap)
+                              .toList();
+        try {
+            return mapper.writeValueAsString(java.util.Map.of("redistribution_history", filtered));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize redistribution history", e);
+        }
+    }
+
+    String setChannelRedistributionThreshold(
+            String channel,
+            Double threshold) {
+        if (threshold != null && (threshold < 0.0 || threshold > 1.0)) {
+            throw new IllegalArgumentException("Threshold must be between 0.0 and 1.0, got: " + threshold);
+        }
+        var ch = resolveChannel(channel);
+        channelService.setRedistributionCapacityThreshold(ch.id(), threshold);
+        return "Redistribution threshold " + (threshold != null ? "set to " + threshold : "cleared")
+               + " for channel " + ch.name();
+    }
+
+    String getChannelRedistributionThreshold(
+            String channel) {
+        var    ch         = resolveChannel(channel);
+        Double configured = ch.redistributionCapacityThreshold();
+        double effective  = configured != null ? configured : globalRedistributeThreshold;
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "channel", ch.name(),
+                    "configured", configured != null ? configured.toString() : "null",
+                    "effective", effective));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize threshold", e);
+        }
+    }
+
+    String setChannelRoutingCapacityThreshold(
+            String channel,
+            Double threshold) {
+        if (threshold != null && (threshold < 0.0 || threshold > 1.0)) {
+            throw new IllegalArgumentException("Threshold must be between 0.0 and 1.0, got: " + threshold);
+        }
+        var ch = resolveChannel(channel);
+        channelService.setRoutingCapacityThreshold(ch.id(), threshold);
+        return "Routing capacity threshold " + (threshold != null ? "set to " + threshold : "cleared")
+               + " for channel " + ch.name();
+    }
+
+    String getChannelRoutingCapacityThreshold(
+            String channel) {
+        var    ch         = resolveChannel(channel);
+        Double configured = ch.routingCapacityThreshold();
+        double effective  = configured != null ? configured : qhorusConfig.routing().defaultCapacityThreshold().orElse(0.8);
+        try {
+            return mapper.writeValueAsString(java.util.Map.of(
+                    "channel", ch.name(),
+                    "configured", configured != null ? configured.toString() : "null",
+                    "effective", effective));
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to serialize threshold", e);
+        }
+    }
 
 
 }

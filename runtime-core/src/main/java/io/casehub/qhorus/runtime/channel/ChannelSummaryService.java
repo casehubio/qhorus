@@ -132,6 +132,12 @@ public class ChannelSummaryService implements io.casehub.qhorus.api.channel.Chan
         return Optional.of(saved);
     }
 
+    @Override
+    public void deleteSummary(UUID channelId) {
+        summaryStore.deleteByChannelId(channelId);
+    }
+
+
     public long countMessagesSince(UUID channelId, Long afterId) {
         long cursor = afterId != null ? afterId : 0L;
         return messageStore.count(MessageQuery.builder().channelId(channelId).afterId(cursor).build());

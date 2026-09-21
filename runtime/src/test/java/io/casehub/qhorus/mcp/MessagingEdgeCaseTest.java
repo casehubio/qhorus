@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -48,9 +47,7 @@ class MessagingEdgeCaseTest {
     void sendMessageWithInvalidTypeThrowsIllegalArgumentException() {
         tools.createChannel("msg-edge-type", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("msg-edge-type", "alice", "bogus_type", "content", null, null, null, null, null, null, null, null, null),
-                "invalid message type should throw IllegalArgumentException");
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("msg-edge-type", "alice", "bogus_type", "content", null, null, null, null, null, null, null, null, null), "invalid message type should throw IllegalArgumentException");
 
         // The error message is from valueOf() — it doesn't list valid values.
         // This is a usability gap: agents get a cryptic error.
@@ -257,9 +254,7 @@ class MessagingEdgeCaseTest {
     @Test
     @TestTransaction
     void searchMessagesWithUnknownChannelThrowsIllegalArgument() {
-        assertThrows(ToolCallException.class,
-                () -> tools.searchMessages("anything", "no-such-channel-xyz", 10, null),
-                "channel-scoped search with unknown channel should throw IllegalArgumentException");
+        assertThrows(IllegalArgumentException.class, () -> tools.searchMessages("anything", "no-such-channel-xyz", 10, null), "channel-scoped search with unknown channel should throw IllegalArgumentException");
     }
 
     /**

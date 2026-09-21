@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -142,9 +141,7 @@ class LastWriteEdgeCaseTest {
 
         // bob tries to send — the LAST_WRITE check finds alice's EVENT as the "last" message
         // and rejects bob because last.sender ("alice") != "bob"
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("lw-edge-5", "bob", "status", "bob wants in", null, null, null, null, null, null, null, null, null),
-                "LAST_WRITE should reject bob even when alice's only message is an EVENT type");
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("lw-edge-5", "bob", "status", "bob wants in", null, null, null, null, null, null, null, null, null), "LAST_WRITE should reject bob even when alice's only message is an EVENT type");
     }
 
     /**

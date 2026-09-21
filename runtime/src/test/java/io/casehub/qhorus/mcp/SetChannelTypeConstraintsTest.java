@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -65,8 +64,6 @@ class SetChannelTypeConstraintsTest {
         tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "EVENT,QUERY", "EVENT"))
-                .isInstanceOf(ToolCallException.class)
-                .getCause()
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("overlap");
     }
@@ -78,8 +75,6 @@ class SetChannelTypeConstraintsTest {
         tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "BOGUS_TYPE", null))
-                .isInstanceOf(ToolCallException.class)
-                .getCause()
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -100,8 +95,6 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void unknownChannel_throws() {
         assertThatThrownBy(() -> tools.setChannelTypeConstraints("no-such-channel-" + System.nanoTime(), "EVENT", null))
-                .isInstanceOf(ToolCallException.class)
-                .getCause()
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not found");
     }

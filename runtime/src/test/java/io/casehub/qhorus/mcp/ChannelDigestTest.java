@@ -9,7 +9,6 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.TopicService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -179,8 +178,7 @@ class ChannelDigestTest {
     @Test
     @TestTransaction
     void digestUnknownChannelThrows() {
-        assertThrows(ToolCallException.class,
-                () -> tools.channelDigest("no-such-channel", null));
+        assertThrows(IllegalArgumentException.class, () -> tools.channelDigest("no-such-channel", null));
     }
 
     // -------------------------------------------------------------------------

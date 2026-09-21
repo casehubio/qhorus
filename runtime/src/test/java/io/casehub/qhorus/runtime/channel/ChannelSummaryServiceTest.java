@@ -74,7 +74,7 @@ class ChannelSummaryServiceTest {
         UUID chId = stubChannel("cursor-ch");
         Message msg = Message.builder().id(42L).channelId(chId).sender("s")
                              .messageType(MessageType.STATUS).content("x").build();
-        Mockito.when(messageStore.scan(Mockito.any())).thenReturn(List.of(msg));
+        Mockito.when(messageStore.findLastMessage(chId)).thenReturn(Optional.of(msg));
 
         ChannelSummary s = service.setSummary(chId, "manual", "op");
         assertThat(s.lastUpdatedMessageId()).isEqualTo(42L);

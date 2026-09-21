@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -54,22 +53,22 @@ class DeniedTypesMcpTest {
 
     @Test
     @TestTransaction
-    void createChannel_withInvalidDeniedType_throwsToolCallException() {
+    void createChannel_withInvalidDeniedType_throwsIllegalArgumentException() {
         assertThatThrownBy(() ->
                 tools.createChannel("bad-denied", "Bad channel", null, null, null, null, null, null, null, "INVALID_TYPE", null, null, null, null, null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class);
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @TestTransaction
-    void createChannel_withOverlappingTypes_throwsToolCallException() {
+    void createChannel_withOverlappingTypes_throwsIllegalArgumentException() {
         assertThatThrownBy(() ->
                 tools.createChannel(
                         "overlap-mcp", "Bad channel",
                         null, null, null, null, null, null,
                         "QUERY,COMMAND", "QUERY", null, null, null, null,
                         null, null, null, null, null))
-                .isInstanceOf(ToolCallException.class)
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("QUERY");
     }
 }

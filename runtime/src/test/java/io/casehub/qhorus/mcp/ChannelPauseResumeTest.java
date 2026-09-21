@@ -6,7 +6,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
@@ -64,9 +63,7 @@ class ChannelPauseResumeTest {
     @Test
     @TestTransaction
     void pauseUnknownChannelThrowsIllegalArgument() {
-        assertThrows(ToolCallException.class,
-                () -> tools.pauseChannel("no-such-channel", null),
-                "pausing an unknown channel should throw IllegalArgumentException");
+        assertThrows(IllegalArgumentException.class, () -> tools.pauseChannel("no-such-channel", null), "pausing an unknown channel should throw IllegalArgumentException");
     }
 
     // -------------------------------------------------------------------------
@@ -94,8 +91,7 @@ class ChannelPauseResumeTest {
     @Test
     @TestTransaction
     void resumeUnknownChannelThrowsIllegalArgument() {
-        assertThrows(ToolCallException.class,
-                () -> tools.resumeChannel("no-such-channel", null));
+        assertThrows(IllegalArgumentException.class, () -> tools.resumeChannel("no-such-channel", null));
     }
 
     // -------------------------------------------------------------------------
@@ -108,8 +104,7 @@ class ChannelPauseResumeTest {
         tools.createChannel("pr-send-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         tools.pauseChannel("pr-send-1", null);
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("pr-send-1", "alice", "status", "hello", null, null, null, null, null, null, null, null, null));
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("pr-send-1", "alice", "status", "hello", null, null, null, null, null, null, null, null, null));
         assertTrue(ex.getMessage().toLowerCase().contains("paused"),
                 "error message should mention 'paused'");
     }
@@ -197,8 +192,7 @@ class ChannelPauseResumeTest {
         tools.pauseChannel("pr-cycle-1", null);
 
         // 3. Send while paused — fails
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("pr-cycle-1", "alice", "status", "msg2", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("pr-cycle-1", "alice", "status", "msg2", null, null, null, null, null, null, null, null, null));
 
         // 4. check_messages while paused — empty + status
         QhorusMcpTools.CheckResult paused = tools.checkMessages("pr-cycle-1", 0L, 10, null, null, null);
@@ -236,10 +230,8 @@ class ChannelPauseResumeTest {
         tools.pauseChannel("pr-e2e-1", null);
 
         // Neither agent can send
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("pr-e2e-1", "alice-agent", "status", "update", null, null, null, null, null, null, null, null, null));
-        assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("pr-e2e-1", "bob-agent", "status", "update", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("pr-e2e-1", "alice-agent", "status", "update", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> tools.sendMessage("pr-e2e-1", "bob-agent", "status", "update", null, null, null, null, null, null, null, null, null));
 
         // Human resumes
         tools.resumeChannel("pr-e2e-1", null);

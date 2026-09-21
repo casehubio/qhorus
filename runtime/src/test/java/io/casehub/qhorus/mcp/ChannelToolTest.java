@@ -9,7 +9,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.platform.api.identity.ActorTypeResolver;
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import jakarta.persistence.EntityManager;
@@ -83,8 +82,7 @@ class ChannelToolTest {
     @Test
     @TestTransaction
     void createChannelWithInvalidSemanticThrowsDescriptiveError() {
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.createChannel(unique("bad-sem-ch"), "Test", "RUBBISH", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> tools.createChannel(unique("bad-sem-ch"), "Test", "RUBBISH", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
         assertTrue(ex.getMessage().contains("RUBBISH"),
                 "error message should mention the invalid value");

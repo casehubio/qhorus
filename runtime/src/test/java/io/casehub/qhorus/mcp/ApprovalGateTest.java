@@ -10,7 +10,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.api.message.DispatchResult;
@@ -97,8 +96,7 @@ class ApprovalGateTest {
     @Test
     @TestTransaction
     void respondToApprovalOnUnknownChannelThrows() {
-        assertThrows(ToolCallException.class,
-                () -> tools.respondToApproval("any-id", "yes", "no-such-channel"));
+        assertThrows(IllegalArgumentException.class, () -> tools.respondToApproval("any-id", "yes", "no-such-channel"));
     }
 
     // -------------------------------------------------------------------------

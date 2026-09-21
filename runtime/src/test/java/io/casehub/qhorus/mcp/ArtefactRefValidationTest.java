@@ -9,7 +9,6 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.quarkiverse.mcp.server.ToolCallException;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
 import io.quarkus.test.TestTransaction;
@@ -40,8 +39,7 @@ class ArtefactRefValidationTest {
         tools.createChannel("arv-ch-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String fakeUuid = UUID.randomUUID().toString();
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("arv-ch-2", "alice", "status", "with bad ref", null, null, null, List.of(fakeUuid), null, null, null, null, null));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("arv-ch-2", "alice", "status", "with bad ref", null, null, null, List.of(fakeUuid), null, null, null, null, null));
 
         assertTrue(ex.getMessage().contains(fakeUuid),
                 "Error message should identify the unknown artefact UUID");
@@ -55,8 +53,7 @@ class ArtefactRefValidationTest {
                 "arv-data-3", "desc", "alice", "content", false, true);
         String badUuid = UUID.randomUUID().toString();
 
-        ToolCallException ex = assertThrows(ToolCallException.class,
-                () -> tools.sendMessage("arv-ch-3", "alice", "status", "mixed refs", null, null, null, List.of(good.artefactId().toString(), badUuid), null, null, null, null, null));
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("arv-ch-3", "alice", "status", "mixed refs", null, null, null, List.of(good.artefactId().toString(), badUuid), null, null, null, null, null));
 
         assertTrue(ex.getMessage().contains(badUuid));
     }
