@@ -1,6 +1,8 @@
 package io.casehub.qhorus.api;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import java.util.List;
+import io.casehub.qhorus.api.message.Message;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -27,8 +29,7 @@ import static org.hamcrest.Matchers.not;
 @TestProfile(A2AEnabledProfile.class)
 class A2AJsonRpcDispatchTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     private static final String A2A_PATH = "/a2a";
 
@@ -64,7 +65,7 @@ class A2AJsonRpcDispatchTest {
 
     @Test
     void messageSend_returnsJsonRpcResponseWithTask() {
-        tools.createChannel("a2a-rpc-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-rpc-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         String reqId = UUID.randomUUID().toString();
         given()
@@ -82,7 +83,7 @@ class A2AJsonRpcDispatchTest {
 
     @Test
     void messageSend_createsMessageInChannel() {
-        tools.createChannel("a2a-rpc-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-rpc-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         given()
@@ -94,9 +95,9 @@ class A2AJsonRpcDispatchTest {
                 .statusCode(200)
                 .body("result.id", equalTo(taskId));
 
-        QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-rpc-2", 0L, 10, null, null, null);
-        org.junit.jupiter.api.Assertions.assertEquals(1, check.messages().size());
-        org.junit.jupiter.api.Assertions.assertEquals("json-rpc message", check.messages().get(0).content());
+        var check = helper.checkMessages("a2a-rpc-2", 0L, 10, null, null, null);
+        org.junit.jupiter.api.Assertions.assertEquals(1, check.size());
+        org.junit.jupiter.api.Assertions.assertEquals("json-rpc message", check.get(0).content());
     }
 
     // -----------------------------------------------------------------------
@@ -105,7 +106,7 @@ class A2AJsonRpcDispatchTest {
 
     @Test
     void tasksGet_returnsTaskWithHistory() {
-        tools.createChannel("a2a-rpc-3", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-rpc-3", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Create a task via message/send
@@ -149,7 +150,7 @@ class A2AJsonRpcDispatchTest {
 
     @Test
     void tasksCancel_declinesCommitmentAndReturnsCanceled() {
-        tools.createChannel("a2a-rpc-cancel-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-rpc-cancel-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Create a task (opens commitment via QUERY)
@@ -244,7 +245,7 @@ class A2AJsonRpcDispatchTest {
 
     @Test
     void responseEchoesRequestId() {
-        tools.createChannel("a2a-rpc-echo", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-rpc-echo", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String reqId = "my-custom-id-123";
 
         given()

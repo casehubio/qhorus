@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.audit.BenchmarkContext;
 import io.casehub.qhorus.runtime.audit.EvidentialChecker;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -44,8 +44,7 @@ class Zone3EvidentialCheckerTest {
     @Inject
     EvidentialChecker checker;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelStore channelStore;
@@ -118,7 +117,7 @@ class Zone3EvidentialCheckerTest {
         final String corrId = UUID.randomUUID().toString();
         final String ch = CHANNEL + "-v2-ok-" + UUID.randomUUID();
         final String obsName = CHANNEL + "-v2-obs-ok-" + UUID.randomUUID();
-        tools.createChannel(obsName, "Z3 V2 obs", "APPEND",
+        helper.createChannel(obsName, "Z3 V2 obs", "APPEND",
                 null, null, null, null, null, null, null, null, null, null, null);
         final UUID observedChannelId = resolveChannelId(obsName); // 0 messages
 
@@ -136,7 +135,7 @@ class Zone3EvidentialCheckerTest {
         final String corrId = UUID.randomUUID().toString();
         final String ch = CHANNEL + "-v2-bad-" + UUID.randomUUID();
         final String obsName = CHANNEL + "-v2-obs-bad-" + UUID.randomUUID();
-        tools.createChannel(obsName, "Z3 V2 obs", "APPEND",
+        helper.createChannel(obsName, "Z3 V2 obs", "APPEND",
                 null, null, null, null, null, null, null, null, null, null, null);
         final UUID observedChannelId = resolveChannelId(obsName); // 0 messages
 
@@ -157,7 +156,7 @@ class Zone3EvidentialCheckerTest {
         final String corrId = UUID.randomUUID().toString();
         final String ch = CHANNEL + "-v2-type-" + UUID.randomUUID();
         final String obsName = CHANNEL + "-v2-obs-type-" + UUID.randomUUID();
-        tools.createChannel(obsName, "Z3 V2 obs", "APPEND",
+        helper.createChannel(obsName, "Z3 V2 obs", "APPEND",
                 null, null, null, null, null, null, null, null, null, null, null);
         final UUID observedChannelId = resolveChannelId(obsName);
 
@@ -236,31 +235,31 @@ class Zone3EvidentialCheckerTest {
     /** Plant a FAILED obligation for priorCorrId on its own prior channel. */
     private void plantFailedObligation(final String priorCorrId) {
         final String priorCh = CHANNEL + "-prior-" + UUID.randomUUID();
-        tools.createChannel(priorCh, "Z3 prior", "APPEND",
+        helper.createChannel(priorCh, "Z3 prior", "APPEND",
                 null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(priorCh, "orchestrator", null, null, null);
-        tools.registerInstance(priorCh, "worker", null, null, null);
-        final DispatchResult priorCmd = tools.sendMessage(priorCh, "orchestrator", "command",
+        helper.registerInstance(priorCh, "orchestrator", null, null, null);
+        helper.registerInstance(priorCh, "worker", null, null, null);
+        final DispatchResult priorCmd = helper.sendMessage(priorCh, "orchestrator", "command",
                 "Complete this task", priorCorrId, null, null, null, null, null, null, null);
-        tools.sendMessage(priorCh, "worker", "failure",
+        helper.sendMessage(priorCh, "worker", "failure",
                 "Could not complete", priorCorrId, priorCmd.messageId(), null, null, null, null, null, null);
     }
 
     private void setupChannel(final String name) {
-        tools.createChannel(name, "Z3 test", "APPEND",
+        helper.createChannel(name, "Z3 test", "APPEND",
                 null, null, null, null, null, ALLOWED, null, null, null, null, null);
-        tools.registerInstance(name, "orchestrator", null, null, null);
-        tools.registerInstance(name, "worker", null, null, null);
+        helper.registerInstance(name, "orchestrator", null, null, null);
+        helper.registerInstance(name, "worker", null, null, null);
     }
 
     private DispatchResult sendCommand(final String ch, final String task, final String corrId) {
-        return tools.sendMessage(ch, "orchestrator", "command",
+        return helper.sendMessage(ch, "orchestrator", "command",
                 task, corrId, null, null, null, null, null, null, null);
     }
 
     private void sendResponse(final String ch, final String type, final String content,
                               final String corrId, final Long inReplyTo) {
-        tools.sendMessage(ch, "worker", type, content, corrId, inReplyTo,
+        helper.sendMessage(ch, "worker", type, content, corrId, inReplyTo,
                 null, null, null, null, null, null);
     }
 }

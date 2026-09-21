@@ -15,7 +15,9 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -30,8 +32,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ObligationActivityTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     MessageService messageService;
@@ -60,12 +61,12 @@ class ObligationActivityTest {
         String caseId = "oa-hp-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel(caseId + "/oversight", "Oversight", "APPEND", null, null, null, null, null, "QUERY,COMMAND", null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/oversight", "Oversight", "APPEND", null, null, null, null, null, "QUERY,COMMAND", null, null, null, null, null, null, null, null, null, null);
 
         // work: COMMAND starts the obligation
-        var cmdWork = tools.sendMessage(caseId + "/work", "coordinator", "COMMAND",
+        var cmdWork = helper.sendMessage(caseId + "/work", "coordinator", "COMMAND",
                 "Analyse the codebase", null, corrId, null, null, null, null, null, null, null);
 
         // observe: EVENT with explicit correlationId — links this tool call to the obligation
@@ -73,18 +74,18 @@ class ObligationActivityTest {
                 "{\"tool\":\"read_file\",\"path\":\"AuthService.java\"}", corrId);
 
         // work: STATUS extends the obligation
-        tools.sendMessage(caseId + "/work", "oa-researcher", "STATUS",
+        helper.sendMessage(caseId + "/work", "oa-researcher", "STATUS",
                 "Reading files — 40% done", null, corrId, null, null, null, null, null, null, null);
 
         // oversight: QUERY to human with same correlationId
-        tools.sendMessage(caseId + "/oversight", "oa-researcher", "QUERY",
+        helper.sendMessage(caseId + "/oversight", "oa-researcher", "QUERY",
                 "Is finding #2 in scope?", null, corrId, null, null, null, null, null, null, null);
 
         // work: DONE closes the obligation
-        tools.sendMessage(caseId + "/work", "oa-researcher", "DONE",
+        helper.sendMessage(caseId + "/work", "oa-researcher", "DONE",
                 "Analysis complete.", null, corrId, cmdWork.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> activity = tools.getObligationActivity(corrId, null, null);
+        List<Map<String, Object>> activity = helper.getObligationActivity(corrId, null, null);
 
         assertEquals(5, activity.size());
 
@@ -120,15 +121,15 @@ class ObligationActivityTest {
         String caseId = "oa-order-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
 
-        var cmdOrder = tools.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "do it", null, corrId, null, null, null, null, null, null, null);
+        var cmdOrder = helper.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "do it", null, corrId, null, null, null, null, null, null, null);
         // EVENT with explicit correlationId — agent links tool call to the obligation
         sendEvent(caseId + "/observe", "agent-a", "{\"tool\":\"read_file\"}", corrId);
-        tools.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",  null, corrId, cmdOrder.messageId(), null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",  null, corrId, cmdOrder.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> activity = tools.getObligationActivity(corrId, null, null);
+        List<Map<String, Object>> activity = helper.getObligationActivity(corrId, null, null);
 
         assertEquals(3, activity.size());
 
@@ -149,16 +150,16 @@ class ObligationActivityTest {
         String caseId = "oa-event-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
 
-        var cmdEvent = tools.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "analyse", null, corrId, null, null, null, null, null, null, null);
+        var cmdEvent = helper.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "analyse", null, corrId, null, null, null, null, null, null, null);
         // Agent correctly links EVENT to the obligation via explicit correlationId
         sendEvent(caseId + "/observe", "agent-a",
                 "{\"tool\":\"analyse_code\",\"duration_ms\":340}", corrId);
-        tools.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",   null, corrId, cmdEvent.messageId(), null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",   null, corrId, cmdEvent.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> activity = tools.getObligationActivity(corrId, null, null);
+        List<Map<String, Object>> activity = helper.getObligationActivity(corrId, null, null);
         assertEquals(3, activity.size());
         assertEquals("EVENT", activity.get(1).get("message_type"));
         assertEquals(caseId + "/observe", activity.get(1).get("channel"));
@@ -169,15 +170,15 @@ class ObligationActivityTest {
         String caseId = "oa-no-corr-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/observe", "Observe", "APPEND", null, null, null, null, null, "EVENT", null, null, null, null, null, null, null, null, null, null);
 
-        var cmdNoCorr = tools.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "analyse", null, corrId, null, null, null, null, null, null, null);
+        var cmdNoCorr = helper.sendMessage(caseId + "/work",    "agent-a", "COMMAND", "analyse", null, corrId, null, null, null, null, null, null, null);
         // EVENT without correlationId — agent did not link it to the obligation
         sendEvent(caseId + "/observe", "agent-a", "{\"tool\":\"unrelated_call\"}", null);
-        tools.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",   null, corrId, cmdNoCorr.messageId(), null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work",    "agent-a", "DONE",    "done",   null, corrId, cmdNoCorr.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> activity = tools.getObligationActivity(corrId, null, null);
+        List<Map<String, Object>> activity = helper.getObligationActivity(corrId, null, null);
         // Only COMMAND and DONE — the unlinking EVENT is not returned
         assertEquals(2, activity.size());
         assertEquals(List.of("COMMAND", "DONE"),
@@ -190,13 +191,13 @@ class ObligationActivityTest {
         String corrId = "corr-" + java.util.UUID.randomUUID();
         String otherCorrId = "corr-other-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        var cmdTarget = tools.sendMessage(caseId + "/work", "agent-a", "COMMAND", "target", null, corrId,      null, null, null, null, null, null, null);
-        tools.sendMessage(caseId + "/work", "agent-b", "COMMAND", "noise",  null, otherCorrId, null, null, null, null, null, null, null);
-        tools.sendMessage(caseId + "/work", "agent-a", "DONE",    "done",   null, corrId,      cmdTarget.messageId(), null, null, null, null, null, null);
+        var cmdTarget = helper.sendMessage(caseId + "/work", "agent-a", "COMMAND", "target", null, corrId,      null, null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work", "agent-b", "COMMAND", "noise",  null, otherCorrId, null, null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work", "agent-a", "DONE",    "done",   null, corrId,      cmdTarget.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> activity = tools.getObligationActivity(corrId, null, null);
+        List<Map<String, Object>> activity = helper.getObligationActivity(corrId, null, null);
 
         assertEquals(2, activity.size());
         for (Map<String, Object> entry : activity) {
@@ -208,7 +209,7 @@ class ObligationActivityTest {
 
     @Test
     void robustness_unknownCorrelationId_returnsEmptyList() {
-        List<Map<String, Object>> result = tools.getObligationActivity(
+        List<Map<String, Object>> result = helper.getObligationActivity(
                 "corr-does-not-exist-" + java.util.UUID.randomUUID(), null, null);
         assertTrue(result.isEmpty());
     }
@@ -218,15 +219,15 @@ class ObligationActivityTest {
         String caseId = "oa-limit-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         for (int i = 0; i < 10; i++) {
-            tools.sendMessage(caseId + "/work", "agent-a", "STATUS",
+            helper.sendMessage(caseId + "/work", "agent-a", "STATUS",
                     "step " + i, null, corrId, null, null, null, null, null, null, null);
         }
 
-        assertEquals(10, tools.getObligationActivity(corrId, null, null).size());
-        assertEquals(3,  tools.getObligationActivity(corrId, null, 3).size());
+        assertEquals(10, helper.getObligationActivity(corrId, null, null).size());
+        assertEquals(3,  helper.getObligationActivity(corrId, null, 3).size());
     }
 
     @Test
@@ -234,13 +235,13 @@ class ObligationActivityTest {
         String caseId = "oa-compat-" + java.util.UUID.randomUUID();
         String corrId = "corr-" + java.util.UUID.randomUUID();
 
-        tools.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var cmdCompat = tools.sendMessage(caseId + "/work", "agent-a", "COMMAND", "go", null, corrId, null, null, null, null, null, null, null);
-        tools.sendMessage(caseId + "/work", "agent-a", "DONE",    "ok", null, corrId, cmdCompat.messageId(), null, null, null, null, null, null);
+        helper.createChannel(caseId + "/work", "Work", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var cmdCompat = helper.sendMessage(caseId + "/work", "agent-a", "COMMAND", "go", null, corrId, null, null, null, null, null, null, null);
+        helper.sendMessage(caseId + "/work", "agent-a", "DONE",    "ok", null, corrId, cmdCompat.messageId(), null, null, null, null, null, null);
 
         // includeContentSearch is deprecated — all three call variants return the same result
-        assertEquals(2, tools.getObligationActivity(corrId, null,  null).size());
-        assertEquals(2, tools.getObligationActivity(corrId, true,  null).size());
-        assertEquals(2, tools.getObligationActivity(corrId, false, null).size());
+        assertEquals(2, helper.getObligationActivity(corrId, null,  null).size());
+        assertEquals(2, helper.getObligationActivity(corrId, true,  null).size());
+        assertEquals(2, helper.getObligationActivity(corrId, false, null).size());
     }
 }

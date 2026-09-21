@@ -12,7 +12,7 @@ import io.casehub.qhorus.examples.agent.OrchestratorAgent;
 import io.casehub.qhorus.examples.agent.WorkerAgent;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -37,8 +37,7 @@ class NormativeLayoutAgentTest {
     @Inject
     ChannelService channelService;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     OrchestratorAgent orchestrator;
@@ -54,11 +53,11 @@ class NormativeLayoutAgentTest {
         String oversightName = "case-" + caseId + "/oversight";
 
         QuarkusTransaction.requiringNew().run(() -> {
-            tools.createChannel(workName, "Worker coordination", "APPEND",
+            helper.createChannel(workName, "Worker coordination", "APPEND",
                     null, null, null, null, null, null, null, null, null, null, null);
-            tools.createChannel(observeName, "Telemetry", "APPEND",
+            helper.createChannel(observeName, "Telemetry", "APPEND",
                     null, null, null, null, null, "EVENT", null, null, null, null, null);
-            tools.createChannel(oversightName, "Human governance", "APPEND", null, null, null, null, null, "QUERY, COMMAND", null, null, null, null, null, null, null, null, null);
+            helper.createChannel(oversightName, "Human governance", "APPEND", null, null, null, null, null, "QUERY, COMMAND", null, null, null, null, null, null, null, null, null);
         });
 
         QuarkusTransaction.requiringNew().run(() -> {

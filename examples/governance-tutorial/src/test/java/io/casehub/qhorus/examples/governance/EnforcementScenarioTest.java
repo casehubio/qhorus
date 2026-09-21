@@ -1,8 +1,8 @@
 package io.casehub.qhorus.examples.governance;
 
 import io.casehub.qhorus.api.message.EnforcementBlockedException;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.IllegalArgumentException;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -24,30 +24,30 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @QuarkusTest
 class EnforcementScenarioTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Test
     @TestTransaction
     void blockingModeRejectsProtocolViolation() {
         // --- Setup: channel with REQUEST_RESPONSE protocol + BLOCKING enforcement ---
-        tools.createChannel("gov-enforce-ch", "Enforcement test channel", null, null, null,
+        helper.createChannel("gov-enforce-ch", "Enforcement test channel", null, null, null,
                 null, null, null, null, null, null, null,
                 "REQUEST_RESPONSE", null, null, null, null, null, null);
-        tools.register("agent-eager", "Eager agent that sends too many queries", null, null, null);
-        tools.setEnforcementMode("gov-enforce-ch", "BLOCKING");
+        helper.register("agent-eager", "Eager agent that sends too many queries", null, null, null);
+        helper.setEnforcementMode("gov-enforce-ch", "BLOCKING");
 
         // --- Act: send queries up to and past the threshold (max-open-queries=2) ---
         // Query 1 — ok
-        tools.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
+        helper.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
                 "What is the current status?", null, null, null, null, null, null, null, null, null);
         // Query 2 — ok (at threshold)
-        tools.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
+        helper.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
                 "What are the latest metrics?", null, null, null, null, null, null, null, null, null);
 
         // Query 3 — should be BLOCKED (exceeds max-open-queries=2)
         System.out.println("\n=== Scenario 3: Active Governance Policies ===\n");
         assertThatThrownBy(() ->
-                tools.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
+                helper.sendMessage("gov-enforce-ch", "agent-eager", "QUERY",
                         "What is the forecast?", null, null, null, null, null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(EnforcementBlockedException.class)
@@ -60,7 +60,7 @@ class EnforcementScenarioTest {
                 });
 
         // Channel should NOT be paused in BLOCKING mode
-        var detail = tools.listChannels().stream()
+        var detail = helper.listChannels().stream()
                 .filter(cd -> "gov-enforce-ch".equals(cd.name()))
                 .findFirst().orElseThrow();
         assertThat(detail.paused()).isFalse();
@@ -71,21 +71,21 @@ class EnforcementScenarioTest {
     @TestTransaction
     void quarantineModeBlocksAndPausesChannel() {
         // --- Setup: channel with REQUEST_RESPONSE + QUARANTINE ---
-        tools.createChannel("gov-quarantine-ch", "Quarantine test channel", null, null, null,
+        helper.createChannel("gov-quarantine-ch", "Quarantine test channel", null, null, null,
                 null, null, null, null, null, null, null,
                 "REQUEST_RESPONSE", null, null, null, null, null, null);
-        tools.register("agent-reckless", "Reckless agent", null, null, null);
-        tools.setEnforcementMode("gov-quarantine-ch", "QUARANTINE");
+        helper.register("agent-reckless", "Reckless agent", null, null, null);
+        helper.setEnforcementMode("gov-quarantine-ch", "QUARANTINE");
 
         // Send 2 queries (at threshold)
-        tools.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
+        helper.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
                 "First query", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
+        helper.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
                 "Second query", null, null, null, null, null, null, null, null, null);
 
         // Query 3 — triggers QUARANTINE
         assertThatThrownBy(() ->
-                tools.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
+                helper.sendMessage("gov-quarantine-ch", "agent-reckless", "QUERY",
                         "Third query — this triggers quarantine", null, null, null, null, null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasCauseInstanceOf(EnforcementBlockedException.class)
@@ -96,7 +96,7 @@ class EnforcementScenarioTest {
                 });
 
         // Channel should be paused after QUARANTINE containment
-        var detail = tools.listChannels().stream()
+        var detail = helper.listChannels().stream()
                 .filter(cd -> "gov-quarantine-ch".equals(cd.name()))
                 .findFirst().orElseThrow();
         assertThat(detail.paused()).isTrue();
@@ -107,20 +107,20 @@ class EnforcementScenarioTest {
     @TestTransaction
     void exclusionsKeepSourceAdvisoryOnly() {
         // --- Setup: channel with BLOCKING + REQUEST_RESPONSE excluded ---
-        tools.createChannel("gov-exclude-ch", "Exclusion test channel", null, null, null,
+        helper.createChannel("gov-exclude-ch", "Exclusion test channel", null, null, null,
                 null, null, null, null, null, null, null,
                 "REQUEST_RESPONSE", null, null, null, null, null, null);
-        tools.register("agent-free", "Agent with excluded source", null, null, null);
-        tools.setEnforcementMode("gov-exclude-ch", "BLOCKING");
-        tools.setEnforcementExclusions("gov-exclude-ch", "REQUEST_RESPONSE");
+        helper.register("agent-free", "Agent with excluded source", null, null, null);
+        helper.setEnforcementMode("gov-exclude-ch", "BLOCKING");
+        helper.setEnforcementExclusions("gov-exclude-ch", "REQUEST_RESPONSE");
 
         // Exceed threshold — but REQUEST_RESPONSE is excluded, so no block
-        tools.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
+        helper.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
                 "Query 1", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
+        helper.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
                 "Query 2", null, null, null, null, null, null, null, null, null);
         // Query 3 — passes because REQUEST_RESPONSE is excluded from enforcement
-        var result = tools.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
+        var result = helper.sendMessage("gov-exclude-ch", "agent-free", "QUERY",
                 "Query 3 — passes with exclusion", null, null, null, null, null, null, null, null, null);
         assertThat(result.advisories()).isNotEmpty();
         System.out.println("\nExclusion test: Query 3 dispatched with advisory (not blocked).");

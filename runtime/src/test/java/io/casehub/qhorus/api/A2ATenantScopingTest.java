@@ -1,6 +1,6 @@
 package io.casehub.qhorus.api;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -19,15 +19,14 @@ class A2ATenantScopingTest {
 
     private String channel;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @BeforeEach
     void ensureChannel() {
         channel = "a2a-ts-" + UUID.randomUUID().toString().substring(0, 8);
         final String ch = channel;
         QuarkusTransaction.requiringNew().run(() ->
-                                                      tools.createChannel(ch, "A2A tenant scoping test channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
+                                                      helper.createChannel(ch, "A2A tenant scoping test channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
     }
 
     @Test

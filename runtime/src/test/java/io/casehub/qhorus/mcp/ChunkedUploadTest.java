@@ -6,8 +6,8 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.ArtefactDetail;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.ArtefactDetail;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -27,13 +27,12 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ChunkedUploadTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Test
     @TestTransaction
     void beginArtefactCreatesIncompleteArtefact() {
-        ArtefactDetail result = tools.beginArtefact("chunk-begin-1", "Test artefact", "agent-a", "first chunk");
+        ArtefactDetail result = helper.beginArtefact("chunk-begin-1", "Test artefact", "agent-a", "first chunk");
 
         assertNotNull(result);
         assertEquals("chunk-begin-1", result.key());
@@ -47,8 +46,8 @@ class ChunkedUploadTest {
     @Test
     @TestTransaction
     void appendChunkAppendsContentWithoutFinalizing() {
-        tools.beginArtefact("chunk-append-1", "Chunked doc", "agent-b", "part1-");
-        ArtefactDetail result = tools.appendChunk("chunk-append-1", "part2-");
+        helper.beginArtefact("chunk-append-1", "Chunked doc", "agent-b", "part1-");
+        ArtefactDetail result = helper.appendChunk("chunk-append-1", "part2-");
 
         assertEquals("chunk-append-1", result.key());
         assertEquals("part1-part2-", result.content());
@@ -59,9 +58,9 @@ class ChunkedUploadTest {
     @Test
     @TestTransaction
     void finalizeArtefactMarksComplete() {
-        tools.beginArtefact("chunk-final-1", "Finalized doc", "agent-c", "hello ");
-        tools.appendChunk("chunk-final-1", "world ");
-        ArtefactDetail result = tools.finalizeArtefact("chunk-final-1", "end");
+        helper.beginArtefact("chunk-final-1", "Finalized doc", "agent-c", "hello ");
+        helper.appendChunk("chunk-final-1", "world ");
+        ArtefactDetail result = helper.finalizeArtefact("chunk-final-1", "end");
 
         assertEquals("chunk-final-1", result.key());
         assertEquals("hello world end", result.content());
@@ -73,8 +72,8 @@ class ChunkedUploadTest {
     @Test
     @TestTransaction
     void finalizeWithNoContentStillCompletes() {
-        tools.beginArtefact("chunk-final-2", "No final content", "agent-d", "only-chunk");
-        ArtefactDetail result = tools.finalizeArtefact("chunk-final-2", null);
+        helper.beginArtefact("chunk-final-2", "No final content", "agent-d", "only-chunk");
+        ArtefactDetail result = helper.finalizeArtefact("chunk-final-2", null);
 
         assertEquals("only-chunk", result.content());
         assertTrue(result.complete(), "finalize with null content should still complete");
@@ -84,20 +83,20 @@ class ChunkedUploadTest {
     @TestTransaction
     void getArtefactShowsCorrectStateAtEachStep() {
         // Begin
-        tools.beginArtefact("chunk-lifecycle-1", "Lifecycle test", "agent-e", "step1-");
-        ArtefactDetail afterBegin = tools.getArtefact("chunk-lifecycle-1", null);
+        helper.beginArtefact("chunk-lifecycle-1", "Lifecycle test", "agent-e", "step1-");
+        ArtefactDetail afterBegin = helper.getArtefact("chunk-lifecycle-1", null);
         assertFalse(afterBegin.complete());
         assertEquals("step1-", afterBegin.content());
 
         // Append
-        tools.appendChunk("chunk-lifecycle-1", "step2-");
-        ArtefactDetail afterAppend = tools.getArtefact("chunk-lifecycle-1", null);
+        helper.appendChunk("chunk-lifecycle-1", "step2-");
+        ArtefactDetail afterAppend = helper.getArtefact("chunk-lifecycle-1", null);
         assertFalse(afterAppend.complete());
         assertEquals("step1-step2-", afterAppend.content());
 
         // Finalize
-        tools.finalizeArtefact("chunk-lifecycle-1", "step3");
-        ArtefactDetail afterFinalize = tools.getArtefact("chunk-lifecycle-1", null);
+        helper.finalizeArtefact("chunk-lifecycle-1", "step3");
+        ArtefactDetail afterFinalize = helper.getArtefact("chunk-lifecycle-1", null);
         assertTrue(afterFinalize.complete());
         assertEquals("step1-step2-step3", afterFinalize.content());
         assertEquals(17, afterFinalize.sizeBytes());
@@ -106,11 +105,11 @@ class ChunkedUploadTest {
     @Test
     @TestTransaction
     void multipleAppendChunksAccumulate() {
-        tools.beginArtefact("chunk-multi-1", "Multi-chunk", "agent-f", "A");
-        tools.appendChunk("chunk-multi-1", "B");
-        tools.appendChunk("chunk-multi-1", "C");
-        tools.appendChunk("chunk-multi-1", "D");
-        ArtefactDetail result = tools.finalizeArtefact("chunk-multi-1", "E");
+        helper.beginArtefact("chunk-multi-1", "Multi-chunk", "agent-f", "A");
+        helper.appendChunk("chunk-multi-1", "B");
+        helper.appendChunk("chunk-multi-1", "C");
+        helper.appendChunk("chunk-multi-1", "D");
+        ArtefactDetail result = helper.finalizeArtefact("chunk-multi-1", "E");
 
         assertEquals("ABCDE", result.content());
         assertTrue(result.complete());

@@ -3,7 +3,10 @@ package io.casehub.qhorus.mcp;
 import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.instance.InstanceManager;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
+import io.casehub.qhorus.api.message.Message;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -38,8 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class ObserverModeTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject
     InstanceManager instanceManager;
 
@@ -51,7 +53,7 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void registerReadOnlyInstanceCreatesInstanceRecord() {
-        tools.createChannel("obs-reg-1", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-reg-1", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         Instance result = instanceManager.register(
                 "dashboard-obs", "Dashboard observer", List.of(), true);
@@ -63,7 +65,7 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void readOnlyInstanceAppearsInListInstances() {
-        tools.createChannel("obs-reg-2", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-reg-2", "Test channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("obs-visible", "Visible observer", List.of(), true);
 
         // The read_only instance SHOULD appear in list_instances (unlike old ObserverRegistry)
@@ -100,10 +102,10 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void readOnlyInstanceCannotSendMessages() {
-        tools.createChannel("obs-send-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-send-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("readonly-obs", "Read-only observer", List.of(), true);
 
-        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-send-1", "readonly-obs", "status", "intrude", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected from send_message");
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> helper.sendMessage("obs-send-1", "readonly-obs", "status", "intrude", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected from send_message");
 
         String msg = ex.getMessage().toLowerCase();
         assertTrue(msg.contains("read-only") || msg.contains("read_only") || msg.contains("not permitted"),
@@ -115,11 +117,11 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void readOnlyInstanceCannotSendEventMessages() {
-        tools.createChannel("obs-send-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-send-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("readonly-obs-2", "Read-only observer", List.of(), true);
 
         // Even EVENT messages cannot be sent by read_only instances
-        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-send-2", "readonly-obs-2", "event", "audit", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected even for EVENT type messages");
+        assertThrows(IllegalStateException.class, () -> helper.sendMessage("obs-send-2", "readonly-obs-2", "event", "audit", null, null, null, null, null, null, null, null, null), "read_only instance should be rejected even for EVENT type messages");
     }
 
     // =========================================================================
@@ -129,55 +131,55 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void readOnlyInstanceCanReadEventMessagesViaIncludeEvents() {
-        tools.createChannel("obs-read-1", "Monitored channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-read-1", "Monitored channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("watcher-obs", "Watcher", List.of(), true);
 
         // Agents post messages — only EVENT ones visible with include_events=true
-        tools.sendMessage("obs-read-1", "agent-a", "status", "status update", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-1", "agent-b", "event", null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-1", "agent-a", "command", "some request", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-1", "agent-a", "status", "status update", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-1", "agent-b", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-1", "agent-a", "command", "some request", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
 
         // With include_events=true, all messages including EVENTs are returned
-        QhorusMcpTools.CheckResult result = tools.checkMessages("obs-read-1", 0L, 20, null, null, true);
+        var result = helper.checkMessages("obs-read-1", 0L, 20, null, null, true);
 
         // Should see all 4 messages (status + event + command + event) since include_events includes everything
-        assertEquals(4, result.messages().size(),
+        assertEquals(4, result.size(),
                 "include_events=true should return all messages including EVENTs");
     }
 
     @Test
     @TestTransaction
     void checkMessagesWithoutIncludeEventsExcludesEvents() {
-        tools.createChannel("obs-read-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-read-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        tools.sendMessage("obs-read-2", "system", "event", null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-2", "system", "status", "status-1", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-2", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-2", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-2", "system", "status", "status-1", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-2", "system", "event", null, null, null, null, null, null, null, null, null, null);
 
         // Default behavior (include_events=null/false) excludes EVENTs
-        QhorusMcpTools.CheckResult result = tools.checkMessages("obs-read-2", 0L, 20, null, null, null);
-        assertEquals(1, result.messages().size(),
+        var result = helper.checkMessages("obs-read-2", 0L, 20, null, null, null);
+        assertEquals(1, result.size(),
                 "default check_messages should exclude EVENT messages");
-        assertEquals("STATUS", result.messages().get(0).messageType());
+        assertEquals("STATUS", result.get(0).messageType());
     }
 
     @Test
     @TestTransaction
     void checkMessagesWithIncludeEventsPagination() {
-        tools.createChannel("obs-read-3", "Paginated", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-read-3", "Paginated", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        tools.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-read-3", "system", "event", null, null, null, null, null, null, null, null, null, null);
 
         // Read first batch
-        QhorusMcpTools.CheckResult first = tools.checkMessages("obs-read-3", 0L, 2, null, null, true);
-        assertEquals(2, first.messages().size());
+        var first = helper.checkMessages("obs-read-3", 0L, 2, null, null, true);
+        assertEquals(2, first.size());
 
         // Read remainder using lastId cursor
-        QhorusMcpTools.CheckResult second = tools.checkMessages("obs-read-3", first.lastId(), 10, null, null, true);
-        assertEquals(1, second.messages().size());
+        var second = helper.checkMessages("obs-read-3", first.lastId(), 10, null, null, true);
+        assertEquals(1, second.size());
     }
 
     // =========================================================================
@@ -187,18 +189,18 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void reRegisterClearsReadOnlyFlag() {
-        tools.createChannel("obs-dereg-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-dereg-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("was-observer", "Was observer", List.of(), true);
 
         // Blocked as read_only
-        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-dereg-2", "was-observer", "status", "blocked", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> helper.sendMessage("obs-dereg-2", "was-observer", "status", "blocked", null, null, null, null, null, null, null, null, null));
 
         // Re-register as not read_only
         instanceManager.register("was-observer", "Now active", List.of(), false);
 
         // Now free to send (no longer read_only)
         assertDoesNotThrow(
-                () -> tools.sendMessage("obs-dereg-2", "was-observer", "status", "now allowed", null, null, null, null, null, null, null, null, null),
+                () -> helper.sendMessage("obs-dereg-2", "was-observer", "status", "now allowed", null, null, null, null, null, null, null, null, null),
                 "after re-registering with read_only=false, the instance should be allowed to send messages");
     }
 
@@ -209,7 +211,7 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void e2eDashboardObserverWatchesAgentWorkflow() {
-        tools.createChannel("obs-e2e-1", "Agent work channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-e2e-1", "Agent work channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("agent-alpha", "Alpha agent", List.of("capability:worker"), false);
         instanceManager.register("agent-beta", "Beta agent", List.of("capability:worker"), false);
 
@@ -217,20 +219,20 @@ class ObserverModeTest {
         instanceManager.register("dashboard", "Dashboard", List.of(), true);
 
         // Agents work normally
-        var cmdA = tools.sendMessage("obs-e2e-1", "agent-alpha", "command", "job A", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-e2e-1", "agent-beta", "response", "job A done", null, cmdA.correlationId(), cmdA.messageId(), null, null, null, null, null, null);
-        tools.sendMessage("obs-e2e-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-e2e-1", "agent-alpha", "status", "starting job B", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-e2e-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        var cmdA = helper.sendMessage("obs-e2e-1", "agent-alpha", "command", "job A", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-1", "agent-beta", "response", "job A done", null, cmdA.correlationId(), cmdA.messageId(), null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-1", "agent-alpha", "status", "starting job B", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-1", "system", "event", null, null, null, null, null, null, null, null, null, null);
 
         // Dashboard uses include_events=true to see all messages including events
-        QhorusMcpTools.CheckResult dashResult = tools.checkMessages("obs-e2e-1", 0L, 20, null, null, true);
-        assertEquals(5, dashResult.messages().size(),
+        var dashResult = helper.checkMessages("obs-e2e-1", 0L, 20, null, null, true);
+        assertEquals(5, dashResult.size(),
                 "dashboard with include_events=true should see all 5 messages");
 
         // Regular agents see 3 non-event messages (EVENT messages excluded by default)
-        QhorusMcpTools.CheckResult agentResult = tools.checkMessages("obs-e2e-1", 0L, 20, null, null, null);
-        assertEquals(3, agentResult.messages().size(),
+        var agentResult = helper.checkMessages("obs-e2e-1", 0L, 20, null, null, null);
+        assertEquals(3, agentResult.size(),
                 "agents see only non-event messages via check_messages (EVENT excluded by default)");
 
         // Dashboard IS visible in list_instances (unlike old ObserverRegistry which hid observers)
@@ -246,20 +248,20 @@ class ObserverModeTest {
     @Test
     @TestTransaction
     void e2eReadOnlyBlockedDoesNotAffectRegularSenders() {
-        tools.createChannel("obs-e2e-2", "Mixed channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("obs-e2e-2", "Mixed channel", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         instanceManager.register("worker", "Worker agent", List.of(), false);
         instanceManager.register("watcher", "Watcher", List.of(), true);
 
         // Worker sends freely
-        tools.sendMessage("obs-e2e-2", "worker", "command", "task", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("obs-e2e-2", "worker", "status", "in progress", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-2", "worker", "command", "task", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("obs-e2e-2", "worker", "status", "in progress", null, null, null, null, null, null, null, null, null);
 
         // Watcher cannot send
-        assertThrows(IllegalStateException.class, () -> tools.sendMessage("obs-e2e-2", "watcher", "status", "observer intrusion", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalStateException.class, () -> helper.sendMessage("obs-e2e-2", "watcher", "status", "observer intrusion", null, null, null, null, null, null, null, null, null));
 
         // Worker messages still there
-        QhorusMcpTools.CheckResult result = tools.checkMessages("obs-e2e-2", 0L, 10, null, null, null);
-        assertEquals(2, result.messages().size(),
+        var result = helper.checkMessages("obs-e2e-2", 0L, 10, null, null, null);
+        assertEquals(2, result.size(),
                 "rejected read_only send should not affect the channel or existing messages");
     }
 }

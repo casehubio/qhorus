@@ -17,8 +17,11 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CommitmentDetail;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.CommitmentDetail;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.ClearChannelResult;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.TestTransaction;
@@ -42,8 +45,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class WaitManagementTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     MessageService messageService;
@@ -61,7 +63,7 @@ class WaitManagementTest {
     @Test
     @TestTransaction
     void cancelWaitDeletesCommitment() {
-        tools.createChannel("wm-cancel-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-cancel-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId = UUID.randomUUID().toString();
         var ch = channelService.findByName("wm-cancel-1").orElseThrow();
         // Send QUERY to create a Commitment in OPEN state
@@ -74,7 +76,7 @@ class WaitManagementTest {
                 .actorType(ActorTypeResolver.resolve("alice"))
                 .build());
 
-        QhorusMcpTools.CancelWaitResult result = tools.cancelWait(corrId);
+        QhorusTestHelper.CancelWaitResult result = helper.cancelWait(corrId);
 
         assertNotNull(result);
         assertEquals(corrId, result.correlationId());
@@ -86,7 +88,7 @@ class WaitManagementTest {
     void cancelWaitOnUnknownIdReturnsFalse() {
         String unknownId = UUID.randomUUID().toString();
 
-        QhorusMcpTools.CancelWaitResult result = tools.cancelWait(unknownId);
+        QhorusTestHelper.CancelWaitResult result = helper.cancelWait(unknownId);
 
         assertFalse(result.cancelled(), "cancel on unknown correlationId should return cancelled=false");
         assertNotNull(result.message(), "should include an informative message");
@@ -95,7 +97,7 @@ class WaitManagementTest {
     @Test
     @TestTransaction
     void cancelWaitRemovesFromList() {
-        tools.createChannel("wm-cancel-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-cancel-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId = UUID.randomUUID().toString();
         var ch = channelService.findByName("wm-cancel-2").orElseThrow();
         messageService.dispatch(                MessageDispatch.builder()
@@ -108,14 +110,14 @@ class WaitManagementTest {
                 .build());
 
         // Verify it's in the list
-        assertTrue(tools.listPendingCommitments().stream()
+        assertTrue(helper.listPendingCommitments().stream()
                 .anyMatch(w -> corrId.equals(w.correlationId())));
 
         // Cancel it
-        tools.cancelWait(corrId);
+        helper.cancelWait(corrId);
 
         // No longer in the list
-        assertFalse(tools.listPendingCommitments().stream()
+        assertFalse(helper.listPendingCommitments().stream()
                 .anyMatch(w -> corrId.equals(w.correlationId())),
                 "cancelled commitment should not appear in list_pending_commitments");
     }
@@ -127,7 +129,7 @@ class WaitManagementTest {
     @Test
     @TestTransaction
     void listPendingCommitmentsShowsOpenCommitment() {
-        tools.createChannel("wm-list-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-list-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId = UUID.randomUUID().toString();
         var ch = channelService.findByName("wm-list-1").orElseThrow();
         messageService.dispatch(                MessageDispatch.builder()
@@ -139,14 +141,14 @@ class WaitManagementTest {
                 .actorType(ActorTypeResolver.resolve("alice"))
                 .build());
 
-        List<CommitmentDetail> waits = tools.listPendingCommitments();
+        List<CommitmentDetail> waits = helper.listPendingCommitments();
         assertTrue(waits.stream().anyMatch(w -> corrId.equals(w.correlationId())));
     }
 
     @Test
     @TestTransaction
     void listPendingCommitmentsResolvesChannelId() {
-        tools.createChannel("wm-list-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-list-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId = UUID.randomUUID().toString();
         var ch = channelService.findByName("wm-list-2").orElseThrow();
         messageService.dispatch(                MessageDispatch.builder()
@@ -158,7 +160,7 @@ class WaitManagementTest {
                 .actorType(ActorTypeResolver.resolve("alice"))
                 .build());
 
-        CommitmentDetail summary = tools.listPendingCommitments().stream()
+        CommitmentDetail summary = helper.listPendingCommitments().stream()
                 .filter(w -> corrId.equals(w.correlationId()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Expected commitment not found"));
@@ -169,7 +171,7 @@ class WaitManagementTest {
     @Test
     @TestTransaction
     void listPendingCommitmentsShowsExpiresAt() {
-        tools.createChannel("wm-list-3", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-list-3", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId = UUID.randomUUID().toString();
         var ch = channelService.findByName("wm-list-3").orElseThrow();
         // Send QUERY with no explicit deadline
@@ -184,7 +186,7 @@ class WaitManagementTest {
 
         // The Commitment expiresAt may be null if no deadline was set on the QUERY —
         // but the entry must appear.
-        CommitmentDetail summary = tools.listPendingCommitments().stream()
+        CommitmentDetail summary = helper.listPendingCommitments().stream()
                 .filter(w -> corrId.equals(w.correlationId()))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Expected pending commitment not found in list"));
@@ -218,16 +220,16 @@ class WaitManagementTest {
 
         try {
             // Start wait_for_reply in CDI-aware background thread
-            Future<QhorusMcpTools.WaitResult> future = executor.submit(
-                    () -> tools.waitForReply(ch, corrId, 30, null));
+            Future<WaitResult> future = executor.submit(
+                    () -> helper.waitForReply(ch, corrId, 30, null));
 
             // Give it time to enter poll loop
             Thread.sleep(400);
 
             // Cancel via the tool — deletes the Commitment
-            tools.cancelWait(corrId);
+            helper.cancelWait(corrId);
 
-            QhorusMcpTools.WaitResult result = future.get(5, TimeUnit.SECONDS);
+            WaitResult result = future.get(5, TimeUnit.SECONDS);
 
             assertFalse(result.found());
             assertFalse(result.timedOut());
@@ -263,27 +265,27 @@ class WaitManagementTest {
 
         try {
             // 1. Agent calls waitForReply (in CDI-aware background thread, 60s timeout)
-            Future<QhorusMcpTools.WaitResult> agentFuture = executor.submit(
-                    () -> tools.waitForReply(ch, corrId, 60, null));
+            Future<WaitResult> agentFuture = executor.submit(
+                    () -> helper.waitForReply(ch, corrId, 60, null));
 
             // Give it time to enter poll loop
             Thread.sleep(400);
 
             // 2. Human calls list_pending_commitments — sees the blocked agent
-            List<CommitmentDetail> waits = tools.listPendingCommitments();
+            List<CommitmentDetail> waits = helper.listPendingCommitments();
             assertTrue(waits.stream().anyMatch(w -> corrId.equals(w.correlationId())),
                     "human should see the pending commitment");
 
             // 3. Human calls cancel_wait
-            QhorusMcpTools.CancelWaitResult cancel = tools.cancelWait(corrId);
+            QhorusTestHelper.CancelWaitResult cancel = helper.cancelWait(corrId);
             assertTrue(cancel.cancelled());
 
             // 4. Pending commitment no longer in list (Commitment deleted)
-            assertFalse(tools.listPendingCommitments().stream()
+            assertFalse(helper.listPendingCommitments().stream()
                     .anyMatch(w -> corrId.equals(w.correlationId())));
 
             // 5. Agent receives cancelled result
-            QhorusMcpTools.WaitResult agentResult = agentFuture.get(5, TimeUnit.SECONDS);
+            WaitResult agentResult = agentFuture.get(5, TimeUnit.SECONDS);
             assertFalse(agentResult.found());
             assertFalse(agentResult.timedOut());
             assertTrue(agentResult.status().contains("cancelled") || agentResult.status().contains("Wait cancelled"),
@@ -296,7 +298,7 @@ class WaitManagementTest {
     @Test
     @TestTransaction
     void e2eMultipleOpenCommitmentsCanBeSelectivelyCancelled() {
-        tools.createChannel("wm-e2e-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("wm-e2e-2", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String corrId1 = UUID.randomUUID().toString();
         String corrId2 = UUID.randomUUID().toString();
 
@@ -319,14 +321,14 @@ class WaitManagementTest {
                 .build());
 
         // Both visible
-        List<CommitmentDetail> waits = tools.listPendingCommitments();
+        List<CommitmentDetail> waits = helper.listPendingCommitments();
         assertTrue(waits.stream().anyMatch(w -> corrId1.equals(w.correlationId())));
         assertTrue(waits.stream().anyMatch(w -> corrId2.equals(w.correlationId())));
 
         // Cancel only corrId1
-        tools.cancelWait(corrId1);
+        helper.cancelWait(corrId1);
 
-        List<CommitmentDetail> after = tools.listPendingCommitments();
+        List<CommitmentDetail> after = helper.listPendingCommitments();
         assertFalse(after.stream().anyMatch(w -> corrId1.equals(w.correlationId())),
                 "cancelled commitment should be gone");
         assertTrue(after.stream().anyMatch(w -> corrId2.equals(w.correlationId())),

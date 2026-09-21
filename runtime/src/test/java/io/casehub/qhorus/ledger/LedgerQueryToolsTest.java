@@ -16,12 +16,12 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CausalChainEntry;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.ObligationChainSummary;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.ObligationStats;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.StalledObligation;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.TelemetrySummary;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CausalChainEntry;
+import io.casehub.qhorus.testing.QhorusTestHelper.ObligationChainSummary;
+import io.casehub.qhorus.testing.QhorusTestHelper.ObligationStats;
+import io.casehub.qhorus.testing.QhorusTestHelper.StalledObligation;
+import io.casehub.qhorus.testing.QhorusTestHelper.TelemetrySummary;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -49,8 +49,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @TestTransaction
 class LedgerQueryToolsTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     MessageService messageService;
@@ -77,11 +76,11 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_correlationIdFilter_returnsOnlyMatchingEntries() {
         setup("lle-corr-1", "agent-a", "agent-b");
-        var cmdA = tools.sendMessage("lle-corr-1", "agent-a", "command", "Do A", null, "corr-A", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-corr-1", "agent-b", "done", "Done A", null, "corr-A", cmdA.messageId(), null, null, null, null, null, null);
-        tools.sendMessage("lle-corr-1", "agent-a", "command", "Do B", null, "corr-B", null, null, null, null, null, null, null);
+        var cmdA = helper.sendMessage("lle-corr-1", "agent-a", "command", "Do A", null, "corr-A", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-corr-1", "agent-b", "done", "Done A", null, "corr-A", cmdA.messageId(), null, null, null, null, null, null);
+        helper.sendMessage("lle-corr-1", "agent-a", "command", "Do B", null, "corr-B", null, null, null, null, null, null, null);
 
-        final List<Map<String, Object>> entries = tools.listLedgerEntries("lle-corr-1", null, null, null, null, "corr-A", null,
+        final List<Map<String, Object>> entries = helper.listLedgerEntries("lle-corr-1", null, null, null, null, "corr-A", null,
                 20);
 
         assertEquals(2, entries.size());
@@ -91,9 +90,9 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_correlationIdFilter_noMatch_returnsEmpty() {
         setup("lle-corr-2", "agent-a");
-        tools.sendMessage("lle-corr-2", "agent-a", "command", "Do X", null, "corr-X", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-corr-2", "agent-a", "command", "Do X", null, "corr-X", null, null, null, null, null, null, null);
 
-        final List<Map<String, Object>> entries = tools.listLedgerEntries("lle-corr-2", null, null, null, null, "no-match",
+        final List<Map<String, Object>> entries = helper.listLedgerEntries("lle-corr-2", null, null, null, null, "no-match",
                 null, 20);
 
         assertTrue(entries.isEmpty());
@@ -102,11 +101,11 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_sortDesc_returnsNewestFirst() {
         setup("lle-sort-1", "agent-a");
-        var cmdS1 = tools.sendMessage("lle-sort-1", "agent-a", "command", "first", null, "c-s1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-sort-1", "agent-a", "status", "middle", null, "c-s1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-sort-1", "agent-a", "done", "last", null, "c-s1", cmdS1.messageId(), null, null, null, null, null, null);
+        var cmdS1 = helper.sendMessage("lle-sort-1", "agent-a", "command", "first", null, "c-s1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-sort-1", "agent-a", "status", "middle", null, "c-s1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-sort-1", "agent-a", "done", "last", null, "c-s1", cmdS1.messageId(), null, null, null, null, null, null);
 
-        final List<Map<String, Object>> entries = tools.listLedgerEntries("lle-sort-1", null, null, null, null, null, "desc",
+        final List<Map<String, Object>> entries = helper.listLedgerEntries("lle-sort-1", null, null, null, null, null, "desc",
                 20);
 
         assertEquals(3, entries.size());
@@ -118,10 +117,10 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_sortAsc_returnsOldestFirst() {
         setup("lle-sort-2", "agent-a");
-        var cmdS2 = tools.sendMessage("lle-sort-2", "agent-a", "command", "first", null, "c-s2", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-sort-2", "agent-a", "done", "last", null, "c-s2", cmdS2.messageId(), null, null, null, null, null, null);
+        var cmdS2 = helper.sendMessage("lle-sort-2", "agent-a", "command", "first", null, "c-s2", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-sort-2", "agent-a", "done", "last", null, "c-s2", cmdS2.messageId(), null, null, null, null, null, null);
 
-        final List<Map<String, Object>> entries = tools.listLedgerEntries("lle-sort-2", null, null, null, null, null, "asc",
+        final List<Map<String, Object>> entries = helper.listLedgerEntries("lle-sort-2", null, null, null, null, null, "asc",
                 20);
 
         assertEquals(2, entries.size());
@@ -133,10 +132,10 @@ class LedgerQueryToolsTest {
     @Test
     void listLedgerEntries_nullSort_defaultsToAsc() {
         setup("lle-sort-3", "agent-a");
-        var cmdS3 = tools.sendMessage("lle-sort-3", "agent-a", "command", "first", null, "c-s3", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-sort-3", "agent-a", "done", "second", null, "c-s3", cmdS3.messageId(), null, null, null, null, null, null);
+        var cmdS3 = helper.sendMessage("lle-sort-3", "agent-a", "command", "first", null, "c-s3", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-sort-3", "agent-a", "done", "second", null, "c-s3", cmdS3.messageId(), null, null, null, null, null, null);
 
-        final List<Map<String, Object>> entries = tools.listLedgerEntries("lle-sort-3", null, null, null, null, null, null, 20);
+        final List<Map<String, Object>> entries = helper.listLedgerEntries("lle-sort-3", null, null, null, null, null, null, 20);
 
         final long seq0 = (Long) (Object) entries.get(0).get("sequence_number");
         final long seq1 = (Long) (Object) entries.get(1).get("sequence_number");
@@ -147,7 +146,7 @@ class LedgerQueryToolsTest {
     void listLedgerEntries_invalidSort_throws() {
         setup("lle-sort-bad-1", "agent-a");
         assertThrows(IllegalArgumentException.class,
-                () -> tools.listLedgerEntries("lle-sort-bad-1", null, null, null, null, null, "sideways", 20));
+                () -> helper.listLedgerEntries("lle-sort-bad-1", null, null, null, null, null, "sideways", 20));
     }
 
     // =========================================================================
@@ -157,10 +156,10 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationChain_commandToDone_correctSummary() {
         setup("goc-1", "coordinator", "assessor");
-        var cmdGoc1 = tools.sendMessage("goc-1", "coordinator", "command", "Assess damage", null, "corr-goc1", null, null, null, null, null, null, null);
-        tools.sendMessage("goc-1", "assessor", "done", "Assessment done", null, "corr-goc1", cmdGoc1.messageId(), null, null, null, null, null, null);
+        var cmdGoc1 = helper.sendMessage("goc-1", "coordinator", "command", "Assess damage", null, "corr-goc1", null, null, null, null, null, null, null);
+        helper.sendMessage("goc-1", "assessor", "done", "Assessment done", null, "corr-goc1", cmdGoc1.messageId(), null, null, null, null, null, null);
 
-        final ObligationChainSummary summary = tools.getObligationChain("goc-1", "corr-goc1");
+        final ObligationChainSummary summary = helper.getObligationChain("goc-1", "corr-goc1");
 
         assertEquals("corr-goc1", summary.correlationId());
         assertEquals("coordinator", summary.initiator());
@@ -177,11 +176,11 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationChain_commandToHandoffToDone_handoffCountAndParticipants() {
         setup("goc-2", "coordinator", "first-responder", "senior");
-        var cmdGoc2 = tools.sendMessage("goc-2", "coordinator", "command", "Handle claim", null, "corr-goc2", null, null, null, null, null, null, null);
-        var hofGoc2 = tools.sendMessage("goc-2", "first-responder", "handoff", "Escalating", null, "corr-goc2", cmdGoc2.messageId(), null, "instance:senior", null, null, null, null);
-        tools.sendMessage("goc-2", "senior", "done", "Resolved", null, "corr-goc2", hofGoc2.messageId(), null, null, null, null, null, null);
+        var cmdGoc2 = helper.sendMessage("goc-2", "coordinator", "command", "Handle claim", null, "corr-goc2", null, null, null, null, null, null, null);
+        var hofGoc2 = helper.sendMessage("goc-2", "first-responder", "handoff", "Escalating", null, "corr-goc2", cmdGoc2.messageId(), null, "instance:senior", null, null, null, null);
+        helper.sendMessage("goc-2", "senior", "done", "Resolved", null, "corr-goc2", hofGoc2.messageId(), null, null, null, null, null, null);
 
-        final ObligationChainSummary summary = tools.getObligationChain("goc-2", "corr-goc2");
+        final ObligationChainSummary summary = helper.getObligationChain("goc-2", "corr-goc2");
 
         assertEquals(1, summary.handoffCount());
         assertEquals(3, summary.participants().size());
@@ -194,10 +193,10 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationChain_commandToDecline_resolutionDeclined() {
         setup("goc-3", "coordinator", "assessor");
-        var cmdGoc3 = tools.sendMessage("goc-3", "coordinator", "command", "Assess risk", null, "corr-goc3", null, null, null, null, null, null, null);
-        tools.sendMessage("goc-3", "assessor", "decline", "Insufficient info", null, "corr-goc3", cmdGoc3.messageId(), null, null, null, null, null, null);
+        var cmdGoc3 = helper.sendMessage("goc-3", "coordinator", "command", "Assess risk", null, "corr-goc3", null, null, null, null, null, null, null);
+        helper.sendMessage("goc-3", "assessor", "decline", "Insufficient info", null, "corr-goc3", cmdGoc3.messageId(), null, null, null, null, null, null);
 
-        final ObligationChainSummary summary = tools.getObligationChain("goc-3", "corr-goc3");
+        final ObligationChainSummary summary = helper.getObligationChain("goc-3", "corr-goc3");
 
         assertEquals("DECLINE", summary.resolution());
         assertNotNull(summary.resolvedAt());
@@ -207,7 +206,7 @@ class LedgerQueryToolsTest {
     void getObligationChain_unknownCorrelationId_returnsNullFields() {
         setup("goc-4", "agent-a");
 
-        final ObligationChainSummary summary = tools.getObligationChain("goc-4", "no-such-corr");
+        final ObligationChainSummary summary = helper.getObligationChain("goc-4", "no-such-corr");
 
         assertNull(summary.initiator());
         assertNull(summary.resolution());
@@ -218,15 +217,15 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationChain_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getObligationChain("no-such-channel", "corr-x"));
+                () -> helper.getObligationChain("no-such-channel", "corr-x"));
     }
 
     @Test
     void getObligationChain_openObligation_resolutionNull() {
         setup("goc-5", "coordinator");
-        tools.sendMessage("goc-5", "coordinator", "command", "Pending work", null, "corr-goc5", null, null, null, null, null, null, null);
+        helper.sendMessage("goc-5", "coordinator", "command", "Pending work", null, "corr-goc5", null, null, null, null, null, null, null);
 
-        final ObligationChainSummary summary = tools.getObligationChain("goc-5", "corr-goc5");
+        final ObligationChainSummary summary = helper.getObligationChain("goc-5", "corr-goc5");
 
         assertNull(summary.resolution(), "Open obligation must have null resolution");
         assertNull(summary.resolvedAt());
@@ -240,16 +239,16 @@ class LedgerQueryToolsTest {
     @Test
     void getCausalChain_commandToDone_chainLengthTwo() {
         setup("gcc-1", "coordinator", "worker");
-        final var cmd = tools.sendMessage("gcc-1", "coordinator", "command", "Work", null, "corr-gcc1", null, null, null, null, null, null, null);
-        tools.sendMessage("gcc-1", "worker", "done", "Done", null, "corr-gcc1", cmd.messageId(), null, null, null, null, null, null);
+        final var cmd = helper.sendMessage("gcc-1", "coordinator", "command", "Work", null, "corr-gcc1", null, null, null, null, null, null, null);
+        helper.sendMessage("gcc-1", "worker", "done", "Done", null, "corr-gcc1", cmd.messageId(), null, null, null, null, null, null);
 
         // Retrieve ledger entries to get the DONE entry's UUID
-        final var entries = tools.listLedgerEntries("gcc-1", null, null, null, null, "corr-gcc1", null, 10);
+        final var entries = helper.listLedgerEntries("gcc-1", null, null, null, null, "corr-gcc1", null, 10);
         assertEquals(2, entries.size());
         final String doneEntryId = (String) entries.get(1).get("entry_id");
         assertNotNull(doneEntryId, "entry_id must be present in ledger entries");
 
-        final List<CausalChainEntry> chain = tools.getCausalChain("gcc-1", doneEntryId);
+        final List<CausalChainEntry> chain = helper.getCausalChain("gcc-1", doneEntryId);
 
         assertEquals(2, chain.size());
         assertEquals("COMMAND", chain.get(0).messageType());
@@ -261,14 +260,14 @@ class LedgerQueryToolsTest {
     @Test
     void getCausalChain_commandHandoffDone_chainLengthThree() {
         setup("gcc-2", "coordinator", "first-responder", "senior");
-        var cmdGcc2 = tools.sendMessage("gcc-2", "coordinator", "command", "Handle", null, "corr-gcc2", null, null, null, null, null, null, null);
-        var hofGcc2 = tools.sendMessage("gcc-2", "first-responder", "handoff", "Escalate", null, "corr-gcc2", cmdGcc2.messageId(), null, "instance:senior", null, null, null, null);
-        tools.sendMessage("gcc-2", "senior", "done", "Resolved", null, "corr-gcc2", hofGcc2.messageId(), null, null, null, null, null, null);
+        var cmdGcc2 = helper.sendMessage("gcc-2", "coordinator", "command", "Handle", null, "corr-gcc2", null, null, null, null, null, null, null);
+        var hofGcc2 = helper.sendMessage("gcc-2", "first-responder", "handoff", "Escalate", null, "corr-gcc2", cmdGcc2.messageId(), null, "instance:senior", null, null, null, null);
+        helper.sendMessage("gcc-2", "senior", "done", "Resolved", null, "corr-gcc2", hofGcc2.messageId(), null, null, null, null, null, null);
 
-        final var entries = tools.listLedgerEntries("gcc-2", null, null, null, null, "corr-gcc2", null, 10);
+        final var entries = helper.listLedgerEntries("gcc-2", null, null, null, null, "corr-gcc2", null, 10);
         final String doneId = (String) entries.get(2).get("entry_id");
 
-        final List<CausalChainEntry> chain = tools.getCausalChain("gcc-2", doneId);
+        final List<CausalChainEntry> chain = helper.getCausalChain("gcc-2", doneId);
 
         assertEquals(3, chain.size(), "COMMAND → HANDOFF → DONE = 3 entries");
         assertEquals("COMMAND", chain.get(0).messageType());
@@ -279,12 +278,12 @@ class LedgerQueryToolsTest {
     @Test
     void getCausalChain_rootEntry_returnsSingleEntry() {
         setup("gcc-3", "coordinator");
-        tools.sendMessage("gcc-3", "coordinator", "command", "Start", null, "corr-gcc3", null, null, null, null, null, null, null);
+        helper.sendMessage("gcc-3", "coordinator", "command", "Start", null, "corr-gcc3", null, null, null, null, null, null, null);
 
-        final var entries = tools.listLedgerEntries("gcc-3", null, null, null, null, null, null, 10);
+        final var entries = helper.listLedgerEntries("gcc-3", null, null, null, null, null, null, 10);
         final String cmdId = (String) entries.get(0).get("entry_id");
 
-        final List<CausalChainEntry> chain = tools.getCausalChain("gcc-3", cmdId);
+        final List<CausalChainEntry> chain = helper.getCausalChain("gcc-3", cmdId);
 
         assertEquals(1, chain.size());
         assertNull(chain.get(0).causedByEntryId());
@@ -294,7 +293,7 @@ class LedgerQueryToolsTest {
     void getCausalChain_unknownEntryId_returnsEmpty() {
         setup("gcc-4", "agent-a");
 
-        final List<CausalChainEntry> chain = tools.getCausalChain("gcc-4", "00000000-0000-0000-0000-000000000000");
+        final List<CausalChainEntry> chain = helper.getCausalChain("gcc-4", "00000000-0000-0000-0000-000000000000");
 
         assertTrue(chain.isEmpty());
     }
@@ -303,13 +302,13 @@ class LedgerQueryToolsTest {
     void getCausalChain_invalidUuid_throws() {
         setup("gcc-5", "agent-a");
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getCausalChain("gcc-5", "not-a-uuid"));
+                () -> helper.getCausalChain("gcc-5", "not-a-uuid"));
     }
 
     @Test
     void getCausalChain_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getCausalChain("no-channel", "00000000-0000-0000-0000-000000000000"));
+                () -> helper.getCausalChain("no-channel", "00000000-0000-0000-0000-000000000000"));
     }
 
     // =========================================================================
@@ -319,10 +318,10 @@ class LedgerQueryToolsTest {
     @Test
     void listStalledObligations_openCommandNoTerminal_returnedAsStalled() throws InterruptedException {
         setup("lso-1", "coordinator");
-        tools.sendMessage("lso-1", "coordinator", "command", "Pending work", null, "corr-lso1", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-1", "coordinator", "command", "Pending work", null, "corr-lso1", null, null, null, null, null, null, null);
 
         // Use threshold of 0 seconds so even a just-sent message is stalled
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-1", 0);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-1", 0);
 
         assertEquals(1, stalled.size());
         assertEquals("corr-lso1", stalled.get(0).correlationId());
@@ -333,10 +332,10 @@ class LedgerQueryToolsTest {
     @Test
     void listStalledObligations_commandWithDone_notStalled() {
         setup("lso-2", "coordinator", "worker");
-        var cmdLso2 = tools.sendMessage("lso-2", "coordinator", "command", "Work", null, "corr-lso2", null, null, null, null, null, null, null);
-        tools.sendMessage("lso-2", "worker", "done", "Done", null, "corr-lso2", cmdLso2.messageId(), null, null, null, null, null, null);
+        var cmdLso2 = helper.sendMessage("lso-2", "coordinator", "command", "Work", null, "corr-lso2", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-2", "worker", "done", "Done", null, "corr-lso2", cmdLso2.messageId(), null, null, null, null, null, null);
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-2", 0);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-2", 0);
 
         assertTrue(stalled.isEmpty());
     }
@@ -344,10 +343,10 @@ class LedgerQueryToolsTest {
     @Test
     void listStalledObligations_commandWithFailure_notStalled() {
         setup("lso-3", "coordinator", "worker");
-        var cmdLso3 = tools.sendMessage("lso-3", "coordinator", "command", "Work", null, "corr-lso3", null, null, null, null, null, null, null);
-        tools.sendMessage("lso-3", "worker", "failure", "Failed badly", null, "corr-lso3", cmdLso3.messageId(), null, null, null, null, null, null);
+        var cmdLso3 = helper.sendMessage("lso-3", "coordinator", "command", "Work", null, "corr-lso3", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-3", "worker", "failure", "Failed badly", null, "corr-lso3", cmdLso3.messageId(), null, null, null, null, null, null);
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-3", 0);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-3", 0);
 
         assertTrue(stalled.isEmpty());
     }
@@ -355,10 +354,10 @@ class LedgerQueryToolsTest {
     @Test
     void listStalledObligations_commandWithDecline_notStalled() {
         setup("lso-4", "coordinator", "worker");
-        var cmdLso4 = tools.sendMessage("lso-4", "coordinator", "command", "Work", null, "corr-lso4", null, null, null, null, null, null, null);
-        tools.sendMessage("lso-4", "worker", "decline", "Cannot do", null, "corr-lso4", cmdLso4.messageId(), null, null, null, null, null, null);
+        var cmdLso4 = helper.sendMessage("lso-4", "coordinator", "command", "Work", null, "corr-lso4", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-4", "worker", "decline", "Cannot do", null, "corr-lso4", cmdLso4.messageId(), null, null, null, null, null, null);
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-4", 0);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-4", 0);
 
         assertTrue(stalled.isEmpty());
     }
@@ -367,9 +366,9 @@ class LedgerQueryToolsTest {
     void listStalledObligations_defaultThreshold_recentCommandNotStalled() {
         setup("lso-5", "coordinator");
         // A just-sent COMMAND should NOT be stalled at the default 30s threshold
-        tools.sendMessage("lso-5", "coordinator", "command", "Brand new", null, "corr-lso5", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-5", "coordinator", "command", "Brand new", null, "corr-lso5", null, null, null, null, null, null, null);
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-5", null);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-5", null);
 
         assertTrue(stalled.isEmpty(), "A brand-new COMMAND must not be stalled at 30s threshold");
     }
@@ -378,7 +377,7 @@ class LedgerQueryToolsTest {
     void listStalledObligations_emptyChannel_returnsEmpty() {
         setup("lso-6", "agent-a");
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-6", null);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-6", null);
 
         assertTrue(stalled.isEmpty());
     }
@@ -386,15 +385,15 @@ class LedgerQueryToolsTest {
     @Test
     void listStalledObligations_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.listStalledObligations("no-channel", null));
+                () -> helper.listStalledObligations("no-channel", null));
     }
 
     @Test
     void listStalledObligations_result_containsExpectedFields() {
         setup("lso-7", "coordinator");
-        tools.sendMessage("lso-7", "coordinator", "command", "My content", null, "corr-lso7", null, null, null, null, null, null, null);
+        helper.sendMessage("lso-7", "coordinator", "command", "My content", null, "corr-lso7", null, null, null, null, null, null, null);
 
-        final List<StalledObligation> stalled = tools.listStalledObligations("lso-7", 0);
+        final List<StalledObligation> stalled = helper.listStalledObligations("lso-7", 0);
 
         assertEquals(1, stalled.size());
         final StalledObligation s = stalled.get(0);
@@ -411,14 +410,14 @@ class LedgerQueryToolsTest {
     void getObligationStats_mixedOutcomes_correctRates() {
         setup("gos-1", "coordinator", "worker");
         // 3 COMMANDs: 2 DONE, 1 FAILURE
-        var gos1a = tools.sendMessage("gos-1", "coordinator", "command", "Work 1", null, "corr-gos1a", null, null, null, null, null, null, null);
-        tools.sendMessage("gos-1", "worker", "done", "Done 1", null, "corr-gos1a", gos1a.messageId(), null, null, null, null, null, null);
-        var gos1b = tools.sendMessage("gos-1", "coordinator", "command", "Work 2", null, "corr-gos1b", null, null, null, null, null, null, null);
-        tools.sendMessage("gos-1", "worker", "done", "Done 2", null, "corr-gos1b", gos1b.messageId(), null, null, null, null, null, null);
-        var gos1c = tools.sendMessage("gos-1", "coordinator", "command", "Work 3", null, "corr-gos1c", null, null, null, null, null, null, null);
-        tools.sendMessage("gos-1", "worker", "failure", "Broke", null, "corr-gos1c", gos1c.messageId(), null, null, null, null, null, null);
+        var gos1a = helper.sendMessage("gos-1", "coordinator", "command", "Work 1", null, "corr-gos1a", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-1", "worker", "done", "Done 1", null, "corr-gos1a", gos1a.messageId(), null, null, null, null, null, null);
+        var gos1b = helper.sendMessage("gos-1", "coordinator", "command", "Work 2", null, "corr-gos1b", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-1", "worker", "done", "Done 2", null, "corr-gos1b", gos1b.messageId(), null, null, null, null, null, null);
+        var gos1c = helper.sendMessage("gos-1", "coordinator", "command", "Work 3", null, "corr-gos1c", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-1", "worker", "failure", "Broke", null, "corr-gos1c", gos1c.messageId(), null, null, null, null, null, null);
 
-        final ObligationStats stats = tools.getObligationStats("gos-1");
+        final ObligationStats stats = helper.getObligationStats("gos-1");
 
         assertEquals(3, stats.totalCommands());
         assertEquals(2, stats.fulfilled());
@@ -432,9 +431,9 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationStats_openCommand_countedInStillOpen() {
         setup("gos-2", "coordinator");
-        tools.sendMessage("gos-2", "coordinator", "command", "Pending", null, "corr-gos2", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-2", "coordinator", "command", "Pending", null, "corr-gos2", null, null, null, null, null, null, null);
 
-        final ObligationStats stats = tools.getObligationStats("gos-2");
+        final ObligationStats stats = helper.getObligationStats("gos-2");
 
         assertEquals(1, stats.totalCommands());
         assertEquals(0, stats.fulfilled());
@@ -444,12 +443,12 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationStats_declinedAndDelegated_counted() {
         setup("gos-3", "coordinator", "worker-a", "worker-b");
-        var gos3a = tools.sendMessage("gos-3", "coordinator", "command", "Task A", null, "corr-gos3a", null, null, null, null, null, null, null);
-        tools.sendMessage("gos-3", "worker-a", "decline", "Cannot", null, "corr-gos3a", gos3a.messageId(), null, null, null, null, null, null);
-        var gos3b = tools.sendMessage("gos-3", "coordinator", "command", "Task B", null, "corr-gos3b", null, null, null, null, null, null, null);
-        tools.sendMessage("gos-3", "worker-a", "handoff", "Delegating", null, "corr-gos3b", gos3b.messageId(), null, "instance:worker-b", null, null, null, null);
+        var gos3a = helper.sendMessage("gos-3", "coordinator", "command", "Task A", null, "corr-gos3a", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-3", "worker-a", "decline", "Cannot", null, "corr-gos3a", gos3a.messageId(), null, null, null, null, null, null);
+        var gos3b = helper.sendMessage("gos-3", "coordinator", "command", "Task B", null, "corr-gos3b", null, null, null, null, null, null, null);
+        helper.sendMessage("gos-3", "worker-a", "handoff", "Delegating", null, "corr-gos3b", gos3b.messageId(), null, "instance:worker-b", null, null, null, null);
 
-        final ObligationStats stats = tools.getObligationStats("gos-3");
+        final ObligationStats stats = helper.getObligationStats("gos-3");
 
         assertEquals(1, stats.declined());
         assertEquals(1, stats.delegated());
@@ -459,7 +458,7 @@ class LedgerQueryToolsTest {
     void getObligationStats_emptyChannel_allZerosNanRate() {
         setup("gos-4", "agent-a");
 
-        final ObligationStats stats = tools.getObligationStats("gos-4");
+        final ObligationStats stats = helper.getObligationStats("gos-4");
 
         assertEquals(0, stats.totalCommands());
         assertEquals(0.0, stats.fulfillmentRate());
@@ -468,7 +467,7 @@ class LedgerQueryToolsTest {
     @Test
     void getObligationStats_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getObligationStats("no-channel"));
+                () -> helper.getObligationStats("no-channel"));
     }
 
     // =========================================================================
@@ -482,7 +481,7 @@ class LedgerQueryToolsTest {
         sendEvent("gts-1", "agent-a", "{\"tool_name\":\"ml-score\",\"duration_ms\":400,\"token_count\":200}");
         sendEvent("gts-1", "agent-a", "{\"tool_name\":\"sanctions\",\"duration_ms\":50,\"token_count\":0}");
 
-        final TelemetrySummary summary = tools.getTelemetrySummary("gts-1", null);
+        final TelemetrySummary summary = helper.getTelemetrySummary("gts-1", null);
 
         assertEquals(3, summary.totalEvents());
         assertEquals(300, summary.totalTokens());
@@ -505,7 +504,7 @@ class LedgerQueryToolsTest {
         setup("gts-2", "agent-a");
         sendEvent("gts-2", "agent-a", "{\"duration_ms\":10}"); // no tool_name
 
-        final TelemetrySummary summary = tools.getTelemetrySummary("gts-2", null);
+        final TelemetrySummary summary = helper.getTelemetrySummary("gts-2", null);
 
         assertEquals(1, summary.totalEvents());
         assertTrue(summary.byTool().containsKey(null), "Null tool_name should be a key in byTool");
@@ -514,11 +513,11 @@ class LedgerQueryToolsTest {
     @Test
     void getTelemetrySummary_nonEventMessagesExcluded() {
         setup("gts-3", "agent-a", "agent-b");
-        var cmdGts3 = tools.sendMessage("gts-3", "agent-a", "command", "Do X", null, "c-gts3", null, null, null, null, null, null, null);
-        tools.sendMessage("gts-3", "agent-b", "done", "Done", null, "c-gts3", cmdGts3.messageId(), null, null, null, null, null, null);
+        var cmdGts3 = helper.sendMessage("gts-3", "agent-a", "command", "Do X", null, "c-gts3", null, null, null, null, null, null, null);
+        helper.sendMessage("gts-3", "agent-b", "done", "Done", null, "c-gts3", cmdGts3.messageId(), null, null, null, null, null, null);
         sendEvent("gts-3", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":5,\"token_count\":10}");
 
-        final TelemetrySummary summary = tools.getTelemetrySummary("gts-3", null);
+        final TelemetrySummary summary = helper.getTelemetrySummary("gts-3", null);
 
         assertEquals(1, summary.totalEvents(), "COMMAND and DONE must not count as events");
     }
@@ -527,7 +526,7 @@ class LedgerQueryToolsTest {
     void getTelemetrySummary_emptyChannel_allZeros() {
         setup("gts-4", "agent-a");
 
-        final TelemetrySummary summary = tools.getTelemetrySummary("gts-4", null);
+        final TelemetrySummary summary = helper.getTelemetrySummary("gts-4", null);
 
         assertEquals(0, summary.totalEvents());
         assertTrue(summary.byTool().isEmpty());
@@ -538,7 +537,7 @@ class LedgerQueryToolsTest {
     @Test
     void getTelemetrySummary_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getTelemetrySummary("no-channel", null));
+                () -> helper.getTelemetrySummary("no-channel", null));
     }
 
     @Test
@@ -550,7 +549,7 @@ class LedgerQueryToolsTest {
         sendEvent("gts-5", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1,\"token_count\":1}");
 
         // since = far future → excludes the event
-        final TelemetrySummary summary = tools.getTelemetrySummary("gts-5", "2099-01-01T00:00:00Z");
+        final TelemetrySummary summary = helper.getTelemetrySummary("gts-5", "2099-01-01T00:00:00Z");
 
         assertEquals(0, summary.totalEvents());
     }
@@ -561,19 +560,19 @@ class LedgerQueryToolsTest {
 
     @Test
     void listLedgerEntries_acceptsChannelUuid() {
-        io.casehub.qhorus.api.channel.ChannelDetail created = tools.createChannel("uuid-ledger-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("uuid-ledger-test", "alice", "query", "hello", null, null, null, null, null, null, null, null, null);
+        var created = helper.createChannel("uuid-ledger-test", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("uuid-ledger-test", "alice", "query", "hello", null, null, null, null, null, null, null, null, null);
         String uuid = created.channelId().toString();
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries(uuid, null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries(uuid, null, null, null, null, null, null, 20);
 
         assertFalse(entries.isEmpty());
     }
 
     private void setup(final String channel, final String... agents) {
-        tools.createChannel(channel, "Test channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channel, "Test channel", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         for (final String agent : agents) {
-            tools.registerInstance(channel, agent, null, null, null);
+            helper.registerInstance(channel, agent, null, null, null);
         }
     }
 

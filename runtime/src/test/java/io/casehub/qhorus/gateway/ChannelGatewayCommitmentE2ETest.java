@@ -20,7 +20,7 @@ import io.casehub.qhorus.api.gateway.NormalisedMessage;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -97,7 +97,7 @@ class ChannelGatewayCommitmentE2ETest {
 
     // ── Injected beans ────────────────────────────────────────────────────
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelGateway gateway;
     @Inject CommitmentStore commitmentStore;
 
@@ -107,16 +107,16 @@ class ChannelGatewayCommitmentE2ETest {
     @TestTransaction
     void receiveHumanMessage_withCorrelationId_fulfillsCommitment() {
         final String ch = "gw-commit-fulfill-1";
-        tools.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(ch, "agent-a", null, null, null);
-        tools.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-fulfill-1",
+        helper.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance(ch, "agent-a", null, null, null);
+        helper.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-fulfill-1",
                 null, null, null, null, null, null, null);
 
         final var before = commitmentStore.findByCorrelationId("corr-fulfill-1");
         assertTrue(before.isPresent(), "COMMAND must open a commitment");
         assertEquals(CommitmentState.OPEN, before.get().state());
 
-        final var channel = tools.listChannels().stream()
+        final var channel = helper.listChannels().stream()
                 .filter(c -> ch.equals(c.name())).findFirst().orElseThrow();
         final ChannelRef ref = new ChannelRef(channel.channelId(), ch);
 
@@ -133,12 +133,12 @@ class ChannelGatewayCommitmentE2ETest {
     @TestTransaction
     void receiveHumanMessage_withoutCorrelationId_leavesCommitmentOpen() {
         final String ch = "gw-commit-open-1";
-        tools.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(ch, "agent-a", null, null, null);
-        tools.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-open-1",
+        helper.createChannel(ch, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance(ch, "agent-a", null, null, null);
+        helper.sendMessage(ch, "agent-a", "command", "Please approve", null, "corr-open-1",
                 null, null, null, null, null, null, null);
 
-        final var channel = tools.listChannels().stream()
+        final var channel = helper.listChannels().stream()
                 .filter(c -> ch.equals(c.name())).findFirst().orElseThrow();
         final ChannelRef ref = new ChannelRef(channel.channelId(), ch);
 

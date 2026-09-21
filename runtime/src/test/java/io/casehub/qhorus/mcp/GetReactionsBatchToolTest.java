@@ -2,7 +2,7 @@ package io.casehub.qhorus.mcp;
 
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.ReactionGroup;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.runtime.message.ReactionService;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -18,21 +18,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @QuarkusTest
 class GetReactionsBatchToolTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ReactionService reactionService;
 
     @Test
     @TestTransaction
     void batchReturnsGroupedReactions() {
-        tools.createChannel("react-batch-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("react-batch-1", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult msg1 = tools.sendMessage("react-batch-1", "agent-a", "status", "hello", null, null, null, null, null, null, null, null, null);
-        DispatchResult msg2 = tools.sendMessage("react-batch-1", "agent-a", "status", "world", null, null, null, null, null, null, null, null, null);
+        DispatchResult msg1 = helper.sendMessage("react-batch-1", "agent-a", "status", "hello", null, null, null, null, null, null, null, null, null);
+        DispatchResult msg2 = helper.sendMessage("react-batch-1", "agent-a", "status", "world", null, null, null, null, null, null, null, null, null);
 
         reactionService.react(msg1.messageId(), "👍", "user-1", null);
         reactionService.react(msg2.messageId(), "❤️", "user-2", null);
 
-        Map<Long, List<ReactionGroup>> result = tools.getReactionsBatch(List.of(msg1.messageId(), msg2.messageId()));
+        Map<Long, List<ReactionGroup>> result = helper.getReactionsBatch(List.of(msg1.messageId(), msg2.messageId()));
 
         assertThat(result).containsKeys(msg1.messageId(), msg2.messageId());
         assertThat(result.get(msg1.messageId())).hasSize(1);
@@ -42,27 +42,27 @@ class GetReactionsBatchToolTest {
 
     @Test
     void emptyListRejected() {
-        assertThatThrownBy(() -> tools.getReactionsBatch(List.of()))
+        assertThatThrownBy(() -> helper.getReactionsBatch(List.of()))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void nullListRejected() {
-        assertThatThrownBy(() -> tools.getReactionsBatch(null))
+        assertThatThrownBy(() -> helper.getReactionsBatch(null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void oversizedListRejected() {
         var ids = java.util.stream.LongStream.rangeClosed(1, 201).boxed().toList();
-        assertThatThrownBy(() -> tools.getReactionsBatch(ids))
+        assertThatThrownBy(() -> helper.getReactionsBatch(ids))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @TestTransaction
     void missingMessagesReturnEmptyMap() {
-        Map<Long, List<ReactionGroup>> result = tools.getReactionsBatch(List.of(999999L));
+        Map<Long, List<ReactionGroup>> result = helper.getReactionsBatch(List.of(999999L));
         assertThat(result).containsKey(999999L);
         assertThat(result.get(999999L)).isEmpty();}
 }

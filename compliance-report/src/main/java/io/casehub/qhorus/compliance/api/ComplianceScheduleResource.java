@@ -17,9 +17,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
+
 import java.util.List;
 import java.util.UUID;
 
+@HandWrittenEndpoint("CRUD resource paired with hand-written ComplianceReportResource")
 @Path("/api/compliance/schedules")
 @Produces(MediaType.APPLICATION_JSON)
 public class ComplianceScheduleResource {

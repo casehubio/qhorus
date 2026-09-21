@@ -4,7 +4,7 @@ import io.casehub.qhorus.api.instance.Instance;
 import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.instance.InstanceManager;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -33,8 +33,7 @@ class InstanceReRegistrationTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     InstanceService instanceService;

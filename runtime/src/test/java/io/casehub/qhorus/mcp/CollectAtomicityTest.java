@@ -18,8 +18,10 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -39,8 +41,7 @@ class CollectAtomicityTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -85,14 +86,14 @@ class CollectAtomicityTest {
         try {
             // First committed read: gets all messages and clears the channel
             CheckResult r1 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(messageCount, r1.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(messageCount, r1.size(),
                     "First committed COLLECT read must deliver all " + messageCount + " messages");
 
             // Second committed read: channel was cleared; must return empty
             CheckResult r2 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertTrue(r2.messages().isEmpty(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertTrue(r2.isEmpty(),
                     "Second committed COLLECT read must return empty — channel was cleared by first read");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
@@ -133,10 +134,10 @@ class CollectAtomicityTest {
         try {
             // limit=3 — COLLECT must ignore it and deliver all 8
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 3, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 3, null, null, null));
 
-            List<Long> deliveredIds = result.messages().stream()
-                    .map(QhorusMcpTools.MessageSummary::messageId).toList();
+            List<Long> deliveredIds = result.stream()
+                    .map(MessageSummary::messageId).toList();
 
             assertEquals(writtenIds.size(), deliveredIds.size(),
                     "COLLECT must deliver all " + writtenIds.size() +
@@ -196,9 +197,9 @@ class CollectAtomicityTest {
             });
 
             CheckResult cycle1 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(3, cycle1.messages().size(), "cycle 1 must deliver all 3 messages");
-            assertTrue(cycle1.messages().stream().allMatch(m -> m.content().startsWith("cycle1")));
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(3, cycle1.size(), "cycle 1 must deliver all 3 messages");
+            assertTrue(cycle1.stream().allMatch(m -> m.content().startsWith("cycle1")));
 
             // Cycle 2: write 2 new messages after the clear
             QuarkusTransaction.requiringNew().run(() -> {
@@ -220,10 +221,10 @@ class CollectAtomicityTest {
             });
 
             CheckResult cycle2 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(2, cycle2.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(2, cycle2.size(),
                     "cycle 2 must deliver only the 2 new messages, not cycle 1 messages that were cleared");
-            assertTrue(cycle2.messages().stream().allMatch(m -> m.content().startsWith("cycle2")),
+            assertTrue(cycle2.stream().allMatch(m -> m.content().startsWith("cycle2")),
                     "cycle 2 must not contain any cycle 1 message content — the clear was not effective");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
@@ -291,10 +292,10 @@ class CollectAtomicityTest {
 
             // Collect cycle 1 — should deliver only the 2 non-EVENT messages
             CheckResult cycle1 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(2, cycle1.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(2, cycle1.size(),
                     "collect cycle 1 must deliver exactly 2 non-EVENT messages");
-            assertTrue(cycle1.messages().stream().noneMatch(m -> "EVENT".equals(m.messageType())),
+            assertTrue(cycle1.stream().noneMatch(m -> "EVENT".equals(m.messageType())),
                     "collect must never deliver EVENT messages");
 
             // Cycle 2: write 1 new non-EVENT — the 3 surviving EVENTs must not appear
@@ -310,10 +311,10 @@ class CollectAtomicityTest {
             });
 
             CheckResult cycle2 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(1, cycle2.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(1, cycle2.size(),
                     "collect cycle 2 must deliver only carol's message; surviving EVENTs must not appear");
-            assertEquals("cycle2-result", cycle2.messages().get(0).content());
+            assertEquals("cycle2-result", cycle2.get(0).content());
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
                 channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());

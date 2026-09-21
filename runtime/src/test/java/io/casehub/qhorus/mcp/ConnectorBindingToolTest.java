@@ -9,7 +9,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.channel.ChannelDetail;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -20,8 +20,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ConnectorBindingToolTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     // ── create_channel with binding ────────────────────────────────────────────
 
@@ -30,7 +29,7 @@ class ConnectorBindingToolTest {
     void createChannel_withBinding_populatesConnectorBindingInDetail() {
         String name = "ch-with-binding-" + UUID.randomUUID();
 
-        ChannelDetail detail = tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", "twilio-out", "+44123456789", null);
+        ChannelDetail detail = helper.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", "twilio-out", "+44123456789", null);
 
         assertNotNull(detail.connectorBinding(),
                 "connectorBinding must be non-null when binding params are provided");
@@ -45,7 +44,7 @@ class ConnectorBindingToolTest {
     void createChannel_withoutBinding_hasNullConnectorBinding() {
         String name = "ch-no-binding-" + UUID.randomUUID();
 
-        ChannelDetail detail = tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        ChannelDetail detail = helper.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertNull(detail.connectorBinding());
     }
@@ -56,7 +55,7 @@ class ConnectorBindingToolTest {
         String name = "ch-partial-binding-" + UUID.randomUUID();
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", null, null, null));
+                helper.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44123456789", null, null, null));
 
     }
 
@@ -66,9 +65,9 @@ class ConnectorBindingToolTest {
     @TestTransaction
     void updateChannelBinding_updatesOutboundFieldsAndReturnsDetail() {
         String name = "ch-upd-binding-" + UUID.randomUUID();
-        tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44111222333", "twilio-out", "+44111222333", null);
+        helper.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, "twilio", "+44111222333", "twilio-out", "+44111222333", null);
 
-        ChannelDetail updated = tools.updateChannelBinding(name, "vonage-out", "+447999888777");
+        ChannelDetail updated = helper.updateChannelBinding(name, "vonage-out", "+447999888777");
 
         assertNotNull(updated.connectorBinding());
         assertEquals("vonage-out", updated.connectorBinding().outboundConnectorId());
@@ -80,17 +79,17 @@ class ConnectorBindingToolTest {
     @TestTransaction
     void updateChannelBinding_onChannelWithNoBinding_throwsToolCallException() {
         String name = "ch-nobind-upd-" + UUID.randomUUID();
-        tools.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "desc", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThrows(IllegalStateException.class, () ->
-                tools.updateChannelBinding(name, "vonage-out", "+447999888777"));
+                helper.updateChannelBinding(name, "vonage-out", "+447999888777"));
     }
 
     @Test
     @TestTransaction
     void updateChannelBinding_onNonExistentChannel_throwsToolCallException() {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                tools.updateChannelBinding("does-not-exist-" + UUID.randomUUID(),
+                helper.updateChannelBinding("does-not-exist-" + UUID.randomUUID(),
                         "vonage-out", "+447999888777"));
 
     }

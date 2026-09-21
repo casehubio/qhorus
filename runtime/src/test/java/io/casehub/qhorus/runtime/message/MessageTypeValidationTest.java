@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -15,8 +15,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class MessageTypeValidationTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     // -----------------------------------------------------------------------
     // Content / target validation via send_message
@@ -25,25 +24,25 @@ class MessageTypeValidationTest {
     @Test
     @TestTransaction
     void declineWithEmptyContentIsRejected() {
-        tools.createChannel("validate-decline-empty", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("validate-decline-empty", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-decline-empty", "alice", "decline", "", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> helper.sendMessage("validate-decline-empty", "alice", "decline", "", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
     @TestTransaction
     void failureWithBlankContentIsRejected() {
-        tools.createChannel("validate-failure-blank", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("validate-failure-blank", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-failure-blank", "alice", "failure", "   ", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> helper.sendMessage("validate-failure-blank", "alice", "failure", "   ", null, null, null, null, null, null, null, null, null));
     }
 
     @Test
     @TestTransaction
     void handoffWithoutTargetIsRejected() {
-        tools.createChannel("validate-handoff-notarget", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("validate-handoff-notarget", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThrows(IllegalArgumentException.class, () -> tools.sendMessage("validate-handoff-notarget", "alice", "handoff", "Please handle this", null, null, null, null, null, null, null, null, null));
+        assertThrows(IllegalArgumentException.class, () -> helper.sendMessage("validate-handoff-notarget", "alice", "handoff", "Please handle this", null, null, null, null, null, null, null, null, null));
     }
 
     // -----------------------------------------------------------------------
@@ -53,9 +52,9 @@ class MessageTypeValidationTest {
     @Test
     @TestTransaction
     void queryAutoGeneratesCorrelationId() {
-        tools.createChannel("validate-query-corr", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("validate-query-corr", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult result = tools.sendMessage("validate-query-corr", "alice", "query", "What is the status?", null, null, null, null, null, null, null, null, null);
+        DispatchResult result = helper.sendMessage("validate-query-corr", "alice", "query", "What is the status?", null, null, null, null, null, null, null, null, null);
 
         assertNotNull(result.correlationId(), "QUERY with no correlation_id supplied should auto-generate one");
         assertFalse(result.correlationId().isBlank(), "auto-generated correlationId must not be blank");
@@ -64,9 +63,9 @@ class MessageTypeValidationTest {
     @Test
     @TestTransaction
     void commandAutoGeneratesCorrelationId() {
-        tools.createChannel("validate-command-corr", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("validate-command-corr", "Test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult result = tools.sendMessage("validate-command-corr", "alice", "command", "Execute the task", null, null, null, null, null, null, null, null, null);
+        DispatchResult result = helper.sendMessage("validate-command-corr", "alice", "command", "Execute the task", null, null, null, null, null, null, null, null, null);
 
         assertNotNull(result.correlationId(), "COMMAND with no correlation_id supplied should auto-generate one");
         assertFalse(result.correlationId().isBlank(), "auto-generated correlationId must not be blank");

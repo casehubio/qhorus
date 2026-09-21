@@ -16,7 +16,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -29,7 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
  *
  * <p>
  * RED-phase: will not compile until {@code get_channel_timeline} is added to
- * {@link QhorusMcpTools}.
+ * {@link QhorusTestHelper}.
  *
  * <p>
  * Refs #54, Epic #50.
@@ -38,8 +38,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @TestTransaction
 class ChannelTimelineTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     MessageService messageService;
@@ -48,9 +47,9 @@ class ChannelTimelineTest {
     ChannelService channelService;
 
     private void setup(final String channel, final String... agents) {
-        tools.createChannel(channel, "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channel, "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         for (final String agent : agents) {
-            tools.registerInstance(channel, agent, null, null, null);
+            helper.registerInstance(channel, agent, null, null, null);
         }
     }
 
@@ -78,11 +77,11 @@ class ChannelTimelineTest {
     void timeline_mixedTypes_returnedInOrder() {
         setup("ct-mixed-1", "agent-1");
 
-        tools.sendMessage("ct-mixed-1", "agent-1", "command", "Do X", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("ct-mixed-1", "agent-1", "status", "Working", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-mixed-1", "agent-1", "command", "Do X", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-mixed-1", "agent-1", "status", "Working", null, null, null, null, null, null, null, null, null);
         sendEvent("ct-mixed-1", "agent-1", "read_file");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-mixed-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-mixed-1", null, 50);
 
         assertEquals(3, timeline.size());
     }
@@ -91,10 +90,10 @@ class ChannelTimelineTest {
     void timeline_entriesHaveType() {
         setup("ct-type-1", "agent-1");
 
-        tools.sendMessage("ct-type-1", "agent-1", "command", "Go", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-type-1", "agent-1", "command", "Go", null, null, null, null, null, null, null, null, null);
         sendEvent("ct-type-1", "agent-1", "analyze");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-type-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-type-1", null, 50);
 
         assertEquals(2, timeline.size());
         // Each entry has a type discriminator
@@ -106,9 +105,9 @@ class ChannelTimelineTest {
     void timeline_regularMessages_haveMessageType() {
         setup("ct-msgtype-1", "agent-1");
 
-        tools.sendMessage("ct-msgtype-1", "agent-1", "command", "Do something", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-msgtype-1", "agent-1", "command", "Do something", null, null, null, null, null, null, null, null, null);
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-msgtype-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-msgtype-1", null, 50);
 
         assertEquals(1, timeline.size());
         assertEquals("command", timeline.get(0).get("message_type"));
@@ -120,7 +119,7 @@ class ChannelTimelineTest {
 
         sendEvent("ct-event-1", "agent-1", "write_file");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-event-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-event-1", null, 50);
 
         assertEquals(1, timeline.size());
         assertEquals("write_file", timeline.get(0).get("tool_name"));
@@ -133,7 +132,7 @@ class ChannelTimelineTest {
         sendEventTelemetry("ct-event-2", "agent-1",
                 "{\"tool_name\":\"read_file\",\"duration_ms\":250,\"token_count\":150}");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-event-2", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-event-2", null, 50);
 
         assertEquals(1, timeline.size());
         assertEquals("read_file", timeline.get(0).get("tool_name"));
@@ -147,7 +146,7 @@ class ChannelTimelineTest {
 
         sendEventTelemetry("ct-event-3", "agent-1", "{}");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-event-3", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-event-3", null, 50);
 
         assertEquals(1, timeline.size());
         assertNull(timeline.get(0).get("tool_name"));
@@ -161,7 +160,7 @@ class ChannelTimelineTest {
 
         sendEventTelemetry("ct-event-4", "agent-1", "not-json");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-event-4", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-event-4", null, 50);
 
         assertEquals(1, timeline.size());
         assertNull(timeline.get(0).get("tool_name"));
@@ -172,7 +171,7 @@ class ChannelTimelineTest {
     @Test
     void timeline_unknownChannel_throwsOrReturnsError() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.getChannelTimeline("no-such-channel", null, 50));
+                () -> helper.getChannelTimeline("no-such-channel", null, 50));
     }
 
     // =========================================================================
@@ -183,11 +182,11 @@ class ChannelTimelineTest {
     void timeline_chronologicalOrder() {
         setup("ct-order-1", "agent-1");
 
-        tools.sendMessage("ct-order-1", "agent-1", "command", "step 1", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-order-1", "agent-1", "command", "step 1", null, null, null, null, null, null, null, null, null);
         sendEvent("ct-order-1", "agent-1", "analyze");
-        tools.sendMessage("ct-order-1", "agent-1", "status", "done", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-order-1", "agent-1", "status", "done", null, null, null, null, null, null, null, null, null);
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-order-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-order-1", null, 50);
 
         assertEquals(3, timeline.size());
         assertEquals("command", timeline.get(0).get("message_type"));
@@ -205,10 +204,10 @@ class ChannelTimelineTest {
         setup("ct-limit-1", "agent-1");
 
         for (int i = 0; i < 5; i++) {
-            tools.sendMessage("ct-limit-1", "agent-1", "status", "step " + i, null, null, null, null, null, null, null, null, null);
+            helper.sendMessage("ct-limit-1", "agent-1", "status", "step " + i, null, null, null, null, null, null, null, null, null);
         }
 
-        final List<Map<String, Object>> page = tools.getChannelTimeline("ct-limit-1", null, 3);
+        final List<Map<String, Object>> page = helper.getChannelTimeline("ct-limit-1", null, 3);
 
         assertEquals(3, page.size());
     }
@@ -217,15 +216,15 @@ class ChannelTimelineTest {
     void timeline_afterId_returnsNextPage() {
         setup("ct-cursor-1", "agent-1");
 
-        tools.sendMessage("ct-cursor-1", "agent-1", "command", "first", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("ct-cursor-1", "agent-1", "status", "second", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("ct-cursor-1", "agent-1", "status", "third", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-cursor-1", "agent-1", "command", "first", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-cursor-1", "agent-1", "status", "second", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("ct-cursor-1", "agent-1", "status", "third", null, null, null, null, null, null, null, null, null);
 
-        final List<Map<String, Object>> page1 = tools.getChannelTimeline("ct-cursor-1", null, 2);
+        final List<Map<String, Object>> page1 = helper.getChannelTimeline("ct-cursor-1", null, 2);
         assertEquals(2, page1.size());
 
         final Long afterId = (Long) page1.get(1).get("id");
-        final List<Map<String, Object>> page2 = tools.getChannelTimeline("ct-cursor-1", afterId, 2);
+        final List<Map<String, Object>> page2 = helper.getChannelTimeline("ct-cursor-1", afterId, 2);
 
         assertEquals(1, page2.size());
         assertEquals("third", page2.get(0).get("content"));
@@ -239,7 +238,7 @@ class ChannelTimelineTest {
     void timeline_emptyChannel_returnsEmptyList() {
         setup("ct-empty-1", "agent-1");
 
-        final List<Map<String, Object>> timeline = tools.getChannelTimeline("ct-empty-1", null, 50);
+        final List<Map<String, Object>> timeline = helper.getChannelTimeline("ct-empty-1", null, 50);
 
         assertTrue(timeline.isEmpty());
     }

@@ -4,8 +4,8 @@ import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.CommitmentService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.quarkiverse.mcp.server.IllegalArgumentException;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @QuarkusTest
 class ContainmentScenarioTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelService channelService;
     @Inject CommitmentService commitmentService;
 
@@ -34,12 +34,12 @@ class ContainmentScenarioTest {
     @TestTransaction
     void containmentPausesPreventsMessages() {
         // --- Setup: channel with open obligation ---
-        tools.createChannel("gov-contain-ch", "Containment demo channel", null, null, null,
+        helper.createChannel("gov-contain-ch", "Containment demo channel", null, null, null,
                 null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.register("agent-worker", "Worker agent", null, null, null);
+        helper.register("agent-worker", "Worker agent", null, null, null);
 
         // Send a COMMAND to create an obligation
-        DispatchResult cmd = tools.sendMessage("gov-contain-ch", "agent-worker", "COMMAND",
+        DispatchResult cmd = helper.sendMessage("gov-contain-ch", "agent-worker", "COMMAND",
                 "Process this task", null, null, null, null, null, null, null, null, null);
         assertThat(cmd.correlationId()).isNotNull();
 
@@ -51,7 +51,7 @@ class ContainmentScenarioTest {
         System.out.println("\n=== Scenario 2: Cascade Containment ===\n");
 
         // --- Verify: channel is paused ---
-        var detail = tools.listChannels().stream()
+        var detail = helper.listChannels().stream()
                 .filter(cd -> "gov-contain-ch".equals(cd.name()))
                 .findFirst().orElseThrow();
         assertThat(detail.paused()).isTrue();
@@ -59,7 +59,7 @@ class ContainmentScenarioTest {
 
         // --- Verify: new messages are blocked ---
         assertThatThrownBy(() ->
-                tools.sendMessage("gov-contain-ch", "agent-worker", "STATUS",
+                helper.sendMessage("gov-contain-ch", "agent-worker", "STATUS",
                         "Trying to send on paused channel", null, null, null, null, null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("paused");

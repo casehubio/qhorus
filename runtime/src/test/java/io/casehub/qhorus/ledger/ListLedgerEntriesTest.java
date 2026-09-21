@@ -16,7 +16,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -34,8 +34,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @TestTransaction
 class ListLedgerEntriesTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     MessageService messageService;
@@ -62,11 +61,11 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_allTypes_returnsAll() {
         setup("lle-basic-1", "agent-a", "agent-b");
-        var cmd1 = tools.sendMessage("lle-basic-1", "agent-a", "command", "Run audit", null, "corr-1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-basic-1", "agent-b", "done", "Audit done", null, "corr-1", cmd1.messageId(), null, null, null, null, null, null);
+        var cmd1 = helper.sendMessage("lle-basic-1", "agent-a", "command", "Run audit", null, "corr-1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-basic-1", "agent-b", "done", "Audit done", null, "corr-1", cmd1.messageId(), null, null, null, null, null, null);
         sendEvent("lle-basic-1", "agent-a", "{\"tool_name\":\"read\",\"duration_ms\":10}");
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-basic-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-basic-1", null, null, null, null, null, null, 20);
 
         assertEquals(3, entries.size());
     }
@@ -74,9 +73,9 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_returnsRequiredFields() {
         setup("lle-fields-1", "agent-a");
-        tools.sendMessage("lle-fields-1", "agent-a", "command", "Do X", null, "corr-f1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-fields-1", "agent-a", "command", "Do X", null, "corr-f1", null, null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-fields-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-fields-1", null, null, null, null, null, null, 20);
 
         assertEquals(1, entries.size());
         Map<String, Object> e = entries.get(0);
@@ -94,7 +93,7 @@ class ListLedgerEntriesTest {
         setup("lle-telemetry-1", "agent-a");
         sendEvent("lle-telemetry-1", "agent-a", "{\"tool_name\":\"analyze\",\"duration_ms\":42,\"token_count\":500}");
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-telemetry-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-telemetry-1", null, null, null, null, null, null, 20);
 
         Map<String, Object> e = entries.get(0);
         assertEquals("EVENT", e.get("message_type"));
@@ -107,9 +106,9 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_nonEventEntry_doesNotIncludeTelemetryKeys() {
         setup("lle-no-telemetry-1", "agent-a");
-        tools.sendMessage("lle-no-telemetry-1", "agent-a", "command", "Do it", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lle-no-telemetry-1", "agent-a", "command", "Do it", null, null, null, null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-no-telemetry-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-no-telemetry-1", null, null, null, null, null, null, 20);
 
         Map<String, Object> e = entries.get(0);
         assertFalse(e.containsKey("tool_name"), "Non-EVENT entries must not include tool_name key");
@@ -119,11 +118,11 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_returnedInChronologicalOrder() {
         setup("lle-order-1", "agent-a", "agent-b");
-        var cmdOrd = tools.sendMessage("lle-order-1", "agent-a", "command", "first", null, "corr-ord", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-order-1", "agent-a", "status", "second", null, "corr-ord", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-order-1", "agent-b", "done", "third", null, "corr-ord", cmdOrd.messageId(), null, null, null, null, null, null);
+        var cmdOrd = helper.sendMessage("lle-order-1", "agent-a", "command", "first", null, "corr-ord", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-order-1", "agent-a", "status", "second", null, "corr-ord", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-order-1", "agent-b", "done", "third", null, "corr-ord", cmdOrd.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-order-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-order-1", null, null, null, null, null, null, 20);
 
         assertEquals(1L, entries.get(0).get("sequence_number"));
         assertEquals(2L, entries.get(1).get("sequence_number"));
@@ -133,7 +132,7 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_unknownChannel_throws() {
         assertThrows(IllegalArgumentException.class,
-                () -> tools.listLedgerEntries("no-such-channel", null, null, null, null, null, null, 20));
+                () -> helper.listLedgerEntries("no-such-channel", null, null, null, null, null, null, 20));
     }
 
     // =========================================================================
@@ -143,12 +142,12 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_typeFilter_obligationLifecycle() {
         setup("lle-type-1", "agent-a", "agent-b");
-        var cmdTf1 = tools.sendMessage("lle-type-1", "agent-a", "command", "Go", null, "corr-tf1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-type-1", "agent-a", "status", "Working", null, "corr-tf1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-type-1", "agent-b", "done", "Done", null, "corr-tf1", cmdTf1.messageId(), null, null, null, null, null, null);
+        var cmdTf1 = helper.sendMessage("lle-type-1", "agent-a", "command", "Go", null, "corr-tf1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-type-1", "agent-a", "status", "Working", null, "corr-tf1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-type-1", "agent-b", "done", "Done", null, "corr-tf1", cmdTf1.messageId(), null, null, null, null, null, null);
         sendEvent("lle-type-1", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-type-1", "COMMAND,DONE", null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-type-1", "COMMAND,DONE", null, null, null, null, null, 20);
 
         assertEquals(2, entries.size());
         assertTrue(entries.stream()
@@ -158,10 +157,10 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_typeFilter_eventOnly() {
         setup("lle-type-event-1", "agent-a");
-        tools.sendMessage("lle-type-event-1", "agent-a", "command", "Go", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lle-type-event-1", "agent-a", "command", "Go", null, null, null, null, null, null, null, null, null);
         sendEvent("lle-type-event-1", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-type-event-1", "EVENT", null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-type-event-1", "EVENT", null, null, null, null, null, 20);
 
         assertEquals(1, entries.size());
         assertEquals("EVENT", entries.get(0).get("message_type"));
@@ -170,9 +169,9 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_typeFilter_noMatch_returnsEmpty() {
         setup("lle-type-empty-1", "agent-a");
-        tools.sendMessage("lle-type-empty-1", "agent-a", "command", "Go", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lle-type-empty-1", "agent-a", "command", "Go", null, null, null, null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-type-empty-1", "DECLINE", null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-type-empty-1", "DECLINE", null, null, null, null, null, 20);
 
         assertTrue(entries.isEmpty());
     }
@@ -184,10 +183,10 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_agentFilter_returnsOnlyThatAgent() {
         setup("lle-agent-1", "agent-a", "agent-b");
-        var cmdAg1 = tools.sendMessage("lle-agent-1", "agent-a", "command", "Go", null, "corr-ag1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-agent-1", "agent-b", "done", "Done", null, "corr-ag1", cmdAg1.messageId(), null, null, null, null, null, null);
+        var cmdAg1 = helper.sendMessage("lle-agent-1", "agent-a", "command", "Go", null, "corr-ag1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-agent-1", "agent-b", "done", "Done", null, "corr-ag1", cmdAg1.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-agent-1", null, "agent-a", null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-agent-1", null, "agent-a", null, null, null, null, 20);
 
         assertEquals(1, entries.size());
         assertEquals("agent-a", entries.get(0).get("actor_id"));
@@ -204,7 +203,7 @@ class ListLedgerEntriesTest {
             sendEvent("lle-limit-1", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
         }
 
-        List<Map<String, Object>> page = tools.listLedgerEntries("lle-limit-1", null, null, null, null, null, null, 3);
+        List<Map<String, Object>> page = helper.listLedgerEntries("lle-limit-1", null, null, null, null, null, null, 3);
 
         assertEquals(3, page.size());
     }
@@ -212,15 +211,15 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_afterId_returnsNextPage() {
         setup("lle-cursor-1", "agent-a", "agent-b");
-        var cmdCur = tools.sendMessage("lle-cursor-1", "agent-a", "command", "Go", null, "corr-cur", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-cursor-1", "agent-a", "status", "Working", null, "corr-cur", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-cursor-1", "agent-b", "done", "Done", null, "corr-cur", cmdCur.messageId(), null, null, null, null, null, null);
+        var cmdCur = helper.sendMessage("lle-cursor-1", "agent-a", "command", "Go", null, "corr-cur", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-cursor-1", "agent-a", "status", "Working", null, "corr-cur", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-cursor-1", "agent-b", "done", "Done", null, "corr-cur", cmdCur.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> page1 = tools.listLedgerEntries("lle-cursor-1", null, null, null, null, null, null, 2);
+        List<Map<String, Object>> page1 = helper.listLedgerEntries("lle-cursor-1", null, null, null, null, null, null, 2);
         assertEquals(2, page1.size());
 
         Long cursor = (Long) (Object) page1.get(1).get("sequence_number");
-        List<Map<String, Object>> page2 = tools.listLedgerEntries("lle-cursor-1", null, null, null, cursor, null, null, 2);
+        List<Map<String, Object>> page2 = helper.listLedgerEntries("lle-cursor-1", null, null, null, cursor, null, null, 2);
 
         assertEquals(1, page2.size());
         assertEquals("DONE", page2.get(0).get("message_type"));
@@ -233,10 +232,10 @@ class ListLedgerEntriesTest {
     @Test
     void listLedgerEntries_causalChain_causedByEntryIdPopulated() {
         setup("lle-causal-1", "agent-a", "agent-b");
-        var cmdC1 = tools.sendMessage("lle-causal-1", "agent-a", "command", "Run", null, "corr-lle-causal-1", null, null, null, null, null, null, null);
-        tools.sendMessage("lle-causal-1", "agent-b", "done", "Done", null, "corr-lle-causal-1", cmdC1.messageId(), null, null, null, null, null, null);
+        var cmdC1 = helper.sendMessage("lle-causal-1", "agent-a", "command", "Run", null, "corr-lle-causal-1", null, null, null, null, null, null, null);
+        helper.sendMessage("lle-causal-1", "agent-b", "done", "Done", null, "corr-lle-causal-1", cmdC1.messageId(), null, null, null, null, null, null);
 
-        List<Map<String, Object>> entries = tools.listLedgerEntries("lle-causal-1", null, null, null, null, null, null, 20);
+        List<Map<String, Object>> entries = helper.listLedgerEntries("lle-causal-1", null, null, null, null, null, null, 20);
         assertEquals(2, entries.size());
 
         Map<String, Object> cmd = entries.get(0);
@@ -255,7 +254,7 @@ class ListLedgerEntriesTest {
         setup("lle-since-bad-1", "agent-a");
 
         assertThrows(IllegalArgumentException.class,
-                () -> tools.listLedgerEntries("lle-since-bad-1", null, null, "not-a-date", null, null, null, 20));
+                () -> helper.listLedgerEntries("lle-since-bad-1", null, null, "not-a-date", null, null, null, 20));
     }
 
     // =========================================================================
@@ -263,9 +262,9 @@ class ListLedgerEntriesTest {
     // =========================================================================
 
     private void setup(final String channel, final String... agents) {
-        tools.createChannel(channel, "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channel, "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         for (final String agent : agents) {
-            tools.registerInstance(channel, agent, null, null, null);
+            helper.registerInstance(channel, agent, null, null, null);
         }
     }
 }

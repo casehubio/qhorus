@@ -22,7 +22,9 @@ import io.casehub.qhorus.runtime.api.A2AChannelBackend;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import java.util.List;
+import io.casehub.qhorus.api.message.Message;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 
@@ -42,15 +44,14 @@ class A2AChannelBackendIntegrationTest {
     @Inject
     ChannelGateway channelGateway;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
 
     @Test
     void ensureRegistered_calledTwiceSameChannel_registersOnce() {
-        tools.createChannel("a2a-backend-reg-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-reg-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         Channel    ch  = channelService.findByName("a2a-backend-reg-1").orElseThrow();
         ChannelRef ref = new ChannelRef(ch.id(), "a2a-backend-reg-1");
 
@@ -65,7 +66,7 @@ class A2AChannelBackendIntegrationTest {
 
     @Test
     void receive_roleAgent_createsResponseMessage() {
-        tools.createChannel("a2a-backend-recv-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-recv-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String correlationId = UUID.randomUUID().toString();
 
         // Seed a prior QUERY from the user with the same correlationId so the agent RESPONSE
@@ -76,30 +77,30 @@ class A2AChannelBackendIntegrationTest {
                 "work result", correlationId, Map.of(), null);
 
         assertEquals(correlationId, returned, "receive() should return the provided correlationId");
-        QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-backend-recv-1", 0L, 10, null, null, null);
-        assertEquals(2, check.messages().size(), "query + response should be created");
+        var check = helper.checkMessages("a2a-backend-recv-1", 0L, 10, null, null, null);
+        assertEquals(2, check.size(), "query + response should be created");
         // The second message (from agent) should be RESPONSE type
-        QhorusMcpTools.MessageSummary agentMsg = check.messages().get(1);
+        var agentMsg = check.get(1);
         assertEquals("RESPONSE", agentMsg.messageType(), "agent role should produce RESPONSE type");
         assertEquals("agent", agentMsg.sender(), "agent sender should be 'agent'");
     }
 
     @Test
     void receive_roleUserNoSignals_createsQueryWithHumanSender() {
-        tools.createChannel("a2a-backend-recv-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-recv-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         a2aBackend.receive("a2a-backend-recv-2", "user",
                 "help me", null, Map.of(), null);
 
-        QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-backend-recv-2", 0L, 10, null, null, null);
-        assertEquals(1, check.messages().size(), "exactly one message should be created");
-        assertEquals("QUERY", check.messages().get(0).messageType(), "user role should produce QUERY type");
-        assertEquals("human:user", check.messages().get(0).sender(), "user role should produce human: sender");
+        var check = helper.checkMessages("a2a-backend-recv-2", 0L, 10, null, null, null);
+        assertEquals(1, check.size(), "exactly one message should be created");
+        assertEquals("QUERY", check.get(0).messageType(), "user role should produce QUERY type");
+        assertEquals("human:user", check.get(0).sender(), "user role should produce human: sender");
     }
 
     @Test
     void receive_noTaskId_generatesCorrelationId() {
-        tools.createChannel("a2a-backend-recv-4", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-recv-4", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         String correlationId = a2aBackend.receive("a2a-backend-recv-4", "user",
                 "hello", null, Map.of(), null);
@@ -130,14 +131,14 @@ class A2AChannelBackendIntegrationTest {
 
     @Test
     void receive_roleUserWithSystemHeader_createsSenderSystem() {
-        tools.createChannel("a2a-backend-recv-sys-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-recv-sys-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         a2aBackend.receive("a2a-backend-recv-sys-1", "user",
                 "scheduled check", null, Map.of(), "SYSTEM");
 
-        QhorusMcpTools.CheckResult check = tools.checkMessages("a2a-backend-recv-sys-1", 0L, 10, null, null, null);
-        assertEquals(1, check.messages().size());
-        assertEquals("system", check.messages().get(0).sender());
+        var check = helper.checkMessages("a2a-backend-recv-sys-1", 0L, 10, null, null, null);
+        assertEquals(1, check.size());
+        assertEquals("system", check.get(0).sender());
     }
 
     // ── Enforcement wiring (#188) ─────────────────────────────────────────────
@@ -148,7 +149,7 @@ class A2AChannelBackendIntegrationTest {
         // not just via direct messageService.dispatch() calls in MessageDispatchIntegrationTest.
         // Channel restricts writes to "trusted-agent"; A2A role:"user" sender maps to "human:user" — blocked.
         String channelName = "a2a-acl-test-" + UUID.randomUUID();
-        tools.createChannel(channelName, "ACL test", "APPEND", null, "trusted-agent", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channelName, "ACL test", "APPEND", null, "trusted-agent", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() ->
                 a2aBackend.receive(channelName, "user", "blocked request", null, Map.of(), null))
@@ -161,7 +162,7 @@ class A2AChannelBackendIntegrationTest {
         // role:"user" → ActorType.HUMAN → synthetic tag "role:human" → matches "role:human" in ACL.
         // Verifies that the unified supplier (instance tags + synthetic role tag) works end-to-end via A2A.
         String channelName = "a2a-acl-pass-" + UUID.randomUUID();
-        tools.createChannel(channelName, "ACL pass", "APPEND", null, "role:human", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channelName, "ACL pass", "APPEND", null, "role:human", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         assertDoesNotThrow(() ->
                 a2aBackend.receive(channelName, "user", "allowed request", null, Map.of(), null));
@@ -169,7 +170,7 @@ class A2AChannelBackendIntegrationTest {
 
     @Test
     void close_thenEnsureRegistered_registersAgain() {
-        tools.createChannel("a2a-backend-lifecycle-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-backend-lifecycle-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         Channel    ch  = channelService.findByName("a2a-backend-lifecycle-1").orElseThrow();
         ChannelRef ref = new ChannelRef(ch.id(), "a2a-backend-lifecycle-1");
 

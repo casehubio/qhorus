@@ -20,7 +20,7 @@ import io.casehub.qhorus.api.gateway.ChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -55,8 +55,7 @@ class SendMessageFanOutTest {
         List<OutboundMessage> posts() { return Collections.unmodifiableList(posts); }
     }
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelGateway gateway;
@@ -64,19 +63,19 @@ class SendMessageFanOutTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        tools.createChannel("fanout-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("fanout-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @AfterEach
     @Transactional
     void tearDown() {
         // Use force=true so messages created during tests are deleted too
-        tools.deleteChannel("fanout-1", true, null);
+        helper.deleteChannel("fanout-1", true, null);
     }
 
     @Test
     void sendMessage_stillWorks() {
-        var result = tools.sendMessage("fanout-1", "agent-a", "command",
+        var result = helper.sendMessage("fanout-1", "agent-a", "command",
                 "do the thing", null, null, null, null, null, null, null, null, null);
         assertNotNull(result);
         assertNotNull(result.messageId()); // message was persisted successfully
@@ -84,12 +83,12 @@ class SendMessageFanOutTest {
 
     @Test
     void sendMessage_fansOutToObserver() throws Exception {
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> "fanout-1".equals(c.name())).findFirst().orElseThrow();
         RecordingBackend observer = new RecordingBackend("test-obs", ActorType.HUMAN);
         gateway.registerBackend(ch.channelId(), observer, "human_observer");
 
-        tools.sendMessage("fanout-1", "agent-a", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("fanout-1", "agent-a", "event", null, null, null, null, null, null, null, null, null, null);
 
         Thread.sleep(300);
         assertEquals(1, observer.posts().size());
@@ -99,7 +98,7 @@ class SendMessageFanOutTest {
     @Test
     @Transactional
     void createChannel_autoRegistersQhorusInternal() {
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> "fanout-1".equals(c.name())).findFirst().orElseThrow();
         var backends = gateway.listBackends(ch.channelId());
         assertEquals(1, backends.size());
@@ -109,17 +108,17 @@ class SendMessageFanOutTest {
     @Test
     @Transactional
     void deleteChannel_deregistersAllBackends() {
-        tools.createChannel("fanout-2", "test2", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel("fanout-2", "test2", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> "fanout-2".equals(c.name())).findFirst().orElseThrow();
         UUID channelId = ch.channelId();
-        tools.deleteChannel("fanout-2", true, null);
+        helper.deleteChannel("fanout-2", true, null);
         assertTrue(gateway.listBackends(channelId).isEmpty());
     }
 
     @Test
     void listBackends_returnsQhorusInternal() {
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> "fanout-1".equals(c.name())).findFirst().orElseThrow();
         var result = gateway.listBackends(ch.channelId());
         assertEquals(1, result.size());
@@ -130,7 +129,7 @@ class SendMessageFanOutTest {
     @Test
     @Transactional
     void deregisterBackend_removesObserver() {
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> "fanout-1".equals(c.name())).findFirst().orElseThrow();
         RecordingBackend obs = new RecordingBackend("to-remove", ActorType.HUMAN);
         gateway.registerBackend(ch.channelId(), obs, "human_observer");

@@ -18,7 +18,7 @@ import io.casehub.qhorus.api.gateway.InboundHumanMessage;
 import io.casehub.qhorus.api.gateway.ObserverSignal;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.TestTransaction;
 import jakarta.inject.Inject;
@@ -46,7 +46,7 @@ class ChannelGatewayE2ETest {
         List<ChannelRef> closes() { return Collections.unmodifiableList(closes); }
     }
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelGateway gateway;
 
     @Test
@@ -55,13 +55,13 @@ class ChannelGatewayE2ETest {
         String channelName = "e2e-gw-fanout";
         createChannelCommitted(channelName);
 
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         RecordingBackend observer = new RecordingBackend("panel", ActorType.HUMAN);
         gateway.registerBackend(ch.channelId(), observer, "human_observer");
 
         // EVENT must not carry content; null is the correct value (telemetry goes in telemetry field)
-        tools.sendMessage(channelName, "agent-a", "event",
+        helper.sendMessage(channelName, "agent-a", "event",
                 null, null, null, null, null, null, null, null, null, null);
 
         Thread.sleep(300);
@@ -73,8 +73,8 @@ class ChannelGatewayE2ETest {
     @TestTransaction
     void humanReplies_viaParticipatingBackend_appearsInChannel() {
         String channelName = "e2e-gw-reply";
-        tools.createChannel(channelName, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel(channelName, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), channelName);
         InboundHumanMessage reply = new InboundHumanMessage(
@@ -82,8 +82,8 @@ class ChannelGatewayE2ETest {
 
         gateway.receiveHumanMessage(ref, reply);
 
-        var messages = tools.checkMessages(channelName, null, null, null, null, true);
-        assertTrue(messages.messages().stream()
+        var messages = helper.checkMessages(channelName, null, null, null, null, true);
+        assertTrue(messages.stream()
                 .anyMatch(m -> "human:whatsapp-99".equals(m.sender())));
     }
 
@@ -91,8 +91,8 @@ class ChannelGatewayE2ETest {
     @TestTransaction
     void observerSignal_appearsAsEvent_notSpeechAct() {
         String channelName = "e2e-gw-signal";
-        tools.createChannel(channelName, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel(channelName, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), channelName);
         ObserverSignal signal = new ObserverSignal(
@@ -100,8 +100,8 @@ class ChannelGatewayE2ETest {
 
         gateway.receiveObserverSignal(ref, signal);
 
-        var messages = tools.checkMessages(channelName, null, null, null, null, true);
-        var eventMsg = messages.messages().stream()
+        var messages = helper.checkMessages(channelName, null, null, null, null, true);
+        var eventMsg = messages.stream()
                 .filter(m -> "human:dashboard-user".equals(m.sender()))
                 .findFirst();
         assertTrue(eventMsg.isPresent());
@@ -114,12 +114,13 @@ class ChannelGatewayE2ETest {
         String channelName = "e2e-gw-delete";
         createChannelCommitted(channelName);
 
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         RecordingBackend obs = new RecordingBackend("to-close", ActorType.HUMAN);
         gateway.registerBackend(ch.channelId(), obs, "human_observer");
 
-        tools.deleteChannel(channelName, false, null);
+        io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(
+                () -> helper.deleteChannel(channelName, false, null));
 
         assertEquals(1, obs.closes().size());
         assertTrue(gateway.listBackends(ch.channelId()).isEmpty());
@@ -127,6 +128,6 @@ class ChannelGatewayE2ETest {
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     void createChannelCommitted(String name) {
-        tools.createChannel(name, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "E2E gateway test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

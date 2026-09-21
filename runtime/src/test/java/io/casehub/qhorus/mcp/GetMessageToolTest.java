@@ -12,8 +12,8 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.MessageSummary;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -21,8 +21,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class GetMessageToolTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject
     ChannelService channelService;
     @Inject
@@ -46,7 +45,7 @@ class GetMessageToolTest {
             msgId[0] = msg.messageId();
         });
 
-        MessageSummary summary = QuarkusTransaction.requiringNew().call(() -> tools.getMessage(msgId[0]));
+        MessageSummary summary = QuarkusTransaction.requiringNew().call(() -> helper.getMessage(msgId[0]));
 
         assertEquals(msgId[0], summary.messageId());
         assertEquals("agent-a", summary.sender());
@@ -57,7 +56,7 @@ class GetMessageToolTest {
     @Test
     void getMessage_unknownId_throwsWithNotFoundMessage() {
         Exception ex = assertThrows(Exception.class,
-                () -> QuarkusTransaction.requiringNew().run(() -> tools.getMessage(Long.MAX_VALUE)));
+                () -> QuarkusTransaction.requiringNew().run(() -> helper.getMessage(Long.MAX_VALUE)));
         assertTrue(ex.getMessage().toLowerCase().contains("not found"),
                 "Error should say 'not found': " + ex.getMessage());
     }

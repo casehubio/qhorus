@@ -15,7 +15,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -23,7 +23,7 @@ import jakarta.transaction.Transactional;
 @QuarkusTest
 class RegisterBackendMcpTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelGateway gateway;
 
     private UUID channelId;
@@ -31,14 +31,14 @@ class RegisterBackendMcpTest {
     @BeforeEach
     @Transactional
     void setUp() {
-        var detail = tools.createChannel("reg-back-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var detail = helper.createChannel("reg-back-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         channelId = detail.channelId();
     }
 
     @AfterEach
     @Transactional
     void tearDown() {
-        try { tools.deleteChannel("reg-back-1", null, null); } catch (Exception ignored) {}
+        try { helper.deleteChannel("reg-back-1", null, null); } catch (Exception ignored) {}
     }
 
     @Test

@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.channel.ChannelDetail;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -19,15 +19,15 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class SetChannelTypeConstraintsTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Test
     @TestTransaction
     void setDeniedTypes_updatesChannel() {
         String name = "oversight-" + System.nanoTime();
-        tools.createChannel(name, "governance", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "governance", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        ChannelDetail updated = tools.setChannelTypeConstraints(name, null, "EVENT");
+        ChannelDetail updated = helper.setChannelTypeConstraints(name, null, "EVENT");
 
         assertThat(updated.deniedTypes()).isEqualTo("EVENT");
         assertThat(updated.allowedTypes()).isNull();
@@ -37,9 +37,9 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void setAllowedTypes_updatesChannel() {
         String name = "observe-" + System.nanoTime();
-        tools.createChannel(name, "telemetry", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "telemetry", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        ChannelDetail updated = tools.setChannelTypeConstraints(name, "EVENT", null);
+        ChannelDetail updated = helper.setChannelTypeConstraints(name, "EVENT", null);
 
         assertThat(updated.allowedTypes()).isEqualTo("EVENT");
         assertThat(updated.deniedTypes()).isNull();
@@ -49,9 +49,9 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void nullForBoth_clearsConstraints() {
         String name = "constrained-" + System.nanoTime();
-        tools.createChannel(name, "was constrained", "APPEND", null, null, null, null, null, "EVENT", "QUERY", null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "was constrained", "APPEND", null, null, null, null, null, "EVENT", "QUERY", null, null, null, null, null, null, null, null, null);
 
-        ChannelDetail updated = tools.setChannelTypeConstraints(name, null, null);
+        ChannelDetail updated = helper.setChannelTypeConstraints(name, null, null);
 
         assertThat(updated.allowedTypes()).isNull();
         assertThat(updated.deniedTypes()).isNull();
@@ -61,9 +61,9 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void overlappingTypes_throws() {
         String name = "channel-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "EVENT,QUERY", "EVENT"))
+        assertThatThrownBy(() -> helper.setChannelTypeConstraints(name, "EVENT,QUERY", "EVENT"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("overlap");
     }
@@ -72,9 +72,9 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void unknownTypeName_throws() {
         String name = "channel-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        assertThatThrownBy(() -> tools.setChannelTypeConstraints(name, "BOGUS_TYPE", null))
+        assertThatThrownBy(() -> helper.setChannelTypeConstraints(name, "BOGUS_TYPE", null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -82,10 +82,10 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void isFullReplacement_nullClearsExistingConstraint() {
         String name = "replace-test-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, "QUERY", null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "test", "APPEND", null, null, null, null, null, null, "QUERY", null, null, null, null, null, null, null, null, null);
 
         // Pass denied_types=EVENT but omit allowed_types → should clear allowed_types
-        ChannelDetail updated = tools.setChannelTypeConstraints(name, null, "EVENT");
+        ChannelDetail updated = helper.setChannelTypeConstraints(name, null, "EVENT");
 
         assertThat(updated.allowedTypes()).isNull();
         assertThat(updated.deniedTypes()).isEqualTo("EVENT");
@@ -94,7 +94,7 @@ class SetChannelTypeConstraintsTest {
     @Test
     @TestTransaction
     void unknownChannel_throws() {
-        assertThatThrownBy(() -> tools.setChannelTypeConstraints("no-such-channel-" + System.nanoTime(), "EVENT", null))
+        assertThatThrownBy(() -> helper.setChannelTypeConstraints("no-such-channel-" + System.nanoTime(), "EVENT", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not found");
     }
@@ -103,10 +103,10 @@ class SetChannelTypeConstraintsTest {
     @TestTransaction
     void setConstraints_channelDetailReflectsUpdate() {
         String name = "detail-" + System.nanoTime();
-        tools.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // Pass unsorted input "RESPONSE,COMMAND" — asserts canonical sorted output "COMMAND,RESPONSE"
-        ChannelDetail updated = tools.setChannelTypeConstraints(name, "RESPONSE,COMMAND", "EVENT");
+        ChannelDetail updated = helper.setChannelTypeConstraints(name, "RESPONSE,COMMAND", "EVENT");
 
         assertThat(updated.channelId()).isNotNull();
         assertThat(updated.name()).isEqualTo(name);

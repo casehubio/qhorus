@@ -6,7 +6,7 @@ import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.instance.InstanceManager;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -21,8 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @QuarkusTest
 class InstanceToolTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;

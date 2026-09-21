@@ -18,7 +18,7 @@ import io.casehub.qhorus.examples.agent.WorkerAgent;
 import io.casehub.qhorus.runtime.audit.BenchmarkContext;
 import io.casehub.qhorus.runtime.audit.BenchmarkViolation;
 import io.casehub.qhorus.runtime.audit.EvidentialChecker;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -69,8 +69,7 @@ class NormativeBenchmarkDemoTest {
     @Inject
     WorkerAgent worker;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     EvidentialChecker checker;
@@ -135,12 +134,12 @@ class NormativeBenchmarkDemoTest {
         final String corrId = UUID.randomUUID().toString();
         final String ch = "demo-act2-" + UUID.randomUUID();
 
-        tools.createChannel(ch, "Demo Act 2", "APPEND",
+        helper.createChannel(ch, "Demo Act 2", "APPEND",
                 null, null, null, null, null, ALLOWED, null, null, null, null, null);
-        tools.registerInstance(ch, "orchestrator", null, null, null);
-        tools.registerInstance(ch, "worker", null, null, null);
+        helper.registerInstance(ch, "orchestrator", null, null, null);
+        helper.registerInstance(ch, "worker", null, null, null);
 
-        final DispatchResult cmdResult = tools.sendMessage(ch, "orchestrator", "command",
+        final DispatchResult cmdResult = helper.sendMessage(ch, "orchestrator", "command",
                 TASK, corrId, null, null, null, null, null, null, null);
 
         print("Orchestrator sent: COMMAND (corrId=" + corrId.substring(0, 8) + "...)");
@@ -155,7 +154,7 @@ class NormativeBenchmarkDemoTest {
 
         // QUERY hard-blocks on typed channels — wrap to prevent demo failure.
         try {
-            tools.sendMessage(ch, "worker", response.messageType().toLowerCase(),
+            helper.sendMessage(ch, "worker", response.messageType().toLowerCase(),
                     response.content(), corrId, cmdResult.messageId(),
                     null, null, null, null, null, null);
         } catch (final Exception ignored) {
@@ -202,12 +201,12 @@ class NormativeBenchmarkDemoTest {
         final String corrId = UUID.randomUUID().toString();
         final String ch = "demo-act3-" + UUID.randomUUID();
 
-        tools.createChannel(ch, "Demo Act 3", "APPEND",
+        helper.createChannel(ch, "Demo Act 3", "APPEND",
                 null, null, null, null, null, ALLOWED, null, null, null, null, null);
-        tools.registerInstance(ch, "orchestrator", null, null, null);
-        tools.registerInstance(ch, "worker", null, null, null);
+        helper.registerInstance(ch, "orchestrator", null, null, null);
+        helper.registerInstance(ch, "worker", null, null, null);
 
-        final DispatchResult cmdResult = tools.sendMessage(ch, "orchestrator", "command",
+        final DispatchResult cmdResult = helper.sendMessage(ch, "orchestrator", "command",
                 TASK, corrId, null, null, null, null, null, null, null);
 
         print("Zone 2: COMMAND sent (corrId=" + corrId.substring(0, 8) + "...)");
@@ -218,7 +217,7 @@ class NormativeBenchmarkDemoTest {
 
         // QUERY hard-blocks on typed channels — wrap to prevent demo failure.
         try {
-            tools.sendMessage(ch, "worker", response.messageType().toLowerCase(),
+            helper.sendMessage(ch, "worker", response.messageType().toLowerCase(),
                     response.content(), corrId, cmdResult.messageId(),
                     null, null, null, null, null, null);
         } catch (final Exception ignored) {

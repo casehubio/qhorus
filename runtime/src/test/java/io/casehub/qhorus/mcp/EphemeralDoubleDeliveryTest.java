@@ -16,8 +16,10 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
 
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -40,8 +42,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class EphemeralDoubleDeliveryTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -85,19 +86,19 @@ class EphemeralDoubleDeliveryTest {
         try {
             // First committed read: delivers all messages (atomically selected and deleted)
             CheckResult r1 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(messageCount, r1.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(messageCount, r1.size(),
                     "First committed EPHEMERAL read must deliver all " + messageCount + " messages");
 
             // Second committed read: channel is empty (all messages deleted by first read)
             CheckResult r2 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertTrue(r2.messages().isEmpty(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertTrue(r2.isEmpty(),
                     "Second committed EPHEMERAL read must return empty — all messages were consumed");
 
             // Explicit no-duplication check (trivially passes since r2 is empty)
-            var idsInR1 = r1.messages().stream()
-                    .map(QhorusMcpTools.MessageSummary::messageId).toList();
+            var idsInR1 = r1.stream()
+                    .map(MessageSummary::messageId).toList();
             for (var msg : r2.messages()) {
                 assertFalse(idsInR1.contains(msg.messageId()),
                         "Message " + msg.messageId() + " appeared in both reads — double delivery");
@@ -136,13 +137,13 @@ class EphemeralDoubleDeliveryTest {
 
         try {
             CheckResult r1 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
             CheckResult r2 = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
 
-            assertEquals(1, r1.messages().size(), "first reader must get the one message");
-            assertEquals("the-one-message", r1.messages().get(0).content());
-            assertTrue(r2.messages().isEmpty(),
+            assertEquals(1, r1.size(), "first reader must get the one message");
+            assertEquals("the-one-message", r1.get(0).content());
+            assertTrue(r2.isEmpty(),
                     "second reader must get nothing — single EPHEMERAL message was consumed");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
@@ -185,8 +186,8 @@ class EphemeralDoubleDeliveryTest {
             for (int pass = 0; pass < 4; pass++) {
                 final long finalCursor = cursor;
                 CheckResult batch = QuarkusTransaction.requiringNew().call(
-                        () -> tools.checkMessages(ch, finalCursor, 2, null, null, null));
-                if (batch.messages().isEmpty()) {
+                        () -> helper.checkMessages(ch, finalCursor, 2, null, null, null));
+                if (batch.isEmpty()) {
                     break;
                 }
                 for (var msg : batch.messages()) {
@@ -237,18 +238,18 @@ class EphemeralDoubleDeliveryTest {
         try {
             // Read 2: exactly 2 are delivered and deleted
             CheckResult first = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 2, null, null, null));
-            assertEquals(2, first.messages().size(), "limit=2 must deliver exactly 2 messages");
+                    () -> helper.checkMessages(ch, 0L, 2, null, null, null));
+            assertEquals(2, first.size(), "limit=2 must deliver exactly 2 messages");
 
             // Read all remaining: should be exactly 3 (not 5 and not 0)
             CheckResult remaining = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
-            assertEquals(3, remaining.messages().size(),
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
+            assertEquals(3, remaining.size(),
                     "After partial EPHEMERAL read of 2, exactly 3 messages must remain");
 
             // Confirm no overlap between first and remaining
-            var firstIds = first.messages().stream()
-                    .map(QhorusMcpTools.MessageSummary::messageId).toList();
+            var firstIds = first.stream()
+                    .map(MessageSummary::messageId).toList();
             for (var msg : remaining.messages()) {
                 assertFalse(firstIds.contains(msg.messageId()),
                         "Message " + msg.messageId() +

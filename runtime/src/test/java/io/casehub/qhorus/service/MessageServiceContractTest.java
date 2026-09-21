@@ -44,7 +44,7 @@ public abstract class MessageServiceContractTest {
 
     /**
      * Converts a CSV string to {@code List<String>} for test convenience.
-     * Canonical copy: {@code QhorusMcpToolsBase.splitCsv()} — duplicated here
+     * Canonical copy: {@code QhorusTestHelperBase.splitCsv()} — duplicated here
      * because that method is {@code protected static} and inaccessible from tests.
      */
     protected static java.util.List<String> splitCsv(String csv) {

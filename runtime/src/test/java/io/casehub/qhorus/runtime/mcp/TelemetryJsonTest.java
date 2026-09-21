@@ -9,13 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class TelemetryJsonTest {
 
-    static class TestableTools extends QhorusMcpToolsBase {
-        TestableTools() {
-            this.mapper = new ObjectMapper();
-        }
-    }
-
-    private final TestableTools tools = new TestableTools();
+    private final io.casehub.qhorus.testing.QhorusTestHelper tools = new io.casehub.qhorus.testing.QhorusTestHelper();
 
     @Test
     void produces_valid_json_with_string_and_int_values() throws JsonProcessingException {

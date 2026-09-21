@@ -10,14 +10,14 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ProjectionResult;
 import io.casehub.qhorus.api.spi.RenderableProjection;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
 class ProjectChannelTopicTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @ApplicationScoped
     static class TopicCounterProjection implements RenderableProjection<Integer> {
@@ -33,12 +33,12 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void topicFilter_foldsOnlyMatchingTopic() {
         String ch = "proj-topic-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        helper.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, "design");
+        String result = helper.projectChannel(ch, "topic-counter", null, "design");
 
         assertThat(result).isEqualTo("count=2");
     }
@@ -47,11 +47,11 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void nullTopic_foldsAllMessages() {
         String ch = "proj-notopic-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, null);
+        String result = helper.projectChannel(ch, "topic-counter", null, null);
 
         assertThat(result).isEqualTo("count=2");
     }
@@ -60,11 +60,11 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void blankTopic_normalizedToNull_foldsAll() {
         String ch = "proj-blank-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, "  ");
+        String result = helper.projectChannel(ch, "topic-counter", null, "  ");
 
         assertThat(result).isEqualTo("count=2");
     }
@@ -73,11 +73,11 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void topicFilter_caseInsensitive() {
         String ch = "proj-case-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "Design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "Design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, "design");
+        String result = helper.projectChannel(ch, "topic-counter", null, "design");
 
         assertThat(result).isEqualTo("count=1");
     }
@@ -86,10 +86,10 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void topicFilter_noMatchingMessages_returnsEmpty() {
         String ch = "proj-nomatch-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, "nonexistent");
+        String result = helper.projectChannel(ch, "topic-counter", null, "nonexistent");
 
         assertThat(result).isEqualTo("empty");
     }
@@ -98,12 +98,12 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void topicAndMaxMessages_bothApplied() {
         String ch = "proj-combined-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
 
-        String result = tools.projectChannel(ch, "topic-counter", 2, "design");
+        String result = helper.projectChannel(ch, "topic-counter", 2, "design");
 
         assertThat(result).isEqualTo("count=2");
     }
@@ -112,13 +112,13 @@ class ProjectChannelTopicTest {
     @TestTransaction
     void topicOnly_noMaxMessages_scopedPathTaken() {
         String ch = "proj-topiconly-" + System.nanoTime();
-        tools.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
-        tools.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
-        tools.sendMessage(ch, "dave", "status", "d", null, null, null, null, null, null, null, null, "design");
+        helper.createChannel(ch, "test", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage(ch, "alice", "status", "a", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "bob", "status", "b", null, null, null, null, null, null, null, null, "testing");
+        helper.sendMessage(ch, "carol", "status", "c", null, null, null, null, null, null, null, null, "design");
+        helper.sendMessage(ch, "dave", "status", "d", null, null, null, null, null, null, null, null, "design");
 
-        String result = tools.projectChannel(ch, "topic-counter", null, "design");
+        String result = helper.projectChannel(ch, "topic-counter", null, "design");
 
         assertThat(result).isEqualTo("count=3");
     }

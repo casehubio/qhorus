@@ -1,6 +1,8 @@
 package io.casehub.qhorus.api;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import java.util.List;
+import io.casehub.qhorus.api.message.Message;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
@@ -46,16 +48,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @TestProfile(A2AEnabledProfile.class)
 class A2AGetTaskTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     private static final String A2A_PATH = "/a2a";
 
     /** Get the messageId of the first message in a channel (used for inReplyTo). */
     private Long firstMessageId(String channel) {
-        QhorusMcpTools.CheckResult check = tools.checkMessages(channel, 0L, 1, null, null, null);
-        if (check.messages().isEmpty()) return null;
-        return check.messages().get(0).messageId();
+        var check = helper.checkMessages(channel, 0L, 1, null, null, null);
+        if (check.isEmpty()) return null;
+        return check.get(0).messageId();
     }
 
     // -----------------------------------------------------------------------
@@ -105,7 +106,7 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithOnlyRequestMessageIsSubmitted() {
-        tools.createChannel("a2a-gt-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
         sendA2A("a2a-gt-1", "user", "initial request", taskId);
 
@@ -122,14 +123,14 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithStatusMessageIsWorking() {
-        tools.createChannel("a2a-gt-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Request message (submitted)
         sendA2A("a2a-gt-2", "user", "initial request", taskId);
 
         // Agent sends a status update — transitions to working
-        tools.sendMessage("a2a-gt-2", "agent", "status", "processing...", null, taskId, null, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-2", "agent", "status", "processing...", null, taskId, null, null, null, null, null, null, null);
 
         given()
                 .contentType("application/json").accept("application/json")
@@ -142,12 +143,12 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithResponseMessageIsCompleted() {
-        tools.createChannel("a2a-gt-3", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-3", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         sendA2A("a2a-gt-3", "user", "request", taskId);
         Long queryId = firstMessageId("a2a-gt-3");
-        tools.sendMessage("a2a-gt-3", "agent", "response", "here is the answer", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-3", "agent", "response", "here is the answer", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
                 .contentType("application/json").accept("application/json")
@@ -160,12 +161,12 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithDoneMessageIsCompleted() {
-        tools.createChannel("a2a-gt-4", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-4", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         sendA2A("a2a-gt-4", "user", "request", taskId);
         Long queryId = firstMessageId("a2a-gt-4");
-        tools.sendMessage("a2a-gt-4", "agent", "done", "task finished", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-4", "agent", "done", "task finished", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
                 .contentType("application/json").accept("application/json")
@@ -178,12 +179,12 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithFailureMessageIsFailed() {
-        tools.createChannel("a2a-gt-4b", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-4b", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         sendA2A("a2a-gt-4b", "user", "request", taskId);
         Long queryId = firstMessageId("a2a-gt-4b");
-        tools.sendMessage("a2a-gt-4b", "agent", "failure", "could not complete the requested action", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-4b", "agent", "failure", "could not complete the requested action", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
                 .contentType("application/json").accept("application/json")
@@ -196,7 +197,7 @@ class A2AGetTaskTest {
 
     @Test
     void taskIdAndContextIdPresentInResponse() {
-        tools.createChannel("a2a-gt-5", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-5", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
         sendA2A("a2a-gt-5", "user", "hello", taskId);
 
@@ -216,7 +217,7 @@ class A2AGetTaskTest {
 
     @Test
     void historyContainsSentMessage() {
-        tools.createChannel("a2a-gt-6", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-6", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
         sendA2A("a2a-gt-6", "user", "the content", taskId);
 
@@ -233,13 +234,13 @@ class A2AGetTaskTest {
 
     @Test
     void historyContainsAllMessagesInOrder() {
-        tools.createChannel("a2a-gt-7", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-7", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         sendA2A("a2a-gt-7", "user", "request message", taskId);
         Long queryId = firstMessageId("a2a-gt-7");
-        tools.sendMessage("a2a-gt-7", "agent", "status", "processing", null, taskId, null, null, null, null, null, null, null);
-        tools.sendMessage("a2a-gt-7", "agent", "response", "final answer", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-7", "agent", "status", "processing", null, taskId, null, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-7", "agent", "response", "final answer", null, taskId, queryId, null, null, null, null, null, null);
 
         given()
                 .contentType("application/json").accept("application/json")
@@ -259,7 +260,7 @@ class A2AGetTaskTest {
 
     @Test
     void taskCreatedViaSendIsRetrievableViaGet() {
-        tools.createChannel("a2a-gt-8", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-8", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Create via POST
@@ -285,7 +286,7 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithDoneViaCommitment_stateIsCompleted() {
-        tools.createChannel("a2a-gt-commit-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-commit-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Send QUERY via A2A (creates commitment OPEN)
@@ -293,7 +294,7 @@ class A2AGetTaskTest {
         Long queryId = firstMessageId("a2a-gt-commit-1");
 
         // Resolve via DONE (transitions commitment FULFILLED)
-        tools.sendMessage("a2a-gt-commit-1", "agent", "done", "all finished", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-gt-commit-1", "agent", "done", "all finished", null, taskId, queryId, null, null, null, null, null, null);
 
         // getTask() should return completed state via CommitmentStore
         given()
@@ -308,7 +309,7 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithDelegatedState_isWorking() {
-        tools.createChannel("a2a-gt-del-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-del-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // QUERY via A2A creates an OPEN commitment
@@ -318,7 +319,7 @@ class A2AGetTaskTest {
         // Agent sends HANDOFF — parent commitment becomes DELEGATED (terminal),
         // child OPEN commitment created for delegate. findByCorrelationId returns
         // child OPEN → OPEN-guard routes to fromMessageHistory → HANDOFF → "working".
-        tools.sendMessage("a2a-gt-del-1", "agent", "handoff", "delegating to specialist", null, taskId,
+        helper.sendMessage("a2a-gt-del-1", "agent", "handoff", "delegating to specialist", null, taskId,
                 queryId, null, "role:specialist", null, null, null, null);
 
         given()
@@ -332,13 +333,13 @@ class A2AGetTaskTest {
 
     @Test
     void taskWithHandoffMessageIsWorking() {
-        tools.createChannel("a2a-gt-del-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-gt-del-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // Send a COMMAND first so we have a messageId for inReplyTo.
-        var cmd = tools.sendMessage("a2a-gt-del-2", "agent", "command", "originating task", null, taskId, null, null, null, null, null, null, null);
+        var cmd = helper.sendMessage("a2a-gt-del-2", "agent", "command", "originating task", null, taskId, null, null, null, null, null, null, null);
         // HANDOFF means the obligation is being transferred — state is "working".
-        tools.sendMessage("a2a-gt-del-2", "agent", "handoff", "delegated", null, taskId,
+        helper.sendMessage("a2a-gt-del-2", "agent", "handoff", "delegated", null, taskId,
                 cmd.messageId(), null, "role:specialist", null, null, null, null);
 
         given()
@@ -356,7 +357,7 @@ class A2AGetTaskTest {
 
     @Test
     void e2eFullA2ALifecycleSubmittedWorkingCompleted() {
-        tools.createChannel("a2a-e2e-gt-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-e2e-gt-1", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         String taskId = UUID.randomUUID().toString();
 
         // 1. External orchestrator sends task via A2A
@@ -372,7 +373,7 @@ class A2AGetTaskTest {
                 .body("result.status.state", equalTo("submitted"));
 
         // 3. Internal agent (MCP) picks up task, sends status update
-        tools.sendMessage("a2a-e2e-gt-1", "analyst-agent", "status", "I'm working on it", null, taskId, null, null, null, null, null, null, null);
+        helper.sendMessage("a2a-e2e-gt-1", "analyst-agent", "status", "I'm working on it", null, taskId, null, null, null, null, null, null, null);
 
         // 4. Orchestrator polls again — task is working
         given()
@@ -385,7 +386,7 @@ class A2AGetTaskTest {
 
         // 5. Agent completes task
         Long queryId = firstMessageId("a2a-e2e-gt-1");
-        tools.sendMessage("a2a-e2e-gt-1", "analyst-agent", "response", "Analysis complete: 42", null, taskId, queryId, null, null, null, null, null, null);
+        helper.sendMessage("a2a-e2e-gt-1", "analyst-agent", "response", "Analysis complete: 42", null, taskId, queryId, null, null, null, null, null, null);
 
         // 6. Orchestrator polls — task is completed with full history
         given()
@@ -401,7 +402,7 @@ class A2AGetTaskTest {
 
     @Test
     void e2eAutoGeneratedTaskIdRoundtrip() {
-        tools.createChannel("a2a-e2e-gt-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("a2a-e2e-gt-2", "Test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // 1. Send without explicit taskId
         String generatedId = sendA2A("a2a-e2e-gt-2", "user", "work without explicit id", null);

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ProjectionResult;
 import io.casehub.qhorus.api.spi.RenderableProjection;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -21,7 +21,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ProjectChannelMaxMessagesTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     /** A simple counting projection registered for this test. */
     @ApplicationScoped
@@ -51,15 +51,15 @@ class ProjectChannelMaxMessagesTest {
     @TestTransaction
     void maxMessages_limitsMessagesInFold() {
         String channelName = "fold-limit-" + System.nanoTime();
-        tools.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         // Send 5 messages
         for (int i = 0; i < 5; i++) {
-            tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
+            helper.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
                     null, null, null, null, null, null, null, null, null);
         }
 
         // Fold only the first 2
-        String result = tools.projectChannel(channelName, "message-counter", 2, null);
+        String result = helper.projectChannel(channelName, "message-counter", 2, null);
 
         assertThat(result).isEqualTo("count=2");
     }
@@ -68,13 +68,13 @@ class ProjectChannelMaxMessagesTest {
     @TestTransaction
     void nullMaxMessages_foldsAll() {
         String channelName = "fold-all-" + System.nanoTime();
-        tools.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         for (int i = 0; i < 4; i++) {
-            tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
+            helper.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
                     null, null, null, null, null, null, null, null, null);
         }
 
-        String result = tools.projectChannel(channelName, "message-counter", null, null);
+        String result = helper.projectChannel(channelName, "message-counter", null, null);
 
         assertThat(result).isEqualTo("count=4");
     }
@@ -83,13 +83,13 @@ class ProjectChannelMaxMessagesTest {
     @TestTransaction
     void nonPositiveMaxMessages_foldsAll() {
         String channelName = "fold-nonpos-" + System.nanoTime();
-        tools.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(channelName, "test", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         for (int i = 0; i < 3; i++) {
-            tools.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
+            helper.sendMessage(channelName, "agent-1", MessageType.STATUS.name(), "msg-" + i,
                     null, null, null, null, null, null, null, null, null);
         }
 
-        String result = tools.projectChannel(channelName, "message-counter", -1, null);
+        String result = helper.projectChannel(channelName, "message-counter", -1, null);
 
         assertThat(result).isEqualTo("count=3");
     }

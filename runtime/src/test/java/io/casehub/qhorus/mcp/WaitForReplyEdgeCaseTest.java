@@ -16,8 +16,10 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.CommitmentDetail;
 import io.casehub.qhorus.runtime.message.CommitmentEntity;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.casehub.platform.api.identity.ActorTypeResolver;
@@ -47,8 +49,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class WaitForReplyEdgeCaseTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -91,7 +92,7 @@ class WaitForReplyEdgeCaseTest {
         try {
             // Must not throw — unknown instance_id falls back to null gracefully
             WaitResult result = assertDoesNotThrow(
-                    () -> tools.waitForReply(ch, corrId, 1, unknownAgent),
+                    () -> helper.waitForReply(ch, corrId, 1, unknownAgent),
                     "wait_for_reply with an unregistered instance_id should not crash");
 
             assertTrue(result.timedOut(),
@@ -150,7 +151,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(waitCh, corrId, 1, null);
+            WaitResult result = helper.waitForReply(waitCh, corrId, 1, null);
             assertTrue(result.timedOut(),
                     "wait_for_reply must not find a response posted to a different channel");
             assertFalse(result.found());
@@ -192,7 +193,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
             assertTrue(result.found(), "wait_for_reply should find a RESPONSE in a COLLECT channel");
             assertEquals("A on COLLECT", result.message().content());
         } finally {
@@ -231,7 +232,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
             assertTrue(result.found(),
                     "wait_for_reply should find a RESPONSE in a BARRIER channel regardless of barrier state");
             assertEquals("A on BARRIER", result.message().content());
@@ -264,7 +265,7 @@ class WaitForReplyEdgeCaseTest {
 
         try {
             long start = System.currentTimeMillis();
-            WaitResult result = tools.waitForReply(ch, corrId, 0, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 0, null);
             long elapsed = System.currentTimeMillis() - start;
 
             assertTrue(result.timedOut(), "timeout=0 should result in timedOut=true");
@@ -299,7 +300,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 1, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 1, null);
 
             assertTrue(result.timedOut());
             assertNotNull(result.status());
@@ -363,13 +364,13 @@ class WaitForReplyEdgeCaseTest {
 
         try {
             // Waiter A — finds Answer-A immediately
-            WaitResult resultA = tools.waitForReply(ch, corrIdA, 5, null);
+            WaitResult resultA = helper.waitForReply(ch, corrIdA, 5, null);
             assertTrue(resultA.found(), "waiter A should have found its response");
             assertEquals("Answer-A", resultA.message().content(),
                     "waiter A must receive Answer-A, not Answer-B");
 
             // Waiter B — finds Answer-B immediately (Answer-A has a different corrId)
-            WaitResult resultB = tools.waitForReply(ch, corrIdB, 5, null);
+            WaitResult resultB = helper.waitForReply(ch, corrIdB, 5, null);
             assertTrue(resultB.found(), "waiter B should have found its response");
             assertEquals("Answer-B", resultB.message().content(),
                     "waiter B must receive Answer-B, not Answer-A");
@@ -403,7 +404,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 1, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 1, null);
             assertFalse(result.found(),
                     "wait_for_reply must not return found=true for a QUERY — it needs RESPONSE or DONE");
             assertTrue(result.timedOut());
@@ -443,7 +444,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
 
             assertFalse(result.found(), "DECLINED commitment should yield found=false");
             assertFalse(result.timedOut(), "DECLINED commitment should not be a timeout");
@@ -485,7 +486,7 @@ class WaitForReplyEdgeCaseTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
 
             assertFalse(result.found(), "FAILED commitment should yield found=false");
             assertFalse(result.timedOut(), "FAILED commitment should not be a timeout");

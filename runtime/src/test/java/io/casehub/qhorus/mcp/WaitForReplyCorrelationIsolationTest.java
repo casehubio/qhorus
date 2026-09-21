@@ -16,8 +16,8 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.WaitResult;
 import io.casehub.qhorus.runtime.message.CommitmentEntity;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.casehub.qhorus.runtime.message.MessageService;
@@ -51,8 +51,7 @@ class WaitForReplyCorrelationIsolationTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -117,7 +116,7 @@ class WaitForReplyCorrelationIsolationTest {
 
         try {
             // Waiter A — channel has BOTH responses; must receive only answer-for-A
-            WaitResult ra = tools.waitForReply(ch, corrIdA, 5, null);
+            WaitResult ra = helper.waitForReply(ch, corrIdA, 5, null);
 
             assertTrue(ra.found(), "waiter A must find its response");
             assertEquals("answer-for-A", ra.message().content(),
@@ -126,7 +125,7 @@ class WaitForReplyCorrelationIsolationTest {
                     "waiter A's returned correlationId must be corrIdA");
 
             // Waiter B — channel still has answer-for-B (not consumed by waiter A)
-            WaitResult rb = tools.waitForReply(ch, corrIdB, 5, null);
+            WaitResult rb = helper.waitForReply(ch, corrIdB, 5, null);
 
             assertTrue(rb.found(), "waiter B must find its response");
             assertEquals("answer-for-B", rb.message().content(),
@@ -185,7 +184,7 @@ class WaitForReplyCorrelationIsolationTest {
 
         try {
             // Waiter for a FRESH corrId — must not pick up the stale response
-            WaitResult result = tools.waitForReply(ch, freshCorrId, 1, null);
+            WaitResult result = helper.waitForReply(ch, freshCorrId, 1, null);
 
             assertFalse(result.found(),
                     "wait_for_reply must not match a stale RESPONSE with a different corrId");
@@ -243,7 +242,7 @@ class WaitForReplyCorrelationIsolationTest {
 
         try {
             // Wait for corrIdShort — must NOT match corrIdLong's FULFILLED state
-            WaitResult result = tools.waitForReply(ch, corrIdShort, 1, null);
+            WaitResult result = helper.waitForReply(ch, corrIdShort, 1, null);
 
             assertFalse(result.found(),
                     "wait_for_reply must match corrId exactly; corrIdLong shares prefix with corrIdShort " +
@@ -282,13 +281,13 @@ class WaitForReplyCorrelationIsolationTest {
 
         try {
             // First cancel_wait — should succeed
-            var result1 = tools.cancelWait(corrId);
+            var result1 = helper.cancelWait(corrId);
             assertTrue(result1.cancelled(), "first cancel should succeed");
 
             // Second cancel_wait — Commitment already gone, must not throw
             assertDoesNotThrow(
                     () -> {
-                        var result2 = tools.cancelWait(corrId);
+                        var result2 = helper.cancelWait(corrId);
                         assertFalse(result2.cancelled(),
                                 "second cancel on already-deleted Commitment should report not cancelled");
                     },

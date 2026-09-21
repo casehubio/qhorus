@@ -202,7 +202,7 @@ class MessageDispatchIntegrationTest {
                 .telemetry("{\"tool_name\":\"probe\"}").actorType(ActorType.SYSTEM).build()));
     }
 
-    // ── Enforcement — LAST_WRITE (moved from QhorusMcpTools) ─────────────────
+    // ── Enforcement — LAST_WRITE (moved from QhorusTestHelper) ─────────────────
 
     @Test @TestTransaction
     void dispatch_last_write_same_sender_overwrites_in_place() {

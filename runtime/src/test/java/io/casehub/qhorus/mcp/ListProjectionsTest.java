@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -18,18 +18,18 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ListProjectionsTest {
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Test
     void listProjections_returnsSortedList() {
-        List<String> names = tools.listProjections();
+        List<String> names = helper.listProjections();
 
         assertThat(names).isSortedAccordingTo(String::compareTo);
     }
 
     @Test
     void listProjections_returnsListNotNull() {
-        List<String> names = tools.listProjections();
+        List<String> names = helper.listProjections();
 
         assertThat(names).isNotNull();
     }

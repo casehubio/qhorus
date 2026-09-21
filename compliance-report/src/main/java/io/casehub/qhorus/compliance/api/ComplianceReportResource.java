@@ -33,11 +33,14 @@ import jakarta.ws.rs.core.Response;
 import org.jboss.resteasy.reactive.multipart.FileUpload;
 import org.jboss.resteasy.reactive.RestForm;
 
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.UUID;
 
+@HandWrittenEndpoint("multipart upload, content negotiation, binary signature downloads")
 @Path("/api/compliance")
 public class ComplianceReportResource {
 

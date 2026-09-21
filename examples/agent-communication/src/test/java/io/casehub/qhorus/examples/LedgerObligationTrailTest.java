@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 
 /**
@@ -32,8 +32,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class LedgerObligationTrailTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelStore channelStore;
@@ -44,21 +43,21 @@ class LedgerObligationTrailTest {
     @Test
     void agentCommunication_commandLifecycle_producesLedgerTrail() {
         // Set up a channel for this test scenario
-        tools.createChannel("ledger-llm-trail", "LLM obligation trail example", "APPEND", null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance("ledger-llm-trail", "orchestrator", null, null, null);
-        tools.registerInstance("ledger-llm-trail", "worker", null, null, null);
+        helper.createChannel("ledger-llm-trail", "LLM obligation trail example", "APPEND", null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance("ledger-llm-trail", "orchestrator", null, null, null);
+        helper.registerInstance("ledger-llm-trail", "worker", null, null, null);
 
         String corrId = UUID.randomUUID().toString();
 
         // Orchestrator issues a COMMAND
-        var cmdResult = tools.sendMessage("ledger-llm-trail", "orchestrator", "command",
+        var cmdResult = helper.sendMessage("ledger-llm-trail", "orchestrator", "command",
                 "Generate a summary of Q1 sales data", corrId, null, null, null, null, null, null, null);
 
         // Worker acknowledges with STATUS then completes with DONE
-        tools.sendMessage("ledger-llm-trail", "worker", "status",
+        helper.sendMessage("ledger-llm-trail", "worker", "status",
                 "Retrieving Q1 data", corrId, null, null, null, null, null, null, null);
         // DONE requires inReplyTo (the COMMAND message ID) per MessageDispatch builder invariant
-        tools.sendMessage("ledger-llm-trail", "worker", "done",
+        helper.sendMessage("ledger-llm-trail", "worker", "done",
                 "Q1 sales total: $1.2M across 342 transactions", corrId,
                 cmdResult.messageId(), null, null, null, null, null, null);
 
@@ -78,7 +77,7 @@ class LedgerObligationTrailTest {
                 .isEqualTo(entries.get(0).id);
 
         // Obligation lifecycle visible via list_ledger_entries
-        List<Map<String, Object>> obligationTrail = tools.listLedgerEntries(
+        List<Map<String, Object>> obligationTrail = helper.listLedgerEntries(
                 "ledger-llm-trail", "COMMAND,DONE,FAILURE", null, null, null, null, null, 20);
         assertThat(obligationTrail).hasSize(2); // COMMAND + DONE only (STATUS filtered out)
         assertThat(obligationTrail.get(1).get("caused_by_entry_id")).isNotNull();

@@ -14,8 +14,9 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.WaitResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.CommitmentDetail;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.platform.api.identity.ActorTypeResolver;
@@ -38,8 +39,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class WaitForReplyTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -77,7 +77,7 @@ class WaitForReplyTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
 
             assertTrue(result.found());
             assertFalse(result.timedOut());
@@ -112,7 +112,7 @@ class WaitForReplyTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 1, null); // 1s timeout
+            WaitResult result = helper.waitForReply(ch, corrId, 1, null); // 1s timeout
 
             assertFalse(result.found());
             assertTrue(result.timedOut());
@@ -164,7 +164,7 @@ class WaitForReplyTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, waitCorrId, 1, null);
+            WaitResult result = helper.waitForReply(ch, waitCorrId, 1, null);
 
             assertFalse(result.found(), "should not match a response with a different correlationId");
             assertTrue(result.timedOut());
@@ -208,7 +208,7 @@ class WaitForReplyTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
 
             assertTrue(result.found(), "RESPONSE should satisfy wait_for_reply");
             assertEquals("final answer", result.message().content());
@@ -243,7 +243,7 @@ class WaitForReplyTest {
         });
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 5, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 5, null);
 
             assertTrue(result.found(), "DONE should satisfy wait_for_reply for a COMMAND commitment");
             assertEquals("completed", result.message().content());
@@ -284,7 +284,7 @@ class WaitForReplyTest {
         });
 
         try {
-            tools.waitForReply(ch, corrId, 5, null);
+            helper.waitForReply(ch, corrId, 5, null);
 
             long remaining = QuarkusTransaction.requiringNew()
                     .call(() -> commitmentStore.findByCorrelationId(corrId).isPresent() ? 1L : 0L);
@@ -311,7 +311,7 @@ class WaitForReplyTest {
         });
 
         try {
-            tools.waitForReply(ch, corrId, 1, null);
+            helper.waitForReply(ch, corrId, 1, null);
 
             long remaining = QuarkusTransaction.requiringNew()
                     .call(() -> commitmentStore.findByCorrelationId(corrId).isPresent() ? 1L : 0L);
@@ -340,9 +340,9 @@ class WaitForReplyTest {
 
         try {
             // First wait times out (OPEN commitment stays)
-            tools.waitForReply(ch, corrId, 1, null);
+            helper.waitForReply(ch, corrId, 1, null);
             // Second wait with same correlationId must not throw
-            assertDoesNotThrow(() -> tools.waitForReply(ch, corrId, 1, null),
+            assertDoesNotThrow(() -> helper.waitForReply(ch, corrId, 1, null),
                     "second wait_for_reply with same correlationId should not throw");
         } finally {
             cleanupChannel(ch);
@@ -355,7 +355,7 @@ class WaitForReplyTest {
 
     @Test
     void waitForReplyThrowsForUnknownChannel() {
-        assertThrows(Exception.class, () -> tools.waitForReply("no-such-channel-xyz", "corr-abc", 1, null));
+        assertThrows(Exception.class, () -> helper.waitForReply("no-such-channel-xyz", "corr-abc", 1, null));
     }
 
     // -----------------------------------------------------------------------
@@ -404,7 +404,7 @@ class WaitForReplyTest {
         responder.start();
 
         try {
-            WaitResult result = tools.waitForReply(ch, corrId, 3, null);
+            WaitResult result = helper.waitForReply(ch, corrId, 3, null);
             responder.join(2000);
 
             assertTrue(result.found(), "should find the response that arrived during polling");

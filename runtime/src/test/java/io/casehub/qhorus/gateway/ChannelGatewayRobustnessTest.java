@@ -18,7 +18,7 @@ import io.casehub.qhorus.api.gateway.ObserverSignal;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DuplicateParticipatingBackendException;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.TestTransaction;
 import jakarta.inject.Inject;
@@ -51,14 +51,14 @@ class ChannelGatewayRobustnessTest {
         List<ChannelRef> closes() { return Collections.unmodifiableList(closes); }
     }
 
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelGateway gateway;
 
     @Test
     @TestTransaction
     void duplicateParticipatingBackend_isRejected() {
-        tools.createChannel("rob-dup-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel("rob-dup-1", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> "rob-dup-1".equals(c.name())).findFirst().orElseThrow();
         gateway.registerBackend(ch.channelId(),
                 new RecordingBackend("whatsapp-1", ActorType.HUMAN), "human_participating");
@@ -75,14 +75,14 @@ class ChannelGatewayRobustnessTest {
         String channelName = "rob-obs-fail";
         createChannelCommitted(channelName);
 
-        var ch = tools.listChannels().stream()
+        var ch = helper.listChannels().stream()
                 .filter(c -> channelName.equals(c.name())).findFirst().orElseThrow();
         RecordingBackend failing = new RecordingBackend("failing-obs", ActorType.HUMAN);
         failing.throwOnNextPost(new RuntimeException("network error"));
         gateway.registerBackend(ch.channelId(), failing, "human_observer");
 
         assertDoesNotThrow(() ->
-                tools.sendMessage(channelName, "agent-a", "event",
+                helper.sendMessage(channelName, "agent-a", "event",
                         null, null, null, null, null, null, null, null, null, null));
         Thread.sleep(300);
     }
@@ -90,11 +90,11 @@ class ChannelGatewayRobustnessTest {
     @Test
     @TestTransaction
     void twoChannels_backendRegistrationsAreIsolated() {
-        tools.createChannel("rob-iso-1", "test1", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel("rob-iso-2", "test2", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch1 = tools.listChannels().stream()
+        helper.createChannel("rob-iso-1", "test1", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("rob-iso-2", "test2", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch1 = helper.listChannels().stream()
                 .filter(c -> "rob-iso-1".equals(c.name())).findFirst().orElseThrow();
-        var ch2 = tools.listChannels().stream()
+        var ch2 = helper.listChannels().stream()
                 .filter(c -> "rob-iso-2".equals(c.name())).findFirst().orElseThrow();
 
         RecordingBackend obs = new RecordingBackend("ch1-only", ActorType.HUMAN);
@@ -106,8 +106,8 @@ class ChannelGatewayRobustnessTest {
     @Test
     @TestTransaction
     void receiveHumanMessage_createsMessageWithHumanSender() {
-        tools.createChannel("rob-human-msg", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel("rob-human-msg", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> "rob-human-msg".equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), "rob-human-msg");
         InboundHumanMessage raw = new InboundHumanMessage(
@@ -115,16 +115,16 @@ class ChannelGatewayRobustnessTest {
 
         gateway.receiveHumanMessage(ref, raw);
 
-        var messages = tools.checkMessages("rob-human-msg", null, null, null, null, true);
-        assertTrue(messages.messages().stream()
+        var messages = helper.checkMessages("rob-human-msg", null, null, null, null, true);
+        assertTrue(messages.stream()
                 .anyMatch(m -> "human:user-42".equals(m.sender())));
     }
 
     @Test
     @TestTransaction
     void receiveObserverSignal_forcesEventType() {
-        tools.createChannel("rob-obs-sig", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        var ch = tools.listChannels().stream()
+        helper.createChannel("rob-obs-sig", "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        var ch = helper.listChannels().stream()
                 .filter(c -> "rob-obs-sig".equals(c.name())).findFirst().orElseThrow();
         ChannelRef ref = new ChannelRef(ch.channelId(), "rob-obs-sig");
         ObserverSignal signal = new ObserverSignal(
@@ -132,14 +132,14 @@ class ChannelGatewayRobustnessTest {
 
         gateway.receiveObserverSignal(ref, signal);
 
-        var messages = tools.checkMessages("rob-obs-sig", null, null, null, null, true);
-        assertTrue(messages.messages().stream()
+        var messages = helper.checkMessages("rob-obs-sig", null, null, null, null, true);
+        assertTrue(messages.stream()
                 .anyMatch(m -> "human:panel-user".equals(m.sender())
                         && "event".equalsIgnoreCase(m.messageType())));
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     void createChannelCommitted(String name) {
-        tools.createChannel(name, "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel(name, "test", "append", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 }

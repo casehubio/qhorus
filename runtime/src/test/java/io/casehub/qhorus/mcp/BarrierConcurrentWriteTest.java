@@ -21,8 +21,8 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -45,8 +45,7 @@ class BarrierConcurrentWriteTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -84,8 +83,8 @@ class BarrierConcurrentWriteTest {
 
             // Barrier should still be blocked — alice's EVENT doesn't count
             CheckResult afterEvent = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
-            assertTrue(afterEvent.messages().isEmpty(),
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
+            assertTrue(afterEvent.isEmpty(),
                     "Barrier must not release after alice sends only an EVENT");
             assertNotNull(afterEvent.barrierStatus());
             assertTrue(afterEvent.barrierStatus().contains("alice"),
@@ -116,11 +115,11 @@ class BarrierConcurrentWriteTest {
             });
 
             CheckResult afterBothNonEvent = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
             assertNull(afterBothNonEvent.barrierStatus(),
                     "BARRIER must release once alice sent a non-EVENT and bob has written");
             // The payload includes alice's STATUS and bob's STATUS (not alice's EVENT)
-            assertEquals(2, afterBothNonEvent.messages().size(),
+            assertEquals(2, afterBothNonEvent.size(),
                     "Released barrier payload must contain alice's STATUS and bob's STATUS");
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
@@ -213,11 +212,11 @@ class BarrierConcurrentWriteTest {
 
             // All three committed — barrier must release
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
 
             assertNull(result.barrierStatus(),
                     "BARRIER must release after all 3 contributors have written, even concurrently");
-            assertEquals(3, result.messages().size(),
+            assertEquals(3, result.size(),
                     "Released BARRIER payload must include all 3 contributor messages");
         } finally {
             pool.shutdownNow();
@@ -267,12 +266,12 @@ class BarrierConcurrentWriteTest {
             });
 
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
 
             assertNull(result.barrierStatus(),
                     "BARRIER with 'alice,,bob' should release when alice and bob have written; " +
                             "the empty string between commas must not create a phantom contributor");
-            assertEquals(2, result.messages().size());
+            assertEquals(2, result.size());
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
                 channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());
@@ -310,8 +309,8 @@ class BarrierConcurrentWriteTest {
 
             // Check BETWEEN alice and bob — must stay blocked
             CheckResult midCheck = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
-            assertTrue(midCheck.messages().isEmpty(),
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
+            assertTrue(midCheck.isEmpty(),
                     "BARRIER must not release after only alice writes; bob is still pending");
             assertNotNull(midCheck.barrierStatus());
             assertTrue(midCheck.barrierStatus().contains("bob"),
@@ -332,15 +331,15 @@ class BarrierConcurrentWriteTest {
 
             // Now both have written — must release with BOTH messages
             CheckResult releaseCheck = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 10, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 10, null, null, null));
             assertNull(releaseCheck.barrierStatus(),
                     "BARRIER must release once both alice and bob have written");
-            assertEquals(2, releaseCheck.messages().size(),
+            assertEquals(2, releaseCheck.size(),
                     "Released BARRIER must include alice's message (not consumed by mid-check) " +
                             "plus bob's message");
-            assertTrue(releaseCheck.messages().stream().anyMatch(m -> "alice-ready".equals(m.content())),
+            assertTrue(releaseCheck.stream().anyMatch(m -> "alice-ready".equals(m.content())),
                     "alice's message must be in the released payload — mid-check must not consume it");
-            assertTrue(releaseCheck.messages().stream().anyMatch(m -> "bob-ready".equals(m.content())));
+            assertTrue(releaseCheck.stream().anyMatch(m -> "bob-ready".equals(m.content())));
         } finally {
             QuarkusTransaction.requiringNew().run(() -> {
                 channelService.findByName(ch).ifPresent(c -> em.createQuery("DELETE FROM Message e WHERE e.channelId = :p1").setParameter("p1", c.id()).executeUpdate());

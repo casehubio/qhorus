@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.examples.agent.AgentResponse;
 import io.casehub.qhorus.examples.agent.WorkerAgent;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -48,8 +48,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class Zone2NormativeChannelTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     WorkerAgent worker;
@@ -99,7 +98,7 @@ class Zone2NormativeChannelTest {
         for (int i = 0; i < N; i++) {
             // Observed channel: 0 messages — referenced in task, never written to
             final String observedChannelName = "bench-z2-v2-obs-" + UUID.randomUUID();
-            tools.createChannel(observedChannelName, "Z2 V2 observed", "APPEND",
+            helper.createChannel(observedChannelName, "Z2 V2 observed", "APPEND",
                     null, null, null, null, null, null, null, null, null, null, null);
             final UUID observedChannelId = resolveChannelId(observedChannelName);
 
@@ -136,14 +135,14 @@ class Zone2NormativeChannelTest {
             // REQUIRES_NEW; @BeforeEach entries persist after test rollback and accumulate.
             final String priorCorrId = UUID.randomUUID().toString();
             final String priorChannelName = "bench-z2-v3-prior-" + UUID.randomUUID();
-            tools.createChannel(priorChannelName, "Z2 V3 prior", "APPEND",
+            helper.createChannel(priorChannelName, "Z2 V3 prior", "APPEND",
                     null, null, null, null, null, null, null, null, null, null, null);
-            tools.registerInstance(priorChannelName, "orchestrator", null, null, null);
-            tools.registerInstance(priorChannelName, "worker", null, null, null);
-            final DispatchResult priorCmd = tools.sendMessage(priorChannelName, "orchestrator", "command",
+            helper.registerInstance(priorChannelName, "orchestrator", null, null, null);
+            helper.registerInstance(priorChannelName, "worker", null, null, null);
+            final DispatchResult priorCmd = helper.sendMessage(priorChannelName, "orchestrator", "command",
                     "Complete this task", priorCorrId, null, null, null, null, null, null, null);
             // CommitmentState for priorCorrId → FAILED (terminal)
-            tools.sendMessage(priorChannelName, "worker", "failure",
+            helper.sendMessage(priorChannelName, "worker", "failure",
                     "Could not complete", priorCorrId, priorCmd.messageId(), null, null, null, null, null, null);
 
             final String corrId = UUID.randomUUID().toString();
@@ -173,15 +172,15 @@ class Zone2NormativeChannelTest {
     /** Create typed benchmark channel and register orchestrator + worker. */
     private void setup(final String channelName) {
         // allowedTypes at position 9 in the 14-arg createChannel signature
-        tools.createChannel(channelName, "Zone 2 benchmark", "APPEND",
+        helper.createChannel(channelName, "Zone 2 benchmark", "APPEND",
                 null, null, null, null, null, ALLOWED_TYPES, null, null, null, null, null);
-        tools.registerInstance(channelName, "orchestrator", null, null, null);
-        tools.registerInstance(channelName, "worker", null, null, null);
+        helper.registerInstance(channelName, "orchestrator", null, null, null);
+        helper.registerInstance(channelName, "worker", null, null, null);
     }
 
     /** Send COMMAND and return its DispatchResult (messageId required for inReplyTo). */
     private DispatchResult sendCommand(final String channelName, final String task, final String corrId) {
-        return tools.sendMessage(channelName, "orchestrator", "command",
+        return helper.sendMessage(channelName, "orchestrator", "command",
                 task, corrId, null, null, null, null, null, null, null);
     }
 
@@ -196,7 +195,7 @@ class Zone2NormativeChannelTest {
         AgentResponse response = worker.handle(type, corrId, content);
         int retries = 0;
         while ("STATUS".equalsIgnoreCase(response.messageType()) && retries < MAX_STATUS_RETRIES) {
-            tools.sendMessage(channelName, "worker", "status", response.content(),
+            helper.sendMessage(channelName, "worker", "status", response.content(),
                     corrId, cmdResult.messageId(), null, null, null, null, null, null);
             response = worker.handle("STATUS", corrId,
                     "You sent a STATUS update. Now provide your final response: "
@@ -210,7 +209,7 @@ class Zone2NormativeChannelTest {
         // QUERY is hard-enforced (MessageTypeViolationException) when not in allowedTypes;
         // wrap to avoid test failure — classification of the response continues correctly.
         try {
-            tools.sendMessage(channelName, "worker", response.messageType().toLowerCase(),
+            helper.sendMessage(channelName, "worker", response.messageType().toLowerCase(),
                     response.content(), corrId, cmdResult.messageId(), null, null, null, null, null, null);
         } catch (final Exception ignored) {
             // Hard-violation type (e.g. QUERY) — not in channel allowedTypes.

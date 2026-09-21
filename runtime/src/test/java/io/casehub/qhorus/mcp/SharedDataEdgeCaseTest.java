@@ -13,8 +13,8 @@ import io.casehub.qhorus.runtime.data.ArtefactClaimEntity;
 import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.api.data.SharedData;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.ArtefactDetail;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.ArtefactDetail;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -37,8 +37,7 @@ class SharedDataEdgeCaseTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     DataService dataService;
@@ -57,15 +56,15 @@ class SharedDataEdgeCaseTest {
     @TestTransaction
     void storeWithAppendFalseOnCompletedArtefactResetsCompleteFlag() {
         // Create and complete an artefact
-        tools.shareArtefact("reopen-test", "original", "alice", "final content", false, true);
+        helper.shareArtefact("reopen-test", "original", "alice", "final content", false, true);
 
         // "Accidentally" overwrite with incomplete=false
-        ArtefactDetail reopened = tools.shareArtefact("reopen-test", null, "alice", "new chunk", false, false);
+        ArtefactDetail reopened = helper.shareArtefact("reopen-test", null, "alice", "new chunk", false, false);
 
         assertFalse(reopened.complete(),
                 "store(append=false, lastChunk=false) on a completed artefact resets complete=false — " +
                         "this re-opens the artefact and makes it GC-ineligible");
-        assertFalse(tools.isGcEligible(reopened.artefactId().toString()),
+        assertFalse(helper.isGcEligible(reopened.artefactId().toString()),
                 "a re-opened (complete=false) artefact must not be GC eligible");
     }
 
@@ -82,24 +81,24 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void doubleClaimIsIdempotentAndSingleReleaseRestoresGcEligibility() {
-        ArtefactDetail artefact = tools.shareArtefact("double-claim-test", "desc", "alice", "content", false, true);
+        ArtefactDetail artefact = helper.shareArtefact("double-claim-test", "desc", "alice", "content", false, true);
         var claimant = instanceService.register("double-claimant", "Agent", java.util.List.of());
 
         // Claim twice — idempotent: must produce exactly one claim row
-        tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
-        tools.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
+        helper.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
+        helper.claimArtefact(artefact.artefactId().toString(), claimant.id().toString());
 
         long claimCount = em.createQuery("SELECT COUNT(e) FROM ArtefactClaimEntity e WHERE e.artefactId = :p1 AND e.instanceId = :p2", Long.class).setParameter("p1", artefact.artefactId()).setParameter("p2", claimant.id()).getSingleResult();
         assertEquals(1, claimCount,
                 "Double claim must be idempotent — only one ArtefactClaim row should exist");
 
-        assertFalse(tools.isGcEligible(artefact.artefactId().toString()),
+        assertFalse(helper.isGcEligible(artefact.artefactId().toString()),
                 "Artefact with an active claim must not be GC eligible");
 
         // One release should clear the single claim row
-        tools.releaseArtefact(artefact.artefactId().toString(), claimant.id().toString());
+        helper.releaseArtefact(artefact.artefactId().toString(), claimant.id().toString());
 
-        assertTrue(tools.isGcEligible(artefact.artefactId().toString()),
+        assertTrue(helper.isGcEligible(artefact.artefactId().toString()),
                 "After one logical claim + one release, artefact should be GC eligible");
     }
 
@@ -112,7 +111,7 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void storeWithAppendTrueOnNonExistentKeyCreatesNewRecord() {
-        ArtefactDetail result = tools.shareArtefact("append-new-key", "desc", "alice",
+        ArtefactDetail result = helper.shareArtefact("append-new-key", "desc", "alice",
                 "first-chunk", true, false); // append=true, but key doesn't exist
 
         assertNotNull(result.artefactId(), "record should be created even when append=true and key doesn't exist");
@@ -129,7 +128,7 @@ class SharedDataEdgeCaseTest {
     @TestTransaction
     void isGcEligibleForNonExistentArtefactReturnsFalse() {
         String randomId = UUID.randomUUID().toString();
-        assertFalse(tools.isGcEligible(randomId),
+        assertFalse(helper.isGcEligible(randomId),
                 "isGcEligible should return false for a non-existent artefact UUID");
     }
 
@@ -139,7 +138,7 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void artefactWithEmptyContentHasZeroSizeBytes() {
-        ArtefactDetail result = tools.shareArtefact("empty-content-key", "desc", "alice", "", false, true);
+        ArtefactDetail result = helper.shareArtefact("empty-content-key", "desc", "alice", "", false, true);
 
         assertEquals(0L, result.sizeBytes(),
                 "artefact with empty string content must have sizeBytes=0");
@@ -175,26 +174,26 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void multipleAgentsClaimSameArtefactRequiresAllReleasesForGcEligibility() {
-        ArtefactDetail artefact = tools.shareArtefact("multi-claim-test", "desc", "alice", "content", false, true);
+        ArtefactDetail artefact = helper.shareArtefact("multi-claim-test", "desc", "alice", "content", false, true);
         var agent1 = instanceService.register("mc-agent-1", "A1", java.util.List.of());
         var agent2 = instanceService.register("mc-agent-2", "A2", java.util.List.of());
         var agent3 = instanceService.register("mc-agent-3", "A3", java.util.List.of());
 
         String id = artefact.artefactId().toString();
-        tools.claimArtefact(id, agent1.id().toString());
-        tools.claimArtefact(id, agent2.id().toString());
-        tools.claimArtefact(id, agent3.id().toString());
+        helper.claimArtefact(id, agent1.id().toString());
+        helper.claimArtefact(id, agent2.id().toString());
+        helper.claimArtefact(id, agent3.id().toString());
 
-        assertFalse(tools.isGcEligible(id), "3 active claims — not GC eligible");
+        assertFalse(helper.isGcEligible(id), "3 active claims — not GC eligible");
 
-        tools.releaseArtefact(id, agent1.id().toString());
-        assertFalse(tools.isGcEligible(id), "2 claims remaining — still not GC eligible");
+        helper.releaseArtefact(id, agent1.id().toString());
+        assertFalse(helper.isGcEligible(id), "2 claims remaining — still not GC eligible");
 
-        tools.releaseArtefact(id, agent2.id().toString());
-        assertFalse(tools.isGcEligible(id), "1 claim remaining — still not GC eligible");
+        helper.releaseArtefact(id, agent2.id().toString());
+        assertFalse(helper.isGcEligible(id), "1 claim remaining — still not GC eligible");
 
-        tools.releaseArtefact(id, agent3.id().toString());
-        assertTrue(tools.isGcEligible(id), "all 3 claims released — now GC eligible");
+        helper.releaseArtefact(id, agent3.id().toString());
+        assertTrue(helper.isGcEligible(id), "all 3 claims released — now GC eligible");
     }
 
     /**
@@ -205,7 +204,7 @@ class SharedDataEdgeCaseTest {
     @TestTransaction
     void artefactSizeBytesReflectsContentCharacterCount() {
         String content = "Hello, World!"; // 13 characters
-        ArtefactDetail result = tools.shareArtefact("size-test-key", "desc", "alice", content, false, true);
+        ArtefactDetail result = helper.shareArtefact("size-test-key", "desc", "alice", content, false, true);
 
         assertEquals(13L, result.sizeBytes(),
                 "sizeBytes should equal content.length() = 13 for ASCII content");
@@ -219,11 +218,11 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void getSharedDataPrefersKeyOverIdWhenBothProvided() {
-        ArtefactDetail byKey = tools.shareArtefact("key-a", "desc", "alice", "content for key-a", false, true);
-        ArtefactDetail byId = tools.shareArtefact("key-b", "desc", "alice", "content for key-b", false, true);
+        ArtefactDetail byKey = helper.shareArtefact("key-a", "desc", "alice", "content for key-a", false, true);
+        ArtefactDetail byId = helper.shareArtefact("key-b", "desc", "alice", "content for key-b", false, true);
 
         // Provide key="key-a" and id pointing to key-b's UUID — key should win
-        ArtefactDetail result = tools.getArtefact("key-a", byId.artefactId().toString());
+        ArtefactDetail result = helper.getArtefact("key-a", byId.artefactId().toString());
 
         assertEquals("key-a", result.key(),
                 "when both key and id are provided, key takes precedence");
@@ -237,10 +236,10 @@ class SharedDataEdgeCaseTest {
     @Test
     @TestTransaction
     void chunkedUploadWithAppendFalseOnSecondChunkOverwritesPriorContent() {
-        tools.shareArtefact("chunk-overwrite", "desc", "alice", "chunk1", false, false);
+        helper.shareArtefact("chunk-overwrite", "desc", "alice", "chunk1", false, false);
 
         // Second call with append=false — should overwrite, not append
-        ArtefactDetail result = tools.shareArtefact("chunk-overwrite", null, "alice", "replacement", false, true);
+        ArtefactDetail result = helper.shareArtefact("chunk-overwrite", null, "alice", "replacement", false, true);
 
         assertEquals("replacement", result.content(),
                 "second store with append=false should overwrite all prior content");

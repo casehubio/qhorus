@@ -18,7 +18,7 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ProjectionResult;
 import io.casehub.qhorus.api.spi.RenderableProjection;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.quarkus.test.TestTransaction;
@@ -29,7 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class ProjectChannelToolIT {
 
     @Inject
-    QhorusMcpTools tools;
+    QhorusTestHelper tools;
 
     @Inject
     MessageStore messageStore;

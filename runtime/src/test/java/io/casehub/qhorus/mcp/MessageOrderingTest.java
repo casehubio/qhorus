@@ -17,9 +17,9 @@ import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelEntity;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.MessageSummary;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper.MessageSummary;
 import io.casehub.platform.api.identity.ActorTypeResolver;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.casehub.qhorus.runtime.message.MessageService;
@@ -43,8 +43,7 @@ class MessageOrderingTest {
     @Inject
     EntityManager em;
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     ChannelService channelService;
@@ -81,12 +80,12 @@ class MessageOrderingTest {
 
         try {
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
 
-            assertEquals(10, result.messages().size());
+            assertEquals(10, result.size());
 
             // Verify ascending order
-            List<Long> deliveredIds = result.messages().stream()
+            List<Long> deliveredIds = result.stream()
                     .map(MessageSummary::messageId).toList();
             for (int i = 1; i < deliveredIds.size(); i++) {
                 assertTrue(deliveredIds.get(i) > deliveredIds.get(i - 1),
@@ -136,12 +135,12 @@ class MessageOrderingTest {
 
         try {
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
 
-            assertEquals(5, result.messages().size());
-            for (int i = 1; i < result.messages().size(); i++) {
-                long prev = result.messages().get(i - 1).messageId();
-                long curr = result.messages().get(i).messageId();
+            assertEquals(5, result.size());
+            for (int i = 1; i < result.size(); i++) {
+                long prev = result.get(i - 1).messageId();
+                long curr = result.get(i).messageId();
                 assertTrue(curr > prev,
                         "COLLECT must deliver messages in ascending ID order. " +
                                 "Got id[" + (i - 1) + "]=" + prev + " id[" + i + "]=" + curr);
@@ -195,14 +194,14 @@ class MessageOrderingTest {
 
         try {
             CheckResult result = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 100, null, null, null));
+                    () -> helper.checkMessages(ch, 0L, 100, null, null, null));
 
             assertNull(result.barrierStatus(), "barrier must have released");
-            assertEquals(3, result.messages().size());
+            assertEquals(3, result.size());
 
-            for (int i = 1; i < result.messages().size(); i++) {
-                long prev = result.messages().get(i - 1).messageId();
-                long curr = result.messages().get(i).messageId();
+            for (int i = 1; i < result.size(); i++) {
+                long prev = result.get(i - 1).messageId();
+                long curr = result.get(i).messageId();
                 assertTrue(curr > prev,
                         "BARRIER released payload must be in ascending ID order");
             }
@@ -251,8 +250,8 @@ class MessageOrderingTest {
             for (int page = 0; page < 4; page++) { // enough passes to cover all 15
                 final long finalCursor = cursor;
                 CheckResult pageResult = QuarkusTransaction.requiringNew().call(
-                        () -> tools.checkMessages(ch, finalCursor, pageSize, null, null, null));
-                if (pageResult.messages().isEmpty()) {
+                        () -> helper.checkMessages(ch, finalCursor, pageSize, null, null, null));
+                if (pageResult.isEmpty()) {
                     break;
                 }
                 for (var msg : pageResult.messages()) {
@@ -307,25 +306,25 @@ class MessageOrderingTest {
         try {
             // First read: get the first 2, recording their IDs
             CheckResult firstBatch = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, 0L, 2, null, null, null));
-            assertEquals(2, firstBatch.messages().size(), "first EPHEMERAL read with limit=2");
+                    () -> helper.checkMessages(ch, 0L, 2, null, null, null));
+            assertEquals(2, firstBatch.size(), "first EPHEMERAL read with limit=2");
             // Verify ascending
-            assertTrue(firstBatch.messages().get(1).messageId() > firstBatch.messages().get(0).messageId(),
+            assertTrue(firstBatch.get(1).messageId() > firstBatch.get(0).messageId(),
                     "EPHEMERAL first batch must be in ascending order");
 
             // Second read with cursor from first batch: delivers remaining messages
             final long lastId = firstBatch.lastId();
             CheckResult secondBatch = QuarkusTransaction.requiringNew().call(
-                    () -> tools.checkMessages(ch, lastId, 10, null, null, null));
-            assertEquals(3, secondBatch.messages().size(),
+                    () -> helper.checkMessages(ch, lastId, 10, null, null, null));
+            assertEquals(3, secondBatch.size(),
                     "EPHEMERAL second read (cursor past first 2) must deliver remaining 3 messages");
             // Verify all IDs are > firstBatch's lastId and in ascending order
             for (var msg : secondBatch.messages()) {
                 assertTrue(msg.messageId() > lastId,
                         "EPHEMERAL second batch must only contain messages with id > cursor");
             }
-            for (int i = 1; i < secondBatch.messages().size(); i++) {
-                assertTrue(secondBatch.messages().get(i).messageId() > secondBatch.messages().get(i - 1).messageId(),
+            for (int i = 1; i < secondBatch.size(); i++) {
+                assertTrue(secondBatch.get(i).messageId() > secondBatch.get(i - 1).messageId(),
                         "EPHEMERAL second batch must be in ascending order");
             }
         } finally {

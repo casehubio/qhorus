@@ -19,7 +19,7 @@ import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.runtime.message.MessageService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.channel.ChannelDetail;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -37,7 +37,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class LedgerCaptureExampleTest {
 
     @Inject
-    QhorusMcpTools tools;
+    QhorusTestHelper helper;
 
     @Inject
     MessageLedgerEntryRepository ledgerRepo;
@@ -62,31 +62,31 @@ class LedgerCaptureExampleTest {
 
     @Test
     void allNineMessageTypes_produceLedgerEntries() {
-        tools.createChannel("ledger-ex-all-types", "All 9 message types example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance("ledger-ex-all-types", "agent-a", null, null, null);
-        tools.registerInstance("ledger-ex-all-types", "agent-b", null, null, null);
+        helper.createChannel("ledger-ex-all-types", "All 9 message types example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance("ledger-ex-all-types", "agent-a", null, null, null);
+        helper.registerInstance("ledger-ex-all-types", "agent-b", null, null, null);
 
-        DispatchResult q1 = tools.sendMessage("ledger-ex-all-types", "agent-a", "query",
+        DispatchResult q1 = helper.sendMessage("ledger-ex-all-types", "agent-a", "query",
                 "What is the order count?", null, "corr-ex1", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-all-types", "agent-b", "response",
+        helper.sendMessage("ledger-ex-all-types", "agent-b", "response",
                 "42 orders", null, "corr-ex1", q1.messageId(), null, null, null, null, null, null);
-        DispatchResult cmd2 = tools.sendMessage("ledger-ex-all-types", "agent-a", "command",
+        DispatchResult cmd2 = helper.sendMessage("ledger-ex-all-types", "agent-a", "command",
                 "Generate compliance report", null, "corr-ex2", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-all-types", "agent-b", "status",
+        helper.sendMessage("ledger-ex-all-types", "agent-b", "status",
                 "Processing...", null, "corr-ex2", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-all-types", "agent-b", "done",
+        helper.sendMessage("ledger-ex-all-types", "agent-b", "done",
                 "Report delivered", null, "corr-ex2", cmd2.messageId(), null, null, null, null, null, null);
-        DispatchResult cmd3 = tools.sendMessage("ledger-ex-all-types", "agent-a", "command",
+        DispatchResult cmd3 = helper.sendMessage("ledger-ex-all-types", "agent-a", "command",
                 "Delete audit logs", null, "corr-ex3", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-all-types", "agent-b", "decline",
+        helper.sendMessage("ledger-ex-all-types", "agent-b", "decline",
                 "I do not have permission to delete", null, "corr-ex3", cmd3.messageId(), null, null, null, null, null, null);
-        DispatchResult cmd4 = tools.sendMessage("ledger-ex-all-types", "agent-a", "command",
+        DispatchResult cmd4 = helper.sendMessage("ledger-ex-all-types", "agent-a", "command",
                 "Audit the accounts", null, "corr-ex4", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-all-types", "agent-b", "failure",
+        helper.sendMessage("ledger-ex-all-types", "agent-b", "failure",
                 "Database unreachable", null, "corr-ex4", cmd4.messageId(), null, null, null, null, null, null);
         sendEvent("ledger-ex-all-types", "agent-a", "{\"tool_name\":\"read_file\",\"duration_ms\":10}");
 
-        ChannelDetail ch = tools.listChannels().stream()
+        ChannelDetail ch = helper.listChannels().stream()
                 .filter(c -> "ledger-ex-all-types".equals(c.name()))
                 .findFirst()
                 .orElseThrow();
@@ -106,16 +106,16 @@ class LedgerCaptureExampleTest {
 
     @Test
     void obligationLifecycle_commandDone_causalChainPresent() {
-        tools.createChannel("ledger-ex-chain", "Causal chain example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance("ledger-ex-chain", "agent-a", null, null, null);
-        tools.registerInstance("ledger-ex-chain", "agent-b", null, null, null);
+        helper.createChannel("ledger-ex-chain", "Causal chain example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance("ledger-ex-chain", "agent-a", null, null, null);
+        helper.registerInstance("ledger-ex-chain", "agent-b", null, null, null);
 
-        DispatchResult chainCmd = tools.sendMessage("ledger-ex-chain", "agent-a", "command",
+        DispatchResult chainCmd = helper.sendMessage("ledger-ex-chain", "agent-a", "command",
                 "Run end-of-day batch", null, "corr-chain", null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-chain", "agent-b", "done",
+        helper.sendMessage("ledger-ex-chain", "agent-b", "done",
                 "Batch complete — 1542 records processed", null, "corr-chain", chainCmd.messageId(), null, null, null, null, null, null);
 
-        ChannelDetail ch = tools.listChannels().stream()
+        ChannelDetail ch = helper.listChannels().stream()
                 .filter(c -> "ledger-ex-chain".equals(c.name()))
                 .findFirst()
                 .orElseThrow();
@@ -134,17 +134,17 @@ class LedgerCaptureExampleTest {
 
     @Test
     void listLedgerEntries_typeFilter_obligationTypesOnly() {
-        tools.createChannel("ledger-ex-filter", "Type filter example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance("ledger-ex-filter", "agent-a", null, null, null);
-        tools.registerInstance("ledger-ex-filter", "agent-b", null, null, null);
+        helper.createChannel("ledger-ex-filter", "Type filter example", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.registerInstance("ledger-ex-filter", "agent-a", null, null, null);
+        helper.registerInstance("ledger-ex-filter", "agent-b", null, null, null);
 
         String corr = "corr-filter";
-        DispatchResult filterCmd = tools.sendMessage("ledger-ex-filter", "agent-a", "command", "Do X", null, corr, null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-filter", "agent-a", "status",  "Working", null, corr, null, null, null, null, null, null, null);
-        tools.sendMessage("ledger-ex-filter", "agent-b", "done", "Done", null, corr, filterCmd.messageId(), null, null, null, null, null, null);
+        DispatchResult filterCmd = helper.sendMessage("ledger-ex-filter", "agent-a", "command", "Do X", null, corr, null, null, null, null, null, null, null);
+        helper.sendMessage("ledger-ex-filter", "agent-a", "status",  "Working", null, corr, null, null, null, null, null, null, null);
+        helper.sendMessage("ledger-ex-filter", "agent-b", "done", "Done", null, corr, filterCmd.messageId(), null, null, null, null, null, null);
         sendEvent("ledger-ex-filter", "agent-a", "{\"tool_name\":\"t\",\"duration_ms\":1}");
 
-        List<Map<String, Object>> obligationEntries = tools.listLedgerEntries(
+        List<Map<String, Object>> obligationEntries = helper.listLedgerEntries(
                 "ledger-ex-filter", "COMMAND,DONE,FAILURE,DECLINE,HANDOFF", null, null, null, null, null, 20);
 
         assertEquals(2, obligationEntries.size());

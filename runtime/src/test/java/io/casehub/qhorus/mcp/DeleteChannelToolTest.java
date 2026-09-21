@@ -14,8 +14,8 @@ import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.DeleteChannelResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.DeleteChannelResult;
 import io.casehub.qhorus.runtime.message.MessageService;
 import io.casehub.qhorus.api.store.CommitmentStore;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -24,8 +24,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class DeleteChannelToolTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject
     ChannelService channelService;
     @Inject
@@ -38,7 +37,7 @@ class DeleteChannelToolTest {
         String name = "del-tool-empty-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
 
-        DeleteChannelResult result = QuarkusTransaction.requiringNew().call(() -> tools.deleteChannel(name, false, null));
+        DeleteChannelResult result = QuarkusTransaction.requiringNew().call(() -> helper.deleteChannel(name, false, null));
 
         assertEquals(name, result.channelName());
         assertEquals(0L, result.messagesDeleted());
@@ -62,7 +61,7 @@ class DeleteChannelToolTest {
                         .build()));
 
         Exception ex = assertThrows(Exception.class,
-                () -> QuarkusTransaction.requiringNew().run(() -> tools.deleteChannel(name, false, null)));
+                () -> QuarkusTransaction.requiringNew().run(() -> helper.deleteChannel(name, false, null)));
         assertTrue(ex.getMessage().contains("1"),
                 "Error message should include message count: " + ex.getMessage());
     }
@@ -91,7 +90,7 @@ class DeleteChannelToolTest {
                     .build());
         });
 
-        DeleteChannelResult result = QuarkusTransaction.requiringNew().call(() -> tools.deleteChannel(name, true, null));
+        DeleteChannelResult result = QuarkusTransaction.requiringNew().call(() -> helper.deleteChannel(name, true, null));
 
         assertEquals(2L, result.messagesDeleted());
         assertEquals("deleted", result.status());
@@ -100,14 +99,14 @@ class DeleteChannelToolTest {
     @Test
     void deleteChannel_notFound_throwsIllegalArgument() {
         assertThrows(Exception.class,
-                () -> QuarkusTransaction.requiringNew().run(() -> tools.deleteChannel("no-such-" + System.nanoTime(), false, null)));
+                () -> QuarkusTransaction.requiringNew().run(() -> helper.deleteChannel("no-such-" + System.nanoTime(), false, null)));
     }
 
     @Test
     void deleteChannel_afterDeletion_channelNoLongerListed() {
         String name = "del-tool-gone-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> channelService.create(ChannelCreateRequest.builder(name).description("Test").build()));
-        QuarkusTransaction.requiringNew().run(() -> tools.deleteChannel(name, false, null));
+        QuarkusTransaction.requiringNew().run(() -> helper.deleteChannel(name, false, null));
 
         QuarkusTransaction.requiringNew().run(() -> assertTrue(channelService.findByName(name).isEmpty()));
     }
@@ -123,7 +122,7 @@ class DeleteChannelToolTest {
 
         // No admin_instances — any caller (or null caller) can delete
         DeleteChannelResult result = QuarkusTransaction.requiringNew()
-                .call(() -> tools.deleteChannel(name, false, null));
+                .call(() -> helper.deleteChannel(name, false, null));
         assertEquals("deleted", result.status());
     }
 
@@ -131,12 +130,12 @@ class DeleteChannelToolTest {
     void deleteChannel_withAdminList_authorizedCallerAllowed() {
         String name = "del-admin-ok-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> {
-            tools.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-            tools.setChannelAdmins(name, "admin-agent");
+            helper.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            helper.setChannelAdmins(name, "admin-agent");
         });
 
         DeleteChannelResult result = QuarkusTransaction.requiringNew()
-                .call(() -> tools.deleteChannel(name, false, "admin-agent"));
+                .call(() -> helper.deleteChannel(name, false, "admin-agent"));
         assertEquals("deleted", result.status());
     }
 
@@ -144,13 +143,13 @@ class DeleteChannelToolTest {
     void deleteChannel_withAdminList_unauthorizedCallerRejected() {
         String name = "del-admin-reject-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> {
-            tools.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-            tools.setChannelAdmins(name, "admin-agent");
+            helper.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            helper.setChannelAdmins(name, "admin-agent");
         });
 
         Exception ex = assertThrows(Exception.class,
                 () -> QuarkusTransaction.requiringNew()
-                        .run(() -> tools.deleteChannel(name, false, "rogue-agent")));
+                        .run(() -> helper.deleteChannel(name, false, "rogue-agent")));
         assertTrue(ex.getMessage().contains("rogue-agent"),
                 "Error should name the rejected caller: " + ex.getMessage());
         assertTrue(ex.getMessage().contains("delete_channel"),
@@ -161,13 +160,13 @@ class DeleteChannelToolTest {
     void deleteChannel_withAdminList_noCallerIdRejected() {
         String name = "del-admin-nocaller-" + System.nanoTime();
         QuarkusTransaction.requiringNew().run(() -> {
-            tools.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-            tools.setChannelAdmins(name, "admin-agent");
+            helper.createChannel(name, "Admin-guarded", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            helper.setChannelAdmins(name, "admin-agent");
         });
 
         Exception ex = assertThrows(Exception.class,
                 () -> QuarkusTransaction.requiringNew()
-                        .run(() -> tools.deleteChannel(name, false, null)));
+                        .run(() -> helper.deleteChannel(name, false, null)));
         assertTrue(ex.getMessage().contains("caller_instance_id"),
                 "Error should indicate caller_instance_id is required: " + ex.getMessage());
     }
@@ -203,7 +202,7 @@ class DeleteChannelToolTest {
                         "Expected an open commitment before delete"));
 
         DeleteChannelResult result = QuarkusTransaction.requiringNew()
-                .call(() -> tools.deleteChannel(name, true, null));
+                .call(() -> helper.deleteChannel(name, true, null));
 
         assertEquals("deleted", result.status());
         QuarkusTransaction.requiringNew().run(() ->

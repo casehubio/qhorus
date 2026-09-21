@@ -19,7 +19,7 @@ import io.casehub.qhorus.examples.agent.WorkerAgent;
 import io.casehub.qhorus.runtime.audit.BenchmarkContext;
 import io.casehub.qhorus.examples.benchmark.BenchmarkResults;
 import io.casehub.qhorus.runtime.audit.EvidentialChecker;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -48,7 +48,7 @@ class Zone1Zone2Zone3Jlama1BTest {
 
     @Inject UnstructuredWorkerAgent unstructuredAgent;
     @Inject WorkerAgent worker;
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject EvidentialChecker checker;
     @Inject ChannelStore channelStore;
 
@@ -123,7 +123,7 @@ class Zone1Zone2Zone3Jlama1BTest {
 
         for (int i = 0; i < N; i++) {
             final String obsName = "sweep-v2-obs-" + UUID.randomUUID();
-            tools.createChannel(obsName, "V2 observed", "APPEND",
+            helper.createChannel(obsName, "V2 observed", "APPEND",
                     null, null, null, null, null, null, null, null, null, null, null);
             final UUID obsId = channelStore.findByName(obsName).orElseThrow().id();
 
@@ -254,14 +254,14 @@ class Zone1Zone2Zone3Jlama1BTest {
     // ── helpers ───────────────────────────────────────────────────────────────
 
     private void setupChannel(final String name) {
-        tools.createChannel(name, "Sweep benchmark", "APPEND",
+        helper.createChannel(name, "Sweep benchmark", "APPEND",
                 null, null, null, null, null, ALLOWED, null, null, null, null, null);
-        tools.registerInstance(name, "orchestrator", null, null, null);
-        tools.registerInstance(name, "worker", null, null, null);
+        helper.registerInstance(name, "orchestrator", null, null, null);
+        helper.registerInstance(name, "worker", null, null, null);
     }
 
     private DispatchResult sendCommand(final String ch, final String task, final String corrId) {
-        return tools.sendMessage(ch, "orchestrator", "command",
+        return helper.sendMessage(ch, "orchestrator", "command",
                 task, corrId, null, null, null, null, null, null, null);
     }
 
@@ -270,7 +270,7 @@ class Zone1Zone2Zone3Jlama1BTest {
         AgentResponse response = worker.handle("COMMAND", corrId, task);
         int retries = 0;
         while ("STATUS".equalsIgnoreCase(response.messageType()) && retries < MAX_STATUS_RETRIES) {
-            tools.sendMessage(ch, "worker", "status", response.content(),
+            helper.sendMessage(ch, "worker", "status", response.content(),
                     corrId, cmd.messageId(), null, null, null, null, null, null);
             response = worker.handle("STATUS", corrId,
                     "Provide your final response: DONE if complete, FAILURE if not.");
@@ -280,7 +280,7 @@ class Zone1Zone2Zone3Jlama1BTest {
         try {
             // QUERY is hard-enforced (MessageTypeViolationException) — wrap to avoid test failure.
             // RESPONSE produces an advisory but is dispatched. FAILURE/DECLINE/DONE are safe.
-            tools.sendMessage(ch, "worker", response.messageType().toLowerCase(),
+            helper.sendMessage(ch, "worker", response.messageType().toLowerCase(),
                     response.content(), corrId, cmd.messageId(), null, null, null, null, null, null);
         } catch (final Exception ignored) {
             // Hard-violation type (e.g. QUERY) — not in channel allowedTypes.
@@ -291,13 +291,13 @@ class Zone1Zone2Zone3Jlama1BTest {
 
     private void plantFailedObligation(final String priorCorrId) {
         final String ch = "sweep-prior-" + UUID.randomUUID();
-        tools.createChannel(ch, "prior", "APPEND",
+        helper.createChannel(ch, "prior", "APPEND",
                 null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(ch, "orchestrator", null, null, null);
-        tools.registerInstance(ch, "worker", null, null, null);
-        final DispatchResult pc = tools.sendMessage(ch, "orchestrator", "command",
+        helper.registerInstance(ch, "orchestrator", null, null, null);
+        helper.registerInstance(ch, "worker", null, null, null);
+        final DispatchResult pc = helper.sendMessage(ch, "orchestrator", "command",
                 "Complete task", priorCorrId, null, null, null, null, null, null, null);
-        tools.sendMessage(ch, "worker", "failure",
+        helper.sendMessage(ch, "worker", "failure",
                 "Could not complete", priorCorrId, pc.messageId(), null, null, null, null, null, null);
     }
 }

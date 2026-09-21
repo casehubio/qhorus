@@ -14,6 +14,7 @@ import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 
@@ -24,8 +25,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class CommitmentLifecycleTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     @Inject
     CommitmentStore commitmentStore;
@@ -40,7 +40,7 @@ class CommitmentLifecycleTest {
         channelService.create(ChannelCreateRequest.builder(ch).build());
 
         // Orchestrator sends COMMAND — creates OPEN commitment
-        var cmd = tools.sendMessage(ch, "orchestrator", "command",
+        var cmd = helper.sendMessage(ch, "orchestrator", "command",
                 "review the auth module", null, null, null, null, "role:reviewer", null, null, null, null);
         String corrId = cmd.correlationId();
         assertNotNull(corrId);
@@ -52,14 +52,14 @@ class CommitmentLifecycleTest {
         assertEquals("role:reviewer", commitment.get().obligor());
 
         // Reviewer sends STATUS — transitions to ACKNOWLEDGED
-        tools.sendMessage(ch, "reviewer", "status",
+        helper.sendMessage(ch, "reviewer", "status",
                 "reviewing now", null, corrId, null, null, null, null, null, null, null);
         assertEquals(CommitmentState.ACKNOWLEDGED,
                 commitmentStore.findByCorrelationId(corrId).get().state());
         assertNotNull(commitmentStore.findByCorrelationId(corrId).get().acknowledgedAt());
 
         // Reviewer sends DONE — transitions to FULFILLED
-        tools.sendMessage(ch, "reviewer", "done",
+        helper.sendMessage(ch, "reviewer", "done",
                 "review complete — no issues found", null, corrId, cmd.messageId(), null, null, null, null, null, null);
         var fulfilled = commitmentStore.findByCorrelationId(corrId).get();
         assertEquals(CommitmentState.FULFILLED, fulfilled.state());
@@ -72,12 +72,12 @@ class CommitmentLifecycleTest {
         String ch = "e2e-qry-" + UUID.randomUUID();
         channelService.create(ChannelCreateRequest.builder(ch).build());
 
-        var q = tools.sendMessage(ch, "agent-a", "query",
+        var q = helper.sendMessage(ch, "agent-a", "query",
                 "what is the current row count?", null, null, null, null, null, null, null, null, null);
         assertEquals(CommitmentState.OPEN,
                 commitmentStore.findByCorrelationId(q.correlationId()).get().state());
 
-        tools.sendMessage(ch, "agent-b", "response",
+        helper.sendMessage(ch, "agent-b", "response",
                 "current count: 42", null, q.correlationId(), q.messageId(), null, null, null, null, null, null);
         assertEquals(CommitmentState.FULFILLED,
                 commitmentStore.findByCorrelationId(q.correlationId()).get().state());
@@ -89,10 +89,10 @@ class CommitmentLifecycleTest {
         String ch = "e2e-dcl-" + UUID.randomUUID();
         channelService.create(ChannelCreateRequest.builder(ch).build());
 
-        var cmd = tools.sendMessage(ch, "orchestrator", "command",
+        var cmd = helper.sendMessage(ch, "orchestrator", "command",
                 "perform a financial audit", null, null, null, null, "role:code-reviewer", null, null, null, null);
 
-        tools.sendMessage(ch, "code-reviewer", "decline",
+        helper.sendMessage(ch, "code-reviewer", "decline",
                 "outside my capabilities — I am a code reviewer, not an auditor",
                 null, cmd.correlationId(), cmd.messageId(), null, null, null, null, null, null);
 
@@ -107,13 +107,13 @@ class CommitmentLifecycleTest {
         String ch = "e2e-hof-" + UUID.randomUUID();
         channelService.create(ChannelCreateRequest.builder(ch).build());
 
-        var cmd = tools.sendMessage(ch, "orchestrator", "command",
+        var cmd = helper.sendMessage(ch, "orchestrator", "command",
                 "run compliance check", null, null, null, null, "role:agent-a", null, null, null, null);
         String corrId = cmd.correlationId();
         UUID parentId = commitmentStore.findByCorrelationId(corrId).get().id();
 
         // agent-a handoffs to compliance-specialist
-        tools.sendMessage(ch, "agent-a", "handoff",
+        helper.sendMessage(ch, "agent-a", "handoff",
                 "routing to compliance specialist", null, corrId, cmd.messageId(), null,
                 "role:compliance-specialist", null, null, null, null);
 

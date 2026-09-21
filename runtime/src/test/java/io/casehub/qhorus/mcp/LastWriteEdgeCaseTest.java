@@ -6,8 +6,8 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpToolsBase.CheckResult;
+import io.casehub.qhorus.testing.QhorusTestHelper;
+import io.casehub.qhorus.testing.QhorusTestHelper.CheckResult;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
@@ -26,8 +26,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class LastWriteEdgeCaseTest {
 
-    @Inject
-    QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
 
     /**
      * IMPORTANT finding: the LAST_WRITE overwrite path returns parentReplyCount=0 always.
@@ -41,17 +40,17 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteOverwriteAlwaysReturnsParentReplyCountZero() {
-        tools.createChannel("lw-edge-1", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null); // request channel
-        tools.createChannel("lw-edge-2", "LAST_WRITE state", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-1", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null); // request channel
+        helper.createChannel("lw-edge-2", "LAST_WRITE state", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // Send a request in the APPEND channel
-        DispatchResult request = tools.sendMessage("lw-edge-1", "alice", "query", "Q?", null, null, null, null, null, null, null, null, null);
+        DispatchResult request = helper.sendMessage("lw-edge-1", "alice", "query", "Q?", null, null, null, null, null, null, null, null, null);
 
         // First LAST_WRITE write with inReplyTo pointing to the request
-        tools.sendMessage("lw-edge-2", "alice", "status", "v1", null, null, request.messageId(), null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-2", "alice", "status", "v1", null, null, request.messageId(), null, null, null, null, null, null);
 
         // Overwrite — same sender, new content. Returns DispatchResult with parentReplyCount.
-        DispatchResult overwrite = tools.sendMessage("lw-edge-2", "alice", "status", "v2", null, null, request.messageId(), null, null, null, null, null, null);
+        DispatchResult overwrite = helper.sendMessage("lw-edge-2", "alice", "status", "v2", null, null, request.messageId(), null, null, null, null, null, null);
 
         // parentReplyCount is hardcoded to 0 in the overwrite path — document this.
         assertEquals(0, overwrite.parentReplyCount(),
@@ -72,26 +71,26 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteOverwriteChangingInReplyToLinksMessageButDoesNotIncrementParentReplyCountField() {
-        tools.createChannel("lw-edge-3-parent", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.createChannel("lw-edge-3", "LAST_WRITE state", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-3-parent", "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-3", "LAST_WRITE state", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult parentMsg = tools.sendMessage("lw-edge-3-parent", "orchestrator", "command", "do task", null, null, null, null, null, null, null, null, null);
+        DispatchResult parentMsg = helper.sendMessage("lw-edge-3-parent", "orchestrator", "command", "do task", null, null, null, null, null, null, null, null, null);
 
         // First LAST_WRITE write — no inReplyTo (goes through messageService.send())
-        tools.sendMessage("lw-edge-3", "alice", "status", "v1 no parent", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-3", "alice", "status", "v1 no parent", null, null, null, null, null, null, null, null, null);
 
         // Overwrite — now links to parentMsg; goes through the overwrite path, NOT messageService.send()
-        tools.sendMessage("lw-edge-3", "alice", "status", "v2 with parent", null, null, parentMsg.messageId(), null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-3", "alice", "status", "v2 with parent", null, null, parentMsg.messageId(), null, null, null, null, null, null);
 
         // get_replies DOES find the LAST_WRITE message (inReplyTo is set by dirty tracking)
-        var replies = tools.getReplies(parentMsg.messageId(), null, null, null);
+        var replies = helper.getReplies(parentMsg.messageId(), null, null, null);
         assertEquals(1, replies.size(),
                 "get_replies finds the LAST_WRITE message whose inReplyTo was set by the overwrite path");
 
         // The returned parentReplyCount from the overwrite call is hardcoded 0 (not queried).
         // The parent message's replyCount field was not explicitly incremented by the overwrite path.
         // This inconsistency means callers cannot rely on parentReplyCount from LAST_WRITE overwrites.
-        DispatchResult secondWrite = tools.sendMessage("lw-edge-3", "alice", "status", "v3", null, null, parentMsg.messageId(), null, null, null, null, null, null);
+        DispatchResult secondWrite = helper.sendMessage("lw-edge-3", "alice", "status", "v3", null, null, parentMsg.messageId(), null, null, null, null, null, null);
         assertEquals(0, secondWrite.parentReplyCount(),
                 "LAST_WRITE overwrite path hardcodes parentReplyCount=0 regardless of actual reply count");
     }
@@ -104,21 +103,21 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteOverwriteMessageIdIsStableAcrossMultipleWrites() {
-        tools.createChannel("lw-edge-4", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-4", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
-        DispatchResult first = tools.sendMessage("lw-edge-4", "alice", "status", "v1", null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("lw-edge-4", "alice", "status", "v2", null, null, null, null, null, null, null, null, null);
-        DispatchResult third = tools.sendMessage("lw-edge-4", "alice", "status", "v3", null, null, null, null, null, null, null, null, null);
+        DispatchResult first = helper.sendMessage("lw-edge-4", "alice", "status", "v1", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-4", "alice", "status", "v2", null, null, null, null, null, null, null, null, null);
+        DispatchResult third = helper.sendMessage("lw-edge-4", "alice", "status", "v3", null, null, null, null, null, null, null, null, null);
 
         // All three writes should produce the same message ID
         assertEquals(first.messageId(), third.messageId(),
                 "LAST_WRITE overwrite must return the same message ID across all same-sender writes");
 
         // Confirm exactly one row in the channel
-        CheckResult check = tools.checkMessages("lw-edge-4", 0L, 10, null, null, null);
-        assertEquals(1, check.messages().size());
-        assertEquals(first.messageId(), check.messages().get(0).messageId());
-        assertEquals("v3", check.messages().get(0).content());
+        CheckResult check = helper.checkMessages("lw-edge-4", 0L, 10, null, null, null);
+        assertEquals(1, check.size());
+        assertEquals(first.messageId(), check.get(0).messageId());
+        assertEquals("v3", check.get(0).content());
     }
 
     /**
@@ -134,14 +133,14 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteEventMessageFromFirstSenderBlocksSecondSender() {
-        tools.createChannel("lw-edge-5", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-5", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // alice sends an EVENT message — this is the only message in the channel
-        tools.sendMessage("lw-edge-5", "alice", "event", null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-5", "alice", "event", null, null, null, null, null, null, null, null, null, null);
 
         // bob tries to send — the LAST_WRITE check finds alice's EVENT as the "last" message
         // and rejects bob because last.sender ("alice") != "bob"
-        assertThrows(IllegalStateException.class, () -> tools.sendMessage("lw-edge-5", "bob", "status", "bob wants in", null, null, null, null, null, null, null, null, null), "LAST_WRITE should reject bob even when alice's only message is an EVENT type");
+        assertThrows(IllegalStateException.class, () -> helper.sendMessage("lw-edge-5", "bob", "status", "bob wants in", null, null, null, null, null, null, null, null, null), "LAST_WRITE should reject bob even when alice's only message is an EVENT type");
     }
 
     /**
@@ -157,18 +156,18 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteChannelAfterOwnerOverwritesWithEventTypeAppearsEmpty() {
-        tools.createChannel("lw-edge-6", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-6", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
 
         // Write STATUS first (visible)
-        tools.sendMessage("lw-edge-6", "alice", "status", "visible state", null, null, null, null, null, null, null, null, null);
-        CheckResult beforeOverwrite = tools.checkMessages("lw-edge-6", 0L, 10, null, null, null);
-        assertEquals(1, beforeOverwrite.messages().size());
+        helper.sendMessage("lw-edge-6", "alice", "status", "visible state", null, null, null, null, null, null, null, null, null);
+        CheckResult beforeOverwrite = helper.checkMessages("lw-edge-6", 0L, 10, null, null, null);
+        assertEquals(1, beforeOverwrite.size());
 
         // Overwrite with EVENT — the single row is now an EVENT, invisible to pollAfter
-        tools.sendMessage("lw-edge-6", "alice", "event", null, null, null, null, null, null, null, null, null, null);
-        CheckResult afterOverwrite = tools.checkMessages("lw-edge-6", 0L, 10, null, null, null);
+        helper.sendMessage("lw-edge-6", "alice", "event", null, null, null, null, null, null, null, null, null, null);
+        CheckResult afterOverwrite = helper.checkMessages("lw-edge-6", 0L, 10, null, null, null);
 
-        assertTrue(afterOverwrite.messages().isEmpty(),
+        assertTrue(afterOverwrite.isEmpty(),
                 "After LAST_WRITE overwrites the channel message with an EVENT type, " +
                         "checkMessages returns empty (EVENT is excluded from agent context)");
     }
@@ -180,15 +179,15 @@ class LastWriteEdgeCaseTest {
     @Test
     @TestTransaction
     void lastWriteOverwriteClearsCorrelationIdWhenNewWriteHasNone() {
-        tools.createChannel("lw-edge-7", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.sendMessage("lw-edge-7", "alice", "status", "v1", null, "initial-corr", null, null, null, null, null, null, null);
+        helper.createChannel("lw-edge-7", "LAST_WRITE", "LAST_WRITE", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-7", "alice", "status", "v1", null, "initial-corr", null, null, null, null, null, null, null);
 
         // Overwrite with no correlationId — for non-REQUEST type, corrId stays null
-        tools.sendMessage("lw-edge-7", "alice", "status", "v2", null, null, null, null, null, null, null, null, null);
+        helper.sendMessage("lw-edge-7", "alice", "status", "v2", null, null, null, null, null, null, null, null, null);
 
-        CheckResult check = tools.checkMessages("lw-edge-7", 0L, 10, null, null, null);
-        assertEquals(1, check.messages().size());
-        assertNull(check.messages().get(0).correlationId(),
+        CheckResult check = helper.checkMessages("lw-edge-7", 0L, 10, null, null, null);
+        assertEquals(1, check.size());
+        assertNull(check.get(0).correlationId(),
                 "LAST_WRITE overwrite with null correlationId should clear the stored correlationId");
     }
 }
