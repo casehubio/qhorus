@@ -2,6 +2,7 @@ package io.casehub.qhorus.webhook;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import jakarta.inject.Inject;
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -14,6 +15,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
+@HandWrittenEndpoint("inbound webhook registration")
 @Path("/qhorus/webhooks")
 public class WebhookRegistryResource {
 

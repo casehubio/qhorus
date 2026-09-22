@@ -7,6 +7,7 @@ import io.casehub.qhorus.api.spi.AgentCardSigner;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -22,6 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+@HandWrittenEndpoint("A2A agent binding lifecycle")
 @Path("/a2a-outbound/bindings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)

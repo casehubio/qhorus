@@ -6,6 +6,7 @@ import io.casehub.qhorus.api.spi.AgentCardSigner;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -14,6 +15,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.util.List;
 
+@HandWrittenEndpoint("A2A discovery protocol — fixed .well-known paths per spec")
 @Path("/.well-known")
 @ApplicationScoped
 public class AgentCardResource {

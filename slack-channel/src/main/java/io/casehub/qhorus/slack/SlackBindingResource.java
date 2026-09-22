@@ -3,6 +3,7 @@ package io.casehub.qhorus.slack;
 import java.time.Instant;
 import java.util.UUID;
 
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -32,6 +33,7 @@ import io.casehub.qhorus.api.store.ChannelBindingStore;
  * <p>put() is intentionally NOT @Transactional — see spec Known Limitations.
  * Order of checks: channel-exists → binding-conflict → credential-valid → evict → save → initChannel.
  */
+@HandWrittenEndpoint("Slack integration binding")
 @Path("/slack-channel/bindings")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
