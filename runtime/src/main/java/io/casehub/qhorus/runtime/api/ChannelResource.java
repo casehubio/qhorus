@@ -38,6 +38,8 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +47,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@HandWrittenEndpoint("gap: no @McpDomain SPI — see platform#381")
 @Path("/api/channels")
 @ApplicationScoped
 @Produces(MediaType.APPLICATION_JSON)

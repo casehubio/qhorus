@@ -8,6 +8,7 @@ import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -15,6 +16,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@HandWrittenEndpoint("gap: no @McpDomain SPI — see platform#381")
 @Path("/api/causal-graph")
 @Produces(MediaType.APPLICATION_JSON)
 public class CausalGraphResource {
