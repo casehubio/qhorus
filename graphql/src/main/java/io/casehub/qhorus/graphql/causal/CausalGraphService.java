@@ -1,28 +1,27 @@
-package io.casehub.qhorus.runtime.api;
+package io.casehub.qhorus.graphql.causal;
 
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.runtime.ledger.CausalGraphService;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.spi.causal.CausalGraphApi;
+import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import io.casehub.platform.api.mcp.HandWrittenEndpoint;
-import jakarta.ws.rs.*;
-import jakarta.ws.rs.core.MediaType;
-import jakarta.ws.rs.core.Response;
 
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-@HandWrittenEndpoint("gap: no @McpDomain SPI — see platform#381")
-@Path("/api/causal-graph")
-@Produces(MediaType.APPLICATION_JSON)
-public class CausalGraphResource {
+@ApplicationScoped
+public class CausalGraphService implements CausalGraphApi {
 
     @Inject
-    CausalGraphService causalGraphService;
+    io.casehub.qhorus.runtime.ledger.CausalGraphService causalGraphService;
 
     @Inject
     MessageLedgerEntryRepository ledgerRepo;
@@ -33,29 +32,18 @@ public class CausalGraphResource {
     @Inject
     CurrentPrincipal currentPrincipal;
 
-    @GET
-    @Path("/{correlationId}")
+    @Override
     @Transactional
-    public Response getGraph(@PathParam("correlationId") String correlationId,
-                             @QueryParam("limit") @DefaultValue("100") int limit) {
-        int effectiveLimit = Math.min(Math.max(limit, 1), 500);
-        var graph = causalGraphService.buildGraph(
+    public Map<String, Object> getGraph(String correlationId, Integer limit) {
+        int effectiveLimit = Math.min(Math.max(limit != null ? limit : 100, 1), 500);
+        return causalGraphService.buildGraph(
                 correlationId, effectiveLimit, currentPrincipal.tenancyId());
-        return Response.ok(graph).build();
     }
 
-    @GET
-    @Path("/attribution/{entryId}")
+    @Override
     @Transactional
-    public Response getAttribution(@PathParam("entryId") String entryId) {
-        UUID entryUuid;
-        try {
-            entryUuid = UUID.fromString(entryId);
-        } catch (IllegalArgumentException e) {
-            return Response.status(400)
-                    .entity(Map.of("error", "Invalid entry ID: " + entryId))
-                    .build();
-        }
+    public List<Map<String, Object>> getAttribution(String entryId) {
+        UUID entryUuid = UUID.fromString(entryId);
 
         List<MessageLedgerEntry> chain = ledgerRepo.findAncestorChainCrossChannel(
                 entryUuid, currentPrincipal.tenancyId());
@@ -65,7 +53,7 @@ public class CausalGraphResource {
         Map<UUID, String> names = channelStore.findByIds(channelIds).stream()
                 .collect(Collectors.toMap(Channel::id, Channel::name, (a, b) -> a));
 
-        var result = chain.stream().map(e -> {
+        return chain.stream().map(e -> {
             Map<String, Object> map = new LinkedHashMap<>();
             map.put("entryId", e.id.toString());
             map.put("channelId", e.channelId.toString());
@@ -78,14 +66,5 @@ public class CausalGraphResource {
             map.put("causedByEntryId", e.causedByEntryId != null ? e.causedByEntryId.toString() : "");
             return map;
         }).toList();
-
-        return Response.ok(result).build();
-    }
-
-    @Produces(MediaType.APPLICATION_JSON)
-    public Response handleIllegalArgument(IllegalArgumentException e) {
-        return Response.status(400)
-                .entity(Map.of("error", e.getMessage()))
-                .build();
     }
 }
