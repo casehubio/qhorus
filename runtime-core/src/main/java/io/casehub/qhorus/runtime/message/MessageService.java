@@ -1,5 +1,6 @@
 package io.casehub.qhorus.runtime.message;
 
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -9,7 +10,6 @@ import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
-import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
@@ -26,7 +26,6 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DeliverySignalQueue;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome;
-
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -63,6 +62,12 @@ public class MessageService implements ConsumerMessaging {
                                   Instant occurredAt, RoutingBridge.RoutingOutcome routingOutcome);
     }
 
+    @FunctionalInterface
+    public interface ProtocolEvaluationCallback {
+        void fire(io.casehub.qhorus.api.spi.ProtocolEvaluationEvent event);
+    }
+
+
     private final ChannelService channelService;
     private final CrossTenantChannelStore crossTenantChannelStore;
     private final CurrentPrincipal currentPrincipal;
@@ -88,6 +93,8 @@ public class MessageService implements ConsumerMessaging {
     private final ObserverCallback observerDispatcher;
     private final ObserverCallback clusterObserverDispatcher;
     private final LedgerRecorder ledgerRecorder;
+    private final ProtocolEvaluationCallback protocolEvaluationCallback;
+
 
     private ChannelGateway channelGateway;
 
@@ -121,6 +128,7 @@ public class MessageService implements ConsumerMessaging {
         this.observerDispatcher          = null;
         this.clusterObserverDispatcher   = null;
         this.ledgerRecorder              = null;
+        this.protocolEvaluationCallback  = null;
     }
 
     public MessageService(ChannelService channelService,
@@ -146,32 +154,34 @@ public class MessageService implements ConsumerMessaging {
                           RoutingBridge routingBridge,
                           ObserverCallback observerDispatcher,
                           ObserverCallback clusterObserverDispatcher,
-                          LedgerRecorder ledgerRecorder) {
-        this.channelService = channelService;
-        this.crossTenantChannelStore = crossTenantChannelStore;
-        this.currentPrincipal = currentPrincipal;
-        this.messageStore = messageStore;
-        this.commitmentService = commitmentService;
-        this.messageTypePolicy = messageTypePolicy;
-        this.allowedWritersPolicy = new AllowedWritersPolicy();
-        this.rateLimiter = rateLimiter;
-        this.config = config;
-        this.obligorTrustPolicy = obligorTrustPolicy;
-        this.tsr = tsr;
-        this.instanceService = instanceService;
-        this.deliverySignalQueue = deliverySignalQueue;
-        this.topicService = topicService;
+                          LedgerRecorder ledgerRecorder,
+                          ProtocolEvaluationCallback protocolEvaluationCallback) {
+        this.channelService              = channelService;
+        this.crossTenantChannelStore     = crossTenantChannelStore;
+        this.currentPrincipal            = currentPrincipal;
+        this.messageStore                = messageStore;
+        this.commitmentService           = commitmentService;
+        this.messageTypePolicy           = messageTypePolicy;
+        this.allowedWritersPolicy        = new AllowedWritersPolicy();
+        this.rateLimiter                 = rateLimiter;
+        this.config                      = config;
+        this.obligorTrustPolicy          = obligorTrustPolicy;
+        this.tsr                         = tsr;
+        this.instanceService             = instanceService;
+        this.deliverySignalQueue         = deliverySignalQueue;
+        this.topicService                = topicService;
         this.correlationIntegrityChecker = correlationIntegrityChecker;
-        this.protocolRegistry = protocolRegistry;
-        this.commitmentStore = commitmentStore;
-        this.broadcaster = broadcaster;
-        this.tracerSupplier = tracerSupplier;
-        this.tracingConfig = tracingConfig;
-        this.enforcementExecutor = enforcementExecutor;
-        this.routingBridge = routingBridge;
-        this.observerDispatcher = observerDispatcher;
-        this.clusterObserverDispatcher = clusterObserverDispatcher;
-        this.ledgerRecorder = ledgerRecorder;
+        this.protocolRegistry            = protocolRegistry;
+        this.commitmentStore             = commitmentStore;
+        this.broadcaster                 = broadcaster;
+        this.tracerSupplier              = tracerSupplier;
+        this.tracingConfig               = tracingConfig;
+        this.enforcementExecutor         = enforcementExecutor;
+        this.routingBridge               = routingBridge;
+        this.observerDispatcher          = observerDispatcher;
+        this.clusterObserverDispatcher   = clusterObserverDispatcher;
+        this.ledgerRecorder              = ledgerRecorder;
+        this.protocolEvaluationCallback  = protocolEvaluationCallback;
     }
 
     public void setChannelGateway(ChannelGateway channelGateway) {
@@ -315,6 +325,13 @@ public class MessageService implements ConsumerMessaging {
                 enforceIfRequired(ch, advisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
                         dispatch, effectiveTenancyId);
             } catch (io.casehub.qhorus.api.message.EnforcementBlockedException ebe) {
+                if (protocolEvaluationCallback != null && !advisories.isEmpty()) {
+                    var outcome = ebe.effectiveMode() == io.casehub.qhorus.api.channel.EnforcementMode.QUARANTINE
+                            ? io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.QUARANTINED
+                            : io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.BLOCKED;
+                    protocolEvaluationCallback.fire(new io.casehub.qhorus.api.spi.ProtocolEvaluationEvent(
+                            ch.id(), ch.name(), effectiveTenancyId, advisories, outcome));
+                }
                 if (span != null) {
                     span.addEvent("qhorus.enforcement.gate",
                             io.opentelemetry.api.common.Attributes.of(
@@ -327,6 +344,12 @@ public class MessageService implements ConsumerMessaging {
                 }
                 throw ebe;
             }
+        }
+
+        if (ch != null && !advisories.isEmpty() && protocolEvaluationCallback != null) {
+            protocolEvaluationCallback.fire(new io.casehub.qhorus.api.spi.ProtocolEvaluationEvent(
+                    ch.id(), ch.name(), effectiveTenancyId, advisories,
+                    io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.ALLOWED));
         }
 
         if (ch != null && ch.semantic() == ChannelSemantic.LAST_WRITE) {
