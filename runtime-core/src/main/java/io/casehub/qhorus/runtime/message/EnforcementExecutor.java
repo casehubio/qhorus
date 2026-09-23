@@ -43,11 +43,11 @@ public class EnforcementExecutor {
     }
 
     @Transactional(Transactional.TxType.REQUIRES_NEW)
-    public void execute(Channel ch, MessageDispatch dispatch, List<TaggedAdvisory> violations,
-                 String tenancyId) {
-        List<String> violationMessages = violations.stream().map(TaggedAdvisory::message).toList();
-        List<String> violationSources = violations.stream().map(TaggedAdvisory::source).distinct().toList();
-        String action = ch.enforcementMode() == EnforcementMode.QUARANTINE ? "QUARANTINED" : "BLOCKED";
+    public void execute(Channel ch, MessageDispatch dispatch, List<io.casehub.qhorus.api.spi.DispatchAdvisory> violations,
+                        String tenancyId) {
+        List<String> violationMessages = violations.stream().map(io.casehub.qhorus.api.spi.DispatchAdvisory::message).toList();
+        List<String> violationSources  = violations.stream().map(io.casehub.qhorus.api.spi.DispatchAdvisory::source).distinct().toList();
+        String       action            = ch.enforcementMode() == EnforcementMode.QUARANTINE ? "QUARANTINED" : "BLOCKED";
 
         ObjectNode telemetry = objectMapper.createObjectNode();
         telemetry.put("enforcement_action", action);
@@ -60,13 +60,13 @@ public class EnforcementExecutor {
         telemetry.put("enforcement_mode", ch.enforcementMode().name());
 
         messageDispatcher.dispatch(MessageDispatch.builder()
-                .channelId(ch.id())
-                .sender("system:enforcement")
-                .type(MessageType.EVENT)
-                .telemetry(telemetry.toString())
-                .actorType(ActorType.SYSTEM)
-                .tenancyId(tenancyId)
-                .build());
+                                                  .channelId(ch.id())
+                                                  .sender("system:enforcement")
+                                                  .type(MessageType.EVENT)
+                                                  .telemetry(telemetry.toString())
+                                                  .actorType(ActorType.SYSTEM)
+                                                  .tenancyId(tenancyId)
+                                                  .build());
 
         if (ch.enforcementMode() == EnforcementMode.QUARANTINE) {
             channelService.pause(ch.id());
@@ -76,6 +76,6 @@ public class EnforcementExecutor {
         enforcementBlockedConsumer.accept(new EnforcementBlockedEvent(
                 ch.id(), ch.name(), ch.enforcementMode(),
                 dispatch.sender(), dispatch.type(),
-                violationMessages, violationSources));
+                violations, violationSources));
     }
 }

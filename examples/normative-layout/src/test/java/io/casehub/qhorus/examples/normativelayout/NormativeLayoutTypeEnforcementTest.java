@@ -105,7 +105,7 @@ class NormativeLayoutTypeEnforcementTest {
                     .build());
         });
         assertThat(result[0].advisories()).isNotEmpty();
-        assertThat(result[0].advisories().get(0)).contains("Message dispatched.");
+        assertThat(result[0].advisories().get(0).message()).contains("Message dispatched.");
     }
 
     @Test
@@ -222,7 +222,7 @@ class NormativeLayoutTypeEnforcementTest {
                     .build());
         });
         assertThat(result[0].advisories()).isNotEmpty();
-        String adv = result[0].advisories().get(0);
+        String adv = result[0].advisories().get(0).message();
         assertThat(adv).contains(s.observeChannel);
         assertThat(adv).contains("STATUS");
         assertThat(adv).contains("Message dispatched.");
