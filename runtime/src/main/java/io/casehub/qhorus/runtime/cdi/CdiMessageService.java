@@ -59,7 +59,8 @@ public class CdiMessageService extends MessageService {
                              RoutingBridge routingBridge,
                              @Any Instance<io.casehub.qhorus.api.gateway.MessageObserver> observers,
                              LedgerWriteService ledgerWriteService,
-                             Event<io.casehub.qhorus.api.spi.ProtocolEvaluationEvent> protocolEvaluationEvents) {
+                             Event<io.casehub.qhorus.api.spi.ProtocolEvaluationEvent> protocolEvaluationEvents,
+                             Event<io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster.ChannelActivityEvent> activityEvents) {
         super(channelService, crossTenantChannelStore, currentPrincipal,
               messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
               obligorTrustPolicy, tsr, instanceService, deliverySignalQueue, topicService,
@@ -74,7 +75,8 @@ public class CdiMessageService extends MessageService {
                               channelName, channelId, tenancyId, message, observers.handles()),
               (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
                       ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome),
-              protocolEvaluationEvents::fireAsync);
+              protocolEvaluationEvents::fireAsync,
+              activityEvents::fireAsync);
     }
 
     CdiMessageService() {}

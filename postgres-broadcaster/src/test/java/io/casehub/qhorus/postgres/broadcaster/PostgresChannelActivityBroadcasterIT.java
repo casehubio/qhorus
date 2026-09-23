@@ -60,7 +60,7 @@ class PostgresChannelActivityBroadcasterIT {
         var messageId = 12345L;
 
         broadcaster.broadcast(new ChannelActivityBroadcaster.ChannelActivityEvent(
-                channelId, "test-channel", messageId));
+                channelId, "test-channel", messageId, "default"));
 
         // Give a moment for the notification to arrive and be filtered
         Thread.sleep(500);
