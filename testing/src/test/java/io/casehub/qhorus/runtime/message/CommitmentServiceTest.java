@@ -1,7 +1,13 @@
 package io.casehub.qhorus.runtime.message;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.qhorus.api.gateway.CommitmentStateChangedEvent;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.persistence.memory.InMemoryCommitmentStore;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -9,14 +15,11 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.persistence.memory.InMemoryCommitmentStore;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Pure unit tests — no CDI, no database. Uses InMemoryCommitmentStore directly.
@@ -25,6 +28,7 @@ class CommitmentServiceTest {
 
     private final InMemoryCommitmentStore store = new InMemoryCommitmentStore();
     private final List<CommitmentDeclinedEvent> capturedDeclines = new ArrayList<>();
+    private final List<CommitmentStateChangedEvent> capturedStateChanges = new ArrayList<>();
 
     private static final io.casehub.qhorus.runtime.config.QhorusTracingConfig TRACING_OFF =
             new io.casehub.qhorus.runtime.config.QhorusTracingConfig() {
@@ -37,12 +41,13 @@ class CommitmentServiceTest {
             };
 
     private final CommitmentService service = new CommitmentService(
-            store, capturedDeclines::add, event -> {}, null, TRACING_OFF);
+            store, capturedDeclines::add, event -> {}, capturedStateChanges::add, null, TRACING_OFF);
 
     @BeforeEach
     void setup() {
         store.clear();
         capturedDeclines.clear();
+        capturedStateChanges.clear();
     }
 
     // --- Happy path ---
@@ -119,6 +124,106 @@ class CommitmentServiceTest {
         service.decline("corr-terminal");
         assertThat(capturedDeclines).isEmpty();
     }
+
+    @Test
+    void open_firesStateChangedEvent() {
+        UUID channelId = UUID.randomUUID();
+        service.open(UUID.randomUUID(), "corr-sc-open", channelId,
+                     MessageType.COMMAND, "req", "obl", null);
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.channelId()).isEqualTo(channelId);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.OPEN);
+        assertThat(ev.previousState()).isNull();
+    }
+
+    @Test
+    void acknowledge_firesStateChangedEvent() {
+        openCmd("corr-sc-ack");
+        capturedStateChanges.clear();
+        service.acknowledge("corr-sc-ack");
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.ACKNOWLEDGED);
+        assertThat(ev.previousState()).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void fulfill_firesStateChangedEvent() {
+        openCmd("corr-sc-fulfill");
+        capturedStateChanges.clear();
+        service.fulfill("corr-sc-fulfill");
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.FULFILLED);
+        assertThat(ev.previousState()).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void decline_firesStateChangedEvent() {
+        openCmd("corr-sc-decline");
+        capturedStateChanges.clear();
+        service.decline("corr-sc-decline");
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.DECLINED);
+        assertThat(ev.previousState()).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void fail_firesStateChangedEvent() {
+        openCmd("corr-sc-fail");
+        capturedStateChanges.clear();
+        service.fail("corr-sc-fail");
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.FAILED);
+        assertThat(ev.previousState()).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void delegate_firesTwoStateChangedEvents() {
+        UUID ch = UUID.randomUUID();
+        service.open(UUID.randomUUID(), "corr-sc-delegate", ch,
+                     MessageType.COMMAND, "req", "obl-a", null);
+        capturedStateChanges.clear();
+        service.delegate("corr-sc-delegate", "obl-b");
+
+        assertThat(capturedStateChanges).hasSize(2);
+        CommitmentStateChangedEvent parentEv = capturedStateChanges.get(0);
+        assertThat(parentEv.commitment().state()).isEqualTo(CommitmentState.DELEGATED);
+        assertThat(parentEv.previousState()).isEqualTo(CommitmentState.OPEN);
+        CommitmentStateChangedEvent childEv = capturedStateChanges.get(1);
+        assertThat(childEv.commitment().state()).isEqualTo(CommitmentState.OPEN);
+        assertThat(childEv.previousState()).isNull();
+    }
+
+    @Test
+    void expireOverdue_firesStateChangedEvent() {
+        openCmdWithExpiry("corr-sc-expire", Instant.now().minusSeconds(5));
+        capturedStateChanges.clear();
+        service.expireOverdue();
+
+        assertThat(capturedStateChanges).hasSize(1);
+        CommitmentStateChangedEvent ev = capturedStateChanges.get(0);
+        assertThat(ev.commitment().state()).isEqualTo(CommitmentState.EXPIRED);
+        assertThat(ev.previousState()).isEqualTo(CommitmentState.OPEN);
+    }
+
+    @Test
+    void terminalState_doesNotFireStateChangedEvent() {
+        openCmd("corr-sc-term");
+        service.fulfill("corr-sc-term");
+        capturedStateChanges.clear();
+        service.decline("corr-sc-term");
+        assertThat(capturedStateChanges).isEmpty();
+    }
+
 
     @Test
     void fail_transitionsToFailed_setsResolvedAt() {
