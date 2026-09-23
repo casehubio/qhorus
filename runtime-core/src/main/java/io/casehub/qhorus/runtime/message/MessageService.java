@@ -301,10 +301,10 @@ public class MessageService implements ConsumerMessaging {
                                 dispatch.correlationId(), ch.protocolParticipants(),
                                 recent, activeCommitments);
                 for (io.casehub.qhorus.api.spi.ChannelProtocol protocol : activeProtocols) {
-                    List<String> violations = protocol.evaluate(protocolCtx);
-                    for (String v : violations) {
-                        LOG.warn(v);
-                        taggedAdvisories.add(new TaggedAdvisory(protocol.protocolName(), v));
+                    List<io.casehub.qhorus.api.spi.DispatchAdvisory> violations = protocol.evaluate(protocolCtx);
+                    for (io.casehub.qhorus.api.spi.DispatchAdvisory v : violations) {
+                        LOG.warn(v.message());
+                        taggedAdvisories.add(new TaggedAdvisory(v.source(), v.message()));
                     }
                 }
             }

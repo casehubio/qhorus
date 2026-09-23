@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.spi.ChannelProtocol;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.ProtocolContext;
 
 class ProtocolRegistryTest {
@@ -16,7 +17,7 @@ class ProtocolRegistryTest {
     private static ChannelProtocol stub(String name) {
         return new ChannelProtocol() {
             @Override public String protocolName() { return name; }
-            @Override public List<String> evaluate(ProtocolContext ctx) { return List.of(); }
+            @Override public List<DispatchAdvisory> evaluate(ProtocolContext ctx) { return List.of(); }
         };
     }
 
@@ -68,7 +69,7 @@ class ProtocolRegistryTest {
     void nullProtocolName_throwsIllegalStateException_atConstruction() {
         ChannelProtocol nullNamed = new ChannelProtocol() {
             @Override public String protocolName() { return null; }
-            @Override public List<String> evaluate(ProtocolContext ctx) { return List.of(); }
+            @Override public List<DispatchAdvisory> evaluate(ProtocolContext ctx) { return List.of(); }
         };
         List<ChannelProtocol> list = new ArrayList<>();
         list.add(nullNamed);
@@ -82,7 +83,7 @@ class ProtocolRegistryTest {
     void blankProtocolName_throwsIllegalStateException_atConstruction() {
         ChannelProtocol blankNamed = new ChannelProtocol() {
             @Override public String protocolName() { return "  "; }
-            @Override public List<String> evaluate(ProtocolContext ctx) { return List.of(); }
+            @Override public List<DispatchAdvisory> evaluate(ProtocolContext ctx) { return List.of(); }
         };
         List<ChannelProtocol> list = new ArrayList<>();
         list.add(blankNamed);
