@@ -1,58 +1,58 @@
 package io.casehub.qhorus.webhook;
 
-import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.platform.api.mcp.ContextParam;
+import io.casehub.platform.api.mcp.McpDomain;
+import io.casehub.platform.api.mcp.PathParam;
+import io.casehub.platform.api.mcp.PlatformMutation;
+import io.casehub.platform.api.mcp.PlatformQuery;
+import io.casehub.platform.api.mcp.HttpMethod;
+import io.casehub.platform.api.mcp.RestMethod;
+import io.casehub.platform.api.mcp.RestPath;
+import io.casehub.platform.api.mcp.RestStatus;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import io.casehub.platform.api.mcp.HandWrittenEndpoint;
-import jakarta.ws.rs.DELETE;
-import jakarta.ws.rs.GET;
-import jakarta.ws.rs.POST;
-import jakarta.ws.rs.Path;
-import jakarta.ws.rs.PathParam;
-import jakarta.ws.rs.QueryParam;
-import jakarta.ws.rs.core.Response;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 
-@HandWrittenEndpoint("inbound webhook registration")
-@Path("/qhorus/webhooks")
+@McpDomain(value = "qhorus/webhooks", basePath = "/qhorus/webhooks")
+@ApplicationScoped
 public class WebhookRegistryResource {
 
     @Inject
     WebhookRegistry registry;
 
-    @Inject
-    CurrentPrincipal currentPrincipal;
-
     public record RegisterRequest(UUID channelId, String url, String secretRef, Map<String, String> headers) {}
 
-    @POST
-    public Response register(RegisterRequest request) {
+    @PlatformMutation("Register webhook")
+    @RestStatus(201)
+    public WebhookRegistration register(RegisterRequest request,
+                                        @ContextParam("tenancyId") String tenancyId) {
         if (request.url() == null || request.url().isBlank()) {
-            return Response.status(400).entity("url is required").build();
+            throw new IllegalArgumentException("url is required");
         }
-        WebhookRegistration reg = registry.register(
-                request.channelId(), currentPrincipal.tenancyId(),
+        return registry.register(
+                request.channelId(), tenancyId,
                 request.url(), request.secretRef(),
                 request.headers() != null ? request.headers() : Map.of());
-        return Response.status(201).entity(reg).build();
     }
 
-    @DELETE
-    @Path("/{id}")
-    public Response deregister(@PathParam("id") UUID id) {
-        if (registry.deregister(id)) {
-            return Response.noContent().build();
+    @PlatformMutation("Deregister webhook")
+    @RestMethod(HttpMethod.DELETE)
+    @RestPath("/{id}")
+    public void deregister(@PathParam UUID id) {
+        if (!registry.deregister(id)) {
+            throw new jakarta.ws.rs.NotFoundException();
         }
-        return Response.status(404).build();
     }
 
-    @GET
-    public Collection<WebhookRegistration> list(@QueryParam("channelId") UUID channelId) {
+    @PlatformQuery("List webhooks")
+    public Collection<WebhookRegistration> list(UUID channelId,
+                                                @ContextParam("tenancyId") String tenancyId) {
         if (channelId != null) {
             return registry.findByChannelId(channelId);
         }
-        return registry.listAll(currentPrincipal.tenancyId());
+        return registry.listAll(tenancyId);
     }
 }
