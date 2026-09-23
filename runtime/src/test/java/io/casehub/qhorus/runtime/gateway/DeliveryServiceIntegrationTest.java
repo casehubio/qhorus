@@ -135,7 +135,7 @@ class DeliveryServiceIntegrationTest {
     }
 
     @Test
-    void dispatch_multipleMessages_deliveredInOrder() throws InterruptedException {
+    void dispatch_multipleMessages_deliveredInOrder() {
         String channelName = "pump-e2e-order-" + UUID.randomUUID();
         TrackedRecordingBackend backend = new TrackedRecordingBackend("pump-order-" + UUID.randomUUID());
 
@@ -148,11 +148,6 @@ class DeliveryServiceIntegrationTest {
         dispatchCommitted(channelId, "agent:order", MessageType.COMMAND, "first");
         dispatchCommitted(channelId, "agent:order", MessageType.STATUS, "second");
         dispatchCommitted(channelId, "agent:order", MessageType.QUERY, "third");
-
-        // Signal-race resilience: rapid dispatches can drop pump signals (activeDeliveries guard).
-        // Brief settle + explicit reconciliation mirrors the production backup path.
-        Thread.sleep(500);
-        deliveryService.reconcileAll();
 
         await().atMost(5, SECONDS).untilAsserted(() ->
                 assertThat(backend.posts()).hasSize(3));

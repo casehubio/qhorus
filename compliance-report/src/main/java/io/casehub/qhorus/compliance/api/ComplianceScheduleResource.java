@@ -1,12 +1,8 @@
 package io.casehub.qhorus.compliance.api;
 
-import io.casehub.qhorus.api.compliance.report.ReportFormat;
-import io.casehub.qhorus.api.compliance.report.ReportType;
+import io.casehub.qhorus.compliance.api.core.ComplianceScheduleCore;
 import io.casehub.qhorus.compliance.schedule.ComplianceReportSchedule;
-import io.casehub.qhorus.compliance.schedule.ComplianceReportScheduleStore;
-import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -27,62 +23,35 @@ import java.util.UUID;
 @Produces(MediaType.APPLICATION_JSON)
 public class ComplianceScheduleResource {
 
-    @Inject ComplianceReportScheduleStore scheduleStore;
-    @Inject InboundTenancyContext tenancyContext;
+    @Inject ComplianceScheduleCore core;
 
     @GET
     public List<ComplianceReportSchedule> list() {
-        return scheduleStore.findByTenancy(tenancyContext.tenancyId());
+        return core.list();
     }
 
     @POST
-    @Transactional
-    public Response create(ScheduleRequest request) {
-        if (request.reportType() == ReportType.VIOLATION && request.channelId() == null) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("channelId is required for VIOLATION report schedules").build();
+    public Response create(io.casehub.qhorus.compliance.api.core.ScheduleRequest request) {
+        try {
+            var schedule = core.create(request);
+            return Response.status(Response.Status.CREATED).entity(schedule).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST).entity(e.getMessage()).build();
         }
-        if (request.reportType() == ReportType.JUDGMENT_ATTRIBUTION) {
-            return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("JUDGMENT_ATTRIBUTION is on-demand only — not schedulable").build();
-        }
-
-        ComplianceReportSchedule schedule = new ComplianceReportSchedule();
-        schedule.id = UUID.randomUUID();
-        schedule.reportType = request.reportType();
-        schedule.channelId = request.channelId();
-        schedule.scheduleJson = request.schedule();
-        schedule.format = request.format() != null ? request.format() : ReportFormat.JSON;
-        schedule.tenancyId = tenancyContext.tenancyId();
-        schedule.enabled = true;
-
-        scheduleStore.save(schedule);
-        return Response.status(Response.Status.CREATED).entity(schedule).build();
     }
 
     @PUT
     @Path("/{id}")
-    @Transactional
-    public Response update(@PathParam("id") UUID id, ScheduleUpdateRequest request) {
-        return scheduleStore.findById(id)
-                .map(schedule -> {
-                    if (request.schedule() != null) schedule.scheduleJson = request.schedule();
-                    if (request.format() != null) schedule.format = request.format();
-                    if (request.enabled() != null) schedule.enabled = request.enabled();
-                    scheduleStore.save(schedule);
-                    return Response.ok(schedule).build();
-                })
+    public Response update(@PathParam("id") UUID id, io.casehub.qhorus.compliance.api.core.ScheduleUpdateRequest request) {
+        return core.update(id, request)
+                .map(schedule -> Response.ok(schedule).build())
                 .orElse(Response.status(Response.Status.NOT_FOUND).build());
     }
 
     @DELETE
     @Path("/{id}")
-    @Transactional
     public Response delete(@PathParam("id") UUID id) {
-        scheduleStore.delete(id);
+        core.delete(id);
         return Response.noContent().build();
     }
-
-    public record ScheduleRequest(ReportType reportType, UUID channelId, String schedule, ReportFormat format) {}
-    public record ScheduleUpdateRequest(String schedule, ReportFormat format, Boolean enabled) {}
 }

@@ -23,7 +23,6 @@ import io.smallrye.common.annotation.RunOnVirtualThread;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-import io.casehub.platform.api.mcp.HandWrittenEndpoint;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
@@ -40,7 +39,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-@HandWrittenEndpoint("A2A JSON-RPC protocol endpoint")
 @Path("/a2a")
 @ApplicationScoped
 public class A2AResource {

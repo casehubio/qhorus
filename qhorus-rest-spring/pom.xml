@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.casehub</groupId>
+        <artifactId>casehub-qhorus-parent</artifactId>
+        <version>0.2-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>casehub-qhorus-rest-spring</artifactId>
+    <packaging>jar</packaging>
+    <name>CaseHub Qhorus :: REST Spring</name>
+    <description>Generated Spring MVC REST controllers for qhorus modules.
+        Generated from @Path JAX-RS resources via rest-spring-generator.</description>
+
+    <dependencies>
+        <!-- Qhorus modules — provide core POJO types + their dependencies for compilation.
+             CDI annotations are harmless in Spring — no container activation. -->
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-qhorus</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-qhorus-compliance-report</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-qhorus-a2a-outbound</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-qhorus-slack-channel</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.casehub</groupId>
+            <artifactId>casehub-qhorus-webhook-observer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Spring MVC — generated controllers use these annotations -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>io.casehub</groupId>
+                <artifactId>casehub-platform-rest-spring-generator</artifactId>
+                <version>${project.version}</version>
+                <executions>
+                    <execution>
+                        <id>generate-rest</id>
+                        <goals><goal>generate</goal></goals>
+                        <configuration>
+                            <excludeClassNames>
+                                <excludeClassName>io.casehub.qhorus.runtime.api.A2AResource</excludeClassName>
+                                <excludeClassName>io.casehub.qhorus.compliance.api.ComplianceReportResource</excludeClassName>
+                            </excludeClassNames>
+                            <quarkusModules>
+                                <quarkusModule>${project.basedir}/../runtime</quarkusModule>
+                                <quarkusModule>${project.basedir}/../compliance-report</quarkusModule>
+                                <quarkusModule>${project.basedir}/../a2a-outbound</quarkusModule>
+                                <quarkusModule>${project.basedir}/../slack-channel</quarkusModule>
+                                <quarkusModule>${project.basedir}/../webhook-observer</quarkusModule>
+                            </quarkusModules>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>verify-rest-drift</id>
+                        <goals><goal>verify</goal></goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <excludeClassNames>
+                                <excludeClassName>io.casehub.qhorus.runtime.api.A2AResource</excludeClassName>
+                                <excludeClassName>io.casehub.qhorus.compliance.api.ComplianceReportResource</excludeClassName>
+                            </excludeClassNames>
+                            <quarkusModules>
+                                <quarkusModule>${project.basedir}/../runtime</quarkusModule>
+                                <quarkusModule>${project.basedir}/../compliance-report</quarkusModule>
+                                <quarkusModule>${project.basedir}/../a2a-outbound</quarkusModule>
+                                <quarkusModule>${project.basedir}/../slack-channel</quarkusModule>
+                                <quarkusModule>${project.basedir}/../webhook-observer</quarkusModule>
+                            </quarkusModules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

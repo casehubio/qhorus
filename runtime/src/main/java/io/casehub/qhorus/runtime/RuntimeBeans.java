@@ -43,6 +43,7 @@ import io.casehub.qhorus.runtime.gateway.*;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.ledger.AgreementCredibilityPolicy;
+import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.ReviewerResolver;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
@@ -71,6 +72,61 @@ import java.util.stream.StreamSupport;
 
 @ApplicationScoped
 public class RuntimeBeans {
+
+    // ── REST core POJOs ─────────────────────────────────────────────────────
+
+    @Produces @ApplicationScoped
+    public io.casehub.qhorus.runtime.api.core.SpaceCore spaceCore(SpaceService spaceService) {
+        return new io.casehub.qhorus.runtime.api.core.SpaceCore(spaceService);
+    }
+
+    @Produces @ApplicationScoped
+    public io.casehub.qhorus.runtime.api.core.AgentCardCore agentCardCore(
+            QhorusConfig config,
+            CurrentPrincipal currentPrincipal,
+            io.casehub.qhorus.runtime.instance.InstanceService instanceService,
+            Instance<io.casehub.qhorus.api.store.PushNotificationConfigStore> pushStore,
+            Instance<io.casehub.qhorus.api.spi.AgentCardSigner> agentCardSigner,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+        return new io.casehub.qhorus.runtime.api.core.AgentCardCore(
+                config, currentPrincipal, instanceService,
+                pushStore.isResolvable(),
+                agentCardSigner.isResolvable() ? agentCardSigner.get() : null,
+                objectMapper);
+    }
+
+    @Produces @ApplicationScoped
+    public io.casehub.qhorus.runtime.api.core.ChannelCore channelCore(
+            ChannelService channelService,
+            MessageStore messageStore,
+            io.casehub.qhorus.api.store.SpaceStore spaceStore,
+            io.casehub.qhorus.runtime.dashboard.QhorusDashboardService dashboard,
+            io.casehub.qhorus.api.channel.ReactionManager reactionManager,
+            io.casehub.qhorus.api.store.ReactionReader reactionReader,
+            io.casehub.qhorus.api.channel.TopicManager topicManager,
+            io.casehub.qhorus.api.store.TopicReader topicReader,
+            io.casehub.qhorus.api.channel.MembershipManager membershipManager,
+            io.casehub.qhorus.api.store.MembershipReader membershipReader,
+            io.casehub.qhorus.api.channel.PresenceTracker presenceTracker,
+            io.casehub.qhorus.api.store.CommitmentReader commitmentReader,
+            io.casehub.qhorus.api.message.ConsumerMessaging messaging,
+            Event<io.casehub.qhorus.api.event.ChannelMutationEvent> mutationEvent) {
+        return new io.casehub.qhorus.runtime.api.core.ChannelCore(
+                channelService, messageStore, spaceStore, dashboard,
+                reactionManager, reactionReader, topicManager, topicReader,
+                membershipManager, membershipReader, presenceTracker,
+                commitmentReader, messaging, mutationEvent::fire);
+    }
+
+    @Produces @ApplicationScoped
+    public io.casehub.qhorus.runtime.api.core.CausalGraphCore causalGraphCore(
+            CausalGraphService causalGraphService,
+            MessageLedgerEntryRepository ledgerRepo,
+            ChannelStore channelStore,
+            CurrentPrincipal currentPrincipal) {
+        return new io.casehub.qhorus.runtime.api.core.CausalGraphCore(
+                causalGraphService, ledgerRepo, channelStore, currentPrincipal);
+    }
 
     // ── Channel ────────────────────────────────────────────────────────────
 

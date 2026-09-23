@@ -36,6 +36,7 @@
     <module>persistence-memory</module>
     <!-- runtime-spring disabled until casehub-platform-spring-generator SNAPSHOT is published (platform CI blocked by Quarkus GACT ClassCastException on Java 26) -->
     <!-- <module>runtime-spring</module> -->
+    <module>qhorus-rest-spring</module>
     <module>testing</module>
     <module>examples</module>
   </modules>

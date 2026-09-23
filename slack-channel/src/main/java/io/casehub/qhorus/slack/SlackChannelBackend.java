@@ -45,7 +45,7 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 @ApplicationScoped
 public class SlackChannelBackend implements HumanParticipatingChannelBackend {
 
-    static final String BACKEND_ID = "slack-bot";
+    public static final String BACKEND_ID = "slack-bot";
 
     private static final Logger LOG = Logger.getLogger(SlackChannelBackend.class);
 
@@ -249,7 +249,7 @@ public class SlackChannelBackend implements HumanParticipatingChannelBackend {
      * Called from SlackBindingResource on admin unbinding.
      * DB thread cache rows are left for TTL cleanup — in-flight posts still return early cleanly.
      */
-    void evict(UUID channelId) {
+    public void evict(UUID channelId) {
         SlackBotBinding binding = bindingCache.remove(channelId);
         if (binding != null) slackToChannel.remove(binding.slackChannelId);
         threadCache.remove(channelId);
