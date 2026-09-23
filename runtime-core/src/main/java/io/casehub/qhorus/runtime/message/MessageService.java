@@ -67,6 +67,11 @@ public class MessageService implements ConsumerMessaging {
         void fire(io.casehub.qhorus.api.spi.ProtocolEvaluationEvent event);
     }
 
+    @FunctionalInterface
+    public interface ActivityEventCallback {
+        void fire(ChannelActivityEvent event);
+    }
+
 
     private final ChannelService channelService;
     private final CrossTenantChannelStore crossTenantChannelStore;
@@ -94,6 +99,7 @@ public class MessageService implements ConsumerMessaging {
     private final ObserverCallback clusterObserverDispatcher;
     private final LedgerRecorder ledgerRecorder;
     private final ProtocolEvaluationCallback protocolEvaluationCallback;
+    private final ActivityEventCallback      activityEventCallback;
 
 
     private ChannelGateway channelGateway;
@@ -129,6 +135,7 @@ public class MessageService implements ConsumerMessaging {
         this.clusterObserverDispatcher   = null;
         this.ledgerRecorder              = null;
         this.protocolEvaluationCallback  = null;
+        this.activityEventCallback       = null;
     }
 
     public MessageService(ChannelService channelService,
@@ -155,7 +162,8 @@ public class MessageService implements ConsumerMessaging {
                           ObserverCallback observerDispatcher,
                           ObserverCallback clusterObserverDispatcher,
                           LedgerRecorder ledgerRecorder,
-                          ProtocolEvaluationCallback protocolEvaluationCallback) {
+                          ProtocolEvaluationCallback protocolEvaluationCallback,
+                          ActivityEventCallback activityEventCallback) {
         this.channelService              = channelService;
         this.crossTenantChannelStore     = crossTenantChannelStore;
         this.currentPrincipal            = currentPrincipal;
@@ -182,6 +190,7 @@ public class MessageService implements ConsumerMessaging {
         this.clusterObserverDispatcher   = clusterObserverDispatcher;
         this.ledgerRecorder              = ledgerRecorder;
         this.protocolEvaluationCallback  = protocolEvaluationCallback;
+        this.activityEventCallback       = activityEventCallback;
     }
 
     public void setChannelGateway(ChannelGateway channelGateway) {
@@ -388,13 +397,18 @@ public class MessageService implements ConsumerMessaging {
                     final UUID signalChannelId = ch.id();
                     final String signalChannelName = ch.name();
                     final Long signalMessageId = saved.id();
+                    final String signalTenancyId = effectiveTenancyId;
                     tsr.registerInterposedSynchronization(new Synchronization() {
                         @Override public void beforeCompletion() {}
                         @Override public void afterCompletion(int status) {
                             if (status == STATUS_COMMITTED) {
                                 deliverySignalQueue.signal(signalChannelId);
-                                broadcaster.broadcast(new ChannelActivityEvent(
-                                        signalChannelId, signalChannelName, signalMessageId));
+                                ChannelActivityEvent actEvent = new ChannelActivityEvent(
+                                        signalChannelId, signalChannelName, signalMessageId, signalTenancyId);
+                                broadcaster.broadcast(actEvent);
+                                if (activityEventCallback != null) {
+                                    activityEventCallback.fire(actEvent);
+                                }
                             }
                         }
                     });
@@ -522,6 +536,7 @@ public class MessageService implements ConsumerMessaging {
             final boolean signalDelivery = hasTracked;
             final UUID signalChannelId = ch.id();
             final String signalChannelName = ch.name();
+            final String signalTenancyId = effectiveTenancyId;
             if (tsr.getTransactionStatus() == STATUS_ACTIVE) {
                 tsr.registerInterposedSynchronization(new Synchronization() {
                     @Override public void beforeCompletion() {}
@@ -530,8 +545,12 @@ public class MessageService implements ConsumerMessaging {
                             if (signalDelivery) {
                                 deliverySignalQueue.signal(signalChannelId);
                             }
-                            broadcaster.broadcast(new ChannelActivityEvent(
-                                    signalChannelId, signalChannelName, messageId));
+                            ChannelActivityEvent actEvent = new ChannelActivityEvent(
+                                    signalChannelId, signalChannelName, messageId, signalTenancyId);
+                            broadcaster.broadcast(actEvent);
+                            if (activityEventCallback != null) {
+                                activityEventCallback.fire(actEvent);
+                            }
                         }
                     }
                 });

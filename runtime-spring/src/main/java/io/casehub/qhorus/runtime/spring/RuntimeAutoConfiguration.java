@@ -386,7 +386,7 @@ public class RuntimeAutoConfiguration {
                 (channelName, channelId, tenancyId, message) -> {},
                 (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
                         new io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome(null, null, null),
-                null);
+                null, null);
     }
 
     // ── Strip classes ─────────────────────────────────────────────────────
