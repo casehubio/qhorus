@@ -325,6 +325,7 @@ public class RuntimeAutoConfiguration {
                                                Optional<Tracer> tracer, QhorusTracingConfig tracingConfig) {
         return new CommitmentService(store, event -> publisher.publishEvent(event),
                 event -> { try { publisher.publishEvent(event); } catch (Exception ignored) {} },
+                event -> publisher.publishEvent(event),
                 tracer.map(t -> (Supplier<Tracer>) () -> t).orElse(null), tracingConfig);
     }
 
@@ -384,7 +385,8 @@ public class RuntimeAutoConfiguration {
                 (channelName, channelId, tenancyId, message) -> {},
                 (channelName, channelId, tenancyId, message) -> {},
                 (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
-                        new io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome(null, null, null));
+                        new io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome(null, null, null),
+                null);
     }
 
     // ── Strip classes ─────────────────────────────────────────────────────
