@@ -202,6 +202,33 @@ public class ChannelService implements ChannelManager, ChannelReader {
     }
 
     @Transactional
+    public Channel setPolicyOverrides(UUID channelId, java.util.Map<String, String> overrides) {
+        Channel ch = channelStore.find(channelId)
+                                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        java.util.Map<String, String> merged;
+        if (overrides == null) {
+            merged = null;
+        } else {
+            merged = new java.util.LinkedHashMap<>();
+            if (ch.policyOverrides() != null) {
+                merged.putAll(ch.policyOverrides());
+            }
+            for (var entry : overrides.entrySet()) {
+                if (entry.getValue() == null) {
+                    merged.remove(entry.getKey());
+                } else {
+                    merged.put(entry.getKey(), entry.getValue());
+                }
+            }
+            if (merged.isEmpty()) {
+                merged = null;
+            }
+        }
+        return channelStore.put(ch.toBuilder().policyOverrides(merged).build());
+    }
+
+
+    @Transactional
     public Channel setEnforcementExclusions(UUID channelId, List<String> exclusions) {
         Channel ch = channelStore.find(channelId)
                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));

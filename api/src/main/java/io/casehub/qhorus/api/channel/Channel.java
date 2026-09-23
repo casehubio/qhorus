@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.message.MessageType;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -34,9 +35,11 @@ public record Channel(
         Instant lastActivityAt,
         Integer displayOrder,
         Double redistributionCapacityThreshold,
-        Double routingCapacityThreshold) {
+        Double routingCapacityThreshold,
+        Map<String, String> policyOverrides) {
 
     public Channel {
+        policyOverrides      = policyOverrides != null ? Map.copyOf(policyOverrides) : null;
         barrierContributors  = barrierContributors != null ? List.copyOf(barrierContributors) : List.of();
         allowedWriters       = allowedWriters != null ? List.copyOf(allowedWriters) : List.of();
         adminInstances       = adminInstances != null ? List.copyOf(adminInstances) : List.of();
@@ -59,7 +62,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
+             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -72,7 +75,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -84,7 +87,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, null,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -100,7 +103,7 @@ public record Channel(
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
              protocols, protocolParticipants, trackDelivery, null, null,
-             null, tenancyId, createdAt, lastActivityAt, null, null, null);
+             null, tenancyId, createdAt, lastActivityAt, null, null, null, null);
     }
 
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
@@ -132,6 +135,7 @@ public record Channel(
                 now,
                 null,
                 null,
+                null,
                 null);
     }
 
@@ -150,7 +154,8 @@ public record Channel(
                        .tenancyId(tenancyId).createdAt(createdAt).lastActivityAt(lastActivityAt)
                        .displayOrder(displayOrder)
                        .redistributionCapacityThreshold(redistributionCapacityThreshold)
-                       .routingCapacityThreshold(routingCapacityThreshold);
+                       .routingCapacityThreshold(routingCapacityThreshold)
+                       .policyOverrides(policyOverrides);
     }
 
     public static Builder builder(String name) {
@@ -185,6 +190,7 @@ public record Channel(
         private       Integer          displayOrder;
         private       Double           redistributionCapacityThreshold;
         private       Double           routingCapacityThreshold;
+        private       Map<String, String> policyOverrides;
 
 
         private Builder(String name) {this.name = name;}
@@ -319,6 +325,11 @@ public record Channel(
             return this;
         }
 
+        public Builder policyOverrides(Map<String, String> v) {
+            this.policyOverrides = v;
+            return this;
+        }
+
 
         public Channel build() {
             return new Channel(id, name, description, semantic,
@@ -331,7 +342,8 @@ public record Channel(
                                routingTrustThreshold,
                                tenancyId, createdAt, lastActivityAt, displayOrder,
                                redistributionCapacityThreshold,
-                               routingCapacityThreshold);
+                               routingCapacityThreshold,
+                               policyOverrides);
         }
     }
 }
