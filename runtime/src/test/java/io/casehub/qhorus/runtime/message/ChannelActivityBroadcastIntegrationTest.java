@@ -71,6 +71,7 @@ class ChannelActivityBroadcastIntegrationTest {
         assertThat(event.channelId()).isEqualTo(channelId);
         assertThat(event.channelName()).isEqualTo(channelName);
         assertThat(event.messageId()).isEqualTo(result[0].messageId());
+        assertThat(event.tenancyId()).isNotNull();
     }
 
     // ── LAST_WRITE overwrite path ────────────────────────────────────────────
@@ -112,6 +113,7 @@ class ChannelActivityBroadcastIntegrationTest {
         assertThat(event.channelId()).isEqualTo(channelId);
         assertThat(event.channelName()).isEqualTo(channelName);
         assertThat(event.messageId()).isEqualTo(second[0].messageId());
+        assertThat(event.tenancyId()).isNotNull();
     }
 
     // ── LAST_WRITE overwrite — fanOut fires ─────────────────────────────────
