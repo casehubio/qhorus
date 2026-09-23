@@ -37,7 +37,7 @@ class CommitmentServiceTest {
             };
 
     private final CommitmentService service = new CommitmentService(
-            store, capturedDeclines::add, event -> {}, null, TRACING_OFF);
+            store, capturedDeclines::add, event -> {}, event -> {}, null, TRACING_OFF);
 
     @BeforeEach
     void setup() {
