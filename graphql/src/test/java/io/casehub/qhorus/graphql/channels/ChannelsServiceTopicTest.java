@@ -44,7 +44,8 @@ class ChannelsServiceTopicTest {
                 mock(io.casehub.qhorus.api.channel.ChannelSummaryManager.class),
                 mock(io.casehub.qhorus.api.channel.ProjectionReader.class),
                 mock(io.casehub.qhorus.api.channel.ProtocolReader.class),
-                mock(io.casehub.qhorus.api.channel.RoutingDiagnostics.class));
+                mock(io.casehub.qhorus.api.channel.RoutingDiagnostics.class),
+                new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
     @Test

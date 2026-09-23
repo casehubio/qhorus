@@ -66,6 +66,7 @@ public class ChannelsService implements ChannelsApi {
     private final ProjectionReader      projectionReader;
     private final ProtocolReader        protocolReader;
     private final RoutingDiagnostics    routingDiagnostics;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     public ChannelsService(ChannelReader channelReader,
                            ConsumerMessaging consumerMessaging,
@@ -80,7 +81,8 @@ public class ChannelsService implements ChannelsApi {
                            ChannelSummaryManager channelSummaryManager,
                            ProjectionReader projectionReader,
                            ProtocolReader protocolReader,
-                           RoutingDiagnostics routingDiagnostics) {
+                           RoutingDiagnostics routingDiagnostics,
+                           com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.channelReader         = channelReader;
         this.consumerMessaging     = consumerMessaging;
         this.channelManager        = channelManager;
@@ -95,6 +97,7 @@ public class ChannelsService implements ChannelsApi {
         this.projectionReader      = projectionReader;
         this.protocolReader        = protocolReader;
         this.routingDiagnostics    = routingDiagnostics;
+        this.objectMapper          = objectMapper;
     }
 
     // --- Channel queries ---
@@ -264,6 +267,32 @@ public class ChannelsService implements ChannelsApi {
     @Override
     public Channel setEnforcementExclusions(UUID channelId, List<String> exclusions) {
         return channelManager.setEnforcementExclusions(channelId, exclusions);
+    }
+
+    // --- Policy Overrides ---
+
+    @Override
+    public java.util.Map<String, String> channelPolicyOverrides(UUID channelId) {
+        Channel ch = channelReader.findById(channelId)
+                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return ch.policyOverrides();
+    }
+
+    @Override
+    public Channel setPolicyOverrides(UUID channelId, String overridesJson) {
+        java.util.Map<String, String> overrides;
+        if (overridesJson == null || overridesJson.isBlank()) {
+            overrides = null;
+        } else {
+            try {
+                overrides = objectMapper.readValue(overridesJson,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {});
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                        "Invalid JSON for policy overrides: " + e.getMessage());
+            }
+        }
+        return channelManager.setPolicyOverrides(channelId, overrides);
     }
 
     // --- Routing ---
