@@ -11,7 +11,7 @@ import io.casehub.qhorus.api.watchdog.Watchdog;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain("governance")
+@McpDomain(value = "governance", app = "qhorus")
 public interface GovernanceApi {
 
     @PlatformQuery("List commitments matching filter criteria")

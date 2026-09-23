@@ -7,7 +7,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 
-@McpDomain("channels")
+@McpDomain(value = "channels", app = "qhorus")
 @ApplicationScoped
 public class ChannelsModelEnricher implements ModelEnricher {
 
