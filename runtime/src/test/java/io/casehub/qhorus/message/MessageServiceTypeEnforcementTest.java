@@ -262,7 +262,7 @@ class MessageServiceTypeEnforcementTest {
                         .build()));
 
         assertFalse(result.advisories().isEmpty(), "Expected advisory for EVENT on constrained channel");
-        String adv = result.advisories().get(0);
+        String adv = result.advisories().get(0).message();
         assertTrue(adv.contains(name), "Expected channel name in advisory: " + adv);
         assertTrue(adv.contains("EVENT"), "Expected type in advisory: " + adv);
     }

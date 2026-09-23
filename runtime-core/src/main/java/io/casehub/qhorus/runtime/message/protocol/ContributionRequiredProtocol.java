@@ -3,9 +3,13 @@ package io.casehub.qhorus.runtime.message.protocol;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.ProtocolContext;
+import io.casehub.qhorus.api.spi.Severity;
+import io.casehub.qhorus.api.spi.SuggestedAction;
 
 import java.util.List;
+import java.util.Map;
 
 public class ContributionRequiredProtocol implements ChannelProtocol {
 
@@ -24,31 +28,33 @@ public class ContributionRequiredProtocol implements ChannelProtocol {
     }
 
     @Override
-    public List<String> evaluate(ProtocolContext ctx) {
+    public List<DispatchAdvisory> evaluate(ProtocolContext ctx) {
         List<String> participants = ctx.protocolParticipants().isEmpty()
-                ? deriveParticipants(ctx.recentMessages())
-                : ctx.protocolParticipants();
-        if (participants.size() <= 1) return List.of();
+                                    ? deriveParticipants(ctx.recentMessages())
+                                    : ctx.protocolParticipants();
+        if (participants.size() <= 1) {return List.of();}
 
         int consecutive = 0;
         for (int i = ctx.recentMessages().size() - 1; i >= 0; i--) {
             MessageView mv = ctx.recentMessages().get(i);
-            if (mv.type() == MessageType.EVENT) continue;
-            if (mv.sender().equals(ctx.sender())) consecutive++;
-            else break;
+            if (mv.type() == MessageType.EVENT) {continue;}
+            if (mv.sender().equals(ctx.sender())) {consecutive++;} else {break;}
         }
 
-        if (consecutive + 1 < maxConsecutive) return List.of();
+        if (consecutive + 1 < maxConsecutive) {return List.of();}
 
         List<String> missing = participants.stream()
-                .filter(p -> !p.equals(ctx.sender()))
-                .toList();
-        if (missing.isEmpty()) return List.of();
+                                           .filter(p -> !p.equals(ctx.sender()))
+                                           .toList();
+        if (missing.isEmpty()) {return List.of();}
 
-        return List.of("[CONTRIBUTION_REQUIRED] '" + ctx.sender()
-                + "' has sent " + (consecutive + 1)
-                + " consecutive messages in channel '" + ctx.channelName()
-                + "' without contributions from: " + String.join(", ", missing));
+        return List.of(new DispatchAdvisory("CONTRIBUTION_REQUIRED", Severity.WARNING,
+                                            "'" + ctx.sender() + "' has sent " + (consecutive + 1)
+                                            + " consecutive messages in channel '" + ctx.channelName()
+                                            + "' without contributions from: " + String.join(", ", missing),
+                                            Map.of("consecutiveCount", consecutive + 1, "sender", ctx.sender(),
+                                                   "missingSenders", missing, "channelName", ctx.channelName()),
+                                            SuggestedAction.LOG));
     }
 
     private List<String> deriveParticipants(List<MessageView> messages) {

@@ -3,9 +3,13 @@ package io.casehub.qhorus.runtime.message.protocol;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.ProtocolContext;
+import io.casehub.qhorus.api.spi.Severity;
+import io.casehub.qhorus.api.spi.SuggestedAction;
 
 import java.util.List;
+import java.util.Map;
 
 public class RoundRobinProtocol implements ChannelProtocol {
 
@@ -15,10 +19,10 @@ public class RoundRobinProtocol implements ChannelProtocol {
     }
 
     @Override
-    public List<String> evaluate(ProtocolContext ctx) {
+    public List<DispatchAdvisory> evaluate(ProtocolContext ctx) {
         List<String> participants = ctx.protocolParticipants();
-        if (participants.size() <= 1) return List.of();
-        if (!participants.contains(ctx.sender())) return List.of();
+        if (participants.size() <= 1) {return List.of();}
+        if (!participants.contains(ctx.sender())) {return List.of();}
 
         String lastParticipantSender = null;
         for (int i = ctx.recentMessages().size() - 1; i >= 0; i--) {
@@ -28,14 +32,17 @@ public class RoundRobinProtocol implements ChannelProtocol {
                 break;
             }
         }
-        if (lastParticipantSender == null) return List.of();
+        if (lastParticipantSender == null) {return List.of();}
 
-        int lastIdx = participants.indexOf(lastParticipantSender);
+        int    lastIdx  = participants.indexOf(lastParticipantSender);
         String expected = participants.get((lastIdx + 1) % participants.size());
-        if (ctx.sender().equals(expected)) return List.of();
+        if (ctx.sender().equals(expected)) {return List.of();}
 
-        return List.of("[ROUND_ROBIN] expected '" + expected
-                + "' to speak next in channel '" + ctx.channelName()
-                + "', got '" + ctx.sender() + "'");
+        return List.of(new DispatchAdvisory("ROUND_ROBIN", Severity.ADVISORY,
+                                            "expected '" + expected + "' to speak next in channel '" + ctx.channelName()
+                                            + "', got '" + ctx.sender() + "'",
+                                            Map.of("expectedSender", expected, "actualSender", ctx.sender(),
+                                                   "channelName", ctx.channelName()),
+                                            SuggestedAction.LOG));
     }
 }

@@ -1,17 +1,17 @@
 package io.casehub.qhorus.runtime.message.protocol;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.qhorus.api.message.Commitment;
+import io.casehub.qhorus.api.message.CommitmentState;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.spi.ProtocolContext;
+import io.casehub.qhorus.api.spi.Severity;
+import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.message.Commitment;
-import io.casehub.qhorus.api.message.CommitmentState;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.spi.ProtocolContext;
+import static org.assertj.core.api.Assertions.assertThat;
 
 class TaskCompletionProtocolTest {
 
@@ -23,23 +23,23 @@ class TaskCompletionProtocolTest {
 
     private ProtocolContext ctx(MessageType incoming, String sender, List<Commitment> commitments) {
         return new ProtocolContext(UUID.randomUUID(), "test-channel", incoming, sender,
-                UUID.randomUUID().toString(), List.of(), List.of(), commitments);
+                                   UUID.randomUUID().toString(), List.of(), List.of(), commitments);
     }
 
     private Commitment openCommand(String correlationId, String requester, String obligor) {
         return Commitment.builder()
-                .id(UUID.randomUUID()).correlationId(correlationId)
-                .channelId(UUID.randomUUID()).messageType(MessageType.COMMAND)
-                .requester(requester).obligor(obligor).state(CommitmentState.OPEN)
-                .createdAt(Instant.now()).build();
+                         .id(UUID.randomUUID()).correlationId(correlationId)
+                         .channelId(UUID.randomUUID()).messageType(MessageType.COMMAND)
+                         .requester(requester).obligor(obligor).state(CommitmentState.OPEN)
+                         .createdAt(Instant.now()).build();
     }
 
     private Commitment openQuery(String correlationId, String requester) {
         return Commitment.builder()
-                .id(UUID.randomUUID()).correlationId(correlationId)
-                .channelId(UUID.randomUUID()).messageType(MessageType.QUERY)
-                .requester(requester).state(CommitmentState.OPEN)
-                .createdAt(Instant.now()).build();
+                         .id(UUID.randomUUID()).correlationId(correlationId)
+                         .channelId(UUID.randomUUID()).messageType(MessageType.QUERY)
+                         .requester(requester).state(CommitmentState.OPEN)
+                         .createdAt(Instant.now()).build();
     }
 
     @Test
@@ -53,20 +53,24 @@ class TaskCompletionProtocolTest {
                 openCommand("c1", "a", "b"),
                 openCommand("c2", "a", "b"),
                 openCommand("c3", "a", "b"));
-        List<String> advisories = protocol.evaluate(ctx(MessageType.COMMAND, "a", commitments));
+        var advisories = protocol.evaluate(ctx(MessageType.COMMAND, "a", commitments));
         assertThat(advisories).anySatisfy(a -> {
-            assertThat(a).startsWith("[TASK_COMPLETION]");
-            assertThat(a).contains("3 open COMMANDs");
+            assertThat(a.source()).isEqualTo("TASK_COMPLETION");
+            assertThat(a.severity()).isEqualTo(Severity.WARNING);
+            assertThat(a.message()).contains("3 open COMMANDs");
+            assertThat(a.evidence()).containsEntry("openCommandCount", 3);
         });
     }
 
     @Test
     void senderIsObligorWithOpenObligation_advisory() {
         List<Commitment> commitments = List.of(openCommand("c1", "requester", "obligor-a"));
-        List<String> advisories = protocol.evaluate(ctx(MessageType.STATUS, "obligor-a", commitments));
+        var              advisories  = protocol.evaluate(ctx(MessageType.STATUS, "obligor-a", commitments));
         assertThat(advisories).hasSize(1);
-        assertThat(advisories.get(0)).startsWith("[TASK_COMPLETION]");
-        assertThat(advisories.get(0)).contains("open obligation");
+        assertThat(advisories.get(0).source()).isEqualTo("TASK_COMPLETION");
+        assertThat(advisories.get(0).severity()).isEqualTo(Severity.WARNING);
+        assertThat(advisories.get(0).message()).contains("open obligation");
+        assertThat(advisories.get(0).evidence()).containsEntry("senderIsObligor", true);
     }
 
     @Test

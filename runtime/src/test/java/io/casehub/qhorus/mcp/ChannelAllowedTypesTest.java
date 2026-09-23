@@ -74,7 +74,7 @@ class ChannelAllowedTypesTest {
         // EVENT is not obligation-creating — dispatch succeeds with advisory (content must be null for EVENT)
         DispatchResult result = helper.sendMessage(name, "agent-1", "EVENT", null, null, null, null, null, null, null, null, null, null);
         assertFalse(result.advisories().isEmpty(), "Expected advisory for EVENT on constrained channel");
-        assertTrue(result.advisories().get(0).contains("EVENT"), "Advisory should name the type");
-        assertTrue(result.advisories().get(0).contains("Message dispatched."), "Advisory should confirm dispatch");
+        assertTrue(result.advisories().get(0).message().contains("EVENT"), "Advisory should name the type");
+        assertTrue(result.advisories().get(0).message().contains("Message dispatched."), "Advisory should confirm dispatch");
     }
 }

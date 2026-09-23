@@ -267,13 +267,15 @@ public class MessageService implements ConsumerMessaging {
             }
         }
 
-        List<TaggedAdvisory> taggedAdvisories = new ArrayList<>();
+        List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories = new ArrayList<>();
         if (ch != null) {
             messageTypePolicy.validate(ch, dispatch.type());
             final String adv = messageTypePolicy.advisory(ch, dispatch.type());
             if (adv != null) {
                 LOG.warn(adv);
-                taggedAdvisories.add(new TaggedAdvisory("TYPE_POLICY", adv));
+                advisories.add(new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                        "TYPE_POLICY", io.casehub.qhorus.api.spi.Severity.CRITICAL, adv,
+                        java.util.Map.of(), io.casehub.qhorus.api.spi.SuggestedAction.LOG));
             }
         }
 
@@ -282,7 +284,9 @@ public class MessageService implements ConsumerMessaging {
             if (!correlationAdvisories.isEmpty()) {
                 for (String ca : correlationAdvisories) {
                     LOG.warn(ca);
-                    taggedAdvisories.add(new TaggedAdvisory("CORRELATION_INTEGRITY", ca));
+                    advisories.add(new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                            "CORRELATION_INTEGRITY", io.casehub.qhorus.api.spi.Severity.ADVISORY, ca,
+                            java.util.Map.of(), io.casehub.qhorus.api.spi.SuggestedAction.LOG));
                 }
             }
         }
@@ -301,18 +305,14 @@ public class MessageService implements ConsumerMessaging {
                                 dispatch.correlationId(), ch.protocolParticipants(),
                                 recent, activeCommitments);
                 for (io.casehub.qhorus.api.spi.ChannelProtocol protocol : activeProtocols) {
-                    List<String> violations = protocol.evaluate(protocolCtx);
-                    for (String v : violations) {
-                        LOG.warn(v);
-                        taggedAdvisories.add(new TaggedAdvisory(protocol.protocolName(), v));
-                    }
+                    advisories.addAll(protocol.evaluate(protocolCtx));
                 }
             }
         }
 
         if (ch != null) {
             try {
-                enforceIfRequired(ch, taggedAdvisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
+                enforceIfRequired(ch, advisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
                         dispatch, effectiveTenancyId);
             } catch (io.casehub.qhorus.api.message.EnforcementBlockedException ebe) {
                 if (span != null) {
@@ -378,7 +378,7 @@ public class MessageService implements ConsumerMessaging {
                     return new DispatchResult(saved.id(), ch.id(), saved.sender(),
                             saved.messageType(), saved.correlationId(), saved.inReplyTo(),
                             saved.artefactRefs(), saved.target(),
-                            null, null, null, 0, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
+                            null, null, null, 0, advisories);
                 } else {
                     throw new IllegalStateException(
                             "LAST_WRITE channel '" + ch.name() + "' already has a message from '"
@@ -519,7 +519,7 @@ public class MessageService implements ConsumerMessaging {
                 messageId, dispatch.channelId(), dispatch.sender(), dispatch.type(),
                 dispatch.correlationId(), dispatch.inReplyTo(), dispatch.artefactRefs(), dispatch.target(),
                 ledgerOutcome.entryId(), ledgerOutcome.subjectId(), ledgerOutcome.causedByEntryId(),
-                parentReplyCount, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
+                parentReplyCount, advisories);
         } catch (Exception e) {
             if (span != null) {
                 span.setStatus(StatusCode.ERROR);
@@ -619,27 +619,37 @@ public class MessageService implements ConsumerMessaging {
         return pollAfterBySender(channelId, afterId, limit, sender, includeEvents);
     }
 
-    static void enforceIfRequired(Channel ch, List<TaggedAdvisory> taggedAdvisories,
+    static void enforceIfRequired(Channel ch, List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories,
                                   MessageType type, String sender, EnforcementExecutor executor) {
-        enforceIfRequired(ch, taggedAdvisories, type, sender, executor, null, null);
+        enforceIfRequired(ch, advisories, type, sender, executor, null, null);
     }
 
-    static void enforceIfRequired(Channel ch, List<TaggedAdvisory> taggedAdvisories,
+    static void enforceIfRequired(Channel ch, List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories,
                                   MessageType type, String sender, EnforcementExecutor executor,
                                   MessageDispatch dispatch, String tenancyId) {
-        if (ch.enforcementMode() == null
-            || ch.enforcementMode() == io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY) {
-            return;
-        }
         if (type == MessageType.EVENT) { return; }
         if (sender.contains(":")) { return; }
         if (RESOLUTION_TYPES.contains(type)) { return; }
-        if (taggedAdvisories.isEmpty()) { return; }
+        if (advisories.isEmpty()) { return; }
 
-        List<TaggedAdvisory> enforceable = taggedAdvisories.stream()
-                .filter(ta -> !ch.enforcementExclusions().contains(ta.source()))
-                .toList();
-        if (enforceable.isEmpty()) { return; }
+        List<io.casehub.qhorus.api.spi.DispatchAdvisory> enforceable;
+        boolean severityUpgrade = false;
+
+        if (ch.enforcementMode() == null
+            || ch.enforcementMode() == io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY) {
+            enforceable = advisories.stream()
+                    .filter(a -> a.severity() == io.casehub.qhorus.api.spi.Severity.CRITICAL)
+                    .filter(a -> !ch.enforcementExclusions().contains(a.source()))
+                    .toList();
+            if (enforceable.isEmpty()) { return; }
+            severityUpgrade = true;
+        } else {
+            enforceable = advisories.stream()
+                    .filter(a -> a.severity() != io.casehub.qhorus.api.spi.Severity.ADVISORY)
+                    .filter(a -> !ch.enforcementExclusions().contains(a.source()))
+                    .toList();
+            if (enforceable.isEmpty()) { return; }
+        }
 
         if (executor != null && dispatch != null) {
             try {
@@ -651,7 +661,8 @@ public class MessageService implements ConsumerMessaging {
 
         throw new io.casehub.qhorus.api.message.EnforcementBlockedException(
                 ch.enforcementMode(),
-                enforceable.stream().map(TaggedAdvisory::source).distinct().toList(),
-                enforceable.stream().map(TaggedAdvisory::message).toList());
+                enforceable.stream().map(io.casehub.qhorus.api.spi.DispatchAdvisory::source).distinct().toList(),
+                enforceable,
+                severityUpgrade);
     }
 }

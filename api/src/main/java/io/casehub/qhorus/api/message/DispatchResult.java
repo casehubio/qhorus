@@ -19,7 +19,7 @@ public record DispatchResult(
         UUID subjectId,
         UUID causedByEntryId,
         int parentReplyCount,
-        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<String> advisories
+        @JsonInclude(JsonInclude.Include.NON_EMPTY) List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories
 ) {
     public DispatchResult {
         artefactRefs = artefactRefs == null ? List.of() : List.copyOf(artefactRefs);

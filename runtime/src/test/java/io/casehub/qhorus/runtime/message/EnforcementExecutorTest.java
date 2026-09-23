@@ -10,63 +10,74 @@ import io.casehub.qhorus.api.message.EnforcementBlockedEvent;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
+import io.casehub.qhorus.api.spi.Severity;
+import io.casehub.qhorus.api.spi.SuggestedAction;
 import io.casehub.qhorus.runtime.channel.ChannelService;
-import io.casehub.qhorus.runtime.message.CommitmentService;
-import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class EnforcementExecutorTest {
 
-    EnforcementExecutor executor;
-    MessageDispatcher messageDispatcher;
-    ChannelService channelService;
-    CommitmentService commitmentService;
+    EnforcementExecutor               executor;
+    MessageDispatcher                 messageDispatcher;
+    ChannelService                    channelService;
+    CommitmentService                 commitmentService;
     Consumer<EnforcementBlockedEvent> enforcementEvent;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
     void setUp() {
         messageDispatcher = mock(MessageDispatcher.class);
-        channelService = mock(ChannelService.class);
+        channelService    = mock(ChannelService.class);
         commitmentService = mock(CommitmentService.class);
-        enforcementEvent = mock(Consumer.class);
+        enforcementEvent  = mock(Consumer.class);
         when(messageDispatcher.dispatch(any())).thenReturn(
                 new DispatchResult(1L, UUID.randomUUID(), "system:enforcement",
-                        MessageType.EVENT, null, null, List.of(), null,
-                        null, null, null, 0, List.of()));
-        executor = new EnforcementExecutor();
-        executor.messageDispatcher = messageDispatcher;
-        executor.channelService = channelService;
-        executor.commitmentService = commitmentService;
+                                   MessageType.EVENT, null, null, List.of(), null,
+                                   null, null, null, 0, List.of()));
+        executor                            = new EnforcementExecutor();
+        executor.messageDispatcher          = messageDispatcher;
+        executor.channelService             = channelService;
+        executor.commitmentService          = commitmentService;
         executor.enforcementBlockedConsumer = enforcementEvent;
-        executor.objectMapper = new ObjectMapper();
+        executor.objectMapper               = new ObjectMapper();
     }
 
     private Channel channel(EnforcementMode mode) {
         return Channel.builder("test-ch")
-                .id(UUID.randomUUID())
-                .semantic(ChannelSemantic.APPEND)
-                .enforcementMode(mode)
-                .tenancyId("default")
-                .build();
+                      .id(UUID.randomUUID())
+                      .semantic(ChannelSemantic.APPEND)
+                      .enforcementMode(mode)
+                      .tenancyId("default")
+                      .build();
+    }
+
+    private DispatchAdvisory warning(String source, String msg) {
+        return new DispatchAdvisory(source, Severity.WARNING, msg, Map.of(), SuggestedAction.LOG);
     }
 
     @Test
     void blockingModeDispatchesEventButDoesNotPause() {
         Channel ch = channel(EnforcementMode.BLOCKING);
-        List<TaggedAdvisory> violations = List.of(
-                new TaggedAdvisory("REQUEST_RESPONSE", "[REQUEST_RESPONSE] too many queries"));
+        List<DispatchAdvisory> violations = List.of(
+                warning("REQUEST_RESPONSE", "[REQUEST_RESPONSE] too many queries"));
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(ch.id()).sender("agent-1").type(MessageType.QUERY)
-                .content("test").actorType(ActorType.AGENT).build();
+                                                  .channelId(ch.id()).sender("agent-1").type(MessageType.QUERY)
+                                                  .content("test").actorType(ActorType.AGENT).build();
 
         executor.execute(ch, dispatch, violations, "default");
 
@@ -84,11 +95,11 @@ class EnforcementExecutorTest {
     @Test
     void quarantineModeDispatchesEventAndPausesAndExpires() {
         Channel ch = channel(EnforcementMode.QUARANTINE);
-        List<TaggedAdvisory> violations = List.of(
-                new TaggedAdvisory("TYPE_POLICY", "type violation"));
+        List<DispatchAdvisory> violations = List.of(
+                warning("TYPE_POLICY", "type violation"));
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(ch.id()).sender("agent-1").type(MessageType.STATUS)
-                .content("test").actorType(ActorType.AGENT).build();
+                                                  .channelId(ch.id()).sender("agent-1").type(MessageType.STATUS)
+                                                  .content("test").actorType(ActorType.AGENT).build();
 
         executor.execute(ch, dispatch, violations, "default");
 
@@ -101,11 +112,11 @@ class EnforcementExecutorTest {
     @Test
     void eventTelemetryContainsViolationDetails() {
         Channel ch = channel(EnforcementMode.BLOCKING);
-        List<TaggedAdvisory> violations = List.of(
-                new TaggedAdvisory("REQUEST_RESPONSE", "violation text"));
+        List<DispatchAdvisory> violations = List.of(
+                warning("REQUEST_RESPONSE", "violation text"));
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(ch.id()).sender("agent-1").type(MessageType.QUERY)
-                .content("test").actorType(ActorType.AGENT).build();
+                                                  .channelId(ch.id()).sender("agent-1").type(MessageType.QUERY)
+                                                  .content("test").actorType(ActorType.AGENT).build();
 
         executor.execute(ch, dispatch, violations, "default");
 
@@ -120,12 +131,12 @@ class EnforcementExecutorTest {
     @Test
     void cdiEventContainsStructuredData() {
         Channel ch = channel(EnforcementMode.BLOCKING);
-        List<TaggedAdvisory> violations = List.of(
-                new TaggedAdvisory("TYPE_POLICY", "v1"),
-                new TaggedAdvisory("REQUEST_RESPONSE", "v2"));
+        List<DispatchAdvisory> violations = List.of(
+                warning("TYPE_POLICY", "v1"),
+                warning("REQUEST_RESPONSE", "v2"));
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(ch.id()).sender("agent-1").type(MessageType.COMMAND)
-                .content("test").actorType(ActorType.AGENT).build();
+                                                  .channelId(ch.id()).sender("agent-1").type(MessageType.COMMAND)
+                                                  .content("test").actorType(ActorType.AGENT).build();
 
         executor.execute(ch, dispatch, violations, "default");
 
@@ -137,7 +148,9 @@ class EnforcementExecutorTest {
         assertThat(event.mode()).isEqualTo(EnforcementMode.BLOCKING);
         assertThat(event.blockedSender()).isEqualTo("agent-1");
         assertThat(event.blockedType()).isEqualTo(MessageType.COMMAND);
-        assertThat(event.violations()).containsExactly("v1", "v2");
+        assertThat(event.violations()).hasSize(2);
+        assertThat(event.violations().get(0).message()).isEqualTo("v1");
+        assertThat(event.violations().get(1).message()).isEqualTo("v2");
         assertThat(event.violationSources()).containsExactly("TYPE_POLICY", "REQUEST_RESPONSE");
     }
 }
