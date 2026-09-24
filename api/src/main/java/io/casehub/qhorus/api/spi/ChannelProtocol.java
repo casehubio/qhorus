@@ -6,5 +6,5 @@ public interface ChannelProtocol {
 
     String protocolName();
 
-    List<String> evaluate(ProtocolContext context);
+    List<DispatchAdvisory> evaluate(ProtocolContext context);
 }

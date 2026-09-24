@@ -9,6 +9,6 @@ class NoOpChannelActivityBroadcasterTest {
     void broadcast_doesNotThrow() {
         var broadcaster = new NoOpChannelActivityBroadcaster();
         broadcaster.broadcast(new ChannelActivityEvent(
-                UUID.randomUUID(), "test-channel", 42L));
+                UUID.randomUUID(), "test-channel", 42L, "default"));
     }
 }

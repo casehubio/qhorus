@@ -112,6 +112,9 @@ public class ChannelEntity {
     @Column(name = "routing_capacity_threshold")
     public Double routingCapacityThreshold;
 
+    @Column(name = "policy_overrides", columnDefinition = "TEXT")
+    public String policyOverrides;
+
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
     public String tenancyId = "278776f9-e1b0-46fb-9032-8bddebdcf9ce"; // TenancyConstants.DEFAULT_TENANT_ID
@@ -162,6 +165,7 @@ public class ChannelEntity {
         e.routingTrustThreshold = channel.routingTrustThreshold();
         e.redistributionCapacityThreshold = channel.redistributionCapacityThreshold();
         e.routingCapacityThreshold = channel.routingCapacityThreshold();
+        e.policyOverrides  = serializeMap(channel.policyOverrides());
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -186,7 +190,8 @@ public class ChannelEntity {
                 routingTrustThreshold,
                 tenancyId, createdAt, lastActivityAt, displayOrder,
                 redistributionCapacityThreshold,
-                routingCapacityThreshold);}
+                routingCapacityThreshold,
+                deserializeMap(policyOverrides));}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);
@@ -203,5 +208,17 @@ public class ChannelEntity {
 
     private static String blankToNull(String s) {
         return (s == null || s.isBlank()) ? null : s;
+    }
+
+    private static final com.fasterxml.jackson.databind.ObjectMapper JSON = new com.fasterxml.jackson.databind.ObjectMapper();
+
+    private static String serializeMap(java.util.Map<String, String> map) {
+        if (map == null || map.isEmpty()) return null;
+        try { return JSON.writeValueAsString(map); } catch (Exception e) { return null; }
+    }
+
+    private static java.util.Map<String, String> deserializeMap(String json) {
+        if (json == null || json.isBlank()) return null;
+        try { return JSON.readValue(json, new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, String>>() {}); } catch (Exception e) { return null; }
     }
 }

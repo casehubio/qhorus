@@ -60,7 +60,8 @@ class ChannelsServiceSummaryTest {
                 channelSummaryManager,
                 mock(ProjectionReader.class),
                 mock(ProtocolReader.class),
-                mock(RoutingDiagnostics.class));
+                mock(RoutingDiagnostics.class),
+                new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
     @Test

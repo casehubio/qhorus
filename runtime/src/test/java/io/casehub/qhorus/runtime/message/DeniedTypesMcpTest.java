@@ -35,7 +35,7 @@ class DeniedTypesMcpTest {
                 null, null, null, null, null, null, null, null, null, null);
 
         assertThat(result.advisories()).isNotEmpty();
-        String adv = result.advisories().get(0);
+        String adv = result.advisories().get(0).message();
         assertThat(adv).contains("denies");
         assertThat(adv).contains("EVENT");
     }

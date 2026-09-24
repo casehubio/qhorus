@@ -24,6 +24,7 @@ import io.casehub.qhorus.runtime.message.TopicService;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
@@ -57,21 +58,25 @@ public class CdiMessageService extends MessageService {
                              EnforcementExecutor enforcementExecutor,
                              RoutingBridge routingBridge,
                              @Any Instance<io.casehub.qhorus.api.gateway.MessageObserver> observers,
-                             LedgerWriteService ledgerWriteService) {
+                             LedgerWriteService ledgerWriteService,
+                             Event<io.casehub.qhorus.api.spi.ProtocolEvaluationEvent> protocolEvaluationEvents,
+                             Event<io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster.ChannelActivityEvent> activityEvents) {
         super(channelService, crossTenantChannelStore, currentPrincipal,
-                messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
-                obligorTrustPolicy, tsr, instanceService, deliverySignalQueue, topicService,
-                correlationIntegrityChecker, protocolRegistry, commitmentStore, broadcaster,
-                tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig,
-                enforcementExecutor, routingBridge,
-                (channelName, channelId, tenancyId, message) ->
-                        MessageObserverDispatcher.dispatch(
-                                channelName, channelId, tenancyId, message, observers.handles(), tsr),
-                (channelName, channelId, tenancyId, message) ->
-                        MessageObserverDispatcher.dispatchClusterOnly(
-                                channelName, channelId, tenancyId, message, observers.handles()),
-                (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
-                        ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome));
+              messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
+              obligorTrustPolicy, tsr, instanceService, deliverySignalQueue, topicService,
+              correlationIntegrityChecker, protocolRegistry, commitmentStore, broadcaster,
+              tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig,
+              enforcementExecutor, routingBridge,
+              (channelName, channelId, tenancyId, message) ->
+                      MessageObserverDispatcher.dispatch(
+                              channelName, channelId, tenancyId, message, observers.handles(), tsr),
+              (channelName, channelId, tenancyId, message) ->
+                      MessageObserverDispatcher.dispatchClusterOnly(
+                              channelName, channelId, tenancyId, message, observers.handles()),
+              (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
+                      ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome),
+              protocolEvaluationEvents::fireAsync,
+              activityEvents::fireAsync);
     }
 
     CdiMessageService() {}

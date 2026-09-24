@@ -40,13 +40,13 @@ class ProtocolDispatchIntegrationTest {
         DispatchResult r1 = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id()).sender("agent-a").type(MessageType.STATUS)
                 .content("first").actorType(ActorType.AGENT).build());
-        assertThat(r1.advisories().stream().filter(a -> a.startsWith("[ROUND_ROBIN]")).toList()).isEmpty();
+        assertThat(r1.advisories().stream().filter(a -> a.source().equals("ROUND_ROBIN")).toList()).isEmpty();
 
         DispatchResult r2 = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id()).sender("agent-a").type(MessageType.STATUS)
                 .content("second out of turn").actorType(ActorType.AGENT).build());
-        assertThat(r2.advisories().stream().filter(a -> a.startsWith("[ROUND_ROBIN]")).toList()).hasSize(1);
-        assertThat(r2.advisories().stream().filter(a -> a.startsWith("[ROUND_ROBIN]")).findFirst().orElse(""))
+        assertThat(r2.advisories().stream().filter(a -> a.source().equals("ROUND_ROBIN")).toList()).hasSize(1);
+        assertThat(r2.advisories().stream().filter(a -> a.source().equals("ROUND_ROBIN")).findFirst().map(io.casehub.qhorus.api.spi.DispatchAdvisory::message).orElse(""))
                 .contains("expected 'agent-b'");
     }
 
@@ -66,7 +66,7 @@ class ProtocolDispatchIntegrationTest {
         DispatchResult r2 = messageService.dispatch(MessageDispatch.builder()
                 .channelId(ch.id()).sender("agent-x").type(MessageType.STATUS)
                 .content("msg2 consecutive").actorType(ActorType.AGENT).build());
-        assertThat(r2.advisories().stream().filter(a -> a.startsWith("[CONTRIBUTION_REQUIRED]")).toList()).hasSize(1);
+        assertThat(r2.advisories().stream().filter(a -> a.source().equals("CONTRIBUTION_REQUIRED")).toList()).hasSize(1);
     }
 
     @Test
@@ -80,8 +80,8 @@ class ProtocolDispatchIntegrationTest {
                 .channelId(ch.id()).sender("agent-z").type(MessageType.STATUS)
                 .content("hello").actorType(ActorType.AGENT).build());
         assertThat(r.advisories().stream()
-                .filter(a -> a.startsWith("[ROUND_ROBIN]") || a.startsWith("[CONTRIBUTION_REQUIRED]")
-                        || a.startsWith("[REQUEST_RESPONSE]") || a.startsWith("[TASK_COMPLETION]"))
+                .filter(a -> a.source().equals("ROUND_ROBIN") || a.source().equals("CONTRIBUTION_REQUIRED")
+                        || a.source().equals("REQUEST_RESPONSE") || a.source().equals("TASK_COMPLETION"))
                 .toList()).isEmpty();
     }
 }

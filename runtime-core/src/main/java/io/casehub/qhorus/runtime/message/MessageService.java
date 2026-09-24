@@ -1,5 +1,6 @@
 package io.casehub.qhorus.runtime.message;
 
+import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -9,7 +10,6 @@ import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
-import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
@@ -26,7 +26,6 @@ import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DeliverySignalQueue;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome;
-
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -63,6 +62,17 @@ public class MessageService implements ConsumerMessaging {
                                   Instant occurredAt, RoutingBridge.RoutingOutcome routingOutcome);
     }
 
+    @FunctionalInterface
+    public interface ProtocolEvaluationCallback {
+        void fire(io.casehub.qhorus.api.spi.ProtocolEvaluationEvent event);
+    }
+
+    @FunctionalInterface
+    public interface ActivityEventCallback {
+        void fire(ChannelActivityEvent event);
+    }
+
+
     private final ChannelService channelService;
     private final CrossTenantChannelStore crossTenantChannelStore;
     private final CurrentPrincipal currentPrincipal;
@@ -88,6 +98,9 @@ public class MessageService implements ConsumerMessaging {
     private final ObserverCallback observerDispatcher;
     private final ObserverCallback clusterObserverDispatcher;
     private final LedgerRecorder ledgerRecorder;
+    private final ProtocolEvaluationCallback protocolEvaluationCallback;
+    private final ActivityEventCallback      activityEventCallback;
+
 
     private ChannelGateway channelGateway;
 
@@ -121,6 +134,8 @@ public class MessageService implements ConsumerMessaging {
         this.observerDispatcher          = null;
         this.clusterObserverDispatcher   = null;
         this.ledgerRecorder              = null;
+        this.protocolEvaluationCallback  = null;
+        this.activityEventCallback       = null;
     }
 
     public MessageService(ChannelService channelService,
@@ -146,32 +161,36 @@ public class MessageService implements ConsumerMessaging {
                           RoutingBridge routingBridge,
                           ObserverCallback observerDispatcher,
                           ObserverCallback clusterObserverDispatcher,
-                          LedgerRecorder ledgerRecorder) {
-        this.channelService = channelService;
-        this.crossTenantChannelStore = crossTenantChannelStore;
-        this.currentPrincipal = currentPrincipal;
-        this.messageStore = messageStore;
-        this.commitmentService = commitmentService;
-        this.messageTypePolicy = messageTypePolicy;
-        this.allowedWritersPolicy = new AllowedWritersPolicy();
-        this.rateLimiter = rateLimiter;
-        this.config = config;
-        this.obligorTrustPolicy = obligorTrustPolicy;
-        this.tsr = tsr;
-        this.instanceService = instanceService;
-        this.deliverySignalQueue = deliverySignalQueue;
-        this.topicService = topicService;
+                          LedgerRecorder ledgerRecorder,
+                          ProtocolEvaluationCallback protocolEvaluationCallback,
+                          ActivityEventCallback activityEventCallback) {
+        this.channelService              = channelService;
+        this.crossTenantChannelStore     = crossTenantChannelStore;
+        this.currentPrincipal            = currentPrincipal;
+        this.messageStore                = messageStore;
+        this.commitmentService           = commitmentService;
+        this.messageTypePolicy           = messageTypePolicy;
+        this.allowedWritersPolicy        = new AllowedWritersPolicy();
+        this.rateLimiter                 = rateLimiter;
+        this.config                      = config;
+        this.obligorTrustPolicy          = obligorTrustPolicy;
+        this.tsr                         = tsr;
+        this.instanceService             = instanceService;
+        this.deliverySignalQueue         = deliverySignalQueue;
+        this.topicService                = topicService;
         this.correlationIntegrityChecker = correlationIntegrityChecker;
-        this.protocolRegistry = protocolRegistry;
-        this.commitmentStore = commitmentStore;
-        this.broadcaster = broadcaster;
-        this.tracerSupplier = tracerSupplier;
-        this.tracingConfig = tracingConfig;
-        this.enforcementExecutor = enforcementExecutor;
-        this.routingBridge = routingBridge;
-        this.observerDispatcher = observerDispatcher;
-        this.clusterObserverDispatcher = clusterObserverDispatcher;
-        this.ledgerRecorder = ledgerRecorder;
+        this.protocolRegistry            = protocolRegistry;
+        this.commitmentStore             = commitmentStore;
+        this.broadcaster                 = broadcaster;
+        this.tracerSupplier              = tracerSupplier;
+        this.tracingConfig               = tracingConfig;
+        this.enforcementExecutor         = enforcementExecutor;
+        this.routingBridge               = routingBridge;
+        this.observerDispatcher          = observerDispatcher;
+        this.clusterObserverDispatcher   = clusterObserverDispatcher;
+        this.ledgerRecorder              = ledgerRecorder;
+        this.protocolEvaluationCallback  = protocolEvaluationCallback;
+        this.activityEventCallback       = activityEventCallback;
     }
 
     public void setChannelGateway(ChannelGateway channelGateway) {
@@ -267,13 +286,15 @@ public class MessageService implements ConsumerMessaging {
             }
         }
 
-        List<TaggedAdvisory> taggedAdvisories = new ArrayList<>();
+        List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories = new ArrayList<>();
         if (ch != null) {
             messageTypePolicy.validate(ch, dispatch.type());
             final String adv = messageTypePolicy.advisory(ch, dispatch.type());
             if (adv != null) {
                 LOG.warn(adv);
-                taggedAdvisories.add(new TaggedAdvisory("TYPE_POLICY", adv));
+                advisories.add(new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                        "TYPE_POLICY", io.casehub.qhorus.api.spi.Severity.CRITICAL, adv,
+                        java.util.Map.of(), io.casehub.qhorus.api.spi.SuggestedAction.LOG));
             }
         }
 
@@ -282,7 +303,9 @@ public class MessageService implements ConsumerMessaging {
             if (!correlationAdvisories.isEmpty()) {
                 for (String ca : correlationAdvisories) {
                     LOG.warn(ca);
-                    taggedAdvisories.add(new TaggedAdvisory("CORRELATION_INTEGRITY", ca));
+                    advisories.add(new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                            "CORRELATION_INTEGRITY", io.casehub.qhorus.api.spi.Severity.ADVISORY, ca,
+                            java.util.Map.of(), io.casehub.qhorus.api.spi.SuggestedAction.LOG));
                 }
             }
         }
@@ -301,20 +324,23 @@ public class MessageService implements ConsumerMessaging {
                                 dispatch.correlationId(), ch.protocolParticipants(),
                                 recent, activeCommitments);
                 for (io.casehub.qhorus.api.spi.ChannelProtocol protocol : activeProtocols) {
-                    List<String> violations = protocol.evaluate(protocolCtx);
-                    for (String v : violations) {
-                        LOG.warn(v);
-                        taggedAdvisories.add(new TaggedAdvisory(protocol.protocolName(), v));
-                    }
+                    advisories.addAll(protocol.evaluate(protocolCtx));
                 }
             }
         }
 
         if (ch != null) {
             try {
-                enforceIfRequired(ch, taggedAdvisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
+                enforceIfRequired(ch, advisories, dispatch.type(), dispatch.sender(), enforcementExecutor,
                         dispatch, effectiveTenancyId);
             } catch (io.casehub.qhorus.api.message.EnforcementBlockedException ebe) {
+                if (protocolEvaluationCallback != null && !advisories.isEmpty()) {
+                    var outcome = ebe.effectiveMode() == io.casehub.qhorus.api.channel.EnforcementMode.QUARANTINE
+                            ? io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.QUARANTINED
+                            : io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.BLOCKED;
+                    protocolEvaluationCallback.fire(new io.casehub.qhorus.api.spi.ProtocolEvaluationEvent(
+                            ch.id(), ch.name(), effectiveTenancyId, advisories, outcome));
+                }
                 if (span != null) {
                     span.addEvent("qhorus.enforcement.gate",
                             io.opentelemetry.api.common.Attributes.of(
@@ -327,6 +353,12 @@ public class MessageService implements ConsumerMessaging {
                 }
                 throw ebe;
             }
+        }
+
+        if (ch != null && !advisories.isEmpty() && protocolEvaluationCallback != null) {
+            protocolEvaluationCallback.fire(new io.casehub.qhorus.api.spi.ProtocolEvaluationEvent(
+                    ch.id(), ch.name(), effectiveTenancyId, advisories,
+                    io.casehub.qhorus.api.spi.ProtocolEvaluationEvent.EnforcementOutcome.ALLOWED));
         }
 
         if (ch != null && ch.semantic() == ChannelSemantic.LAST_WRITE) {
@@ -365,20 +397,25 @@ public class MessageService implements ConsumerMessaging {
                     final UUID signalChannelId = ch.id();
                     final String signalChannelName = ch.name();
                     final Long signalMessageId = saved.id();
+                    final String signalTenancyId = effectiveTenancyId;
                     tsr.registerInterposedSynchronization(new Synchronization() {
                         @Override public void beforeCompletion() {}
                         @Override public void afterCompletion(int status) {
                             if (status == STATUS_COMMITTED) {
                                 deliverySignalQueue.signal(signalChannelId);
-                                broadcaster.broadcast(new ChannelActivityEvent(
-                                        signalChannelId, signalChannelName, signalMessageId));
+                                ChannelActivityEvent actEvent = new ChannelActivityEvent(
+                                        signalChannelId, signalChannelName, signalMessageId, signalTenancyId);
+                                broadcaster.broadcast(actEvent);
+                                if (activityEventCallback != null) {
+                                    activityEventCallback.fire(actEvent);
+                                }
                             }
                         }
                     });
                     return new DispatchResult(saved.id(), ch.id(), saved.sender(),
                             saved.messageType(), saved.correlationId(), saved.inReplyTo(),
                             saved.artefactRefs(), saved.target(),
-                            null, null, null, 0, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
+                            null, null, null, 0, advisories);
                 } else {
                     throw new IllegalStateException(
                             "LAST_WRITE channel '" + ch.name() + "' already has a message from '"
@@ -499,6 +536,7 @@ public class MessageService implements ConsumerMessaging {
             final boolean signalDelivery = hasTracked;
             final UUID signalChannelId = ch.id();
             final String signalChannelName = ch.name();
+            final String signalTenancyId = effectiveTenancyId;
             if (tsr.getTransactionStatus() == STATUS_ACTIVE) {
                 tsr.registerInterposedSynchronization(new Synchronization() {
                     @Override public void beforeCompletion() {}
@@ -507,8 +545,12 @@ public class MessageService implements ConsumerMessaging {
                             if (signalDelivery) {
                                 deliverySignalQueue.signal(signalChannelId);
                             }
-                            broadcaster.broadcast(new ChannelActivityEvent(
-                                    signalChannelId, signalChannelName, messageId));
+                            ChannelActivityEvent actEvent = new ChannelActivityEvent(
+                                    signalChannelId, signalChannelName, messageId, signalTenancyId);
+                            broadcaster.broadcast(actEvent);
+                            if (activityEventCallback != null) {
+                                activityEventCallback.fire(actEvent);
+                            }
                         }
                     }
                 });
@@ -519,7 +561,7 @@ public class MessageService implements ConsumerMessaging {
                 messageId, dispatch.channelId(), dispatch.sender(), dispatch.type(),
                 dispatch.correlationId(), dispatch.inReplyTo(), dispatch.artefactRefs(), dispatch.target(),
                 ledgerOutcome.entryId(), ledgerOutcome.subjectId(), ledgerOutcome.causedByEntryId(),
-                parentReplyCount, taggedAdvisories.stream().map(TaggedAdvisory::message).toList());
+                parentReplyCount, advisories);
         } catch (Exception e) {
             if (span != null) {
                 span.setStatus(StatusCode.ERROR);
@@ -619,27 +661,37 @@ public class MessageService implements ConsumerMessaging {
         return pollAfterBySender(channelId, afterId, limit, sender, includeEvents);
     }
 
-    static void enforceIfRequired(Channel ch, List<TaggedAdvisory> taggedAdvisories,
+    static void enforceIfRequired(Channel ch, List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories,
                                   MessageType type, String sender, EnforcementExecutor executor) {
-        enforceIfRequired(ch, taggedAdvisories, type, sender, executor, null, null);
+        enforceIfRequired(ch, advisories, type, sender, executor, null, null);
     }
 
-    static void enforceIfRequired(Channel ch, List<TaggedAdvisory> taggedAdvisories,
+    static void enforceIfRequired(Channel ch, List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories,
                                   MessageType type, String sender, EnforcementExecutor executor,
                                   MessageDispatch dispatch, String tenancyId) {
-        if (ch.enforcementMode() == null
-            || ch.enforcementMode() == io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY) {
-            return;
-        }
         if (type == MessageType.EVENT) { return; }
         if (sender.contains(":")) { return; }
         if (RESOLUTION_TYPES.contains(type)) { return; }
-        if (taggedAdvisories.isEmpty()) { return; }
+        if (advisories.isEmpty()) { return; }
 
-        List<TaggedAdvisory> enforceable = taggedAdvisories.stream()
-                .filter(ta -> !ch.enforcementExclusions().contains(ta.source()))
-                .toList();
-        if (enforceable.isEmpty()) { return; }
+        List<io.casehub.qhorus.api.spi.DispatchAdvisory> enforceable;
+        boolean severityUpgrade = false;
+
+        if (ch.enforcementMode() == null
+            || ch.enforcementMode() == io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY) {
+            enforceable = advisories.stream()
+                    .filter(a -> a.severity() == io.casehub.qhorus.api.spi.Severity.CRITICAL)
+                    .filter(a -> !ch.enforcementExclusions().contains(a.source()))
+                    .toList();
+            if (enforceable.isEmpty()) { return; }
+            severityUpgrade = true;
+        } else {
+            enforceable = advisories.stream()
+                    .filter(a -> a.severity() != io.casehub.qhorus.api.spi.Severity.ADVISORY)
+                    .filter(a -> !ch.enforcementExclusions().contains(a.source()))
+                    .toList();
+            if (enforceable.isEmpty()) { return; }
+        }
 
         if (executor != null && dispatch != null) {
             try {
@@ -651,7 +703,8 @@ public class MessageService implements ConsumerMessaging {
 
         throw new io.casehub.qhorus.api.message.EnforcementBlockedException(
                 ch.enforcementMode(),
-                enforceable.stream().map(TaggedAdvisory::source).distinct().toList(),
-                enforceable.stream().map(TaggedAdvisory::message).toList());
+                enforceable.stream().map(io.casehub.qhorus.api.spi.DispatchAdvisory::source).distinct().toList(),
+                enforceable,
+                severityUpgrade);
     }
 }

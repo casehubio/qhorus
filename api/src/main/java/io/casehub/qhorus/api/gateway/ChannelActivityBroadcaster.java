@@ -21,16 +21,10 @@ public interface ChannelActivityBroadcaster {
      */
     void broadcast(ChannelActivityEvent event);
 
-    /**
-     * Channel activity event.
-     *
-     * @param channelId   the channel UUID
-     * @param channelName the channel name
-     * @param messageId   the message primary key
-     */
     record ChannelActivityEvent(
-        java.util.UUID channelId,
-        String channelName,
-        Long messageId
+            java.util.UUID channelId,
+            String channelName,
+            Long messageId,
+            String tenancyId
     ) {}
 }

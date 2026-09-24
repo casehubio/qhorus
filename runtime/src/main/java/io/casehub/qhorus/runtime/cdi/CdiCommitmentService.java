@@ -1,5 +1,6 @@
 package io.casehub.qhorus.runtime.cdi;
 
+import io.casehub.qhorus.api.gateway.CommitmentStateChangedEvent;
 import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
 import io.casehub.qhorus.api.message.CommitmentExpiredEvent;
 import io.casehub.qhorus.api.store.CommitmentStore;
@@ -20,11 +21,13 @@ public class CdiCommitmentService extends CommitmentService {
     public CdiCommitmentService(CommitmentStore store,
                                 Event<CommitmentDeclinedEvent> declinedEvents,
                                 Event<CommitmentExpiredEvent> expiredEvents,
+                                Event<CommitmentStateChangedEvent> stateChangedEvents,
                                 Instance<Tracer> tracerInstance,
                                 QhorusTracingConfig tracingConfig) {
         super(store, declinedEvents::fire, e -> {
             try { expiredEvents.fire(e); } catch (Exception ex) { /* logged by core */ }
-        }, tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig);
+        }, stateChangedEvents::fire,
+                tracerInstance.isResolvable() ? tracerInstance::get : null, tracingConfig);
     }
 
     CdiCommitmentService() {}

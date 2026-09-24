@@ -31,6 +31,7 @@ public class CommitmentService {
     CommitmentStore store;
     Consumer<CommitmentDeclinedEvent> declinedConsumer;
     Consumer<CommitmentExpiredEvent> expiredConsumer;
+    Consumer<io.casehub.qhorus.api.gateway.CommitmentStateChangedEvent> stateChangedConsumer;
     Supplier<Tracer> tracerSupplier;
     QhorusTracingConfig tracingConfig;
 
@@ -40,11 +41,13 @@ public class CommitmentService {
     public CommitmentService(CommitmentStore store,
                              Consumer<CommitmentDeclinedEvent> declinedConsumer,
                              Consumer<CommitmentExpiredEvent> expiredConsumer,
+                             Consumer<io.casehub.qhorus.api.gateway.CommitmentStateChangedEvent> stateChangedConsumer,
                              Supplier<Tracer> tracerSupplier,
                              QhorusTracingConfig tracingConfig) {
         this.store = store;
         this.declinedConsumer = declinedConsumer;
         this.expiredConsumer = expiredConsumer;
+        this.stateChangedConsumer = stateChangedConsumer;
         this.tracerSupplier = tracerSupplier;
         this.tracingConfig = tracingConfig;
     }
@@ -84,7 +87,9 @@ public class CommitmentService {
                                      .capabilityTag(capabilityTag)
                                      .state(CommitmentState.OPEN)
                                      .build();
-            return store.save(c);
+            Commitment saved = store.save(c);
+            fireStateChanged(saved, null);
+            return saved;
         } catch (Exception e) {
             if (span != null) {
                 span.setStatus(StatusCode.ERROR);
@@ -105,10 +110,13 @@ public class CommitmentService {
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "ACKNOWLEDGED");
-                        return store.save(c.toBuilder()
+                        CommitmentState prev = c.state();
+                        Commitment saved = store.save(c.toBuilder()
                                 .state(CommitmentState.ACKNOWLEDGED)
                                 .acknowledgedAt(c.acknowledgedAt() == null ? Instant.now() : c.acknowledgedAt())
                                 .build());
+                        fireStateChanged(saved, prev);
+                        return saved;
                     });
         } catch (Exception e) {
             recordError(span, e);
@@ -127,10 +135,13 @@ public class CommitmentService {
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "FULFILLED");
-                        return store.save(c.toBuilder()
+                        CommitmentState prev = c.state();
+                        Commitment saved = store.save(c.toBuilder()
                                 .state(CommitmentState.FULFILLED)
                                 .resolvedAt(Instant.now())
                                 .build());
+                        fireStateChanged(saved, prev);
+                        return saved;
                     });
         } catch (Exception e) {
             recordError(span, e);
@@ -149,6 +160,7 @@ public class CommitmentService {
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "DECLINED");
+                        CommitmentState prev = c.state();
                         Commitment saved = store.save(c.toBuilder()
                                 .state(CommitmentState.DECLINED)
                                 .resolvedAt(Instant.now())
@@ -156,6 +168,7 @@ public class CommitmentService {
                         declinedConsumer.accept(new CommitmentDeclinedEvent(
                                 saved.id(), saved.correlationId(), saved.channelId(),
                                 saved.obligor(), saved.requester()));
+                        fireStateChanged(saved, prev);
                         return saved;
                     });
         } catch (Exception e) {
@@ -175,10 +188,13 @@ public class CommitmentService {
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "FAILED");
-                        return store.save(c.toBuilder()
+                        CommitmentState prev = c.state();
+                        Commitment saved = store.save(c.toBuilder()
                                 .state(CommitmentState.FAILED)
                                 .resolvedAt(Instant.now())
                                 .build());
+                        fireStateChanged(saved, prev);
+                        return saved;
                     });
         } catch (Exception e) {
             recordError(span, e);
@@ -197,6 +213,7 @@ public class CommitmentService {
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "DELEGATED");
+                        CommitmentState prev = c.state();
                         Commitment delegated = store.save(c.toBuilder()
                                 .state(CommitmentState.DELEGATED)
                                 .delegatedTo(delegatedTo)
@@ -214,7 +231,9 @@ public class CommitmentService {
                                 .tenancyId(c.tenancyId())
                                 .capabilityTag(c.capabilityTag())
                                 .build();
-                        store.save(child);
+                        Commitment savedChild = store.save(child);
+                        fireStateChanged(delegated, prev);
+                        fireStateChanged(savedChild, null);
                         return delegated;
                     });
         } catch (Exception e) {
@@ -246,10 +265,12 @@ public class CommitmentService {
                                     AttributeKey.stringKey("correlation_id"), c.correlationId(),
                                     AttributeKey.stringKey("obligor"), c.obligor() != null ? c.obligor() : ""));
                 }
-                store.save(c.toBuilder()
+                CommitmentState prev = c.state();
+                Commitment saved = store.save(c.toBuilder()
                         .state(CommitmentState.EXPIRED)
                         .resolvedAt(Instant.now())
                         .build());
+                fireStateChanged(saved, prev);
                 toFire.add(new CommitmentExpiredEvent(
                         c.id(), c.correlationId(), c.channelId(), c.obligor(), c.requester(), c.expiresAt()));
             });
@@ -306,11 +327,13 @@ public class CommitmentService {
         Instant now = Instant.now();
         active.forEach(c -> {
             if (c.state().isTerminal()) return;
-            store.save(c.toBuilder()
+            CommitmentState prev = c.state();
+            Commitment saved = store.save(c.toBuilder()
                     .state(CommitmentState.EXPIRED)
                     .resolvedAt(now)
                     .expiresAt(now)
                     .build());
+            fireStateChanged(saved, prev);
             toFire.add(new CommitmentExpiredEvent(
                     c.id(), c.correlationId(), channelId, c.obligor(), c.requester(), now));
         });
@@ -341,6 +364,18 @@ public class CommitmentService {
         span.setAttribute("qhorus.commitment.to_state", toState);
         span.setAttribute("qhorus.commitment.obligor", c.obligor() != null ? c.obligor() : "");
         span.setAttribute("qhorus.channel.id", c.channelId().toString());
+    }
+
+
+    private void fireStateChanged(Commitment commitment, CommitmentState previousState) {
+        if (stateChangedConsumer != null) {
+            try {
+                stateChangedConsumer.accept(new io.casehub.qhorus.api.gateway.CommitmentStateChangedEvent(
+                        commitment.channelId(), commitment, previousState));
+            } catch (Exception e) {
+                LOG.warnf(e, "CommitmentStateChangedEvent observer failed for commitment %s — continuing", commitment.id());
+            }
+        }
     }
 
     private void recordError(Span span, Exception e) {

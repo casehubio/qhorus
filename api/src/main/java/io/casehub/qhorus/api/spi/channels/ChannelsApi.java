@@ -110,6 +110,14 @@ public interface ChannelsApi {
     @PlatformMutation("Set enforcement exclusions for a channel")
     Channel setEnforcementExclusions(UUID channelId, List<String> exclusions);
 
+    // --- Policy Overrides ---
+
+    @PlatformQuery("Get policy overrides for a channel")
+    java.util.Map<String, String> channelPolicyOverrides(UUID channelId);
+
+    @PlatformMutation("Set or merge policy overrides on a channel — null values remove keys")
+    Channel setPolicyOverrides(UUID channelId, String overridesJson);
+
     // --- Routing ---
 
     @PlatformQuery("Get routing configuration for a channel")
