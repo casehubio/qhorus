@@ -71,7 +71,8 @@ class ChannelsServiceConfigTest {
                 channelSummaryManager,
                 projectionReader,
                 protocolReader,
-                routingDiagnostics);
+                routingDiagnostics,
+                new com.fasterxml.jackson.databind.ObjectMapper());
     }
 
     @Test

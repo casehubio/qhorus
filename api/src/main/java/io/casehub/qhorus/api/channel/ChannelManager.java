@@ -41,6 +41,8 @@ public interface ChannelManager {
 
     Channel setRoutingCapacityThreshold(UUID channelId, Double threshold);
 
+    Channel setPolicyOverrides(UUID channelId, java.util.Map<String, String> overrides);
+
     void setTrackDelivery(UUID channelId, Boolean tracking);
 
     void updateLastActivity(UUID channelId, String tenancyId);
