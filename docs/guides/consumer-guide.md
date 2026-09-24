@@ -72,6 +72,9 @@ Channel fields (all nullable unless specified):
 | `paused` | When true, dispatch gate rejects all writes |
 | `spaceId` | Parent space for organizational hierarchy |
 | `autoCreated` | Whether the channel was auto-created via `findOrCreate` |
+| `enforcementMode` | `EnforcementMode` enum: ADVISORY (default), BLOCKING, QUARANTINE; severity-aware -- CRITICAL advisories in ADVISORY mode trigger enforcement upgrade to BLOCKING |
+| `enforcementExclusions` | Advisory sources excluded from enforcement (e.g. `CORRELATION_INTEGRITY`) |
+| `policyOverrides` | `Map<String, String>` per-channel protocol parameter overrides with merge semantics; null = no overrides |
 
 **Spaces** provide recursive channel hierarchy (max depth 10) for grouping related channels with parent/child nesting via `Space(id, name, description, parentSpaceId, tenancyId, createdAt)`.
 
@@ -164,12 +167,13 @@ Pipeline (in order):
 3. **`RateLimiter`** -- per-channel and per-instance rate limiting
 4. **`RoutingBridge`** -- resolves `role:X` capability targets to specific agents via eidos `AgentSelector`; non-role targets bypass (zero overhead)
 5. **`ObligorTrustPolicy` SPI** -- trust threshold for COMMAND dispatch
-6. **`MessageTypePolicy`** -- `allowedTypes`/`deniedTypes` enforcement
-7. **`CorrelationIntegrityChecker`** -- advisory: validates `inReplyTo` and `correlationId` consistency
-8. **`ProtocolEvaluation`** -- advisory: channel protocol enforcement via `ProtocolRegistry`
-9. **LAST_WRITE overwrite** -- version-aware overwrite semantics for `LAST_WRITE` channels
-10. **`LedgerWriteService.record()`** -- tamper-evident ledger entry
-11. **`ChannelGateway.fanOut()`** -- backend delivery and observer notification
+6. **`MessageTypePolicy`** -- `allowedTypes`/`deniedTypes` enforcement; produces `DispatchAdvisory` with `Severity.CRITICAL`
+7. **`CorrelationIntegrityChecker`** -- advisory: validates `inReplyTo` and `correlationId` consistency; produces `DispatchAdvisory` with `Severity.ADVISORY`
+8. **`ProtocolEvaluation`** -- advisory: channel protocol enforcement via `ProtocolRegistry`; protocols return `List<DispatchAdvisory>` with per-violation severity
+9. **Enforcement gate** -- severity-aware: BLOCKING/QUARANTINE modes enforce WARNING+ advisories; ADVISORY mode enforces only CRITICAL (severity upgrade); fires `ProtocolEvaluationEvent` CDI event with ALLOWED/BLOCKED/QUARANTINED outcome
+10. **LAST_WRITE overwrite** -- version-aware overwrite semantics for `LAST_WRITE` channels
+11. **`LedgerWriteService.record()`** -- tamper-evident ledger entry
+12. **`ChannelGateway.fanOut()`** -- backend delivery and observer notification
 
 There is no bypass path.
 
@@ -204,10 +208,10 @@ record DispatchResult(
     Long messageId, UUID channelId, String sender, MessageType type,
     String correlationId, Long inReplyTo, List<ArtefactRef> artefactRefs,
     String target, UUID ledgerEntryId, UUID subjectId, UUID causedByEntryId,
-    int parentReplyCount, List<String> advisories)
+    int parentReplyCount, List<DispatchAdvisory> advisories)
 ```
 
-`advisories` carries non-fatal warnings from `CorrelationIntegrityChecker` and `ProtocolEvaluation`.
+`advisories` carries structured advisory records from `CorrelationIntegrityChecker`, `ProtocolEvaluation`, and `MessageTypePolicy`. Each `DispatchAdvisory(source, severity, message, evidence, suggestedAction)` identifies the advisory source, severity level (`ADVISORY`, `WARNING`, `CRITICAL`), and a suggested action (`LOG`, `ESCALATE`, `INVESTIGATE`, `REROUTE`).
 
 ### Commitment Lifecycle
 
@@ -230,7 +234,7 @@ OPEN --> ACKNOWLEDGED --> FULFILLED
 CDI events fired on state transitions:
 - `CommitmentDeclinedEvent` -- when a commitment transitions to DECLINED
 - `CommitmentExpiredEvent` -- when deadline-based expiry fires
-- `CommitmentStateChangedEvent` -- general state transition notification
+- `CommitmentStateChangedEvent(channelId, commitment, previousState)` -- fired on ALL state transitions (open, acknowledge, fulfill, decline, fail, delegate, expireOverdue, expireByChannel); delegate fires two events (parent DELEGATED + child OPEN); previousState is null for open
 
 ### Channel Summary
 
