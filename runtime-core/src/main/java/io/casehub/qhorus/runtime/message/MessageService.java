@@ -575,6 +575,25 @@ public class MessageService implements ConsumerMessaging {
         }
     }
 
+    @Override
+    public DispatchResult broadcast(String capabilityTag, MessageType type, String content,
+                                    String sender, String tenancyId) {
+        String channelName = "broadcast/" + capabilityTag;
+        Channel channel = channelService.findByName(channelName)
+                                        .orElseThrow(() -> new IllegalArgumentException(
+                                                "No broadcast channel for capability: " + capabilityTag));
+        MessageDispatch dispatch = MessageDispatch.builder()
+                                                  .channelId(channel.id())
+                                                  .sender(sender)
+                                                  .type(type)
+                                                  .content(type == MessageType.EVENT ? null : content)
+                                                  .telemetry(type == MessageType.EVENT ? content : null)
+                                                  .tenancyId(tenancyId)
+                                                  .build();
+        return dispatch(dispatch);
+    }
+
+
     public void dispatchClusterObservers(String channelName, UUID channelId,
                                          String tenancyId, Message message) {
         clusterObserverDispatcher.dispatch(channelName, channelId, tenancyId, message);
