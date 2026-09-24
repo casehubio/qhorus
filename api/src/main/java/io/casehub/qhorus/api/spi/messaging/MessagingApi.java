@@ -16,7 +16,7 @@ import io.casehub.qhorus.api.message.WaitResult;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "qhorus/messaging", app = "qhorus")
+@McpDomain(value = "qhorus/messaging", app = "qhorus", summary = "Message dispatch, replies, reactions, search")
 public interface MessagingApi {
 
     @PlatformQuery("Get a message by ID")

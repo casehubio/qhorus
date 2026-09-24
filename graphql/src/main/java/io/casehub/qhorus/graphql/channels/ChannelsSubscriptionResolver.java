@@ -14,7 +14,7 @@ import org.eclipse.microprofile.graphql.GraphQLApi;
 import org.eclipse.microprofile.graphql.Name;
 
 @GraphQLApi
-@McpDomain(value = "qhorus/channels", app = "qhorus")
+@McpDomain(value = "qhorus/channels", app = "qhorus", summary = "Channel lifecycle — create, query, join, leave, archive")
 @ApplicationScoped
 public class ChannelsSubscriptionResolver {
 

@@ -19,7 +19,7 @@ import io.casehub.qhorus.api.compliance.report.ViolationReport;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "qhorus/compliance", app = "qhorus")
+@McpDomain(value = "qhorus/compliance", app = "qhorus", summary = "Channel compliance — obligations, violations, audit, trust")
 public interface ComplianceApi {
 
     @PlatformQuery("Get compliance attribution report")

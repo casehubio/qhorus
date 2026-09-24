@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@McpDomain(value = "qhorus/channels", app = "qhorus")
+@McpDomain(value = "qhorus/channels", app = "qhorus", summary = "Channel lifecycle — create, query, join, leave, archive")
 public interface ChannelsApi {
 
     // --- Channel queries ---

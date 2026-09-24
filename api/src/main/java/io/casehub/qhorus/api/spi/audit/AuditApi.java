@@ -17,7 +17,7 @@ import io.casehub.qhorus.api.audit.TimelineEntry;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "qhorus/audit", app = "qhorus")
+@McpDomain(value = "qhorus/audit", app = "qhorus", summary = "Channel audit trail — actions, decisions, provenance")
 public interface AuditApi {
 
     @PlatformQuery("Query the immutable audit ledger for a channel")

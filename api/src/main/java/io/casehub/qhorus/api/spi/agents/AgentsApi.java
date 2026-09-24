@@ -10,7 +10,7 @@ import io.casehub.qhorus.api.instance.RegisterResponse;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "qhorus/agents", app = "qhorus")
+@McpDomain(value = "qhorus/agents", app = "qhorus", summary = "Agent registration, capabilities, and lifecycle in channels")
 public interface AgentsApi {
 
     @PlatformQuery("List registered agent instances, optionally filtered by capability tag")
