@@ -9,7 +9,7 @@ import io.casehub.qhorus.api.message.ArtefactRef;
 import java.util.List;
 import java.util.UUID;
 
-@McpDomain(value = "data", app = "qhorus")
+@McpDomain(value = "qhorus/data", app = "qhorus")
 public interface DataApi {
 
     @PlatformQuery("Retrieve a shared artefact by key or UUID")

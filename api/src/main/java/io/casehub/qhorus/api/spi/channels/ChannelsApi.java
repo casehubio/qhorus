@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
-@McpDomain(value = "channels", app = "qhorus")
+@McpDomain(value = "qhorus/channels", app = "qhorus")
 public interface ChannelsApi {
 
     // --- Channel queries ---
