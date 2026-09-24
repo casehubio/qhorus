@@ -49,12 +49,13 @@ All channel writes flow through `MessageService.dispatch(MessageDispatch)`. Pipe
 3. **`RateLimiter`** -- per-channel and per-instance limits via in-memory counters
 4. **`RoutingBridge`** -- resolves `role:X` capability targets to specific agents via eidos `AgentSelector`; non-role targets bypass (zero overhead); per-channel trust threshold via `Channel.routingTrustThreshold()`
 5. **`ObligorTrustPolicy` SPI** -- invoked for COMMAND messages with named targets only; bypassed for PROPOSE (commissive, not directive), role/capability-prefixed targets, and system senders
-6. **`MessageTypePolicy`** (via `StoredMessageTypePolicy`) -- hard-enforces `allowedTypes`/`deniedTypes` for COMMAND, QUERY, and PROPOSE (obligation-creating types); advisory-only for all others
-7. **`CorrelationIntegrityChecker`** (advisory) -- validates `inReplyTo` references exist and `correlationId` matches; adds advisories to `DispatchResult`
-8. **`ProtocolEvaluation`** (advisory via `ProtocolRegistry`) -- evaluates channel protocols against recent message history
-9. **LAST_WRITE overwrite** -- for `LAST_WRITE` channels, replaces the previous value (version-aware)
-10. **`LedgerWriteService.record()`** -- creates `MessageLedgerEntry` with Merkle hash chain
-11. **`ChannelGateway.fanOut()`** -- delivers to backends and fires `MessageReceivedEvent` via observers
+6. **`MessageTypePolicy`** (via `StoredMessageTypePolicy`) -- hard-enforces `allowedTypes`/`deniedTypes` for COMMAND, QUERY, and PROPOSE (obligation-creating types); advisory-only for all others; produces `DispatchAdvisory` with `Severity.CRITICAL`
+7. **`CorrelationIntegrityChecker`** (advisory) -- validates `inReplyTo` references exist and `correlationId` matches; produces `DispatchAdvisory` with `Severity.ADVISORY`
+8. **`ProtocolEvaluation`** (advisory via `ProtocolRegistry`) -- evaluates channel protocols against recent message history; protocols return `List<DispatchAdvisory>` with per-violation severity and evidence
+9. **Enforcement gate** -- severity-aware: BLOCKING/QUARANTINE modes enforce WARNING+ advisories; ADVISORY mode enforces only CRITICAL (severity upgrade to BLOCKING); fires `ProtocolEvaluationEvent` CDI event (ALLOWED/BLOCKED/QUARANTINED); exemptions: EVENT type, system senders, obligation-resolving types
+10. **LAST_WRITE overwrite** -- for `LAST_WRITE` channels, replaces the previous value (version-aware)
+11. **`LedgerWriteService.record()`** -- creates `MessageLedgerEntry` with Merkle hash chain
+12. **`ChannelGateway.fanOut()`** -- delivers to backends and fires `MessageReceivedEvent` via observers
 
 There is no bypass path.
 
