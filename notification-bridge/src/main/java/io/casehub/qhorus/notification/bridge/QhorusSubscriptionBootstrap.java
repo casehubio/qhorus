@@ -29,6 +29,8 @@ public class QhorusSubscriptionBootstrap {
     private static final Logger LOG = Logger.getLogger(QhorusSubscriptionBootstrap.class);
     private static final String OWNER_ID = "system:qhorus";
     private static final String TYPE_PREFIX = "io.casehub.qhorus.obligation.";
+    private static final String BROADCAST_TYPE_PREFIX = "io.casehub.qhorus.broadcast.";
+
 
     private final SubscriptionStore subscriptionStore;
 
@@ -39,22 +41,24 @@ public class QhorusSubscriptionBootstrap {
 
     void onStartup(@Observes StartupEvent event) {
         Set<String> existing = subscriptionStore.findAllEnabled()
-                .filter(s -> s.eventType().startsWith(TYPE_PREFIX))
-                .map(Subscription::eventType)
-                .collect(Collectors.toSet());
+                                                .filter(s -> s.eventType().startsWith(TYPE_PREFIX) || s.eventType().startsWith(BROADCAST_TYPE_PREFIX))
+                                                .map(Subscription::eventType)
+                                                .collect(Collectors.toSet());
 
         register(existing, "assigned", "obligor",
-                "Obligation assigned in {channelName}", NotificationSeverity.INFO);
+                 "Obligation assigned in {channelName}", NotificationSeverity.INFO);
         register(existing, "proposed", "obligor",
-                "Proposal received in {channelName}", NotificationSeverity.INFO);
+                 "Proposal received in {channelName}", NotificationSeverity.INFO);
         register(existing, "fulfilled", "requester",
-                "Request completed in {channelName}", NotificationSeverity.INFO);
+                 "Request completed in {channelName}", NotificationSeverity.INFO);
         register(existing, "failed", "requester",
-                "Request failed in {channelName}", NotificationSeverity.WARNING);
+                 "Request failed in {channelName}", NotificationSeverity.WARNING);
         register(existing, "declined", "requester",
-                "Request declined in {channelName}", NotificationSeverity.WARNING);
+                 "Request declined in {channelName}", NotificationSeverity.WARNING);
         register(existing, "expired", "requester",
-                "Request expired in {channelName}", NotificationSeverity.URGENT);
+                 "Request expired in {channelName}", NotificationSeverity.URGENT);
+
+        registerBroadcast(existing);
     }
 
     private void register(Set<String> existing, String kind, String targetField,
@@ -89,4 +93,37 @@ public class QhorusSubscriptionBootstrap {
             LOG.warnf("Failed to register default subscription for %s: %s", eventType, e.getMessage());
         }
     }
+
+    private void registerBroadcast(Set<String> existing) {
+        String eventType = BROADCAST_TYPE_PREFIX + "*";
+        if (existing.stream().anyMatch(t -> t.startsWith(BROADCAST_TYPE_PREFIX))) {
+            LOG.debug("Broadcast subscription already exists — skipping");
+            return;
+        }
+        try {
+            subscriptionStore.store(new SubscriptionInput(
+                    OWNER_ID,
+                    PLATFORM_TENANT_ID,
+                    "qhorus.broadcast",
+                    eventType,
+                    List.of(),
+                    List.of(new NotificationTarget(TargetType.EVENT_FIELD, "recipientId")),
+                    false,
+                    new NotificationTemplate(
+                            "Broadcast from {senderId} on {channelName}",
+                            "{content}",
+                            NotificationSeverity.INFO,
+                            "qhorus.broadcast",
+                            null,
+                            "channel",
+                            "channelId",
+                            "senderId"),
+                    true,
+                    SubscriptionScope.SYSTEM));
+            LOG.info("Registered default subscription for broadcast events");
+        } catch (Exception e) {
+            LOG.warnf("Failed to register broadcast subscription: %s", e.getMessage());
+        }
+    }
+
 }
