@@ -10,5 +10,7 @@ public enum ChannelSemantic {
     /** Visible to next reader only, then cleared. Routing hints, transient context. */
     EPHEMERAL,
     /** One authoritative writer; concurrent writes return 409. */
-    LAST_WRITE
+    LAST_WRITE,
+    /** Fan-out to all members. Fire-and-forget coordination signals. STATUS + EVENT only. */
+    BROADCAST
 }

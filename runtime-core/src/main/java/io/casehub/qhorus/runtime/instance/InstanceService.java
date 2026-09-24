@@ -14,10 +14,22 @@ import java.util.Optional;
 public class InstanceService implements InstanceManager {
 
     private final InstanceStore instanceStore;
+    private final jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceRegisteredEvent> registeredEvent;
+    private final jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceDeregisteredEvent> deregisteredEvent;
+
+
+    public InstanceService(InstanceStore instanceStore,
+                           jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceRegisteredEvent> registeredEvent,
+                           jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceDeregisteredEvent> deregisteredEvent) {
+        this.instanceStore     = instanceStore;
+        this.registeredEvent   = registeredEvent;
+        this.deregisteredEvent = deregisteredEvent;
+    }
 
     public InstanceService(InstanceStore instanceStore) {
-        this.instanceStore = instanceStore;
+        this(instanceStore, null, null);
     }
+
 
     @Transactional
     public Instance register(String instanceId, String description, List<String> capabilityTags) {
@@ -35,6 +47,10 @@ public class InstanceService implements InstanceManager {
                              String claudonySessionId, boolean readOnly) {
         Instance existing = instanceStore.findByInstanceId(instanceId).orElse(null);
 
+        List<String> previousCaps = existing != null
+                                    ? instanceStore.findCapabilities(existing.id())
+                                    : List.of();
+
         Instance.Builder b;
         if (existing == null) {
             b = Instance.builder(instanceId);
@@ -42,14 +58,19 @@ public class InstanceService implements InstanceManager {
             b = existing.toBuilder();
         }
         Instance instance = b.description(description)
-                .status("online")
-                .lastSeen(Instant.now())
-                .claudonySessionId(claudonySessionId)
-                .readOnly(readOnly)
-                .build();
+                             .status("online")
+                             .lastSeen(Instant.now())
+                             .claudonySessionId(claudonySessionId)
+                             .readOnly(readOnly)
+                             .build();
         Instance saved = instanceStore.put(instance);
 
         instanceStore.putCapabilities(saved.id(), capabilityTags);
+
+        if (registeredEvent != null) {
+            registeredEvent.fireAsync(new io.casehub.qhorus.api.instance.InstanceRegisteredEvent(
+                    instanceId, previousCaps, capabilityTags));
+        }
 
         return saved;
     }
@@ -85,7 +106,14 @@ public class InstanceService implements InstanceManager {
     @Transactional
     public void deregister(String instanceId) {
         instanceStore.findByInstanceId(instanceId)
-                .ifPresent(inst -> instanceStore.delete(inst.id()));
+                     .ifPresent(inst -> {
+                         List<String> caps = instanceStore.findCapabilities(inst.id());
+                         instanceStore.delete(inst.id());
+                         if (deregisteredEvent != null) {
+                             deregisteredEvent.fireAsync(new io.casehub.qhorus.api.instance.InstanceDeregisteredEvent(
+                                     instanceId, caps));
+                         }
+                     });
     }
 
     @Transactional

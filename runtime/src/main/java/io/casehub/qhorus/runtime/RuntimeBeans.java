@@ -34,20 +34,39 @@ import io.casehub.qhorus.api.store.ReactionStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.runtime.capacity.QhorusRedistributionExecutor;
 import io.casehub.qhorus.runtime.capacity.RedistributionDelegate;
+import io.casehub.qhorus.runtime.channel.ChannelCreateHelper;
+import io.casehub.qhorus.runtime.channel.ChannelMembershipService;
+import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.channel.ChannelSummaryScheduler;
+import io.casehub.qhorus.runtime.channel.ChannelSummaryService;
+import io.casehub.qhorus.runtime.channel.PresenceService;
+import io.casehub.qhorus.runtime.channel.RateLimiter;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.PresenceConfig;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
-import io.casehub.qhorus.runtime.channel.*;
-import io.casehub.qhorus.runtime.gateway.*;
+import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.runtime.gateway.DeliveryBatchExecutor;
+import io.casehub.qhorus.runtime.gateway.DeliveryService;
+import io.casehub.qhorus.runtime.gateway.DeliverySignalQueue;
+import io.casehub.qhorus.runtime.gateway.InProcessMessageBus;
+import io.casehub.qhorus.runtime.gateway.QhorusChannelBackend;
+import io.casehub.qhorus.runtime.gateway.QhorusCloudEventAdapter;
 import io.casehub.qhorus.runtime.instance.InstanceService;
-import io.casehub.qhorus.runtime.message.*;
 import io.casehub.qhorus.runtime.ledger.AgreementCredibilityPolicy;
 import io.casehub.qhorus.runtime.ledger.CausalGraphService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.ledger.ReviewerResolver;
+import io.casehub.qhorus.runtime.message.CorrelationIntegrityChecker;
+import io.casehub.qhorus.runtime.message.MessageService;
+import io.casehub.qhorus.runtime.message.MessageTypePolicy;
+import io.casehub.qhorus.runtime.message.ProjectionRegistry;
+import io.casehub.qhorus.runtime.message.ProjectionService;
+import io.casehub.qhorus.runtime.message.ReactionService;
+import io.casehub.qhorus.runtime.message.RoutingBridge;
+import io.casehub.qhorus.runtime.message.StoredMessageTypePolicy;
+import io.casehub.qhorus.runtime.message.TopicService;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
-import io.casehub.qhorus.runtime.watchdog.WatchdogEvaluationService;
 import io.cloudevents.CloudEvent;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -310,9 +329,12 @@ public class RuntimeBeans {
 
 // ── Strip classes — simple constructor forwarding ───────────────
 
-    @Produces @ApplicationScoped
-    public InstanceService instanceService(InstanceStore instanceStore) {
-        return new InstanceService(instanceStore);
+    @Produces
+    @ApplicationScoped
+    public InstanceService instanceService(InstanceStore instanceStore,
+                                           jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceRegisteredEvent> registeredEvent,
+                                           jakarta.enterprise.event.Event<io.casehub.qhorus.api.instance.InstanceDeregisteredEvent> deregisteredEvent) {
+        return new InstanceService(instanceStore, registeredEvent, deregisteredEvent);
     }
 
     // DataService → CdiDataService (runtime/cdi/)
