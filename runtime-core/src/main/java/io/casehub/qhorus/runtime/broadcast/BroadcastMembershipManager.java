@@ -68,9 +68,9 @@ public class BroadcastMembershipManager {
             FindOrCreateResult result = channelService.findOrCreate(req);
             Channel channel = result.channel();
             membershipService.join(channel.id(), instanceId, MemberRole.PARTICIPANT, DEFAULT_TENANT_ID);
-            LOG.debugf("Agent %s joined broadcast:%s (channel %s)", instanceId, capability, channel.id());
+            LOG.debugf("Agent %s joined broadcast/%s (channel %s)", instanceId, capability, channel.id());
         } catch (Exception e) {
-            LOG.warnf("Failed to join broadcast:%s for agent %s: %s", capability, instanceId, e.getMessage());
+            LOG.warnf("Failed to join broadcast/%s for agent %s: %s", capability, instanceId, e.getMessage());
         }
     }
 
@@ -79,10 +79,10 @@ public class BroadcastMembershipManager {
             Optional<Channel> channel = channelService.findByName(BROADCAST_PREFIX + capability);
             channel.ifPresent(ch -> {
                 membershipService.leave(ch.id(), instanceId);
-                LOG.debugf("Agent %s left broadcast:%s (channel %s)", instanceId, capability, ch.id());
+                LOG.debugf("Agent %s left broadcast/%s (channel %s)", instanceId, capability, ch.id());
             });
         } catch (Exception e) {
-            LOG.warnf("Failed to leave broadcast:%s for agent %s: %s", capability, instanceId, e.getMessage());
+            LOG.warnf("Failed to leave broadcast/%s for agent %s: %s", capability, instanceId, e.getMessage());
         }
     }
 }
