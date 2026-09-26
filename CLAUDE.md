@@ -58,7 +58,7 @@ Before any git operation, run `git rev-parse --show-toplevel` to confirm which r
 | specs      | project     | lands in `docs/specs/` — promoted at epic close |
 | blog       | project     | lands in `docs/blog/` — promoted at work end |
 | plans      | workspace   | stay in workspace permanently |
-| design     | project     | journal file lives in workspace design/; DESIGN.md merge target is project docs/DESIGN.md |
+| design     | project     | ARC42STORIES.MD at project root is the permanent architecture record |
 | snapshots  | workspace   | stay in workspace permanently |
 | handover   | workspace   | |
 
@@ -506,7 +506,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home
 
 ## Design Document
 
-`docs/specs/2026-04-13-qhorus-design.md` is the primary design spec. It incorporates research from A2A, AutoGen, LangGraph, OpenAI Swarm, Letta, and CrewAI.
+`ARC42STORIES.MD` is the permanent architecture record (Arc42Stories v0.1, CaseHub foundation tier). `docs/specs/2026-04-13-qhorus-design.md` is the original design spec incorporating research from A2A, AutoGen, LangGraph, OpenAI Swarm, Letta, and CrewAI.
 
 - `PushNotificationBackend` implements `ChannelBackend` with `AT_LEAST_ONCE` and non-throwing `post()`. Unlike `A2AOutboundBackend.post()` which throws on HTTP failure, push `post()` catches all failures internally because push has multi-target per-channel semantics — one dead URL must not stall the delivery cursor for other push URLs. Per-URL health tracking via `ConcurrentHashMap<String, UrlHealthState>` with exponential backoff (5s, 30s, 2m, 10m, 1h). Terminal messages (DONE, FAILURE, DECLINE) are retried in-memory on subsequent `post()` calls. In-memory state is lost on restart — TTL cleanup eventually removes undelivered configs. Clients should treat push as supplementary and poll `tasks/get`. Push-relevant message types: STATUS→"working", HANDOFF→"working", DONE→"completed", FAILURE→"failed", DECLINE→"canceled". RESPONSE excluded (A2ATaskStateMapper inconsistency). `PushNotificationRegistrar` interface in `api/a2a/` bridges A2AResource→backend for channel registration. CDI-free tests use `Clock` field injection for deterministic time control (same pattern as `PresenceService`). `PushNotificationPoster` uses inner `HttpPoster` interface for test injection (same pattern as `WebhookMessageObserver.WebhookPoster`). Refs #406.
 - `PushNotificationConfigStore` (tenant-scoped) and `CrossTenantPushNotificationConfigStore` (background ops) in `api/store/`. `InMemoryPushNotificationConfigStore` in `persistence-memory/` implements both (same as `InMemoryCrossTenantCommitmentStore` pattern). Contract tests in `persistence-memory/src/test/.../contract/`. `JpaPushNotificationConfigStore` in `a2a-push-notification/` also implements both. Consumers must register `io.casehub.qhorus.a2a.push` in `quarkus.hibernate-orm.qhorus.packages`. V49 migration in `runtime/src/main/resources/db/qhorus/migration/`. Refs #406.
@@ -522,8 +522,8 @@ filtering or dropping commits that touch these paths.
 | Path | What it is |
 |------|------------|
 | `CLAUDE.md` | Project conventions (build, test, naming) |
+| `ARC42STORIES.MD` | Architecture record (Arc42Stories format) |
 | `docs/adr/` | Architecture decision records |
-| `docs/DESIGN.md` | Design document |
 
 ## Work Tracking
 
