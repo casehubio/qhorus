@@ -410,6 +410,88 @@ C4Deployment
 | C54 | Capacity Signals | J6 | #434 | ✅ |
 | C55 | Channel Policy Overrides | J6 | #455 | ✅ |
 
+### Layer x Chapter Matrix
+
+**J1 (C1-C14):**
+
+| Layer | C1 | C2 | C3 | C4 | C5 | C6 | C7 | C8 | C9 | C10 | C11 | C12 | C13 | C14 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| L1 Core Domain | **H** | — | **H** | — | **H** | **H** | — | — | **M** | **H** | — | **H** | **H** | — |
+| L2 Speech Act Protocol | — | — | — | **H** | — | **M** | — | — | — | — | — | — | — | — |
+| L3 Normative Audit | — | — | — | — | — | — | — | — | — | — | **H** | — | — | — |
+| L4 Channel Features | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| L5 Enforcement & Safety | — | — | — | — | — | — | — | — | **M** | — | — | — | — | — |
+| L6 Transport Layer | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+| L7 API Surface | — | **H** | — | — | — | — | **H** | **H** | — | — | — | — | — | — |
+| L8 Compliance & Enterprise | — | — | — | — | — | — | — | — | — | — | — | — | — | — |
+
+**J2 (C15-C20):**
+
+| Layer | C15 | C16 | C17 | C18 | C19 | C20 |
+|---|---|---|---|---|---|---|
+| L1 Core Domain | — | — | — | — | — | **M** |
+| L2 Speech Act Protocol | **H** | **H** | — | — | — | L |
+| L3 Normative Audit | — | — | **H** | **H** | **M** | **M** |
+| L4 Channel Features | — | — | — | — | — | — |
+| L5 Enforcement & Safety | — | — | — | — | — | — |
+| L6 Transport Layer | — | — | — | — | — | — |
+| L7 API Surface | — | — | — | — | — | L |
+| L8 Compliance & Enterprise | — | — | — | — | — | — |
+
+**J3 (C21-C27):**
+
+| Layer | C21 | C22 | C23 | C24 | C25 | C26 | C27 |
+|---|---|---|---|---|---|---|---|
+| L1 Core Domain | L | — | — | — | — | — | — |
+| L2 Speech Act Protocol | — | — | — | — | — | — | — |
+| L3 Normative Audit | — | — | — | — | — | — | — |
+| L4 Channel Features | — | — | — | — | — | L | — |
+| L5 Enforcement & Safety | — | — | — | — | — | — | — |
+| L6 Transport Layer | **H** | **M** | **H** | **H** | **H** | **H** | **H** |
+| L7 API Surface | — | — | — | — | — | — | — |
+| L8 Compliance & Enterprise | — | — | — | — | — | — | — |
+
+**J4 (C28-C37):**
+
+| Layer | C28 | C29 | C30 | C31 | C32 | C33 | C34 | C35 | C36 | C37 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| L1 Core Domain | — | — | **M** | — | — | — | — | — | — | **M** |
+| L2 Speech Act Protocol | — | — | — | — | — | — | — | — | — | — |
+| L3 Normative Audit | — | — | — | — | — | — | — | — | — | — |
+| L4 Channel Features | **H** | **M** | **M** | **H** | **H** | **M** | **H** | **H** | **H** | — |
+| L5 Enforcement & Safety | — | — | — | — | — | — | — | — | — | — |
+| L6 Transport Layer | — | — | — | — | — | — | — | — | **M** | — |
+| L7 API Surface | — | — | — | — | — | — | — | — | — | — |
+| L8 Compliance & Enterprise | — | — | — | — | — | — | — | — | — | — |
+
+**J5 (C38-C44):**
+
+| Layer | C38 | C39 | C40 | C41 | C42 | C43 | C44 |
+|---|---|---|---|---|---|---|---|
+| L1 Core Domain | — | — | — | — | — | — | — |
+| L2 Speech Act Protocol | — | — | — | — | — | — | — |
+| L3 Normative Audit | — | — | — | — | — | — | — |
+| L4 Channel Features | — | — | — | — | — | — | — |
+| L5 Enforcement & Safety | **H** | **H** | **M** | **M** | **H** | **H** | **H** |
+| L6 Transport Layer | — | — | — | — | — | — | — |
+| L7 API Surface | — | — | — | — | — | — | — |
+| L8 Compliance & Enterprise | — | — | — | — | — | — | — |
+
+**J6 (C45-C55):**
+
+| Layer | C45 | C46 | C47 | C48 | C49 | C50 | C51 | C52 | C53 | C54 | C55 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| L1 Core Domain | — | — | — | — | — | L | — | — | — | L | — |
+| L2 Speech Act Protocol | — | — | — | **H** | **M** | — | — | — | — | — | — |
+| L3 Normative Audit | **H** | **H** | **H** | — | L | **M** | — | — | — | — | — |
+| L4 Channel Features | — | — | — | — | — | — | — | — | — | — | — |
+| L5 Enforcement & Safety | — | — | — | — | — | — | — | — | — | — | **H** |
+| L6 Transport Layer | — | — | — | — | — | — | — | **H** | — | — | — |
+| L7 API Surface | L | — | L | — | — | — | **M** | **M** | — | — | L |
+| L8 Compliance & Enterprise | — | — | — | — | **H** | **H** | **H** | **M** | **H** | **M** | — |
+
+---
+
 ## §9.3 Journey 1 — Core Communication Mesh (C1–C14)
 
 > Journey 1 delivers the agent communication mesh from zero to a native-image-ready Quarkus extension with MCP tools, five channel semantics, correlation tracking, artefact lifecycle, three addressing modes, A2A compatibility, human-in-the-loop controls, access governance, structured ledger observability, a persistence abstraction layer, and a reactive dual-stack. All 14 chapters were completed between 2026-04-13 and 2026-04-21.
