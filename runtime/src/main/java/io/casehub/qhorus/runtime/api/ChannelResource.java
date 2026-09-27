@@ -4,6 +4,7 @@ import io.casehub.qhorus.runtime.api.core.ChannelCore;
 import io.casehub.qhorus.runtime.api.core.ErrorResponse;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -77,6 +78,7 @@ public class ChannelResource {
 
     @POST
     @Path("/{id}/messages/{messageId}/reactions")
+    @Transactional
     public Response addReaction(@PathParam("id") final String id,
                                 @PathParam("messageId") String messageId,
                                 io.casehub.qhorus.runtime.api.core.ReactionRequest request) {
@@ -86,6 +88,7 @@ public class ChannelResource {
 
     @DELETE
     @Path("/{id}/messages/{messageId}/reactions/{emoji}")
+    @Transactional
     public Response removeReaction(@PathParam("id") final String id,
                                    @PathParam("messageId") String messageId,
                                    @PathParam("emoji") String emoji) {
@@ -104,6 +107,7 @@ public class ChannelResource {
 
     @POST
     @Path("/{id}/topics")
+    @Transactional
     public Response createTopic(@PathParam("id") final String id,
                                 io.casehub.qhorus.runtime.api.core.CreateTopicRequest request) {
         return Response.ok(core.createTopic(id, request)).build();
@@ -117,6 +121,7 @@ public class ChannelResource {
 
     @PUT
     @Path("/{id}/topics/{topicId}")
+    @Transactional
     public Response updateTopic(@PathParam("id") final String id,
                                 @PathParam("topicId") String topicId,
                                 io.casehub.qhorus.runtime.api.core.UpdateTopicRequest request) {
@@ -126,6 +131,7 @@ public class ChannelResource {
 
     @POST
     @Path("/{id}/topics/{topicId}/merge")
+    @Transactional
     public Response mergeTopic(@PathParam("id") final String id,
                                @PathParam("topicId") String topicId,
                                io.casehub.qhorus.runtime.api.core.MergeTopicRequest request) {
@@ -143,6 +149,7 @@ public class ChannelResource {
 
     @POST
     @Path("/{id}/members")
+    @Transactional
     public Response addMember(@PathParam("id") final String id,
                               io.casehub.qhorus.runtime.api.core.AddMemberRequest request) {
         core.addMember(id, request);
@@ -151,6 +158,7 @@ public class ChannelResource {
 
     @DELETE
     @Path("/{id}/members/{memberId}")
+    @Transactional
     public Response removeMember(@PathParam("id") final String id,
                                  @PathParam("memberId") String memberId) {
         core.removeMember(id, memberId);
@@ -187,6 +195,7 @@ public class ChannelResource {
     @POST
     @Path("/{id}/messages")
     @Consumes(MediaType.APPLICATION_JSON)
+    @Transactional
     public Response postMessage(@PathParam("id") final String id,
                                 io.casehub.qhorus.runtime.api.core.MessagePostRequest request) {
         return Response.ok(core.postMessage(id, request)).build();

@@ -41,6 +41,7 @@ import io.casehub.qhorus.runtime.channel.ChannelSummaryScheduler;
 import io.casehub.qhorus.runtime.channel.ChannelSummaryService;
 import io.casehub.qhorus.runtime.channel.PresenceService;
 import io.casehub.qhorus.runtime.channel.RateLimiter;
+import io.casehub.qhorus.runtime.channel.SpaceService;
 import io.casehub.qhorus.runtime.config.DeliveryConfig;
 import io.casehub.qhorus.runtime.config.PresenceConfig;
 import io.casehub.qhorus.runtime.config.QhorusConfig;

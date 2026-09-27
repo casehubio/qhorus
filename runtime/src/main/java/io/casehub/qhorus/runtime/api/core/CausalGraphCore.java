@@ -42,8 +42,14 @@ public class CausalGraphCore {
 
     @Transactional
     public List<Map<String, Object>> getAttribution(String entryId) {
+        UUID parsedId;
+        try {
+            parsedId = UUID.fromString(entryId);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid entry ID: " + entryId);
+        }
         List<MessageLedgerEntry> chain = ledgerRepo.findAncestorChainCrossChannel(
-                UUID.fromString(entryId), currentPrincipal.tenancyId());
+                parsedId, currentPrincipal.tenancyId());
 
         Set<UUID> channelIds = chain.stream()
                 .map(e -> e.channelId).collect(Collectors.toSet());

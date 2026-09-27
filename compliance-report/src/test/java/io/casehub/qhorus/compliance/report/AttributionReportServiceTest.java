@@ -117,20 +117,20 @@ class AttributionReportServiceTest {
         when(complianceReportServiceInstance.get()).thenReturn(complianceReportService);
 
         DecisionRecord dr = new DecisionRecord(
-                entryId1, Instant.parse("2026-08-27T10:00:00Z"),
-                "classification-v3.2", 0.91, null, true, null, null);
+                entryId1, "COMMAND", Instant.parse("2026-08-27T10:00:00Z"),
+                "agent-alpha", "classification-v3.2", 0.91, null, null, true, null, null);
         ComplianceReport compReport = new ComplianceReport(
-                null, channelId1,
+                null, channelId1, TENANCY,
                 Instant.parse("2026-08-27T10:00:00Z"),
                 Instant.parse("2026-08-27T10:05:00Z"),
-                1, List.of(dr), "merkle-ch1");
+                1, List.of(dr), null, "merkle-ch1");
         when(complianceReportService.reportForSubject(eq(channelId1), any(), any(), eq(TENANCY)))
                 .thenReturn(compReport);
         when(complianceReportService.reportForSubject(eq(channelId2), any(), any(), eq(TENANCY)))
-                .thenReturn(new ComplianceReport(null, channelId2,
+                .thenReturn(new ComplianceReport(null, channelId2, TENANCY,
                         Instant.parse("2026-08-27T10:00:00Z"),
                         Instant.parse("2026-08-27T10:05:00Z"),
-                        0, List.of(), null));
+                        0, List.of(), null, null));
 
         AttributionReport report = service.generate(CORR_ID, 200, TENANCY);
 

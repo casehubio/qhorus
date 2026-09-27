@@ -29,9 +29,14 @@ public class ExternalAgentBindingResource {
 
     @PUT
     @Path("/{instanceId}")
-    public ExternalAgentBinding put(@PathParam("instanceId") String instanceId,
-                                    ExternalAgentBindingRequest req) {
-        return core.put(instanceId, req);
+    public Response put(@PathParam("instanceId") String instanceId,
+                        ExternalAgentBindingRequest req) {
+        try {
+            return Response.ok(core.put(instanceId, req)).build();
+        } catch (IllegalArgumentException e) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity(Map.of("error", e.getMessage())).build();
+        }
     }
 
     @GET

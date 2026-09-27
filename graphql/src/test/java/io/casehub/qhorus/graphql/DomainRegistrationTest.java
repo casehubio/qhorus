@@ -19,7 +19,7 @@ class DomainRegistrationTest {
 
     @Test
     void channelsSpiAnnotationsPresent() {
-        assertDomain(ChannelsApi.class, "channels");
+        assertDomain(ChannelsApi.class, "qhorus/channels");
     }
 
     @Test
@@ -28,43 +28,43 @@ class DomainRegistrationTest {
                 .describedAs("@GraphQLApi missing on ChannelsSubscriptionResolver")
                 .isNotNull();
         assertThat(ChannelsSubscriptionResolver.class.getAnnotation(McpDomain.class).value())
-                .isEqualTo("channels");
+                .isEqualTo("qhorus/channels");
     }
 
     @Test
     void channelsModelEnricherAnnotated() {
         assertThat(ChannelsModelEnricher.class.getAnnotation(McpDomain.class).value())
-                .isEqualTo("channels");
+                .isEqualTo("qhorus/channels");
     }
 
     @Test
     void governanceSpiAnnotationsPresent() {
-        assertDomain(GovernanceApi.class, "governance");
+        assertDomain(GovernanceApi.class, "qhorus/governance");
     }
 
     @Test
     void messagingSpiAnnotationsPresent() {
-        assertDomain(MessagingApi.class, "messaging");
+        assertDomain(MessagingApi.class, "qhorus/messaging");
     }
 
     @Test
     void agentsSpiAnnotationsPresent() {
-        assertDomain(AgentsApi.class, "agents");
+        assertDomain(AgentsApi.class, "qhorus/agents");
     }
 
     @Test
     void dataSpiAnnotationsPresent() {
-        assertDomain(DataApi.class, "data");
+        assertDomain(DataApi.class, "qhorus/data");
     }
 
     @Test
     void auditSpiAnnotationsPresent() {
-        assertDomain(AuditApi.class, "audit");
+        assertDomain(AuditApi.class, "qhorus/audit");
     }
 
     @Test
     void complianceSpiAnnotationsPresent() {
-        assertDomain(ComplianceApi.class, "compliance");
+        assertDomain(ComplianceApi.class, "qhorus/compliance");
     }
 
     @Test

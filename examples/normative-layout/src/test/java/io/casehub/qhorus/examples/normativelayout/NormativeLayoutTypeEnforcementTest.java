@@ -211,20 +211,21 @@ class NormativeLayoutTypeEnforcementTest {
         SecureCodeReviewScenario s = scenario("enf-8-");
         QuarkusTransaction.requiringNew().run(s::setupChannels);
 
-        DispatchResult[] result = new DispatchResult[1];
-        QuarkusTransaction.requiringNew().run(() -> {
-            result[0] = messageService.dispatch(MessageDispatch.builder()
+        assertThatThrownBy(() -> QuarkusTransaction.requiringNew().run(() -> {
+            messageService.dispatch(MessageDispatch.builder()
                     .channelId(s.observeChannel().id())
                     .sender("agent-x")
                     .type(MessageType.STATUS)
                     .content("still working")
                     .actorType(ActorTypeResolver.resolve("agent-x"))
                     .build());
-        });
-        assertThat(result[0].advisories()).isNotEmpty();
-        String adv = result[0].advisories().get(0).message();
-        assertThat(adv).contains(s.observeChannel);
-        assertThat(adv).contains("STATUS");
-        assertThat(adv).contains("Message dispatched.");
+        })).isInstanceOf(io.casehub.qhorus.api.message.EnforcementBlockedException.class)
+           .satisfies(ex -> {
+                var blocked = (io.casehub.qhorus.api.message.EnforcementBlockedException) ex;
+                assertThat(blocked.violations()).isNotEmpty();
+                String adv = blocked.violations().get(0).message();
+                assertThat(adv).contains(s.observeChannel);
+                assertThat(adv).contains("STATUS");
+           });
     }
 }

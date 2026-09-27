@@ -12,6 +12,7 @@ import jakarta.ws.rs.core.Response;
 
 import io.casehub.platform.api.credentials.CredentialPropertyKeys;
 import io.casehub.platform.api.credentials.CredentialResolver;
+import io.casehub.qhorus.slack.core.SlackBindingCore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -46,9 +47,11 @@ class SlackBindingResourceTest {
         threadCacheStore = mock(SlackThreadCacheStore.class);
         credentialResolver = mock(CredentialResolver.class);
 
-        resource = new SlackBindingResource(
+        var core = new SlackBindingCore(
                 bindingStore, channelService, gateway, backend,
                 channelBindingStore, threadCacheStore, credentialResolver);
+        resource = new SlackBindingResource();
+        resource.core = core;
 
         // Default: channel exists, no conflict, valid token
         Channel ch = Channel.builder("test-channel").id(channelId).build();

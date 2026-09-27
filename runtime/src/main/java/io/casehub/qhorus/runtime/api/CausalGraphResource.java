@@ -29,6 +29,7 @@ public class CausalGraphResource {
         return Response.ok(core.getAttribution(entryId)).build();
     }
 
+    @org.jboss.resteasy.reactive.server.ServerExceptionMapper
     @Produces(MediaType.APPLICATION_JSON)
     public Response handleIllegalArgument(IllegalArgumentException e) {
         return Response.status(400)

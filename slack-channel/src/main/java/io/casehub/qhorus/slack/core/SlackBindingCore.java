@@ -45,10 +45,8 @@ public class SlackBindingCore {
     }
 
     public SlackBindingDto put(UUID channelId, SlackBindingRequest req) {
-        var channel = channelService.findById(channelId).orElse(null);
-        if (channel == null) {
-            throw new IllegalArgumentException("Channel not found: " + channelId);
-        }
+        var channel = channelService.findById(channelId)
+                .orElseThrow(() -> new jakarta.ws.rs.NotFoundException("Channel not found: " + channelId));
         if (channelBindingStore.findByChannelId(channelId).isPresent()) {
             throw new IllegalStateException("Channel already has a generic connector binding");
         }
