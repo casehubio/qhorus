@@ -23,7 +23,6 @@ import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.runtime.api.ChannelResponse;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.dashboard.QhorusDashboardService;
-import jakarta.transaction.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -142,7 +141,6 @@ public class ChannelCore {
 
     // -- Reactions --
 
-    @Transactional
     public void addReaction(String id, String messageId, ReactionRequest request) {
         requireChannel(id);
         long msgId = parseLongParam(messageId, "messageId");
@@ -150,7 +148,6 @@ public class ChannelCore {
         mutationEvent.accept(new ChannelMutationEvent.ReactionAdded(msgId, request.emoji()));
     }
 
-    @Transactional
     public void removeReaction(String id, String messageId, String emoji) {
         requireChannel(id);
         long msgId = parseLongParam(messageId, "messageId");
@@ -166,7 +163,6 @@ public class ChannelCore {
 
     // -- Topics --
 
-    @Transactional
     public Map<String, String> createTopic(String id, CreateTopicRequest request) {
         Channel ch = requireChannel(id);
         String name = request.name() != null ? request.name().trim() : "";
@@ -184,7 +180,6 @@ public class ChannelCore {
         return topicManager.listTopics(requireChannel(id).id());
     }
 
-    @Transactional
     public void updateTopic(String id, String topicId, UpdateTopicRequest request) {
         Channel ch = requireChannel(id);
         long topicLongId = parseLongParam(topicId, "topicId");
@@ -204,7 +199,6 @@ public class ChannelCore {
         mutationEvent.accept(new ChannelMutationEvent.TopicUpdated(ch.id(), updated));
     }
 
-    @Transactional
     public void mergeTopic(String id, String topicId, MergeTopicRequest request) {
         Channel ch = requireChannel(id);
         long sourceTopicId = parseLongParam(topicId, "topicId");
@@ -228,14 +222,12 @@ public class ChannelCore {
         return membershipReader.findByChannel(requireChannel(id).id());
     }
 
-    @Transactional
     public void addMember(String id, AddMemberRequest request) {
         Channel ch = requireChannel(id);
         var membership = membershipManager.join(ch.id(), request.memberId());
         mutationEvent.accept(new ChannelMutationEvent.MemberJoined(ch.id(), membership));
     }
 
-    @Transactional
     public void removeMember(String id, String memberId) {
         Channel ch = requireChannel(id);
         membershipManager.leave(ch.id(), memberId);
@@ -263,7 +255,6 @@ public class ChannelCore {
 
     // -- Messages --
 
-    @Transactional
     public Map<String, Object> postMessage(String id, MessagePostRequest request) {
         Channel ch = requireChannel(id);
         var dispatch = MessageDispatch.builder()
@@ -319,14 +310,12 @@ public class ChannelCore {
         return toResponse(channelService.setProtocolParticipants(requireChannel(id).id(), req.values() != null ? req.values() : List.of()));
     }
 
-    @Transactional
     public ChannelResponse setDeliveryTracking(String id, DeliveryTrackingRequest req) {
         UUID channelId = requireChannel(id).id();
         channelService.setTrackDelivery(channelId, req.enabled());
         return toResponse(channelService.findById(channelId).orElseThrow());
     }
 
-    @Transactional
     public ChannelResponse setEnforcementMode(String id, EnforcementModeRequest req) {
         Channel ch;
         UUID channelId = requireChannel(id).id();
@@ -343,7 +332,6 @@ public class ChannelCore {
         return toResponse(ch);
     }
 
-    @Transactional
     public ChannelResponse setRoutingConfig(String id, RoutingConfigRequest req) {
         if (req.trustThreshold() != null && (req.trustThreshold() < 0.0 || req.trustThreshold() > 1.0)) {
             throw new IllegalArgumentException("trustThreshold must be between 0.0 and 1.0");

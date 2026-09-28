@@ -2,8 +2,10 @@ package io.casehub.qhorus.runtime.identity;
 
 import java.util.Set;
 
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.ContextNotActiveException;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
@@ -44,6 +46,8 @@ import io.casehub.platform.api.identity.TenancyConstants;
  *
  * <p>Refs qhorus#265, qhorus#276.
  */
+@Alternative
+@Priority(200)
 @ApplicationScoped
 public class QhorusInboundCurrentPrincipal implements CurrentPrincipal {
 

@@ -10,8 +10,6 @@ import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,22 +18,28 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-
-@ApplicationScoped
 public class QhorusDashboardService {
 
-    @Inject
-    ChannelService                               channelService;
-    @Inject
-    InstanceService                              instanceService;
-    @Inject
-    MessageService                               messageService;
-    @Inject
-    MessageStore                                 messageStore;
-    @Inject
+    ChannelService channelService;
+    InstanceService instanceService;
+    MessageService messageService;
+    MessageStore messageStore;
     io.casehub.qhorus.runtime.QhorusEntityMapper entityMapper;
-    @Inject
-    ChannelBindingStore                          bindingStore;
+    ChannelBindingStore bindingStore;
+
+    protected QhorusDashboardService() {}
+
+    public QhorusDashboardService(ChannelService channelService, InstanceService instanceService,
+                                  MessageService messageService, MessageStore messageStore,
+                                  io.casehub.qhorus.runtime.QhorusEntityMapper entityMapper,
+                                  ChannelBindingStore bindingStore) {
+        this.channelService = channelService;
+        this.instanceService = instanceService;
+        this.messageService = messageService;
+        this.messageStore = messageStore;
+        this.entityMapper = entityMapper;
+        this.bindingStore = bindingStore;
+    }
 
     public record HumanMessageResult(
             Long messageId, String channelName, String sender, String messageType,

@@ -141,7 +141,7 @@ public class RuntimeBeans {
     @Produces @ApplicationScoped
     public io.casehub.qhorus.runtime.api.core.CausalGraphCore causalGraphCore(
             CausalGraphService causalGraphService,
-            MessageLedgerEntryRepository ledgerRepo,
+            io.casehub.qhorus.runtime.ledger.MessageLedgerReader ledgerRepo,
             ChannelStore channelStore,
             CurrentPrincipal currentPrincipal) {
         return new io.casehub.qhorus.runtime.api.core.CausalGraphCore(

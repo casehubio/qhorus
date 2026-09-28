@@ -45,7 +45,7 @@ import java.util.UUID;
  * <p>Refs qhorus#253, #101, #263, Epic #99.
  */
 @ApplicationScoped
-public class MessageLedgerEntryRepository {
+public class MessageLedgerEntryRepository implements MessageLedgerReader {
 
     @Inject
     @PersistenceUnit("qhorus")

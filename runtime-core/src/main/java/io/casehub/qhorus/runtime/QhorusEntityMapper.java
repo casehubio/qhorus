@@ -9,21 +9,17 @@ import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.message.MessageView;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@ApplicationScoped
 public class QhorusEntityMapper {
 
-    @Inject
     ObjectMapper mapper;
 
-    QhorusEntityMapper() {}
+    protected QhorusEntityMapper() {}
 
     public QhorusEntityMapper(ObjectMapper mapper) {
         this.mapper = mapper;

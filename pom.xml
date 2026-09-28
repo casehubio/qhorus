@@ -34,7 +34,7 @@
     <module>a2a-push-notification</module>
     <module>agent-card-signing</module>
     <module>persistence-memory</module>
-    <!-- runtime-spring disabled until casehub-platform-spring-generator SNAPSHOT is published (platform CI blocked by Quarkus GACT ClassCastException on Java 26) -->
+    <!-- runtime-spring: extraction done (#458), blocked by spring-generator DeliveryConfig type-mapping bug -->
     <!-- <module>runtime-spring</module> -->
     <module>qhorus-rest-spring</module>
     <module>testing</module>

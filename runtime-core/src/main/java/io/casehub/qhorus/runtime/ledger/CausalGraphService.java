@@ -2,22 +2,22 @@ package io.casehub.qhorus.runtime.ledger;
 
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.store.ChannelStore;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.transaction.Transactional;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@ApplicationScoped
 public class CausalGraphService {
 
-    @Inject
-    MessageLedgerEntryRepository ledgerRepo;
-
-    @Inject
+    MessageLedgerReader ledgerRepo;
     ChannelStore channelStore;
+
+    protected CausalGraphService() {}
+
+    public CausalGraphService(MessageLedgerReader ledgerRepo, ChannelStore channelStore) {
+        this.ledgerRepo = ledgerRepo;
+        this.channelStore = channelStore;
+    }
 
     public record CausalGraph(
             String correlationId,
@@ -52,7 +52,6 @@ public class CausalGraphService {
 
     private static final Set<String> TERMINAL_TYPES = Set.of("DONE", "FAILURE", "DECLINE");
 
-    @Transactional
     public CausalGraph buildGraph(String correlationId, int limit, String tenancyId) {
         List<MessageLedgerEntry> entries =
                 ledgerRepo.findByCorrelationIdAcrossChannels(correlationId, limit, tenancyId);
