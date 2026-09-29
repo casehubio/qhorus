@@ -8,7 +8,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import jakarta.transaction.Transactional.TxType;
 
-import io.casehub.ledger.runtime.persistence.LedgerPersistenceUnit;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
 
 /**
  * Atomic sequence number allocator for the qhorus ledger.

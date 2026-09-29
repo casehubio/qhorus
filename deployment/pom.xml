@@ -158,6 +158,17 @@
       <artifactId>casehub-ledger-deployment</artifactId>
       <version>0.2-SNAPSHOT</version>
     </dependency>
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-ledger-annotations-deployment</artifactId>
+      <version>0.2-SNAPSHOT</version>
+    </dependency>
+
+    <!-- Config YAML -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-config-yaml-deployment</artifactId>
+    </dependency>
 
     <!-- Testing -->
     <dependency>

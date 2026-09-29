@@ -59,7 +59,7 @@ class ChannelGatewayCommitmentE2ETest {
                     Map.entry("quarkus.datasource.reactive", "false"),
                     Map.entry("quarkus.hibernate-orm.datasource", "qhorus"),
                     Map.entry("quarkus.hibernate-orm.database.generation", "none"),
-                    Map.entry("quarkus.hibernate-orm.packages", "io.casehub.qhorus.runtime,io.casehub.ledger.runtime"),
+                    Map.entry("quarkus.hibernate-orm.packages", "io.casehub.qhorus.runtime,io.casehub.ledger.runtime,io.casehub.ledger.jpa"),
                     // Named qhorus datasource
                     Map.entry("quarkus.datasource.qhorus.db-kind", "h2"),
                     Map.entry("quarkus.datasource.qhorus.username", "sa"),

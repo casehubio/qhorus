@@ -562,7 +562,7 @@ public class MessageLedgerEntryRepository implements MessageLedgerReader {
                          "AND e.messageType = 'DONE' " +
                          "AND e.occurredAt >= :from AND e.occurredAt <= :to " +
                          "AND NOT EXISTS (SELECT 1 FROM " +
-                         "io.casehub.ledger.runtime.model.LedgerAttestation a " +
+                         "io.casehub.ledger.jpa.LedgerAttestation a " +
                          "WHERE a.ledgerEntryId = e.id) " +
                          "AND NOT EXISTS (SELECT 1 FROM MessageLedgerEntry v " +
                          "WHERE v.correlationId = e.correlationId " +
@@ -611,7 +611,7 @@ public class MessageLedgerEntryRepository implements MessageLedgerReader {
                          "SELECT e FROM MessageLedgerEntry e " +
                          "WHERE e.tenancyId = :tenancyId " +
                          "AND e.messageType = 'DONE' " +
-                         "AND NOT EXISTS (SELECT 1 FROM io.casehub.ledger.runtime.model.LedgerAttestation a " +
+                         "AND NOT EXISTS (SELECT 1 FROM io.casehub.ledger.jpa.LedgerAttestation a " +
                          "WHERE a.ledgerEntryId = e.id) " +
                          "AND EXISTS (SELECT 1 FROM MessageLedgerEntry v " +
                          "WHERE v.correlationId = e.correlationId " +

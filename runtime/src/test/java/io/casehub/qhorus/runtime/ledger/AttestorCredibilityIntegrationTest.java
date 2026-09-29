@@ -245,7 +245,7 @@ class AttestorCredibilityIntegrationTest {
 
     private static LedgerAttestation createAttestation(MessageLedgerEntry entry, String attestorId,
                                                        AttestationVerdict verdict) {
-        LedgerAttestation att = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        LedgerAttestation att = new io.casehub.ledger.jpa.LedgerAttestation();
         att.id = UUID.randomUUID();
         att.ledgerEntryId = entry.id;
         att.subjectId = entry.subjectId;

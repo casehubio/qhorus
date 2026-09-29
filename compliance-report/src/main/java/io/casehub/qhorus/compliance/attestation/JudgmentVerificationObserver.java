@@ -56,8 +56,8 @@ public class JudgmentVerificationObserver implements MessageObserver {
 
     private void writeAttestation(java.util.UUID entryId, java.util.UUID subjectId,
                                   AttestationVerdict verdict, double confidence, String tenancyId) {
-        io.casehub.ledger.runtime.model.LedgerAttestation attestation =
-                new io.casehub.ledger.runtime.model.LedgerAttestation();
+        io.casehub.ledger.jpa.LedgerAttestation attestation =
+                new io.casehub.ledger.jpa.LedgerAttestation();
         attestation.ledgerEntryId = entryId;
         attestation.subjectId     = subjectId;
         attestation.attestorId    = "system:judgment-verifier";

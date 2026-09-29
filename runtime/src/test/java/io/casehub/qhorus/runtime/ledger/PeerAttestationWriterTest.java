@@ -2,7 +2,7 @@ package io.casehub.qhorus.runtime.ledger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.ledger.api.model.AttestationVerdict;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.jpa.LedgerAttestation;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.store.InstanceStore;
 import io.casehub.qhorus.runtime.config.QhorusConfig;

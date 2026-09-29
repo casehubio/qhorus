@@ -702,7 +702,7 @@ class LedgerWriteServiceTest {
         ChannelEntity ch        = channel(channelId);
 
         // Seed a PlainLedgerEntry as the causedByEntryId (domain entry, not a qhorus COMMAND)
-        io.casehub.ledger.runtime.model.PlainLedgerEntry plain = new io.casehub.ledger.runtime.model.PlainLedgerEntry();
+        io.casehub.ledger.jpa.PlainLedgerEntry plain = new io.casehub.ledger.jpa.PlainLedgerEntry();
         plain.id = UUID.randomUUID();
         plain.subjectId = channelId;
         plain.sequenceNumber = 1;

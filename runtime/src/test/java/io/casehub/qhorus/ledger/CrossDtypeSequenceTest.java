@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.ledger.runtime.model.PlainLedgerEntry;
+import io.casehub.ledger.jpa.PlainLedgerEntry;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.message.MessageDispatch;

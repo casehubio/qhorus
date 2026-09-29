@@ -2,7 +2,7 @@ package io.casehub.qhorus.compliance.attestation;
 
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.model.LedgerAttestation;
+import io.casehub.ledger.jpa.LedgerAttestation;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.MessageType;

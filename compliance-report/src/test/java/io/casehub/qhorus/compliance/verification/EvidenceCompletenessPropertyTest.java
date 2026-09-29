@@ -151,7 +151,7 @@ class EvidenceCompletenessPropertyTest {
 
         assertThat(count).isEqualTo(1);
         var captor = org.mockito.ArgumentCaptor.forClass(
-                io.casehub.ledger.runtime.model.LedgerAttestation.class);
+                io.casehub.ledger.jpa.LedgerAttestation.class);
         verify(ledger, times(2)).saveAttestation(captor.capture(), eq("default"));
 
         var attestations = captor.getAllValues();
@@ -180,7 +180,7 @@ class EvidenceCompletenessPropertyTest {
         commandEntry.id        = UUID.randomUUID();
         commandEntry.subjectId = doneEntry.subjectId;
 
-        var existingAttestation = new io.casehub.ledger.runtime.model.LedgerAttestation();
+        var existingAttestation = new io.casehub.ledger.jpa.LedgerAttestation();
         existingAttestation.attestorId = "system:judgment-verifier";
 
         when(messageRepo.findDoneEntriesWithDeferredAttestation(eq("default")))
