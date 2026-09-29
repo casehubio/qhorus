@@ -36,7 +36,8 @@
     <module>persistence-memory</module>
     <!-- runtime-spring: extraction done (#458), blocked by spring-generator DeliveryConfig type-mapping bug -->
     <!-- <module>runtime-spring</module> -->
-    <module>qhorus-rest-spring</module>
+    <!-- qhorus-rest-spring: blocked by casehub-platform-rest-spring-generator (not yet published) -->
+    <!-- <module>qhorus-rest-spring</module> -->
     <module>testing</module>
     <module>examples</module>
   </modules>
