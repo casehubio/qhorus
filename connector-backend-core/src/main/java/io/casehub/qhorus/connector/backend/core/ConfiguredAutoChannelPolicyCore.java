@@ -1,4 +1,4 @@
-package io.casehub.qhorus.connector.backend;
+package io.casehub.qhorus.connector.backend.core;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -8,62 +8,50 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-
 import io.casehub.connectors.InboundConnectorIds;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.connectors.twilio.TwilioSmsConnector;
 import io.casehub.connectors.whatsapp.WhatsAppConnector;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.ChannelSlugValidator;
-import io.quarkus.arc.DefaultBean;
-import org.jboss.logging.Logger;
 
-@DefaultBean
-@ApplicationScoped
-class ConfiguredAutoChannelPolicy implements AutoChannelPolicy {
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-    private static final Logger LOG = Logger.getLogger(ConfiguredAutoChannelPolicy.class);
+public class ConfiguredAutoChannelPolicyCore implements AutoChannelPolicy {
 
-    // Convention table: protocol-coupled connectors where inbound and outbound
-    // must use the same provider (SMS threading rules, WhatsApp API contract).
+    private static final Logger LOG = Logger.getLogger(ConfiguredAutoChannelPolicyCore.class.getName());
+
     private static final Map<String, String> OUTBOUND_CONVENTION = Map.of(
             InboundConnectorIds.TWILIO_SMS, TwilioSmsConnector.ID,
             InboundConnectorIds.WHATSAPP,   WhatsAppConnector.ID
     );
 
-    private final ConnectorAutoChannelConfig config;
+    private final AutoChannelEntries config;
 
-    @Inject
-    ConfiguredAutoChannelPolicy(ConnectorAutoChannelConfig config) {
+    public ConfiguredAutoChannelPolicyCore(AutoChannelEntries config) {
         this.config = config;
+        validateConfiguredPatterns();
     }
 
-    @PostConstruct
-    void validateConfiguredPatterns() {
+    private void validateConfiguredPatterns() {
         config.entries().forEach((connectorId, entry) ->
-            entry.channelNamePattern().ifPresent(ConfiguredAutoChannelPolicy::validatePattern));
+                entry.channelNamePattern().ifPresent(ConfiguredAutoChannelPolicyCore::validatePattern));
     }
 
     @Override
     public Optional<AutoChannelSpec> onFirstContact(InboundMessage msg, String lookupKey) {
-        ConnectorAutoChannelConfig.ConnectorAutoChannelEntry entry =
-                config.entries().get(msg.connectorId());
+        AutoChannelEntries.Entry entry = config.entries().get(msg.connectorId());
         if (entry == null || !entry.enabled()) {
             return Optional.empty();
         }
 
         String outboundConnectorId = entry.outboundConnectorId()
-                .or(() -> Optional.ofNullable(OUTBOUND_CONVENTION.get(msg.connectorId())))
+                .or(() -> java.util.Optional.ofNullable(OUTBOUND_CONVENTION.get(msg.connectorId())))
                 .orElse(null);
 
         if (outboundConnectorId == null) {
-            LOG.errorf("auto-channel enabled for connector '%s' but no outbound-connector-id " +
-                       "configured and no convention applies — add casehub.qhorus.connector." +
-                       "auto-channel.entries.\"%s\".outbound-connector-id to application.properties",
-                       msg.connectorId(), msg.connectorId());
+            LOG.log(Level.SEVERE, "auto-channel enabled for connector ''{0}'' but no outbound-connector-id configured and no convention applies", msg.connectorId());
             return Optional.empty();
         }
 
@@ -86,14 +74,7 @@ class ConfiguredAutoChannelPolicy implements AutoChannelPolicy {
                 outboundConnectorId, outboundDestination));
     }
 
-    /**
-     * Normalises a connector ID to a slug segment without appending a hash.
-     * Connector IDs are developer-defined controlled strings — they should be
-     * valid slugs already. This function is defensive normalisation only.
-     * Two non-conformant IDs that slugify identically share the same segment;
-     * connector IDs that require slugification should be made unique at source.
-     */
-    static String slugifyConnectorId(String connectorId) {
+    public static String slugifyConnectorId(String connectorId) {
         if (connectorId == null || connectorId.isBlank()) {
             throw new IllegalArgumentException("Connector ID must not be null or blank");
         }
@@ -116,16 +97,7 @@ class ConfiguredAutoChannelPolicy implements AutoChannelPolicy {
         return slug;
     }
 
-    /**
-     * Sanitises an arbitrary external identifier (phone number, email, etc.) to a
-     * slug segment, always appending an 8-hex-char SHA-256 hash of the lowercased
-     * input. The hash is unconditional — it guarantees uniqueness even when two
-     * different raw inputs produce the same sanitised prefix.
-     *
-     * <p>Hash is of the lowercased form so case variants (e.g. user@example.com
-     * and User@Example.COM) map to the same channel.
-     */
-    static String sanitiseSegment(String raw) {
+    public static String sanitiseSegment(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("Cannot sanitise null or blank segment");
         }
@@ -148,8 +120,7 @@ class ConfiguredAutoChannelPolicy implements AutoChannelPolicy {
         return slug + "-" + hashHex8(lowercased);
     }
 
-    /** Validates that every literal segment in a channel name pattern is a valid slug segment. */
-    static void validatePattern(String pattern) {
+    public static void validatePattern(String pattern) {
         for (String segment : pattern.split("/", -1)) {
             String testable = segment.replaceAll("\\{[^}]+}", "a");
             if (!ChannelSlugValidator.isValidSegment(testable)) {
@@ -164,7 +135,7 @@ class ConfiguredAutoChannelPolicy implements AutoChannelPolicy {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(lowercased.getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(hash, 0, 4); // 4 bytes = 8 hex chars
+            return HexFormat.of().formatHex(hash, 0, 4);
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256 not available", e);
         }

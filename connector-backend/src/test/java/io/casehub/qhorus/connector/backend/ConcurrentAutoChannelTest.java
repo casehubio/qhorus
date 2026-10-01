@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -38,7 +40,7 @@ import io.quarkus.test.junit.QuarkusTest;
 @QuarkusTest
 class ConcurrentAutoChannelTest {
 
-    @Inject ConnectorChannelBackend backend;
+    @Inject ConnectorChannelBackendCore backend;
     @Inject InMemoryChannelStore channelStore;
     @Inject InMemoryChannelBindingStore channelBindingStore;
 
@@ -59,8 +61,8 @@ class ConcurrentAutoChannelTest {
 
     @Test
     void concurrentFirstContact_oneBindingCreated() throws Exception {
-        // Channel name uses sanitised sender segment — matches real ConfiguredAutoChannelPolicy output.
-        String senderSegment = ConfiguredAutoChannelPolicy.sanitiseSegment(SENDER);
+        // Channel name uses sanitised sender segment — matches real ConfiguredAutoChannelPolicyCore output.
+        String senderSegment = ConfiguredAutoChannelPolicyCore.sanitiseSegment(SENDER);
         when(autoChannelPolicy.onFirstContact(any(), eq(SENDER)))
                 .thenReturn(Optional.of(new AutoChannelSpec(
                         "connector/" + CONNECTOR + "/" + senderSegment,

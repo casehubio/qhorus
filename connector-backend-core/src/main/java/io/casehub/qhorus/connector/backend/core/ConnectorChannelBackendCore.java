@@ -1,49 +1,36 @@
-package io.casehub.qhorus.connector.backend;
+package io.casehub.qhorus.connector.backend.core;
 
 import java.sql.SQLIntegrityConstraintViolationException;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
-import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
-import jakarta.enterprise.event.ObservesAsync;
-import jakarta.enterprise.inject.Any;
-import jakarta.enterprise.inject.Instance;
-import jakarta.inject.Inject;
-import jakarta.persistence.PersistenceException;
 
 import io.casehub.connectors.ConnectorMessage;
 import io.casehub.connectors.ConnectorService;
 import io.casehub.connectors.InboundMessage;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
+import io.casehub.qhorus.api.channel.ChannelCreateRequest;
+import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.DeliveryGuarantee;
 import io.casehub.qhorus.api.gateway.HumanParticipatingChannelBackend;
 import io.casehub.qhorus.api.gateway.InboundHumanMessage;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
-import io.casehub.qhorus.api.channel.ChannelCreateRequest;
-import io.casehub.qhorus.api.channel.FindOrCreateResult;
+import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.jboss.logging.Logger;
+import jakarta.persistence.PersistenceException;
 
-@ApplicationScoped
-public class ConnectorChannelBackend implements HumanParticipatingChannelBackend {
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-    private static final Logger LOG = Logger.getLogger(ConnectorChannelBackend.class);
+public class ConnectorChannelBackendCore implements HumanParticipatingChannelBackend {
+
+    private static final Logger LOG = Logger.getLogger(ConnectorChannelBackendCore.class.getName());
     private static final String BACKEND_ID = "connector-human";
 
     private final ChannelGateway gateway;
@@ -52,46 +39,21 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
     private final ConnectorService connectorService;
     private final MeterRegistry meterRegistry;
     private final AutoChannelPolicy autoChannelPolicy;
+    private final Map<String, ConnectorNormaliser> normalisersByConnectorId;
 
     private final ConcurrentHashMap<UUID, CacheEntry> cache = new ConcurrentHashMap<>();
 
-    @Inject @Any
-    Instance<ConnectorNormaliser> connectorNormalisers;
-
-    private Map<String, ConnectorNormaliser> normalisersByConnectorId = Map.of();
-
-    @Inject
-    public ConnectorChannelBackend(
-            final ChannelGateway gateway,
-            final ChannelService channelService,
-            final ChannelBindingStore bindingStore,
-            final ConnectorService connectorService,
-            final MeterRegistry meterRegistry,
-            final AutoChannelPolicy autoChannelPolicy) {
+    public ConnectorChannelBackendCore(ChannelGateway gateway, ChannelService channelService,
+                                        ChannelBindingStore bindingStore, ConnectorService connectorService,
+                                        MeterRegistry meterRegistry, AutoChannelPolicy autoChannelPolicy,
+                                        Map<String, ConnectorNormaliser> normalisersByConnectorId) {
         this.gateway = gateway;
         this.channelService = channelService;
         this.bindingStore = bindingStore;
         this.connectorService = connectorService;
         this.meterRegistry = meterRegistry;
         this.autoChannelPolicy = autoChannelPolicy;
-    }
-
-    @PostConstruct
-    void buildNormaliserRegistry() {
-        final Map<String, ConnectorNormaliser> map = new HashMap<>();
-        for (final ConnectorNormaliser cn : connectorNormalisers) {
-            final String id = cn.connectorId();
-            if (id == null || id.isBlank()) {
-                throw new IllegalStateException(
-                        cn.getClass().getName() + ".connectorId() returned null or blank");
-            }
-            if (map.put(id, cn) != null) {
-                throw new IllegalStateException(
-                        "Duplicate ConnectorNormaliser for connectorId '" + id + "' — "
-                        + "each connector must have at most one normaliser");
-            }
-        }
-        normalisersByConnectorId = Collections.unmodifiableMap(map);
+        this.normalisersByConnectorId = normalisersByConnectorId;
     }
 
     @Override
@@ -119,16 +81,15 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
     }
 
     @Override
-    public void open(final ChannelRef channel, final Map<String, String> metadata) {
+    public void open(ChannelRef channel, Map<String, String> metadata) {
     }
 
     @Override
-    public void close(final ChannelRef channel) {
+    public void close(ChannelRef channel) {
         cache.remove(channel.id());
     }
 
-    public void onChannelInitialised(@Observes final ChannelInitialisedEvent event) {
-        UUID channelId = event.channelId();
+    public void onChannelInitialised(UUID channelId) {
         bindingStore.findByChannelId(channelId).ifPresentOrElse(binding -> {
             cache.put(channelId, new CacheEntry(
                     binding.inboundConnectorId(),
@@ -137,11 +98,10 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
                     binding.outboundDestination()));
             gateway.deregisterBackend(channelId, BACKEND_ID);
             gateway.registerBackend(channelId, this, "human_participating");
-        }, () -> {
-        });
+        }, () -> {});
     }
 
-    public CompletionStage<Void> onInboundMessage(@ObservesAsync final InboundMessage msg) {
+    public void onInboundMessage(InboundMessage msg) {
         String lookupKey = ConnectorKeyStrategy.deriveKey(msg);
 
         channelService.findByConnectorKey(msg.connectorId(), lookupKey)
@@ -149,13 +109,11 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
                 .ifPresentOrElse(
                         channel -> route(channel, msg),
                         () -> {
-                            LOG.warnf("No channel for connector=%s key=%s — discarding",
-                                    msg.connectorId(), lookupKey);
+                            LOG.log(Level.WARNING, "No channel for connector={0} key={1} — discarding",
+                                    new Object[]{msg.connectorId(), lookupKey});
                             meterRegistry.counter("inbound_messages_discarded_total",
                                     "connector_id", msg.connectorId()).increment();
                         });
-
-        return CompletableFuture.completedFuture(null);
     }
 
     private void route(Channel channel, InboundMessage msg) {
@@ -201,19 +159,19 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
             if (isConcurrentInsert(ex)) {
                 Optional<Channel> recovered = channelService.findByConnectorKey(msg.connectorId(), lookupKey);
                 if (recovered.isEmpty()) {
-                    LOG.errorf("Race recovery failed: binding exists but channel not found for connector=%s key=%s — discarding",
-                            msg.connectorId(), lookupKey);
+                    LOG.log(Level.SEVERE, "Race recovery failed: binding exists but channel not found for connector={0} key={1} — discarding",
+                            new Object[]{msg.connectorId(), lookupKey});
                     return Optional.empty();
                 }
                 return recovered;
             }
-            LOG.errorf(ex, "DB error auto-creating channel for connector=%s key=%s — discarding",
-                    msg.connectorId(), lookupKey);
+            LOG.log(Level.SEVERE, "DB error auto-creating channel for connector={0} key={1} — discarding",
+                    new Object[]{msg.connectorId(), lookupKey});
             return Optional.empty();
         }
     }
 
-    static boolean isConcurrentInsert(PersistenceException ex) {
+    public static boolean isConcurrentInsert(PersistenceException ex) {
         Throwable cause = ex;
         while (cause != null) {
             if (cause instanceof SQLIntegrityConstraintViolationException c) {
@@ -231,11 +189,11 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
     }
 
     @Override
-    public void post(final ChannelRef channel, final OutboundMessage message) {
+    public void post(ChannelRef channel, OutboundMessage message) {
         CacheEntry entry = cache.get(channel.id());
         if (entry == null) {
-            LOG.debugf("No cache entry for channel %s (%s) — not a connector-backed channel, skipping",
-                    channel.id(), channel.name());
+            LOG.log(Level.FINE, "No cache entry for channel {0} ({1}) — not a connector-backed channel, skipping",
+                    new Object[]{channel.id(), channel.name()});
             return;
         }
         String title = OutboundTitle.forConnector(entry.outboundConnectorId(), channel);
@@ -243,24 +201,21 @@ public class ConnectorChannelBackend implements HumanParticipatingChannelBackend
             connectorService.send(entry.outboundConnectorId(),
                     new ConnectorMessage(entry.outboundDestination(), title, message.content()));
         } catch (IllegalArgumentException ex) {
-            LOG.errorf(ex, "Failed to send via connector %s to channel %s (%s)",
-                    entry.outboundConnectorId(), channel.id(), channel.name());
+            LOG.log(Level.SEVERE, "Failed to send via connector {0} to channel {1} ({2})",
+                    new Object[]{entry.outboundConnectorId(), channel.id(), channel.name()});
         }
     }
 
-    double discardedCount(final String connectorId) {
+    public double discardedCount(String connectorId) {
         return meterRegistry.counter("inbound_messages_discarded_total",
                 "connector_id", connectorId).count();
     }
 
-    double autoCreatedCount(final String connectorId) {
+    public double autoCreatedCount(String connectorId) {
         return meterRegistry.counter("inbound_channels_auto_created_total",
                 "connector_id", connectorId).count();
     }
 
-    private record CacheEntry(
-            String inboundConnectorId,
-            String externalKey,
-            String outboundConnectorId,
-            String outboundDestination) {}
+    private record CacheEntry(String inboundConnectorId, String externalKey,
+                               String outboundConnectorId, String outboundDestination) {}
 }

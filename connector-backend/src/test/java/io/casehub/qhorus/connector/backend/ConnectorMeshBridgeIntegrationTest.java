@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -30,7 +32,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 /**
- * Verifies CDI wiring of {@link ConnectorQhorusMeshBridge} against real
+ * Verifies CDI wiring of {@link ConnectorQhorusMeshBridgeCore} against real
  * {@link ChannelService} (backed by {@link InMemoryChannelStore}).
  *
  * <p>{@link MessageService} is mocked to assert dispatch arguments without
@@ -44,7 +46,7 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 @QuarkusTest
 class ConnectorMeshBridgeIntegrationTest {
 
-    @Inject ConnectorQhorusMeshBridge bridge;
+    @Inject ConnectorQhorusMeshBridgeCore bridge;
     @Inject ChannelService channelService;
     @Inject InMemoryChannelStore channelStore;
 

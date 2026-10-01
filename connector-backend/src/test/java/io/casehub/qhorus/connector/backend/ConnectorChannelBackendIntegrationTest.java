@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
@@ -42,9 +44,9 @@ import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTest
-class ConnectorChannelBackendIntegrationTest {
+class ConnectorChannelBackendCoreIntegrationTest {
 
-    @Inject ConnectorChannelBackend backend;
+    @Inject ConnectorChannelBackendCore backend;
     @Inject ChannelService channelService;
     @Inject ChannelGateway gateway;
     @Inject InMemoryChannelStore channelStore;
@@ -72,7 +74,7 @@ class ConnectorChannelBackendIntegrationTest {
                                                                      .build());
         channelId = ch.id();
         // initChannel fires @Observes ChannelInitialisedEvent synchronously —
-        // ConnectorChannelBackend.onChannelInitialised populates cache before setUp returns.
+        // ConnectorChannelBackendCore.onChannelInitialised populates cache before setUp returns.
         gateway.initChannel(ch.id(), new ChannelRef(ch.id(), ch.name()));
     }
 
@@ -99,10 +101,10 @@ class ConnectorChannelBackendIntegrationTest {
     void inboundMessageViaEvent_cdIWiring_routesToMessageService() throws Exception {
         // Verifies the CDI async event chain:
         //   InboundConnectorService.receive(msg) → Event<InboundMessage>.fireAsync()
-        //     → @ObservesAsync ConnectorChannelBackend.onInboundMessage
+        //     → @ObservesAsync ConnectorChannelBackendCore.onInboundMessage
         //
         // onInboundMessage returns CompletionStage<Void>; join() waits for observer completion
-        // before asserting. ConnectorChannelBackend is in main sources — ArC registers its
+        // before asserting. ConnectorChannelBackendCore is in main sources — ArC registers its
         // @ObservesAsync method at build time, so fireAsync() reliably delivers the event.
         InboundMessage msg = new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, "+15551110000",
                 "+14155552671", "CDI wiring check", List.of(), Instant.now(), Map.of(), null);

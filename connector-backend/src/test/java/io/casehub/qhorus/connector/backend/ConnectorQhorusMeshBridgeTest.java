@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
@@ -35,7 +37,7 @@ class ConnectorQhorusMeshBridgeTest {
     private MessageService messageService;
     private CurrentPrincipal currentPrincipal;
     private ManagedExecutor executor;
-    private ConnectorQhorusMeshBridge bridge;
+    private ConnectorQhorusMeshBridgeCore bridge;
 
     private static final String DEFAULT_TENANCY = "tenant-default";
     private static final UUID CHANNEL_ID = UUID.randomUUID();
@@ -54,8 +56,8 @@ class ConnectorQhorusMeshBridgeTest {
             return null;
         }).when(executor).execute(any());
 
-        bridge = new ConnectorQhorusMeshBridge(channelService, messageService, currentPrincipal, executor,
-                                               configWith("connector-audit"));
+        bridge = new ConnectorQhorusMeshBridgeCore(channelService, messageService, currentPrincipal, executor,
+                                               "connector-audit");
 
         lenient().when(currentPrincipal.tenancyId()).thenReturn(DEFAULT_TENANCY);
         lenient().when(messageService.dispatch(any())).thenReturn(dummyResult());
@@ -72,8 +74,8 @@ class ConnectorQhorusMeshBridgeTest {
 
     @Test
     void blankDeliveryChannelName_noOp() {
-        bridge = new ConnectorQhorusMeshBridge(channelService, messageService, currentPrincipal, executor,
-                                               configWith(""));
+        bridge = new ConnectorQhorusMeshBridgeCore(channelService, messageService, currentPrincipal, executor,
+                                               "");
 
         bridge.notifyDelivered("slack", "https://hooks.slack.com/services/x", "Hello");
 

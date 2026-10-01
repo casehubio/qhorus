@@ -3,6 +3,7 @@ package io.casehub.qhorus.connector.backend;
 import java.util.Map;
 import java.util.Optional;
 
+import io.casehub.qhorus.connector.backend.core.AutoChannelEntries;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 
@@ -12,7 +13,8 @@ interface ConnectorAutoChannelConfig {
     /** Keyed by inbound connector ID, e.g. {@code "twilio-sms-inbound"}. */
     Map<String, ConnectorAutoChannelEntry> entries();
 
-    interface ConnectorAutoChannelEntry {
+    interface ConnectorAutoChannelEntry extends AutoChannelEntries.Entry {
+        // extends Entry to share the core interface
         /**
          * Whether auto-channel creation is active for this connector.
          * Default: false — absent key means disabled, not a config error.

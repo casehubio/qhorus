@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNoException;
@@ -21,9 +23,9 @@ import io.casehub.qhorus.api.channel.ChannelSlugValidator;
 
 class ConfiguredAutoChannelPolicyTest {
 
-    private ConnectorAutoChannelConfig config;
-    private ConnectorAutoChannelConfig.ConnectorAutoChannelEntry smsEntry;
-    private ConfiguredAutoChannelPolicy policy;
+    private AutoChannelEntries config;
+    private AutoChannelEntries.Entry smsEntry;
+    private ConfiguredAutoChannelPolicyCore policy;
 
     private InboundMessage smsMsg(String sender) {
         return new InboundMessage(InboundConnectorIds.TWILIO_SMS, InboundConnectorTypes.SMS, sender,
@@ -37,14 +39,14 @@ class ConfiguredAutoChannelPolicyTest {
 
     @BeforeEach
     void setUp() {
-        config = mock(ConnectorAutoChannelConfig.class);
-        smsEntry = mock(ConnectorAutoChannelConfig.ConnectorAutoChannelEntry.class);
+        config = mock(AutoChannelEntries.class);
+        smsEntry = mock(AutoChannelEntries.Entry.class);
         when(smsEntry.enabled()).thenReturn(true);
         when(smsEntry.outboundConnectorId()).thenReturn(Optional.empty());
         when(smsEntry.channelNamePattern()).thenReturn(Optional.empty());
         when(smsEntry.semantic()).thenReturn(Optional.empty());
-        when(config.entries()).thenReturn(Map.of(InboundConnectorIds.TWILIO_SMS, smsEntry));
-        policy = new ConfiguredAutoChannelPolicy(config);
+        doReturn(Map.of(InboundConnectorIds.TWILIO_SMS, smsEntry)).when(config).entries();
+        policy = new ConfiguredAutoChannelPolicyCore(config);
     }
 
     @Test
@@ -125,7 +127,7 @@ class ConfiguredAutoChannelPolicyTest {
         when(emailEntry.outboundConnectorId()).thenReturn(Optional.of("email"));
         when(emailEntry.channelNamePattern()).thenReturn(Optional.empty());
         when(emailEntry.semantic()).thenReturn(Optional.empty());
-        when(config.entries()).thenReturn(Map.of(InboundConnectorIds.EMAIL, emailEntry));
+        doReturn(Map.of(InboundConnectorIds.EMAIL, emailEntry)).when(config).entries();
 
         Optional<AutoChannelSpec> result = policy.onFirstContact(
                 emailMsg("alice@example.com"), "alice@example.com");
@@ -143,7 +145,7 @@ class ConfiguredAutoChannelPolicyTest {
         when(emailEntry.outboundConnectorId()).thenReturn(Optional.empty());
         when(emailEntry.channelNamePattern()).thenReturn(Optional.empty());
         when(emailEntry.semantic()).thenReturn(Optional.empty());
-        when(config.entries()).thenReturn(Map.of(InboundConnectorIds.EMAIL, emailEntry));
+        doReturn(Map.of(InboundConnectorIds.EMAIL, emailEntry)).when(config).entries();
 
         assertThat(policy.onFirstContact(emailMsg("alice@example.com"), "alice@example.com"))
                 .isEmpty();
@@ -157,7 +159,7 @@ class ConfiguredAutoChannelPolicyTest {
         when(waEntry.outboundConnectorId()).thenReturn(Optional.empty());
         when(waEntry.channelNamePattern()).thenReturn(Optional.empty());
         when(waEntry.semantic()).thenReturn(Optional.empty());
-        when(config.entries()).thenReturn(Map.of(InboundConnectorIds.WHATSAPP, waEntry));
+        doReturn(Map.of(InboundConnectorIds.WHATSAPP, waEntry)).when(config).entries();
 
         InboundMessage waMsg = new InboundMessage(InboundConnectorIds.WHATSAPP, InboundConnectorTypes.WHATSAPP,
                 "+44791100001", "+14155550000", "hi", List.of(), Instant.now(), Map.of(), null);
@@ -171,38 +173,38 @@ class ConfiguredAutoChannelPolicyTest {
     // ── sanitiseSegment ──
 
     @Test void sanitiseSegment_phoneGetsIdPrefix() {
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment("+14155552671");
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment("+14155552671");
         assertThat(result).startsWith("id-14155552671-");
         assertThat(result).matches("id-14155552671-[0-9a-f]{8}");
     }
 
     @Test void sanitiseSegment_emailNormalised() {
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment("user@example.com");
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment("user@example.com");
         assertThat(result).startsWith("user-example-com-");
         assertThat(result).matches("user-example-com-[0-9a-f]{8}");
     }
 
     @Test void sanitiseSegment_caseVariantsProduceSameResult() {
-        String lower = ConfiguredAutoChannelPolicy.sanitiseSegment("user@example.com");
-        String upper = ConfiguredAutoChannelPolicy.sanitiseSegment("User@Example.COM");
+        String lower = ConfiguredAutoChannelPolicyCore.sanitiseSegment("user@example.com");
+        String upper = ConfiguredAutoChannelPolicyCore.sanitiseSegment("User@Example.COM");
         assertThat(lower).isEqualTo(upper); // hash computed on lowercased form
     }
 
     @Test void sanitiseSegment_validSlugGetsHashAppended() {
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment("twilio-sms-inbound");
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment("twilio-sms-inbound");
         assertThat(result).startsWith("twilio-sms-inbound-");
         assertThat(result).matches("twilio-sms-inbound-[0-9a-f]{8}");
     }
 
     @Test void sanitiseSegment_alwaysProducesValidSlug() {
         // Any sanitised output must pass the segment validator
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment("+14155552671");
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment("+14155552671");
         assertThat(ChannelSlugValidator.isValidSegment(result)).isTrue();
     }
 
     @Test void sanitiseSegment_uuidInputPreservesFullContent() {
         String uuid = "550e8400-e29b-41d4-a716-446655440000";
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment(uuid);
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment(uuid);
         // UUID starts with digit → id- prefix; full UUID content preserved (39 chars < 71)
         assertThat(result).startsWith("id-550e8400-e29b-41d4-a716-446655440000-");
     }
@@ -210,7 +212,7 @@ class ConfiguredAutoChannelPolicyTest {
     @Test void sanitiseSegment_longInputTruncatedToMaxLength() {
         // Input is 100 'a' chars — exceeds 71-char prefix limit
         String longInput = "a".repeat(100);
-        String result = ConfiguredAutoChannelPolicy.sanitiseSegment(longInput);
+        String result = ConfiguredAutoChannelPolicyCore.sanitiseSegment(longInput);
         // Total must be <= 80 chars and pass the segment validator
         assertThat(result).hasSizeLessThanOrEqualTo(80);
         assertThat(ChannelSlugValidator.isValidSegment(result)).isTrue();
@@ -219,60 +221,60 @@ class ConfiguredAutoChannelPolicyTest {
     // ── slugifyConnectorId ──
 
     @Test void slugifyConnectorId_validSlugUnchanged() {
-        assertThat(ConfiguredAutoChannelPolicy.slugifyConnectorId("twilio-sms-inbound"))
+        assertThat(ConfiguredAutoChannelPolicyCore.slugifyConnectorId("twilio-sms-inbound"))
             .isEqualTo("twilio-sms-inbound"); // NO hash appended
     }
 
     @Test void slugifyConnectorId_spacesNormalised() {
-        assertThat(ConfiguredAutoChannelPolicy.slugifyConnectorId("My Connector"))
+        assertThat(ConfiguredAutoChannelPolicyCore.slugifyConnectorId("My Connector"))
             .isEqualTo("my-connector"); // NO hash appended
     }
 
     @Test void slugifyConnectorId_digitStartGetsIdPrefix() {
-        assertThat(ConfiguredAutoChannelPolicy.slugifyConnectorId("123connector"))
+        assertThat(ConfiguredAutoChannelPolicyCore.slugifyConnectorId("123connector"))
             .isEqualTo("id-123connector");
     }
 
     @Test void slugifyConnectorId_alwaysProducesValidSlug() {
         assertThat(ChannelSlugValidator.isValidSegment(
-            ConfiguredAutoChannelPolicy.slugifyConnectorId("My Connector"))).isTrue();
+            ConfiguredAutoChannelPolicyCore.slugifyConnectorId("My Connector"))).isTrue();
     }
 
     // ── validatePattern ──
 
     @Test void validatePattern_acceptsAllPlaceholders() {
         assertThatNoException().isThrownBy(() ->
-            ConfiguredAutoChannelPolicy.validatePattern("connector/{connectorId}/{lookupKey}"));
+            ConfiguredAutoChannelPolicyCore.validatePattern("connector/{connectorId}/{lookupKey}"));
     }
 
     @Test void validatePattern_acceptsValidLiterals() {
         assertThatNoException().isThrownBy(() ->
-            ConfiguredAutoChannelPolicy.validatePattern("sms/{lookupKey}"));
+            ConfiguredAutoChannelPolicyCore.validatePattern("sms/{lookupKey}"));
     }
 
     @Test void validatePattern_rejectsUppercaseLiteral() {
         assertThatIllegalStateException()
-            .isThrownBy(() -> ConfiguredAutoChannelPolicy.validatePattern("Support/{lookupKey}"))
+            .isThrownBy(() -> ConfiguredAutoChannelPolicyCore.validatePattern("Support/{lookupKey}"))
             .withMessageContaining("Support");
     }
 
     @Test void validatePattern_rejectsMixedLiteralWithUppercase() {
         assertThatIllegalStateException()
             .isThrownBy(() ->
-                ConfiguredAutoChannelPolicy.validatePattern("Billing-{lookupKey}/work"))
+                ConfiguredAutoChannelPolicyCore.validatePattern("Billing-{lookupKey}/work"))
             .withMessageContaining("Billing");
     }
 
     @Test void validatePattern_purePlaceholderSegmentPasses() {
         // {lookupKey} alone → substituted to "a" → valid
         assertThatNoException().isThrownBy(() ->
-            ConfiguredAutoChannelPolicy.validatePattern("{lookupKey}/sub-path"));
+            ConfiguredAutoChannelPolicyCore.validatePattern("{lookupKey}/sub-path"));
     }
 
     @Test void validatePattern_rejectsDigitStartingLiteralSegment() {
         // A literal segment starting with a digit is invalid — must start with [a-z]
         assertThatIllegalStateException()
-            .isThrownBy(() -> ConfiguredAutoChannelPolicy.validatePattern("123/{lookupKey}"))
+            .isThrownBy(() -> ConfiguredAutoChannelPolicyCore.validatePattern("123/{lookupKey}"))
             .withMessageContaining("123");
     }
 }

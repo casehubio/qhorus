@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
@@ -17,14 +19,14 @@ import io.quarkus.test.junit.TestProfile;
  * Smoke test confirming that {@code @ConfigMapping(prefix = "casehub.qhorus.connector.auto-channel")}
  * with {@code Map<String, ConnectorAutoChannelEntry>} and hyphenated map keys (e.g.
  * {@code "twilio-sms-inbound"}) is accepted by SmallRye Config at startup and wired
- * correctly to {@link ConfiguredAutoChannelPolicy}.
+ * correctly to {@link ConfiguredAutoChannelPolicyCore}.
  *
- * <p>The unit test {@link ConfiguredAutoChannelPolicyTest} mocks the config; this test exercises
+ * <p>The unit test {@link ConfiguredAutoChannelPolicyCoreTest} mocks the config; this test exercises
  * the real config pipeline. Refs qhorus#226.
  */
 @QuarkusTest
-@TestProfile(ConfiguredAutoChannelPolicyConfigMappingTest.Profile.class)
-class ConfiguredAutoChannelPolicyConfigMappingTest {
+@TestProfile(ConfiguredAutoChannelPolicyCoreConfigMappingTest.Profile.class)
+class ConfiguredAutoChannelPolicyCoreConfigMappingTest {
 
     public static class Profile implements QuarkusTestProfile {
         @Override
@@ -39,7 +41,7 @@ class ConfiguredAutoChannelPolicyConfigMappingTest {
     ConnectorAutoChannelConfig autoChannelConfig;
 
     @Inject
-    ConfiguredAutoChannelPolicy policy;
+    ConfiguredAutoChannelPolicyCore policy;
 
     @Test
     void configMapping_startupSucceeds_noConfigurationException() {

@@ -1,5 +1,7 @@
 package io.casehub.qhorus.connector.backend;
 
+import io.casehub.qhorus.connector.backend.core.*;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 
@@ -20,7 +22,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 class ConnectorNormaliserDispatchTest {
 
-    private ConnectorChannelBackend backend;
+    private ConnectorChannelBackendCore backend;
     private ChannelBindingStore bindingStore;
 
     @BeforeEach
@@ -30,8 +32,8 @@ class ConnectorNormaliserDispatchTest {
         bindingStore = mock(ChannelBindingStore.class);
         ConnectorService connectorService = mock(ConnectorService.class);
         AutoChannelPolicy autoChannelPolicy = mock(AutoChannelPolicy.class);
-        backend = new ConnectorChannelBackend(gateway, channelService, bindingStore,
-                connectorService, new SimpleMeterRegistry(), autoChannelPolicy);
+        backend = new ConnectorChannelBackendCore(gateway, channelService, bindingStore,
+                connectorService, new SimpleMeterRegistry(), autoChannelPolicy, java.util.Map.of());
     }
 
     @Test
@@ -44,7 +46,7 @@ class ConnectorNormaliserDispatchTest {
         UUID channelId = UUID.randomUUID();
         ChannelConnectorBinding b = new ChannelConnectorBinding(channelId, InboundConnectorIds.TWILIO_SMS, "+1111", "twilio-sms", "+9999");
         when(bindingStore.findByChannelId(channelId)).thenReturn(Optional.of(b));
-        backend.onChannelInitialised(new ChannelInitialisedEvent(channelId, "sms-channel", false));
+        backend.onChannelInitialised(channelId);
 
         assertThat(backend.normaliserFor(channelId)).isNull();
     }

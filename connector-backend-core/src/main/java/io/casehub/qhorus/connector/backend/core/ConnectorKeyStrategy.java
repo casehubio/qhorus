@@ -1,18 +1,11 @@
-package io.casehub.qhorus.connector.backend;
+package io.casehub.qhorus.connector.backend.core;
 
 import java.util.Set;
 
 import io.casehub.connectors.InboundConnectorIds;
 import io.casehub.connectors.InboundMessage;
 
-/**
- * Derives the per-conversation lookup key from an InboundMessage.
- *
- * <p>For Slack, the externalChannelRef IS the conversation space (Slack channel ID).
- * For SMS/WhatsApp/Email, externalChannelRef is our own endpoint; the conversation
- * is with the sender — so externalSenderId is the correct key.
- */
-final class ConnectorKeyStrategy {
+public final class ConnectorKeyStrategy {
 
     private static final Set<String> SENDER_KEYED = Set.of(
             InboundConnectorIds.TWILIO_SMS,
@@ -22,7 +15,7 @@ final class ConnectorKeyStrategy {
 
     private ConnectorKeyStrategy() {}
 
-    static String deriveKey(final InboundMessage msg) {
+    public static String deriveKey(final InboundMessage msg) {
         if (SENDER_KEYED.contains(msg.connectorId())) {
             return msg.externalSenderId();
         }
