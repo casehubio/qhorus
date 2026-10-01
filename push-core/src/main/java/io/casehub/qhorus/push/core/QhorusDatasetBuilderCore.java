@@ -1,4 +1,4 @@
-package io.casehub.qhorus.push;
+package io.casehub.qhorus.push.core;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -21,8 +21,6 @@ import io.casehub.qhorus.api.store.MembershipReader;
 import io.casehub.qhorus.api.store.ReactionReader;
 import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.api.store.TopicReader;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -31,8 +29,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@ApplicationScoped
-public class QhorusDatasetBuilder {
+public class QhorusDatasetBuilderCore {
 
     public static final String TOPIC_CHANNELS    = "chat:channels";
     public static final String TOPIC_TOPICS      = "chat:topics";
@@ -42,7 +39,6 @@ public class QhorusDatasetBuilder {
     public static final String TOPIC_REACTIONS   = "chat:reactions";
     public static final String TOPIC_COMMITMENTS = "chat:commitments";
     public static final String TOPIC_SPACES      = "chat:spaces";
-
 
     public static final List<String> ALL_TOPICS = List.of(
         TOPIC_CHANNELS, TOPIC_TOPICS, TOPIC_MESSAGES,
@@ -65,7 +61,6 @@ public class QhorusDatasetBuilder {
         cols.add(new PushColumn("unreadCount", "Unread", "LABEL"));
         CHANNEL_SNAPSHOT_COLUMNS = List.copyOf(cols);
     }
-
 
     public static final List<PushColumn> MESSAGE_COLUMNS = List.of(
         new PushColumn("channelId", "Channel", "LABEL"),
@@ -114,25 +109,43 @@ public class QhorusDatasetBuilder {
         new PushColumn("messageCount", "Messages", "LABEL"),
         new PushColumn("latestActivityTs", "Latest", "DATE"),
         new PushColumn("createdAt", "Created", "DATE"));
+
     public static final List<PushColumn> SPACE_COLUMNS = List.of(
-            new PushColumn("id", "ID", "LABEL"),
-            new PushColumn("name", "Name", "LABEL"),
-            new PushColumn("description", "Description", "LABEL"),
-            new PushColumn("parentSpaceId", "Parent Space", "LABEL"));
+        new PushColumn("id", "ID", "LABEL"),
+        new PushColumn("name", "Name", "LABEL"),
+        new PushColumn("description", "Description", "LABEL"),
+        new PushColumn("parentSpaceId", "Parent Space", "LABEL"));
 
+    private final ChannelReader channelReader;
+    private final ConsumerMessaging messaging;
+    private final MembershipReader memberReader;
+    private final ReactionReader reactionReader;
+    private final CommitmentReader commitmentReader;
+    private final TopicReader topicReader;
+    private final TopicManager topicManager;
+    private final PresenceTracker presenceTracker;
+    private final SpaceStore spaceStore;
+    private final UnreadCountProvider unreadCountProvider;
+    private final ObjectMapper objectMapper;
 
-    @Inject ChannelReader channelReader;
-    @Inject ConsumerMessaging messaging;
-    @Inject MembershipReader memberReader;
-    @Inject ReactionReader reactionReader;
-    @Inject CommitmentReader commitmentReader;
-    @Inject TopicReader topicReader;
-    @Inject TopicManager topicManager;
-    @Inject PresenceTracker presenceTracker;
-    @Inject SpaceStore spaceStore;
-    @Inject UnreadCountProvider unreadCountProvider;
-
-    @Inject ObjectMapper objectMapper;
+    public QhorusDatasetBuilderCore(ChannelReader channelReader, ConsumerMessaging messaging,
+                                     MembershipReader memberReader, ReactionReader reactionReader,
+                                     CommitmentReader commitmentReader, TopicReader topicReader,
+                                     TopicManager topicManager, PresenceTracker presenceTracker,
+                                     SpaceStore spaceStore, UnreadCountProvider unreadCountProvider,
+                                     ObjectMapper objectMapper) {
+        this.channelReader = channelReader;
+        this.messaging = messaging;
+        this.memberReader = memberReader;
+        this.reactionReader = reactionReader;
+        this.commitmentReader = commitmentReader;
+        this.topicReader = topicReader;
+        this.topicManager = topicManager;
+        this.presenceTracker = presenceTracker;
+        this.spaceStore = spaceStore;
+        this.unreadCountProvider = unreadCountProvider;
+        this.objectMapper = objectMapper;
+    }
 
     public String buildSnapshot(String topic) {
         return buildSnapshot(topic, null);
@@ -159,7 +172,6 @@ public class QhorusDatasetBuilder {
         return buildSnapshot(topic, seq);
     }
 
-
     private String buildChannelSnapshot(Long seq) {
         var channels = channelReader.listAll();
         var spaceIds = channels.stream()
@@ -177,7 +189,8 @@ public class QhorusDatasetBuilder {
                                return channelToRow(ch, space);
                            })
                            .toList();
-        return PushMessage.snapshot("channels", CHANNEL_COLUMNS, rows, seq);}
+        return PushMessage.snapshot("channels", CHANNEL_COLUMNS, rows, seq);
+    }
 
     private String buildChannelSnapshot(Long seq, String userId, String tenancyId) {
         var channels = channelReader.listAll();
@@ -200,8 +213,8 @@ public class QhorusDatasetBuilder {
                                return (List<String>) row;
                            })
                            .toList();
-        return PushMessage.snapshot("channels", CHANNEL_SNAPSHOT_COLUMNS, rows, seq);}
-
+        return PushMessage.snapshot("channels", CHANNEL_SNAPSHOT_COLUMNS, rows, seq);
+    }
 
     private String buildTopicSnapshot(Long seq) {
         var channels = channelReader.listAll();
@@ -328,7 +341,6 @@ public class QhorusDatasetBuilder {
                 space != null && space.parentSpaceId() != null ? space.parentSpaceId().toString() : "",
                 ch.displayOrder() != null ? String.valueOf(ch.displayOrder()) : "");
     }
-
 
     public List<String> messageToRow(Message msg) {
         String topicIdStr = "";

@@ -4,13 +4,14 @@ import io.casehub.pages.push.EventStore;
 import io.casehub.pages.push.PushMessage;
 import io.casehub.pages.push.PushRequest;
 import io.casehub.pages.push.TopicRegistry;
+import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.push.core.QhorusDatasetBuilderCore;
 import io.quarkus.logging.Log;
 import io.quarkus.websockets.next.OnClose;
 import io.quarkus.websockets.next.OnOpen;
 import io.quarkus.websockets.next.OnTextMessage;
 import io.quarkus.websockets.next.WebSocket;
 import io.quarkus.websockets.next.WebSocketConnection;
-import io.casehub.platform.api.identity.CurrentPrincipal;
 import jakarta.inject.Inject;
 
 @WebSocket(path = "/ws/push")
@@ -19,9 +20,8 @@ public class QhorusPushWebSocket {
     @Inject QhorusPushInfrastructure pushInfra;
     @Inject TopicRegistry topicRegistry;
     @Inject EventStore eventStore;
-    @Inject QhorusDatasetBuilder datasetBuilder;
+    @Inject QhorusDatasetBuilderCore datasetBuilder;
     @Inject CurrentPrincipal currentPrincipal;
-
 
     @OnOpen
     void onOpen(WebSocketConnection connection) {

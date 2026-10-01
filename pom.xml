@@ -33,6 +33,7 @@
     <module>notification-bridge-core</module>
     <module>notification-bridge</module>
     <module>compliance-report</module>
+    <module>push-core</module>
     <module>push</module>
     <module>a2a-push-notification</module>
     <module>agent-card-signing-core</module>
