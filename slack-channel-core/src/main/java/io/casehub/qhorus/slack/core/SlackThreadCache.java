@@ -1,4 +1,4 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import java.time.Instant;
 
@@ -13,7 +13,6 @@ public class SlackThreadCache {
     @EmbeddedId
     public SlackThreadCacheId id;
 
-    /** Slack root-message timestamp, e.g. "1718567890.123456". Used as thread_ts for replies. */
     public String threadTs;
 
     public Instant createdAt;

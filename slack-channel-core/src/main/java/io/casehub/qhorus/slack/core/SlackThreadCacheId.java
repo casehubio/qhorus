@@ -1,4 +1,4 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import java.io.Serializable;
 import java.util.UUID;

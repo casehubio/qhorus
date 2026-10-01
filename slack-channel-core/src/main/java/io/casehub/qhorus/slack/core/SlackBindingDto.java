@@ -1,8 +1,7 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import java.util.UUID;
 
-/** Response body for GET /slack-channel/bindings/{channelId}. Token is never included. */
 public record SlackBindingDto(UUID qhorusChannelId, String slackChannelId, String workspaceId) {
 
     public static SlackBindingDto from(UUID channelId, SlackBotBinding b) {

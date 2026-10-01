@@ -10,16 +10,19 @@ import jakarta.inject.Inject;
 import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 
+import io.casehub.qhorus.slack.core.SlackThreadCache;
+import io.casehub.qhorus.slack.core.SlackThreadCacheId;
+import io.casehub.qhorus.slack.core.SlackThreadCacheStore;
 import io.quarkus.hibernate.orm.PersistenceUnit;
 
 @ApplicationScoped
-public class SlackThreadCacheStore {
+public class JpaSlackThreadCacheStore implements SlackThreadCacheStore {
 
     @Inject
     @PersistenceUnit("qhorus")
     EntityManager em;
 
-    /** Forward lookup: (channelId, correlationId) → threadTs. Used in post(). */
+    @Override
     public Optional<String> findThreadTs(UUID channelId, String correlationId) {
         return em.createQuery(
                 "SELECT c.threadTs FROM SlackThreadCache c WHERE c.id.channelId = :ch AND c.id.correlationId = :corr",
@@ -29,7 +32,7 @@ public class SlackThreadCacheStore {
                 .getResultStream().findFirst();
     }
 
-    /** Reverse lookup: (channelId, threadTs) → correlationId. Used for inbound thread-reply routing. */
+    @Override
     public Optional<String> findCorrelationId(UUID channelId, String threadTs) {
         return em.createQuery(
                 "SELECT c.id.correlationId FROM SlackThreadCache c WHERE c.id.channelId = :ch AND c.threadTs = :ts",
@@ -39,7 +42,7 @@ public class SlackThreadCacheStore {
                 .getResultStream().findFirst();
     }
 
-    /** Bulk load all entries for a channel — used at channel init to populate in-memory cache. */
+    @Override
     public List<SlackThreadCache> findByChannelId(UUID channelId) {
         return em.createQuery(
                 "FROM SlackThreadCache c WHERE c.id.channelId = :ch",
@@ -48,6 +51,7 @@ public class SlackThreadCacheStore {
                 .getResultList();
     }
 
+    @Override
     @Transactional
     public void save(UUID channelId, String correlationId, String threadTs) {
         SlackThreadCache entry = new SlackThreadCache();
@@ -57,7 +61,7 @@ public class SlackThreadCacheStore {
         em.merge(entry);
     }
 
-    /** Evict on terminal commitment state (DONE / FAILURE / DECLINE). */
+    @Override
     @Transactional
     public void delete(UUID channelId, String correlationId) {
         em.createQuery(
@@ -67,7 +71,7 @@ public class SlackThreadCacheStore {
                 .executeUpdate();
     }
 
-    /** Channel deletion cleanup — removes all thread cache rows for a channel. */
+    @Override
     @Transactional
     public void deleteAllByChannelId(UUID channelId) {
         em.createQuery("DELETE FROM SlackThreadCache c WHERE c.id.channelId = :ch")
@@ -75,7 +79,7 @@ public class SlackThreadCacheStore {
                 .executeUpdate();
     }
 
-    /** TTL eviction — removes entries older than threshold. Returns row count deleted. */
+    @Override
     @Transactional
     public int deleteOlderThan(Instant threshold) {
         return em.createQuery("DELETE FROM SlackThreadCache c WHERE c.createdAt < :threshold")

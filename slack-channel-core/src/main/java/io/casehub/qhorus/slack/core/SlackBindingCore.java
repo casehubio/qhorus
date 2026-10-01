@@ -7,15 +7,8 @@ import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 import io.casehub.qhorus.runtime.gateway.DuplicateParticipatingBackendException;
-import io.casehub.qhorus.slack.SlackBindingDto;
-import io.casehub.qhorus.slack.SlackBindingRequest;
-import io.casehub.qhorus.slack.SlackBotBinding;
-import io.casehub.qhorus.slack.SlackBotBindingStore;
-import io.casehub.qhorus.slack.SlackChannelBackend;
-import io.casehub.qhorus.slack.SlackThreadCacheStore;
 
 import java.time.Instant;
-import java.util.Optional;
 import java.util.UUID;
 
 public class SlackBindingCore {
@@ -23,7 +16,7 @@ public class SlackBindingCore {
     private final SlackBotBindingStore bindingStore;
     private final ChannelService channelService;
     private final ChannelGateway gateway;
-    private final SlackChannelBackend backend;
+    private final SlackChannelBackendCore backend;
     private final ChannelBindingStore channelBindingStore;
     private final SlackThreadCacheStore threadCacheStore;
     private final CredentialResolver credentialResolver;
@@ -31,7 +24,7 @@ public class SlackBindingCore {
     public SlackBindingCore(SlackBotBindingStore bindingStore,
                             ChannelService channelService,
                             ChannelGateway gateway,
-                            SlackChannelBackend backend,
+                            SlackChannelBackendCore backend,
                             ChannelBindingStore channelBindingStore,
                             SlackThreadCacheStore threadCacheStore,
                             CredentialResolver credentialResolver) {
@@ -86,7 +79,7 @@ public class SlackBindingCore {
 
     public void delete(UUID channelId) {
         backend.evict(channelId);
-        gateway.deregisterBackend(channelId, SlackChannelBackend.BACKEND_ID);
+        gateway.deregisterBackend(channelId, SlackChannelBackendCore.BACKEND_ID);
         bindingStore.deleteByChannelId(channelId);
     }
 }

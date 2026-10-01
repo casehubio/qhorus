@@ -13,6 +13,11 @@ import jakarta.ws.rs.core.Response;
 import io.casehub.platform.api.credentials.CredentialPropertyKeys;
 import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.qhorus.slack.core.SlackBindingCore;
+import io.casehub.qhorus.slack.core.SlackBindingRequest;
+import io.casehub.qhorus.slack.core.SlackBotBinding;
+import io.casehub.qhorus.slack.core.SlackBotBindingStore;
+import io.casehub.qhorus.slack.core.SlackChannelBackendCore;
+import io.casehub.qhorus.slack.core.SlackThreadCacheStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +32,7 @@ class SlackBindingResourceTest {
     private SlackBotBindingStore bindingStore;
     private ChannelService channelService;
     private ChannelGateway gateway;
-    private SlackChannelBackend backend;
+    private SlackChannelBackendCore backendCore;
     private ChannelBindingStore channelBindingStore;
     private SlackThreadCacheStore threadCacheStore;
     private CredentialResolver credentialResolver;
@@ -42,18 +47,17 @@ class SlackBindingResourceTest {
         bindingStore = mock(SlackBotBindingStore.class);
         channelService = mock(ChannelService.class);
         gateway = mock(ChannelGateway.class);
-        backend = mock(SlackChannelBackend.class);
+        backendCore = mock(SlackChannelBackendCore.class);
         channelBindingStore = mock(ChannelBindingStore.class);
         threadCacheStore = mock(SlackThreadCacheStore.class);
         credentialResolver = mock(CredentialResolver.class);
 
         var core = new SlackBindingCore(
-                bindingStore, channelService, gateway, backend,
+                bindingStore, channelService, gateway, backendCore,
                 channelBindingStore, threadCacheStore, credentialResolver);
         resource = new SlackBindingResource();
         resource.core = core;
 
-        // Default: channel exists, no conflict, valid token
         Channel ch = Channel.builder("test-channel").id(channelId).build();
         when(channelService.findById(channelId)).thenReturn(Optional.of(ch));
         when(channelBindingStore.findByChannelId(channelId)).thenReturn(Optional.empty());
@@ -99,8 +103,8 @@ class SlackBindingResourceTest {
     void put_validRequest_evictsBeforeSave() {
         Response r = resource.put(channelId, new SlackBindingRequest(slackChannelId, workspaceId));
         assertThat(r.getStatus()).isEqualTo(200);
-        var inOrder = inOrder(backend, threadCacheStore, bindingStore);
-        inOrder.verify(backend).evict(channelId);
+        var inOrder = inOrder(backendCore, threadCacheStore, bindingStore);
+        inOrder.verify(backendCore).evict(channelId);
         inOrder.verify(threadCacheStore).deleteAllByChannelId(channelId);
         inOrder.verify(bindingStore).save(any(SlackBotBinding.class));
     }

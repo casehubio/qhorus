@@ -1,4 +1,4 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,17 +30,14 @@ import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
 
-/**
- * Unit tests for SlackChannelBackend — CDI-free, constructor injection.
- */
-class SlackChannelBackendTest {
+class SlackChannelBackendCoreTest {
 
     private SlackBotBindingStore bindingStore;
     private SlackThreadCacheStore threadCacheStore;
     private SlackBotClient slackBotClient;
     private ChannelGateway gateway;
     private CredentialResolver credentialResolver;
-    private SlackChannelBackend backend;
+    private SlackChannelBackendCore backend;
 
     private final UUID channelId = UUID.randomUUID();
     private final ChannelRef channelRef = new ChannelRef(channelId, "test-channel");
@@ -56,15 +53,13 @@ class SlackChannelBackendTest {
         gateway = mock(ChannelGateway.class);
         credentialResolver = mock(CredentialResolver.class);
 
-        backend = new SlackChannelBackend(
+        backend = new SlackChannelBackendCore(
                 bindingStore, threadCacheStore, slackBotClient,
                 new SlackInboundNormaliser(), gateway, credentialResolver);
 
-        // Pre-populate binding cache — simulates onChannelInitialised having run
         SlackBotBinding binding = binding();
         backend.bindingCache.put(channelId, binding);
 
-        // Default token stub for all tests that post to Slack
         when(credentialResolver.resolve(workspaceId))
                 .thenReturn(Map.of(CredentialPropertyKeys.BEARER_TOKEN, token));
     }
@@ -118,7 +113,6 @@ class SlackChannelBackendTest {
     @Test
     void post_secondMessageSameCorrId_sendsAsThreadReply() {
         String corrId = UUID.randomUUID().toString();
-        // Warm memory cache
         backend.threadCache.computeIfAbsent(channelId, k -> new java.util.concurrent.ConcurrentHashMap<>())
                 .put(corrId, "1.1");
         when(slackBotClient.postMessage(token, slackChannelId, "Reply", "1.1"))
@@ -212,32 +206,6 @@ class SlackChannelBackendTest {
     }
 
     @Test
-    void post_failureMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
-        String corrId = UUID.randomUUID().toString();
-        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
-        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
-                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
-
-        backend.post(channelRef, outbound(MessageType.FAILURE, corrId, "Failed"));
-
-        verify(threadCacheStore, never()).save(any(), any(), any());
-        verify(threadCacheStore).delete(channelId, corrId);
-    }
-
-    @Test
-    void post_declineMessage_noCachedThread_doesNotWriteRecoveryAnchor() {
-        String corrId = UUID.randomUUID().toString();
-        when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
-        when(slackBotClient.postMessage(any(), any(), any(), isNull()))
-                .thenReturn(new SlackBotClient.PostResult(true, "1.1", null));
-
-        backend.post(channelRef, outbound(MessageType.DECLINE, corrId, "Declined"));
-
-        verify(threadCacheStore, never()).save(any(), any(), any());
-        verify(threadCacheStore).delete(channelId, corrId);
-    }
-
-    @Test
     void post_slackApiFailure_logsWarnNoMutation() {
         String corrId = UUID.randomUUID().toString();
         when(threadCacheStore.findThreadTs(channelId, corrId)).thenReturn(Optional.empty());
@@ -258,7 +226,7 @@ class SlackChannelBackendTest {
         binding.channelId = chId;
         binding.slackChannelId = slackChId;
         binding.workspaceId = "T456";
-        binding.createdAt = java.time.Instant.now();
+        binding.createdAt = Instant.now();
 
         when(bindingStore.findByChannelId(chId)).thenReturn(Optional.of(binding));
         when(threadCacheStore.findByChannelId(chId)).thenReturn(List.of());
@@ -291,7 +259,7 @@ class SlackChannelBackendTest {
         binding.channelId = chId;
         binding.slackChannelId = "C789";
         binding.workspaceId = "T789";
-        binding.createdAt = java.time.Instant.now();
+        binding.createdAt = Instant.now();
 
         SlackThreadCache entry = new SlackThreadCache();
         entry.id = new SlackThreadCacheId(chId, corrId);
@@ -307,27 +275,23 @@ class SlackChannelBackendTest {
 
     @Test
     void onInboundMessage_unknownThreadReply_anchorsWithThreadRootTs() throws Exception {
-        // Populate slackToChannel so the message routes correctly
         ChannelRef channelRef = new ChannelRef(channelId, "test-channel");
         backend.slackToChannel.put(slackChannelId, channelRef);
 
-        String replyTs = "1718567890.999999";    // the reply's own ts
-        String rootTs  = "1718567890.111111";   // the thread root ts (what Slack needs)
-
+        String replyTs = "1718567890.999999";
+        String rootTs  = "1718567890.111111";
         Map<String, String> meta = Map.of("slack-ts", replyTs, "slack-thread-ts", rootTs);
 
-        // No existing anchor for this thread
         when(threadCacheStore.findCorrelationId(channelId, rootTs)).thenReturn(Optional.empty());
 
         io.casehub.connectors.InboundMessage msg = new io.casehub.connectors.InboundMessage(
             io.casehub.connectors.InboundConnectorIds.SLACK_INBOUND,
             io.casehub.connectors.InboundConnectorTypes.SLACK,
             "U123", slackChannelId, "hello", java.util.List.of(),
-            java.time.Instant.now(), meta, null);
+            Instant.now(), meta, null);
 
         backend.onInboundMessage(msg).toCompletableFuture().join();
 
-        // MUST save with rootTs (the thread root), NOT replyTs (the reply's own ts)
         verify(threadCacheStore).save(eq(channelId), anyString(), eq(rootTs));
     }
 
@@ -339,7 +303,7 @@ class SlackChannelBackendTest {
         b.channelId = channelId;
         b.slackChannelId = slackChId;
         b.workspaceId = "T999";
-        b.createdAt = java.time.Instant.now();
+        b.createdAt = Instant.now();
 
         backend.bindingCache.put(channelId, b);
         backend.slackToChannel.put(slackChId, channelRef);

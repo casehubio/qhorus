@@ -9,6 +9,8 @@ import jakarta.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
+import io.casehub.qhorus.slack.core.SlackBotBinding;
+import io.casehub.qhorus.slack.core.SlackBotBindingStore;
 import io.quarkus.test.TestTransaction;
 import io.quarkus.test.junit.QuarkusTest;
 

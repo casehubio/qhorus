@@ -1,4 +1,4 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -14,10 +14,8 @@ public class SlackBotBinding {
     @Id
     public UUID channelId;
 
-    /** Slack channel ID, e.g. "C123ABC". */
     public String slackChannelId;
 
-    /** Slack workspace/team ID, e.g. "T123ABC". Also used as the CredentialResolver credential ref. */
     public String workspaceId;
 
     public Instant createdAt;

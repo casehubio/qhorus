@@ -1,4 +1,4 @@
-package io.casehub.qhorus.slack;
+package io.casehub.qhorus.slack.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -48,7 +48,6 @@ class SlackInboundNormaliserTest {
 
     @Test
     void threadReplyWithoutCorrId_producesQuery() {
-        // Thread reply to an unknown thread — corrId not resolved
         InboundHumanMessage msg = new InboundHumanMessage(
                 "U123", "Reply to unknown", Instant.now(),
                 Map.of("slack-ts", "1.2", "slack-thread-ts", "1.1"), null, null);
