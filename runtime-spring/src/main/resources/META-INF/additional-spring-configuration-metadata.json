@@ -1,0 +1,252 @@
+{
+  "groups": [
+    {
+      "name": "casehub.qhorus",
+      "description": "Qhorus messaging runtime configuration."
+    },
+    {
+      "name": "casehub.qhorus.delivery",
+      "description": "Message delivery pipeline settings."
+    },
+    {
+      "name": "casehub.qhorus.presence",
+      "description": "Presence tracking timeouts and heartbeat intervals."
+    },
+    {
+      "name": "casehub.qhorus.tracing",
+      "description": "OpenTelemetry tracing toggles for qhorus subsystems."
+    }
+  ],
+  "properties": [
+    {
+      "name": "casehub.qhorus.cleanup.stale-instance-seconds",
+      "description": "Seconds before an inactive instance is considered stale.",
+      "defaultValue": 120
+    },
+    {
+      "name": "casehub.qhorus.cleanup.data-retention-days",
+      "description": "Days to retain transient data before cleanup.",
+      "defaultValue": 7
+    },
+    {
+      "name": "casehub.qhorus.agent-card.name",
+      "description": "Display name for the qhorus agent card.",
+      "defaultValue": "Qhorus Agent Mesh"
+    },
+    {
+      "name": "casehub.qhorus.agent-card.description",
+      "description": "Description text for the qhorus agent card.",
+      "defaultValue": "Peer-to-peer agent communication mesh — channels, messages, shared data, presence"
+    },
+    {
+      "name": "casehub.qhorus.agent-card.url",
+      "description": "Optional public URL for the agent card."
+    },
+    {
+      "name": "casehub.qhorus.agent-card.version",
+      "description": "Agent card version string.",
+      "defaultValue": "1.0.0"
+    },
+    {
+      "name": "casehub.qhorus.a2a.enabled",
+      "description": "Enable A2A (Agent-to-Agent) protocol support.",
+      "defaultValue": false
+    },
+    {
+      "name": "casehub.qhorus.a2a.push-to-event-broadcaster",
+      "description": "Push A2A events to the event broadcaster.",
+      "defaultValue": false
+    },
+    {
+      "name": "casehub.qhorus.a2a.sse.heartbeat-interval-seconds",
+      "description": "SSE heartbeat interval in seconds.",
+      "defaultValue": 15
+    },
+    {
+      "name": "casehub.qhorus.a2a.sse.max-duration-seconds",
+      "description": "Maximum SSE connection duration in seconds.",
+      "defaultValue": 1800
+    },
+    {
+      "name": "casehub.qhorus.watchdog.enabled",
+      "description": "Enable the watchdog evaluation service.",
+      "defaultValue": false
+    },
+    {
+      "name": "casehub.qhorus.watchdog.check-interval-seconds",
+      "description": "Watchdog evaluation interval in seconds.",
+      "defaultValue": 60
+    },
+    {
+      "name": "casehub.qhorus.attestation.done-confidence",
+      "description": "Confidence score assigned to DONE attestations.",
+      "defaultValue": 0.7
+    },
+    {
+      "name": "casehub.qhorus.attestation.failure-confidence",
+      "description": "Confidence score assigned to FAILURE attestations.",
+      "defaultValue": 0.6
+    },
+    {
+      "name": "casehub.qhorus.attestation.decline-confidence",
+      "description": "Confidence score assigned to DECLINE attestations.",
+      "defaultValue": 0.4
+    },
+    {
+      "name": "casehub.qhorus.attestation.response-confidence",
+      "description": "Confidence score assigned to RESPONSE attestations.",
+      "defaultValue": 0.3
+    },
+    {
+      "name": "casehub.qhorus.attestation.credibility-min-data-points",
+      "description": "Minimum data points required before credibility scoring applies.",
+      "defaultValue": 5
+    },
+    {
+      "name": "casehub.qhorus.attestation.credibility-low-agreement-threshold",
+      "description": "Agreement threshold below which credibility is flagged.",
+      "defaultValue": 0.3
+    },
+    {
+      "name": "casehub.qhorus.attestation.collusion-detection-enabled",
+      "description": "Enable statistical collusion detection across attestors.",
+      "defaultValue": false
+    },
+    {
+      "name": "casehub.qhorus.attestation.collusion-threshold",
+      "description": "Agreement correlation threshold above which collusion is suspected.",
+      "defaultValue": 0.8
+    },
+    {
+      "name": "casehub.qhorus.commitment.min-obligor-trust",
+      "description": "Minimum trust score required for an obligor to accept commitments.",
+      "defaultValue": 0.0
+    },
+    {
+      "name": "casehub.qhorus.commitment.default-query-deadline",
+      "description": "Default deadline for QUERY commitments (e.g. PT30M)."
+    },
+    {
+      "name": "casehub.qhorus.commitment.default-propose-deadline",
+      "description": "Default deadline for PROPOSE commitments (e.g. PT1H)."
+    },
+    {
+      "name": "casehub.qhorus.summary.enabled",
+      "description": "Enable periodic channel summary generation.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.summary.check-interval-seconds",
+      "description": "Summary check interval in seconds.",
+      "defaultValue": 60
+    },
+    {
+      "name": "casehub.qhorus.protocol.lookback-size",
+      "description": "Number of messages to look back for protocol evaluation.",
+      "defaultValue": 50
+    },
+    {
+      "name": "casehub.qhorus.protocol.request-response.max-open-queries",
+      "description": "Maximum concurrent open queries per channel for request-response protocol.",
+      "defaultValue": 3
+    },
+    {
+      "name": "casehub.qhorus.protocol.task-completion.max-open-commands",
+      "description": "Maximum concurrent open commands per channel for task-completion protocol.",
+      "defaultValue": 3
+    },
+    {
+      "name": "casehub.qhorus.protocol.contribution-required.max-consecutive",
+      "description": "Maximum consecutive messages from one participant before contribution is required.",
+      "defaultValue": 2
+    },
+    {
+      "name": "casehub.qhorus.routing.default-trust-threshold",
+      "description": "Default trust score threshold for agent routing.",
+      "defaultValue": 0.0
+    },
+    {
+      "name": "casehub.qhorus.routing.default-capacity-threshold",
+      "description": "Optional capacity pressure threshold for routing decisions."
+    },
+    {
+      "name": "casehub.qhorus.connector-backend.delivery-channel",
+      "description": "Optional delivery channel ID for the connector backend."
+    },
+    {
+      "name": "casehub.qhorus.delivery.enabled",
+      "description": "Enable the message delivery pipeline.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.delivery.batch-size",
+      "description": "Number of messages processed per delivery batch.",
+      "defaultValue": 100
+    },
+    {
+      "name": "casehub.qhorus.delivery.max-consecutive-failures",
+      "description": "Maximum consecutive delivery failures before circuit-breaking.",
+      "defaultValue": 10
+    },
+    {
+      "name": "casehub.qhorus.delivery.reconciliation-interval",
+      "description": "Delivery reconciliation interval (Duration string, e.g. 30s).",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "casehub.qhorus.delivery.max-participant-retries-per-cycle",
+      "description": "Maximum participant-level retries per delivery cycle.",
+      "defaultValue": 100
+    },
+    {
+      "name": "casehub.qhorus.delivery.max-participant-consecutive-failures",
+      "description": "Maximum consecutive failures before a participant is skipped.",
+      "defaultValue": 3
+    },
+    {
+      "name": "casehub.qhorus.presence.away-timeout",
+      "description": "Duration of inactivity before marking a participant as AWAY.",
+      "defaultValue": "2m"
+    },
+    {
+      "name": "casehub.qhorus.presence.offline-timeout",
+      "description": "Duration of inactivity before marking a participant as OFFLINE.",
+      "defaultValue": "10m"
+    },
+    {
+      "name": "casehub.qhorus.presence.heartbeat-interval",
+      "description": "Interval between presence heartbeats.",
+      "defaultValue": "30s"
+    },
+    {
+      "name": "casehub.qhorus.tracing.enabled",
+      "description": "Master toggle for OpenTelemetry tracing in qhorus.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.tracing.dispatch",
+      "description": "Trace message dispatch operations.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.tracing.commitments",
+      "description": "Trace commitment lifecycle operations.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.tracing.fan-out",
+      "description": "Trace message fan-out to channel members.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.tracing.ledger-write",
+      "description": "Trace ledger write operations.",
+      "defaultValue": true
+    },
+    {
+      "name": "casehub.qhorus.tracing.delivery",
+      "description": "Trace delivery batch execution.",
+      "defaultValue": true
+    }
+  ]
+}

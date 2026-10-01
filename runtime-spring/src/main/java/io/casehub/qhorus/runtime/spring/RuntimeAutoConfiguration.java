@@ -91,6 +91,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.time.Clock;
@@ -110,24 +111,6 @@ import java.util.function.Supplier;
 })
 @EnableScheduling
 public class RuntimeAutoConfiguration {
-
-    // ── Config ────────────────────────────────────────────────────────────
-
-    @Bean
-    @ConditionalOnMissingBean
-    public QhorusConfig qhorusConfig(QhorusConfigProperties props) { return props; }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public DeliveryConfig deliveryConfig(DeliveryConfigProperties props) { return props; }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public PresenceConfig presenceConfig(PresenceConfigProperties props) { return props; }
-
-    @Bean
-    @ConditionalOnMissingBean
-    public QhorusTracingConfig qhorusTracingConfig(QhorusTracingConfigProperties props) { return props; }
 
     @Bean
     @ConditionalOnMissingBean
@@ -363,7 +346,7 @@ public class RuntimeAutoConfiguration {
     }
 
     @Bean
-    public MessageService messageService(ChannelService channelService, CrossTenantChannelStore crossTenantChannelStore,
+    public MessageService messageService(@Lazy ChannelService channelService, CrossTenantChannelStore crossTenantChannelStore,
                                          CurrentPrincipal currentPrincipal, MessageStore messageStore,
                                          CommitmentService commitmentService, MessageTypePolicy messageTypePolicy,
                                          RateLimiter rateLimiter, QhorusConfig config,
