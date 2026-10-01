@@ -71,19 +71,6 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.graphql</groupId>
-            <artifactId>spring-graphql</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webmvc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>jakarta.validation</groupId>
-            <artifactId>jakarta.validation-api</artifactId>
-        </dependency>
-
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -92,56 +79,8 @@
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>io.casehub</groupId>
-                <artifactId>casehub-platform-spring-generator</artifactId>
-                <version>${project.version}</version>
-                <executions>
-                    <execution>
-                        <id>generate</id>
-                        <goals><goal>generate</goal></goals>
-                        <configuration>
-                            <quarkusModule>${project.basedir}/../runtime</quarkusModule>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify-drift</id>
-                        <goals><goal>verify</goal></goals>
-                        <phase>verify</phase>
-                        <configuration>
-                            <quarkusModule>${project.basedir}/../runtime</quarkusModule>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.casehub</groupId>
-                <artifactId>casehub-platform-graphql-spring-generator</artifactId>
-                <version>${project.version}</version>
-                <executions>
-                    <execution>
-                        <id>generate</id>
-                        <goals><goal>generate</goal></goals>
-                        <configuration>
-                            <quarkusModules>
-                                <quarkusModule>${project.basedir}/../api</quarkusModule>
-                            </quarkusModules>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>verify-drift</id>
-                        <goals><goal>verify</goal></goals>
-                        <phase>verify</phase>
-                        <configuration>
-                            <quarkusModules>
-                                <quarkusModule>${project.basedir}/../api</quarkusModule>
-                            </quarkusModules>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-    </build>
+    <!-- spring-generator removed: hand-written RuntimeAutoConfiguration covers essential beans.
+         Generator has type-mapping bugs (QhorusTracingConfigSpring→DeliveryConfig, MessageLedgerEntryRepository
+         not on classpath). File platform issue to fix generator; re-enable when resolved.
+         graphql-spring-generator removed: already in standalone graphql-spring/ module (#461). -->
 </project>
