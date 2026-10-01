@@ -44,6 +44,9 @@
     <!-- runtime-spring: extraction done (#458), blocked by spring-generator DeliveryConfig type-mapping bug.
          graphql-spring-generator extracted to graphql-spring/ (#461); remove from runtime-spring when unblocked. -->
     <!-- <module>runtime-spring</module> -->
+    <module>kafka-observer-spring</module>
+    <module>postgres-broadcaster-spring</module>
+    <module>websocket-observer-spring</module>
     <module>qhorus-rest-spring</module>
     <module>testing</module>
     <module>examples</module>
