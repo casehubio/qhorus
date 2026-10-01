@@ -1,0 +1,48 @@
+package io.casehub.qhorus.compliance.core.verification;
+
+import io.casehub.qhorus.api.compliance.report.PropertyViolation;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
+
+import java.time.Instant;
+import java.util.List;
+
+public class SafetyProperty implements VerificationProperty {
+
+    private final MessageLedgerEntryRepository messageRepo;
+
+    public SafetyProperty(MessageLedgerEntryRepository messageRepo) {
+        this.messageRepo = messageRepo;
+    }
+
+    @Override
+    public String name() {
+        return "SAFETY";
+    }
+
+    @Override
+    public String ctlFormula() {
+        return "AG(FULFILLED → attestation_exists)";
+    }
+
+    @Override
+    public String description() {
+        return "Every fulfilled commitment has an attestation — no unattested DONE.";
+    }
+
+    @Override
+    public CheckResult check(String tenancyId, Instant from, Instant to) {
+        List<MessageLedgerEntry> unattested =
+                messageRepo.findDoneEntriesWithoutAttestation(from, to, tenancyId);
+        List<PropertyViolation> violations = unattested.stream()
+                                                       .map(e -> new PropertyViolation(
+                        name(),
+                        "DONE entry has no attestation",
+                        "entryId=" + e.id + " correlationId=" + e.correlationId
+                                + " channelId=" + e.channelId,
+                        e.occurredAt,
+                        "HIGH"))
+                                                       .toList();
+        return new CheckResult(violations, 0);
+    }
+}

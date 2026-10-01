@@ -1,7 +1,9 @@
 package io.casehub.qhorus.compliance.api;
 
-import io.casehub.qhorus.compliance.api.core.ComplianceScheduleCore;
-import io.casehub.qhorus.compliance.schedule.ComplianceReportSchedule;
+import io.casehub.qhorus.compliance.core.api.ComplianceScheduleCore;
+import io.casehub.qhorus.compliance.core.api.ScheduleRequest;
+import io.casehub.qhorus.compliance.core.api.ScheduleUpdateRequest;
+import io.casehub.qhorus.compliance.core.schedule.ComplianceReportSchedule;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -31,7 +33,7 @@ public class ComplianceScheduleResource {
     }
 
     @POST
-    public Response create(io.casehub.qhorus.compliance.api.core.ScheduleRequest request) {
+    public Response create(ScheduleRequest request) {
         try {
             var schedule = core.create(request);
             return Response.status(Response.Status.CREATED).entity(schedule).build();
@@ -42,7 +44,7 @@ public class ComplianceScheduleResource {
 
     @PUT
     @Path("/{id}")
-    public Response update(@PathParam("id") UUID id, io.casehub.qhorus.compliance.api.core.ScheduleUpdateRequest request) {
+    public Response update(@PathParam("id") UUID id, ScheduleUpdateRequest request) {
         return core.update(id, request)
                 .map(schedule -> Response.ok(schedule).build())
                 .orElse(Response.status(Response.Status.NOT_FOUND).build());

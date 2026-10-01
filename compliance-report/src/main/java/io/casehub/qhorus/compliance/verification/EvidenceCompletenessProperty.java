@@ -3,6 +3,8 @@ package io.casehub.qhorus.compliance.verification;
 import io.casehub.ledger.api.model.AttestationVerdict;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.qhorus.api.compliance.report.PropertyViolation;
+import io.casehub.qhorus.compliance.core.verification.CheckResult;
+import io.casehub.qhorus.compliance.core.verification.RemediatingProperty;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;

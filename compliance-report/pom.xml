@@ -20,6 +20,12 @@ Optional module activated by classpath presence.</description>
 
     <dependency>
       <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-compliance-report-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.casehub</groupId>
       <artifactId>casehub-qhorus-api</artifactId>
       <version>${project.version}</version>
     </dependency>

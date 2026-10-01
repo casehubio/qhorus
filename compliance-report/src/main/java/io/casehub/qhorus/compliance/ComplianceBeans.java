@@ -1,23 +1,21 @@
 package io.casehub.qhorus.compliance;
 
 import io.casehub.platform.api.signing.document.DocumentVerificationService;
-import io.casehub.qhorus.compliance.api.core.ComplianceReportCore;
-import io.casehub.qhorus.compliance.api.core.ComplianceScheduleCore;
-import io.casehub.qhorus.compliance.format.CsvReportRenderer;
-import io.casehub.qhorus.compliance.format.HtmlReportRenderer;
-import io.casehub.qhorus.compliance.format.JsonReportRenderer;
-import io.casehub.qhorus.compliance.format.PdfReportRenderer;
-import io.casehub.qhorus.compliance.report.AttributionReportService;
-import io.casehub.qhorus.compliance.report.JudgmentAttributionReportService;
-import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
-import io.casehub.qhorus.compliance.report.ObligationReportService;
-import io.casehub.qhorus.compliance.report.ProvenanceReportService;
-import io.casehub.qhorus.compliance.report.TrustHistoryReportService;
-import io.casehub.qhorus.compliance.report.ViolationReportService;
-import io.casehub.qhorus.compliance.schedule.ComplianceReportScheduleStore;
-import io.casehub.qhorus.compliance.storage.ComplianceReportRecordStore;
-import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
-import io.casehub.qhorus.compliance.verification.PropertyVerificationService;
+import io.casehub.qhorus.compliance.core.api.ComplianceReportCore;
+import io.casehub.qhorus.compliance.core.api.ComplianceScheduleCore;
+import io.casehub.qhorus.compliance.core.format.CsvReportRenderer;
+import io.casehub.qhorus.compliance.core.format.HtmlReportRenderer;
+import io.casehub.qhorus.compliance.core.format.JsonReportRenderer;
+import io.casehub.qhorus.compliance.core.format.PdfReportRenderer;
+import io.casehub.qhorus.compliance.core.report.AttributionReportService;
+import io.casehub.qhorus.compliance.core.report.JudgmentAttributionReportService;
+import io.casehub.qhorus.compliance.core.report.JudgmentFulfillmentReportService;
+import io.casehub.qhorus.compliance.core.report.ObligationReportService;
+import io.casehub.qhorus.compliance.core.report.ProvenanceReportService;
+import io.casehub.qhorus.compliance.core.report.TrustHistoryReportService;
+import io.casehub.qhorus.compliance.core.report.ViolationReportService;
+import io.casehub.qhorus.compliance.core.storage.ComplianceReportStorageService;
+import io.casehub.qhorus.compliance.core.verification.PropertyVerificationService;
 import io.casehub.qhorus.runtime.data.DataService;
 import io.casehub.qhorus.runtime.identity.InboundTenancyContext;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -28,9 +26,10 @@ public class ComplianceBeans {
 
     @Produces
     @ApplicationScoped
-    public ComplianceScheduleCore complianceScheduleCore(ComplianceReportScheduleStore scheduleStore,
-                                                          InboundTenancyContext tenancyContext) {
-        return new ComplianceScheduleCore(scheduleStore, tenancyContext);
+    public ComplianceScheduleCore complianceScheduleCore(
+            io.casehub.qhorus.compliance.core.schedule.ComplianceReportScheduleStore scheduleStore,
+            InboundTenancyContext tenancyContext) {
+        return new ComplianceScheduleCore(scheduleStore, tenancyContext::tenancyId);
     }
 
     @Produces
@@ -42,7 +41,7 @@ public class ComplianceBeans {
             ViolationReportService violationService,
             ProvenanceReportService provenanceService,
             ComplianceReportStorageService storageService,
-            ComplianceReportRecordStore recordStore,
+            io.casehub.qhorus.compliance.core.storage.ComplianceReportRecordStore recordStore,
             JsonReportRenderer jsonRenderer,
             CsvReportRenderer csvRenderer,
             HtmlReportRenderer htmlRenderer,
@@ -57,7 +56,7 @@ public class ComplianceBeans {
                 attributionService, obligationService, trustHistoryService,
                 violationService, provenanceService, storageService, recordStore,
                 jsonRenderer, csvRenderer, htmlRenderer, pdfRenderer,
-                verificationService, dataService, tenancyContext,
+                verificationService, dataService, tenancyContext::tenancyId,
                 judgmentAttributionService, judgmentFulfillmentService,
                 propertyVerificationService);
     }

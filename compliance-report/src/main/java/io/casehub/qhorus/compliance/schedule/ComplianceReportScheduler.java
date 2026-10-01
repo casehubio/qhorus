@@ -2,14 +2,16 @@ package io.casehub.qhorus.compliance.schedule;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.delivery.DigestSchedule;
-import io.casehub.qhorus.compliance.format.ReportRenderingService;
-import io.casehub.qhorus.compliance.report.JudgmentFulfillmentReportService;
-import io.casehub.qhorus.compliance.report.ObligationReportService;
-import io.casehub.qhorus.compliance.report.ViolationReportService;
-import io.casehub.qhorus.compliance.signing.ComplianceReportSigningService;
-import io.casehub.qhorus.compliance.signing.SigningResult;
-import io.casehub.qhorus.compliance.storage.ComplianceReportRecord;
-import io.casehub.qhorus.compliance.storage.ComplianceReportStorageService;
+import io.casehub.qhorus.compliance.core.format.ReportRenderingService;
+import io.casehub.qhorus.compliance.core.report.JudgmentFulfillmentReportService;
+import io.casehub.qhorus.compliance.core.report.ObligationReportService;
+import io.casehub.qhorus.compliance.core.report.ViolationReportService;
+import io.casehub.qhorus.compliance.core.signing.ComplianceReportSigningService;
+import io.casehub.qhorus.compliance.core.signing.SigningResult;
+import io.casehub.qhorus.compliance.core.schedule.ComplianceReportGeneratedEvent;
+import io.casehub.qhorus.compliance.core.schedule.ComplianceReportSchedule;
+import io.casehub.qhorus.compliance.core.storage.ComplianceReportRecord;
+import io.casehub.qhorus.compliance.core.storage.ComplianceReportStorageService;
 import io.quarkus.scheduler.Scheduled;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -28,10 +30,8 @@ public class ComplianceReportScheduler {
     @Inject ComplianceReportStorageService storageService;
     @Inject ObligationReportService obligationService;
     @Inject ViolationReportService violationService;
-    @Inject
-            JudgmentFulfillmentReportService judgmentFulfillmentService;
-    @Inject
-    io.casehub.qhorus.compliance.verification.PropertyVerificationService propertyVerificationService;
+    @Inject JudgmentFulfillmentReportService judgmentFulfillmentService;
+    @Inject io.casehub.qhorus.compliance.core.verification.PropertyVerificationService propertyVerificationService;
     @Inject ReportRenderingService renderingService;
     @Inject ComplianceReportSigningService signingService;
 
@@ -66,7 +66,7 @@ public class ComplianceReportScheduler {
             return;
         }
         Instant cutoff = Instant.now().minus(java.time.Duration.ofDays(retentionDays.get()));
-        java.util.List<io.casehub.qhorus.compliance.storage.ComplianceReportRecord> expired =
+        java.util.List<ComplianceReportRecord> expired =
                 storageService.findOlderThan(cutoff);
         int purged = 0;
         for (var record : expired) {

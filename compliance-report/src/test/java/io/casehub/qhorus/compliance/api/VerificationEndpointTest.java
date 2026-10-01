@@ -1,6 +1,7 @@
 package io.casehub.qhorus.compliance.api;
 
-import io.casehub.qhorus.compliance.api.core.ComplianceReportCore;
+import io.casehub.qhorus.compliance.core.api.ComplianceReportCore;
+import io.casehub.qhorus.compliance.core.api.ComplianceVerificationResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
