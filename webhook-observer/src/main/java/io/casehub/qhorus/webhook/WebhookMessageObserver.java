@@ -23,6 +23,7 @@ import io.casehub.platform.api.credentials.CredentialPropertyKeys;
 import io.casehub.platform.api.credentials.CredentialResolver;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
+import io.casehub.qhorus.webhook.core.WebhookRegistration;
 
 @ApplicationScoped
 public class WebhookMessageObserver implements MessageObserver {

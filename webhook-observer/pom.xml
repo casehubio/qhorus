@@ -20,6 +20,12 @@ dynamic registration. HMAC-SHA256 signature when secret is configured.</descript
 
     <dependency>
       <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-webhook-observer-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.casehub</groupId>
       <artifactId>casehub-qhorus</artifactId>
       <version>${project.version}</version>
     </dependency>

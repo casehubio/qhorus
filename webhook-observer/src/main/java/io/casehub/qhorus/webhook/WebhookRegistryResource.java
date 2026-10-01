@@ -1,5 +1,6 @@
 package io.casehub.qhorus.webhook;
 
+import io.casehub.qhorus.webhook.core.WebhookRegistration;
 import io.casehub.qhorus.webhook.core.WebhookRegistryCore;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.DELETE;

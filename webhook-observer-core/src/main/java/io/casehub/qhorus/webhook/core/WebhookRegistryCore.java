@@ -1,8 +1,6 @@
 package io.casehub.qhorus.webhook.core;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
-import io.casehub.qhorus.webhook.WebhookRegistration;
-import io.casehub.qhorus.webhook.WebhookRegistry;
 
 import java.util.Collection;
 import java.util.Map;
@@ -11,10 +9,10 @@ import java.util.UUID;
 
 public class WebhookRegistryCore {
 
-    private final WebhookRegistry registry;
+    private final WebhookRegistryStore registry;
     private final CurrentPrincipal currentPrincipal;
 
-    public WebhookRegistryCore(WebhookRegistry registry, CurrentPrincipal currentPrincipal) {
+    public WebhookRegistryCore(WebhookRegistryStore registry, CurrentPrincipal currentPrincipal) {
         this.registry = registry;
         this.currentPrincipal = currentPrincipal;
     }

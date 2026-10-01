@@ -1,6 +1,8 @@
 package io.casehub.qhorus.webhook;
 
 import io.casehub.qhorus.api.gateway.ChannelClosedEvent;
+import io.casehub.qhorus.webhook.core.WebhookRegistration;
+import io.casehub.qhorus.webhook.core.WebhookRegistryStore;
 import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
@@ -17,7 +19,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @ApplicationScoped
-public class WebhookRegistry {
+public class WebhookRegistry implements WebhookRegistryStore {
 
     private static final Logger LOG = Logger.getLogger(WebhookRegistry.class);
 
@@ -38,6 +40,7 @@ public class WebhookRegistry {
         LOG.infof("Loaded %d webhook registration(s) from database", byId.size());
     }
 
+    @Override
     public WebhookRegistration register(UUID channelId, String tenancyId, String url,
                                         String secretRef, Map<String, String> headers) {
         var entity = new WebhookRegistrationEntity();
@@ -71,6 +74,7 @@ public class WebhookRegistry {
         return reg;
     }
 
+    @Override
     public boolean deregister(UUID registrationId) {
         store.delete(registrationId);
         return deregisterInMemory(registrationId);
@@ -102,10 +106,12 @@ public class WebhookRegistry {
         return result;
     }
 
+    @Override
     public Set<WebhookRegistration> findByChannelId(UUID channelId) {
         return channelHooks.getOrDefault(channelId, Set.of());
     }
 
+    @Override
     public Collection<WebhookRegistration> listAll(String tenancyId) {
         return byId.values().stream()
                    .filter(r -> tenancyId.equals(r.tenancyId()))

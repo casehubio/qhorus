@@ -4,11 +4,9 @@ import io.casehub.qhorus.api.event.BindingVerificationRequestedEvent;
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
 import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
-import io.casehub.qhorus.a2a.outbound.ExternalAgentBindingRequest;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;

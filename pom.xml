@@ -25,8 +25,10 @@
     <module>postgres-broadcaster</module>
     <module>kafka-observer</module>
     <module>websocket-observer</module>
+    <module>webhook-observer-core</module>
     <module>webhook-observer</module>
     <module>graphql</module>
+    <module>a2a-outbound-core</module>
     <module>a2a-outbound</module>
     <module>notification-bridge</module>
     <module>compliance-report</module>

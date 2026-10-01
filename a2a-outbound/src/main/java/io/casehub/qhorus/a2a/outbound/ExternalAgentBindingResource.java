@@ -1,6 +1,7 @@
 package io.casehub.qhorus.a2a.outbound;
 
 import io.casehub.qhorus.a2a.outbound.core.ExternalAgentBindingCore;
+import io.casehub.qhorus.a2a.outbound.core.ExternalAgentBindingRequest;
 import io.casehub.qhorus.api.instance.ExternalAgentBinding;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;

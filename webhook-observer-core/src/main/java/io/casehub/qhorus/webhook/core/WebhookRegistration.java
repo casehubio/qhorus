@@ -1,4 +1,4 @@
-package io.casehub.qhorus.webhook;
+package io.casehub.qhorus.webhook.core;
 
 import java.time.Instant;
 import java.util.Map;
