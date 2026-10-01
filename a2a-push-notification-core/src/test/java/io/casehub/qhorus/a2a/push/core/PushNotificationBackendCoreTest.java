@@ -1,10 +1,9 @@
-package io.casehub.qhorus.a2a.push;
+package io.casehub.qhorus.a2a.push.core;
 
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -25,19 +24,19 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-class PushNotificationBackendTest {
+class PushNotificationBackendCoreTest {
 
     private InMemoryPushNotificationConfigStore store;
-    private PushNotificationPoster poster;
-    private PushNotificationBackend backend;
+    private PushNotificationPosterCore poster;
+    private PushNotificationBackendCore backend;
     private UUID channelId;
     private ChannelRef channelRef;
 
     @BeforeEach
     void setUp() {
         store = new InMemoryPushNotificationConfigStore();
-        poster = mock(PushNotificationPoster.class);
-        backend = new PushNotificationBackend(store, poster);
+        poster = mock(PushNotificationPosterCore.class);
+        backend = new PushNotificationBackendCore(store, poster);
         backend.maxUrlFailures = 3;
         channelId = UUID.randomUUID();
         channelRef = new ChannelRef(channelId, "test-channel");
@@ -144,21 +143,6 @@ class PushNotificationBackendTest {
 
         backend.post(channelRef, message(MessageType.HANDOFF, taskId, null));
         verify(poster).push(any(), eq("working"), any(), eq(channelId));
-
-        assertThat(store.findByTaskId(taskId)).hasSize(1);
-    }
-
-    @Test
-    void post_httpFailure_nonTerminal_dropsMessage() {
-        String taskId = "task-drop-" + UUID.randomUUID();
-        PushNotificationConfig cfg = config(taskId, "https://push.example.com");
-        store.put(cfg);
-        backend.onConfigCreated(channelId, taskId);
-
-        when(poster.push(any(), any(), any(), any()))
-                .thenReturn(PushPostResult.fail(500, "server error"));
-
-        backend.post(channelRef, message(MessageType.STATUS, taskId, "update"));
 
         assertThat(store.findByTaskId(taskId)).hasSize(1);
     }

@@ -1,11 +1,11 @@
-package io.casehub.qhorus.a2a.push;
+package io.casehub.qhorus.a2a.push.core;
 
 import java.time.Duration;
 import java.time.Instant;
 
-record UrlHealthState(int failures, Instant lastFailure, Duration backoffWindow) {
+public record UrlHealthState(int failures, Instant lastFailure, Duration backoffWindow) {
 
-    static final Duration ZERO_BACKOFF = Duration.ZERO;
+    public static final Duration ZERO_BACKOFF = Duration.ZERO;
 
     private static final Duration[] BACKOFF_LEVELS = {
         Duration.ofSeconds(5),
@@ -15,17 +15,17 @@ record UrlHealthState(int failures, Instant lastFailure, Duration backoffWindow)
         Duration.ofHours(1)
     };
 
-    static UrlHealthState initial(Instant failedAt) {
+    public static UrlHealthState initial(Instant failedAt) {
         return new UrlHealthState(1, failedAt, BACKOFF_LEVELS[0]);
     }
 
-    UrlHealthState recordFailure(Instant failedAt) {
+    public UrlHealthState recordFailure(Instant failedAt) {
         int next = failures + 1;
         int idx = Math.min(next - 1, BACKOFF_LEVELS.length - 1);
         return new UrlHealthState(next, failedAt, BACKOFF_LEVELS[idx]);
     }
 
-    boolean isWithinBackoff(Instant now) {
+    public boolean isWithinBackoff(Instant now) {
         return lastFailure.plus(backoffWindow).isAfter(now);
     }
 }

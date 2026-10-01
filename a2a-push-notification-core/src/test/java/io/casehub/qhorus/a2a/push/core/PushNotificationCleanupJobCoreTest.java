@@ -1,4 +1,4 @@
-package io.casehub.qhorus.a2a.push;
+package io.casehub.qhorus.a2a.push.core;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -14,24 +14,19 @@ import io.casehub.qhorus.api.a2a.PushNotificationConfig;
 import io.casehub.qhorus.persistence.memory.InMemoryPushNotificationConfigStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-class PushNotificationCleanupJobTest {
+class PushNotificationCleanupJobCoreTest {
 
     private InMemoryPushNotificationConfigStore store;
-    private PushConfig config;
-    private PushNotificationCleanupJob job;
+    private PushNotificationCleanupJobCore job;
     private Instant now;
 
     @BeforeEach
     void setUp() {
         store = new InMemoryPushNotificationConfigStore();
-        config = mock(PushConfig.class);
-        when(config.enabled()).thenReturn(true);
-        when(config.ttlThreshold()).thenReturn(Duration.ofHours(24));
         now = Instant.now();
-        job = new PushNotificationCleanupJob(store, config, Clock.fixed(now, ZoneOffset.UTC));
+        job = new PushNotificationCleanupJobCore(store, Duration.ofHours(24), true,
+                Clock.fixed(now, ZoneOffset.UTC));
     }
 
     private PushNotificationConfig cfg(String taskId, Instant createdAt, Instant lastPushedAt) {
@@ -78,7 +73,8 @@ class PushNotificationCleanupJobTest {
 
     @Test
     void cleanup_disabled_doesNothing() {
-        when(config.enabled()).thenReturn(false);
+        job = new PushNotificationCleanupJobCore(store, Duration.ofHours(24), false,
+                Clock.fixed(now, ZoneOffset.UTC));
         store.put(cfg("should-survive", now.minus(48, ChronoUnit.HOURS), null));
         job.cleanup();
         assertThat(store.findByTaskId("should-survive")).hasSize(1);

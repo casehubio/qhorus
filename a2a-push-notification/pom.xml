@@ -17,6 +17,12 @@
   <dependencies>
     <dependency>
       <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-a2a-push-notification-core</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.casehub</groupId>
       <artifactId>casehub-qhorus</artifactId>
       <version>${project.version}</version>
     </dependency>

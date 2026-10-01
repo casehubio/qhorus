@@ -1,4 +1,4 @@
-package io.casehub.qhorus.a2a.push;
+package io.casehub.qhorus.a2a.push.core;
 
 import java.time.Instant;
 import java.util.Map;
@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-class PushNotificationPosterTest {
+class PushNotificationPosterCoreTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
     private CredentialResolver credentialResolver;
@@ -26,7 +26,7 @@ class PushNotificationPosterTest {
     private AtomicReference<String> capturedBody;
     private AtomicReference<String> capturedAuth;
     private PushPostResult nextResult;
-    private PushNotificationPoster poster;
+    private PushNotificationPosterCore poster;
 
     @BeforeEach
     void setUp() {
@@ -35,7 +35,7 @@ class PushNotificationPosterTest {
         capturedBody = new AtomicReference<>();
         capturedAuth = new AtomicReference<>();
         nextResult = PushPostResult.ok(200);
-        poster = new PushNotificationPoster(mapper, credentialResolver,
+        poster = new PushNotificationPosterCore(mapper, credentialResolver,
                 (url, body, auth) -> {
                     capturedUrl.set(url);
                     capturedBody.set(body);
