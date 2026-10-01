@@ -1,4 +1,4 @@
-package io.casehub.qhorus.signing;
+package io.casehub.qhorus.signing.core;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,4 +1,4 @@
-package io.casehub.qhorus.signing;
+package io.casehub.qhorus.signing.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -13,8 +13,6 @@ import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.util.Base64URL;
 import io.casehub.platform.api.signing.SigningProvider;
 import io.casehub.qhorus.api.spi.AgentCardSigner;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -24,8 +22,7 @@ import java.security.Signature;
 import java.security.interfaces.EdECPublicKey;
 import java.security.spec.X509EncodedKeySpec;
 
-@ApplicationScoped
-public class JwsAgentCardSigner implements AgentCardSigner {
+public class JwsAgentCardSignerCore implements AgentCardSigner {
 
     private final OctetKeyPair publicJwk;
     private final PrivateKey privateKey;
@@ -35,14 +32,13 @@ public class JwsAgentCardSigner implements AgentCardSigner {
     private final SigningProvider signingProvider;
     private final String actorId;
 
-    @Inject
-    public JwsAgentCardSigner(SigningConfig config, ObjectMapper mapper,
-                               SigningProvider signingProvider) {
-        this.keyId = config.keyId();
+    public JwsAgentCardSignerCore(String keyId, ObjectMapper mapper,
+                                   SigningProvider signingProvider, String actorId) {
+        this.keyId = keyId;
         this.mapper = mapper;
         this.signingProvider = signingProvider;
-        this.actorId = config.actorId();
-        var material = signingProvider.keyMaterial(config.actorId());
+        this.actorId = actorId;
+        var material = signingProvider.keyMaterial(actorId);
         if (material.isPresent()) {
             byte[] pubBytes = material.get().publicKey();
             try {
@@ -59,7 +55,7 @@ public class JwsAgentCardSigner implements AgentCardSigner {
         this.privateKey = null;
     }
 
-    public JwsAgentCardSigner(KeyPair keyPair, String keyId, ObjectMapper mapper) {
+    public JwsAgentCardSignerCore(KeyPair keyPair, String keyId, ObjectMapper mapper) {
         this.keyId = keyId;
         this.mapper = mapper;
         this.signingProvider = null;

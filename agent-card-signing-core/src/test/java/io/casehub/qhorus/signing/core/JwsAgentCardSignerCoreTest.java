@@ -1,4 +1,4 @@
-package io.casehub.qhorus.signing;
+package io.casehub.qhorus.signing.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -15,9 +15,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class JwsAgentCardSignerTest {
+class JwsAgentCardSignerCoreTest {
 
-    private JwsAgentCardSigner signer;
+    private JwsAgentCardSignerCore signer;
     private ObjectMapper mapper;
 
     @BeforeEach
@@ -25,7 +25,7 @@ class JwsAgentCardSignerTest {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("Ed25519");
         KeyPair kp = kpg.generateKeyPair();
         mapper = new ObjectMapper();
-        signer = new JwsAgentCardSigner(kp, "test-kid", mapper);
+        signer = new JwsAgentCardSignerCore(kp, "test-kid", mapper);
     }
 
     @Test

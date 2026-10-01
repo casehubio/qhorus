@@ -35,6 +35,7 @@
     <module>compliance-report</module>
     <module>push</module>
     <module>a2a-push-notification</module>
+    <module>agent-card-signing-core</module>
     <module>agent-card-signing</module>
     <module>persistence-memory</module>
     <module>graphql-spring</module>

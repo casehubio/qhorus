@@ -1,16 +1,14 @@
 package io.casehub.qhorus.signing;
 
 import io.casehub.ledger.api.spi.TrustScoreSource;
-import io.casehub.qhorus.api.instance.VerificationStatus;
 import io.casehub.qhorus.api.store.ExternalAgentBindingStore;
+import io.casehub.qhorus.signing.core.IdentityVerificationTrustDecoratorCore;
 import jakarta.annotation.Priority;
 import jakarta.decorator.Decorator;
 import jakarta.decorator.Delegate;
 import jakarta.enterprise.inject.Any;
 import jakarta.inject.Inject;
 
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.OptionalDouble;
 
@@ -33,75 +31,47 @@ public class IdentityVerificationTrustDecorator implements TrustScoreSource {
         this.weight = config.trust().dimensionWeight();
     }
 
-    public IdentityVerificationTrustDecorator() {}
-
-    public IdentityVerificationTrustDecorator(TrustScoreSource delegate,
-                                              ExternalAgentBindingStore bindingStore,
-                                              double floorScore, double weight) {
-        this.delegate = delegate;
-        this.bindingStore = bindingStore;
-        this.floorScore = floorScore;
-        this.weight = weight;
+    private IdentityVerificationTrustDecoratorCore core() {
+        return new IdentityVerificationTrustDecoratorCore(delegate, bindingStore, floorScore, weight);
     }
 
     @Override
     public OptionalDouble globalScore(String actorId) {
-        OptionalDouble base = delegate.globalScore(actorId);
-        OptionalDouble identity = computeIdentityScore(actorId);
-        if (identity.isEmpty()) return base;
-        double baseVal = base.orElse(0.0);
-        double boost = identity.getAsDouble() * weight;
-        return OptionalDouble.of(Math.min(1.0, baseVal + boost));
+        return core().globalScore(actorId);
     }
 
     @Override
     public OptionalDouble capabilityScore(String actorId, String capabilityTag) {
-        return delegate.capabilityScore(actorId, capabilityTag);
+        return core().capabilityScore(actorId, capabilityTag);
     }
 
     @Override
     public OptionalDouble dimensionScore(String actorId, String dimensionKey) {
-        if ("identity-verification".equals(dimensionKey)) {
-            return computeIdentityScore(actorId);
-        }
-        return delegate.dimensionScore(actorId, dimensionKey);
+        return core().dimensionScore(actorId, dimensionKey);
     }
 
     @Override
     public OptionalDouble capabilityDimensionScore(String actorId, String capabilityTag, String dimensionKey) {
-        return delegate.capabilityDimensionScore(actorId, capabilityTag, dimensionKey);
+        return core().capabilityDimensionScore(actorId, capabilityTag, dimensionKey);
     }
 
     @Override
     public int decisionCount(String actorId, String capabilityTag) {
-        return delegate.decisionCount(actorId, capabilityTag);
+        return core().decisionCount(actorId, capabilityTag);
     }
 
     @Override
     public Map<String, Double> allCapabilityScores(String actorId) {
-        return delegate.allCapabilityScores(actorId);
+        return core().allCapabilityScores(actorId);
     }
 
     @Override
     public Map<String, Double> allDimensionScores(String actorId) {
-        Map<String, Double> scores = new LinkedHashMap<>(delegate.allDimensionScores(actorId));
-        computeIdentityScore(actorId).ifPresent(s -> scores.put("identity-verification", s));
-        return scores;
+        return core().allDimensionScores(actorId);
     }
 
     @Override
     public Map<String, Double> qualityScores(String actorId, String capabilityTag) {
-        return delegate.qualityScores(actorId, capabilityTag);
-    }
-
-    private OptionalDouble computeIdentityScore(String actorId) {
-        try {
-            return bindingStore.findByInstanceId(actorId)
-                    .filter(b -> b.verificationStatus() == VerificationStatus.VERIFIED)
-                    .map(b -> OptionalDouble.of(floorScore))
-                    .orElse(OptionalDouble.empty());
-        } catch (Exception e) {
-            return OptionalDouble.empty();
-        }
+        return core().qualityScores(actorId, capabilityTag);
     }
 }
