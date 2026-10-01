@@ -7,6 +7,7 @@ import io.casehub.platform.api.subscription.SubscriptionScope;
 import io.casehub.platform.api.subscription.SubscriptionStore;
 import io.casehub.platform.api.subscription.NotificationTemplate;
 import io.casehub.platform.api.subscription.TargetType;
+import io.casehub.qhorus.notification.bridge.core.QhorusSubscriptionBootstrapCore;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,18 +23,18 @@ import static org.mockito.Mockito.*;
 class QhorusSubscriptionBootstrapTest {
 
     private SubscriptionStore subscriptionStore;
-    private QhorusSubscriptionBootstrap bootstrap;
+    private QhorusSubscriptionBootstrapCore bootstrap;
 
     @BeforeEach
     void setUp() {
         subscriptionStore = mock(SubscriptionStore.class);
         when(subscriptionStore.findAllEnabled()).thenReturn(Stream.empty());
-        bootstrap = new QhorusSubscriptionBootstrap(subscriptionStore);
+        bootstrap = new QhorusSubscriptionBootstrapCore(subscriptionStore);
     }
 
     @Test
     void registers_five_default_subscriptions_when_none_exist() {
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
 
         verify(subscriptionStore, times(7)).store(any(SubscriptionInput.class));
     }
@@ -50,14 +51,14 @@ class QhorusSubscriptionBootstrapTest {
                 true, SubscriptionScope.SYSTEM, Instant.now(), Instant.now());
 
         when(subscriptionStore.findAllEnabled()).thenReturn(Stream.of(existing));
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
 
         verify(subscriptionStore, times(6)).store(any(SubscriptionInput.class));
     }
 
     @Test
     void assigned_subscription_targets_obligor_field() {
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
         verify(subscriptionStore, times(7)).store(captor.capture());
@@ -74,7 +75,7 @@ class QhorusSubscriptionBootstrapTest {
 
     @Test
     void fulfilled_subscription_targets_requester_field() {
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
         verify(subscriptionStore, times(7)).store(captor.capture());
@@ -89,7 +90,7 @@ class QhorusSubscriptionBootstrapTest {
 
     @Test
     void failed_subscription_has_warning_severity() {
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
 
         var captor = ArgumentCaptor.forClass(SubscriptionInput.class);
         verify(subscriptionStore, times(7)).store(captor.capture());
@@ -105,6 +106,6 @@ class QhorusSubscriptionBootstrapTest {
     void store_failure_is_non_fatal() {
         doThrow(new RuntimeException("DB down")).when(subscriptionStore).store(any());
 
-        bootstrap.onStartup(null);
+        bootstrap.bootstrap();
     }
 }

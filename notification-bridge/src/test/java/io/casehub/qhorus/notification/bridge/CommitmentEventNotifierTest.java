@@ -1,13 +1,14 @@
 package io.casehub.qhorus.notification.bridge;
 
-import io.casehub.platform.api.datasource.DataSource;
-import io.casehub.platform.api.datasource.DataSourceRegistry;
+import io.casehub.platform.api.subscription.SubscribableEvent;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentDeclinedEvent;
 import io.casehub.qhorus.api.message.CommitmentExpiredEvent;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.notification.bridge.core.CommitmentEventNotifierCore;
+import io.casehub.qhorus.notification.bridge.core.QhorusObligationEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -15,9 +16,7 @@ import org.mockito.ArgumentCaptor;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.casehub.platform.api.identity.TenancyConstants.PLATFORM_TENANT_ID;
-import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
+import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -30,8 +29,8 @@ class CommitmentEventNotifierTest {
 
     private       CommitmentStore         commitmentStore;
     @SuppressWarnings("unchecked")
-    private final DataSource<Object>      dataSource = mock(DataSource.class);
-    private       CommitmentEventNotifier notifier;
+    private final Consumer<SubscribableEvent> eventSink = mock(Consumer.class);
+    private       CommitmentEventNotifierCore notifier;
 
     private static final UUID   COMMITMENT_ID  = UUID.randomUUID();
     private static final UUID   CHANNEL_ID     = UUID.randomUUID();
@@ -43,10 +42,7 @@ class CommitmentEventNotifierTest {
     @BeforeEach
     void setUp() {
         commitmentStore = mock(CommitmentStore.class);
-        var registry = mock(DataSourceRegistry.class);
-        when(registry.resolveSource(NOTIFICATION_DATASOURCE_PATH, PLATFORM_TENANT_ID))
-                .thenReturn(Optional.of(dataSource));
-        notifier = new CommitmentEventNotifier(commitmentStore, registry);
+        notifier = new CommitmentEventNotifierCore(commitmentStore, eventSink);
 
         when(commitmentStore.findById(COMMITMENT_ID))
                 .thenReturn(Optional.of(commitment()));
@@ -57,8 +53,8 @@ class CommitmentEventNotifierTest {
         notifier.onDeclined(new CommitmentDeclinedEvent(
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, REQUESTER));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.DECLINED);
@@ -74,7 +70,7 @@ class CommitmentEventNotifierTest {
         notifier.onDeclined(new CommitmentDeclinedEvent(
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, null));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -82,7 +78,7 @@ class CommitmentEventNotifierTest {
         notifier.onDeclined(new CommitmentDeclinedEvent(
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, ""));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -91,8 +87,8 @@ class CommitmentEventNotifierTest {
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, REQUESTER,
                 Instant.now().minusSeconds(60)));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.EXPIRED);
@@ -106,8 +102,8 @@ class CommitmentEventNotifierTest {
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, null, REQUESTER,
                 Instant.now()));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.obligor()).isNull();
@@ -120,7 +116,7 @@ class CommitmentEventNotifierTest {
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, null,
                 Instant.now()));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -130,16 +126,16 @@ class CommitmentEventNotifierTest {
         notifier.onDeclined(new CommitmentDeclinedEvent(
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, REQUESTER));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.tenancyId()).isEqualTo("DEFAULT");
     }
 
     @Test
-    void datasource_failure_is_non_fatal() {
-        doThrow(new RuntimeException("DS down")).when(dataSource).add(any());
+    void eventSink_failure_is_non_fatal() {
+        doThrow(new RuntimeException("sink down")).when(eventSink).accept(any());
 
         notifier.onDeclined(new CommitmentDeclinedEvent(
                 COMMITMENT_ID, CORRELATION_ID, CHANNEL_ID, OBLIGOR, REQUESTER));

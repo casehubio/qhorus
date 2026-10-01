@@ -1,21 +1,22 @@
 package io.casehub.qhorus.notification.bridge;
 
-import io.casehub.platform.api.datasource.DataSource;
-import io.casehub.platform.api.datasource.DataSourceRegistry;
+import io.casehub.platform.api.subscription.SubscribableEvent;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.MemberRole;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.gateway.OutboundMessage;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelMembershipStore;
+import io.casehub.qhorus.notification.bridge.core.NotificationChannelBackendCore;
+import io.casehub.qhorus.notification.bridge.core.QhorusBroadcastEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -27,17 +28,15 @@ import static org.mockito.Mockito.when;
 
 class NotificationChannelBackendTest {
 
-    private NotificationChannelBackend backend;
+    private NotificationChannelBackendCore backend;
     private ChannelMembershipStore membershipStore;
     @SuppressWarnings("unchecked")
-    private final DataSource<Object> dataSource = mock(DataSource.class);
+    private final Consumer<SubscribableEvent> eventSink = mock(Consumer.class);
 
     @BeforeEach
     void setUp() {
         membershipStore = mock(ChannelMembershipStore.class);
-        DataSourceRegistry dataSourceRegistry = mock(DataSourceRegistry.class);
-        when(dataSourceRegistry.resolveSource(any(), any())).thenReturn(Optional.of(dataSource));
-        backend = new NotificationChannelBackend(membershipStore, dataSourceRegistry);
+        backend = new NotificationChannelBackendCore(membershipStore, eventSink);
     }
 
     @Test
@@ -55,7 +54,7 @@ class NotificationChannelBackendTest {
         backend.post(ref, msg);
 
         ArgumentCaptor<QhorusBroadcastEvent> captor = ArgumentCaptor.forClass(QhorusBroadcastEvent.class);
-        verify(dataSource, times(2)).add(captor.capture());
+        verify(eventSink, times(2)).accept(captor.capture());
 
         List<QhorusBroadcastEvent> events = captor.getAllValues();
         assertThat(events).extracting(QhorusBroadcastEvent::recipientId)
@@ -81,9 +80,9 @@ class NotificationChannelBackendTest {
 
         backend.post(ref, msg);
 
-        ArgumentCaptor<QhorusBroadcastEvent> captor = ArgumentCaptor.forClass(QhorusBroadcastEvent.class);
-        verify(dataSource, times(1)).add(captor.capture());
-        assertThat(captor.getValue().recipientId()).isEqualTo("agent-2");
+        ArgumentCaptor<SubscribableEvent> captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink, times(1)).accept(captor.capture());
+        assertThat(((QhorusBroadcastEvent) captor.getValue()).recipientId()).isEqualTo("agent-2");
     }
 
     @Test
@@ -97,7 +96,7 @@ class NotificationChannelBackendTest {
         backend.post(ref, msg);
 
         verifyNoInteractions(membershipStore);
-        verifyNoInteractions(dataSource);
+        verifyNoInteractions(eventSink);
     }
 
     @Test

@@ -1,4 +1,4 @@
-package io.casehub.qhorus.notification.bridge;
+package io.casehub.qhorus.notification.bridge.core;
 
 import io.casehub.platform.api.subscription.SubscribableEvent;
 

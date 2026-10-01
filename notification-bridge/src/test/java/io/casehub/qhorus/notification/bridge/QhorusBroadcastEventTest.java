@@ -1,5 +1,6 @@
 package io.casehub.qhorus.notification.bridge;
 
+import io.casehub.qhorus.notification.bridge.core.QhorusBroadcastEvent;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;

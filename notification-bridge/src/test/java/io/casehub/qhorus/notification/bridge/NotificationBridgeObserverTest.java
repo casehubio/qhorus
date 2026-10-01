@@ -1,13 +1,13 @@
 package io.casehub.qhorus.notification.bridge;
 
-import io.casehub.platform.api.datasource.DataSource;
-import io.casehub.platform.api.datasource.DataSourceRegistry;
-import io.casehub.qhorus.api.gateway.MessageObserver;
+import io.casehub.platform.api.subscription.SubscribableEvent;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.message.CommitmentState;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.CommitmentStore;
+import io.casehub.qhorus.notification.bridge.core.NotificationBridgeObserverCore;
+import io.casehub.qhorus.notification.bridge.core.QhorusObligationEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -15,9 +15,7 @@ import org.mockito.ArgumentCaptor;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
-
-import static io.casehub.platform.api.identity.TenancyConstants.PLATFORM_TENANT_ID;
-import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
+import java.util.function.Consumer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -30,8 +28,8 @@ class NotificationBridgeObserverTest {
 
     private       CommitmentStore            commitmentStore;
     @SuppressWarnings("unchecked")
-    private final DataSource<Object>         dataSource = mock(DataSource.class);
-    private       NotificationBridgeObserver observer;
+    private final Consumer<SubscribableEvent> eventSink = mock(Consumer.class);
+    private       NotificationBridgeObserverCore observer;
 
     private static final UUID   CHANNEL_ID     = UUID.randomUUID();
     private static final String CHANNEL_NAME   = "test-channel";
@@ -43,10 +41,7 @@ class NotificationBridgeObserverTest {
     @BeforeEach
     void setUp() {
         commitmentStore = mock(CommitmentStore.class);
-        var registry = mock(DataSourceRegistry.class);
-        when(registry.resolveSource(NOTIFICATION_DATASOURCE_PATH, PLATFORM_TENANT_ID))
-                .thenReturn(Optional.of(dataSource));
-        observer = new NotificationBridgeObserver(commitmentStore, registry);
+        observer = new NotificationBridgeObserverCore(commitmentStore, eventSink);
     }
 
     @Test
@@ -56,8 +51,8 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.COMMAND, REQUESTER, "Do this task"));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.ASSIGNED);
@@ -78,7 +73,7 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.COMMAND, REQUESTER, "Do this"));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -88,7 +83,7 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.COMMAND, REQUESTER, "Do this"));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -98,8 +93,8 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.DONE, OBLIGOR, "Task complete"));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.FULFILLED);
@@ -114,8 +109,8 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.FAILURE, OBLIGOR, "Could not complete"));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.FAILED);
@@ -128,7 +123,7 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.DONE, REQUESTER, "Self-resolved"));
 
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -136,7 +131,7 @@ class NotificationBridgeObserverTest {
         observer.onMessage(event(MessageType.STATUS, OBLIGOR, "Progress update"));
 
         verify(commitmentStore, never()).findByCorrelationId(any());
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -149,7 +144,7 @@ class NotificationBridgeObserverTest {
         observer.onMessage(evt);
 
         verify(commitmentStore, never()).findByCorrelationId(any());
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -162,7 +157,7 @@ class NotificationBridgeObserverTest {
         observer.onMessage(evt);
 
         verify(commitmentStore, never()).findByCorrelationId(any());
-        verify(dataSource, never()).add(any());
+        verify(eventSink, never()).accept(any());
     }
 
     @Test
@@ -172,8 +167,8 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.PROPOSE, REQUESTER, "I will do X if you agree"));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.kind()).isEqualTo(QhorusObligationEvent.Kind.PROPOSED);
@@ -185,14 +180,14 @@ class NotificationBridgeObserverTest {
 
     @Test
     void scope_is_local() {
-        assertThat(observer.scope()).isEqualTo(MessageObserver.Scope.LOCAL);
+        assertThat(observer.scope()).isEqualTo(io.casehub.qhorus.api.gateway.MessageObserver.Scope.LOCAL);
     }
 
     @Test
-    void datasource_add_failure_is_non_fatal() {
+    void eventSink_failure_is_non_fatal() {
         when(commitmentStore.findByCorrelationId(CORRELATION_ID))
                 .thenReturn(Optional.of(commitment(REQUESTER, OBLIGOR)));
-        doThrow(new RuntimeException("DS down")).when(dataSource).add(any());
+        doThrow(new RuntimeException("sink down")).when(eventSink).accept(any());
 
         observer.onMessage(event(MessageType.COMMAND, REQUESTER, "Do this"));
     }
@@ -204,32 +199,18 @@ class NotificationBridgeObserverTest {
 
         observer.onMessage(event(MessageType.COMMAND, REQUESTER, "a".repeat(300)));
 
-        var captor = ArgumentCaptor.forClass(Object.class);
-        verify(dataSource).add(captor.capture());
+        var captor = ArgumentCaptor.forClass(SubscribableEvent.class);
+        verify(eventSink).accept(captor.capture());
         var fired = (QhorusObligationEvent) captor.getValue();
 
         assertThat(fired.content()).hasSize(200);
     }
 
     @Test
-    void datasource_not_registered_skips_silently() {
-        var emptyRegistry = mock(DataSourceRegistry.class);
-        when(emptyRegistry.resolveSource(any(), any())).thenReturn(Optional.empty());
-        var obs = new NotificationBridgeObserver(commitmentStore, emptyRegistry);
-
-        when(commitmentStore.findByCorrelationId(CORRELATION_ID))
-                .thenReturn(Optional.of(commitment(REQUESTER, OBLIGOR)));
-
-        obs.onMessage(event(MessageType.COMMAND, REQUESTER, "Do this"));
-
-        verify(dataSource, never()).add(any());
-    }
-
-    @Test
     void truncate_helper() {
-        assertThat(NotificationBridgeObserver.truncate(null, 10)).isNull();
-        assertThat(NotificationBridgeObserver.truncate("short", 10)).isEqualTo("short");
-        assertThat(NotificationBridgeObserver.truncate("a".repeat(300), 200)).hasSize(200);
+        assertThat(NotificationBridgeObserverCore.truncate(null, 10)).isNull();
+        assertThat(NotificationBridgeObserverCore.truncate("short", 10)).isEqualTo("short");
+        assertThat(NotificationBridgeObserverCore.truncate("a".repeat(300), 200)).hasSize(200);
     }
 
     private MessageReceivedEvent event(MessageType type, String sender, String content) {

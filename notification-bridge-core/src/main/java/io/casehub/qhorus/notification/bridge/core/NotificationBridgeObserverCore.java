@@ -1,34 +1,25 @@
-package io.casehub.qhorus.notification.bridge;
+package io.casehub.qhorus.notification.bridge.core;
 
-import io.casehub.platform.api.datasource.DataSource;
-import io.casehub.platform.api.datasource.DataSourceRegistry;
+import io.casehub.platform.api.subscription.SubscribableEvent;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.Commitment;
 import io.casehub.qhorus.api.store.CommitmentStore;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import org.jboss.logging.Logger;
 
 import java.util.Optional;
+import java.util.function.Consumer;
 
-import static io.casehub.platform.api.identity.TenancyConstants.PLATFORM_TENANT_ID;
-import static io.casehub.platform.api.subscription.SubscriptionConstants.NOTIFICATION_DATASOURCE_PATH;
+public class NotificationBridgeObserverCore implements MessageObserver {
 
-@ApplicationScoped
-public class NotificationBridgeObserver implements MessageObserver {
+    private static final int MAX_CONTENT_LENGTH = 200;
 
-    private static final Logger LOG                = Logger.getLogger(NotificationBridgeObserver.class);
-    private static final int    MAX_CONTENT_LENGTH = 200;
+    private final CommitmentStore commitmentStore;
+    private final Consumer<SubscribableEvent> eventSink;
 
-    private final CommitmentStore    commitmentStore;
-    private final DataSourceRegistry dataSourceRegistry;
-
-    @Inject
-    public NotificationBridgeObserver(CommitmentStore commitmentStore,
-                                      DataSourceRegistry dataSourceRegistry) {
-        this.commitmentStore    = commitmentStore;
-        this.dataSourceRegistry = dataSourceRegistry;
+    public NotificationBridgeObserverCore(CommitmentStore commitmentStore,
+                                          Consumer<SubscribableEvent> eventSink) {
+        this.commitmentStore = commitmentStore;
+        this.eventSink = eventSink;
     }
 
     @Override
@@ -53,7 +44,6 @@ public class NotificationBridgeObserver implements MessageObserver {
     private void fireAssigned(MessageReceivedEvent event) {
         Optional<Commitment> commitment = commitmentStore.findByCorrelationId(event.correlationId());
         if (commitment.isEmpty()) {
-            LOG.debugf("No commitment for correlationId=%s — skipping COMMAND notification", event.correlationId());
             return;
         }
         String obligor = commitment.get().obligor();
@@ -75,7 +65,6 @@ public class NotificationBridgeObserver implements MessageObserver {
     private void fireProposed(MessageReceivedEvent event) {
         Optional<Commitment> commitment = commitmentStore.findByCorrelationId(event.correlationId());
         if (commitment.isEmpty()) {
-            LOG.debugf("No commitment for correlationId=%s — skipping PROPOSE notification", event.correlationId());
             return;
         }
         String obligor = commitment.get().obligor();
@@ -118,24 +107,16 @@ public class NotificationBridgeObserver implements MessageObserver {
                 truncate(event.content(), MAX_CONTENT_LENGTH)));
     }
 
-    private void fire(QhorusObligationEvent event) {
+    private void fire(SubscribableEvent event) {
         try {
-            Optional<DataSource<?>> ds = dataSourceRegistry.resolveSource(
-                    NOTIFICATION_DATASOURCE_PATH, PLATFORM_TENANT_ID);
-            if (ds.isEmpty()) {
-                LOG.warnf("Notification DataSource not available — dropping %s event", event.kind());
-                return;
-            }
-            @SuppressWarnings("unchecked")
-            DataSource<Object> source = (DataSource<Object>) ds.get();
-            source.add(event);
+            eventSink.accept(event);
         } catch (Exception e) {
-            LOG.warnf("Failed to fire obligation event %s: %s", event.kind(), e.getMessage());
+            // notification failure must not crash the observer
         }
     }
 
-    static String truncate(String s, int max) {
-        if (s == null) {return null;}
+    public static String truncate(String s, int max) {
+        if (s == null) { return null; }
         return s.length() <= max ? s : s.substring(0, max - 1) + "…";
     }
 }
