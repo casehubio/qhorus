@@ -51,6 +51,7 @@
     <module>qhorus-rest-spring</module>
     <module>spring-integration-test</module>
     <module>testing</module>
+    <module>mesh</module>
     <module>examples</module>
   </modules>
 
