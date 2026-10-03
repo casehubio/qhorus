@@ -126,6 +126,12 @@ public class RuntimeAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
+    public InboundNormaliser inboundNormaliser() {
+        return new io.casehub.qhorus.runtime.gateway.DefaultInboundNormaliser();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
     public SummaryUpdateHook summaryUpdateHook() { return new NoOpSummaryUpdateHook(); }
 
     @Bean
