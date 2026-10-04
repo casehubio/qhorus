@@ -21,6 +21,12 @@
       <version>${project.version}</version>
     </dependency>
 
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-agent-bridge</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- JDBC driver — non-optional for the mesh app -->
     <dependency>
       <groupId>io.quarkus</groupId>

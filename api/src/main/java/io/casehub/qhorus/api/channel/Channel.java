@@ -161,7 +161,7 @@ public record Channel(
                 null,
                 null,
                 null,
-                null);
+                req.metadata());
     }
 
     public Builder toBuilder() {
