@@ -47,7 +47,7 @@ class MessagingServiceQueryTest {
                 consumerMessaging, messageReader, reactionReader,
                 mock(MessageDispatcher.class), mock(CurrentPrincipal.class),
                 mock(ReactionManager.class), mock(MessageStore.class),
-                mock(CommitmentStore.class));
+                mock(CommitmentStore.class), mock(io.casehub.qhorus.api.message.MessageContentEraser.class));
     }
 
     @Test

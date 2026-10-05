@@ -60,7 +60,7 @@ class MessagingServiceMutationTest {
         service = new MessagingService(
                 consumerMessaging, mock(MessageReader.class), mock(ReactionReader.class),
                 messageDispatcher, currentPrincipal, reactionManager, messageStore,
-                commitmentStore);
+                commitmentStore, mock(io.casehub.qhorus.api.message.MessageContentEraser.class));
     }
 
     @Test
