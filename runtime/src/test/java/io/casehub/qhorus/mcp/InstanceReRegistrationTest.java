@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class InstanceReRegistrationTest {
 
     @Inject
+    @io.quarkus.hibernate.orm.PersistenceUnit("qhorus")
     EntityManager em;
 
     @Inject QhorusTestHelper helper;
