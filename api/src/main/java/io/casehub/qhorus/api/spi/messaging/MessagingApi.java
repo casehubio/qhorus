@@ -7,6 +7,7 @@ import io.casehub.qhorus.api.message.CancelWaitResult;
 import io.casehub.qhorus.api.message.DeleteMessageResult;
 import io.casehub.qhorus.api.message.DispatchMessageRequest;
 import io.casehub.qhorus.api.message.DispatchResult;
+import io.casehub.qhorus.api.message.ErasureResult;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageReactions;
 import io.casehub.qhorus.api.message.Reaction;
@@ -57,4 +58,13 @@ public interface MessagingApi {
 
     @PlatformMutation("Request approval in a channel")
     WaitResult requestApproval(UUID channelId, String content, Integer timeoutSeconds);
+
+    @PlatformMutation("Correct a message — replaces the content of an existing message")
+    DispatchResult correctMessage(UUID channelId, Long messageId, String correctedContent);
+
+    @PlatformMutation("Retract a message — marks it as withdrawn")
+    DispatchResult retractMessage(UUID channelId, Long messageId, String reason);
+
+    @PlatformMutation("Erase message content — GDPR/retention tombstone")
+    ErasureResult eraseMessageContent(UUID ledgerEntryId, String reason);
 }

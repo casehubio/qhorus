@@ -1,14 +1,5 @@
 package io.casehub.qhorus.runtime.privacy;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import jakarta.persistence.EntityManager;
-import jakarta.transaction.Transactional;
-
 import io.casehub.ledger.api.model.ErasureReason;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
@@ -18,9 +9,17 @@ import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.message.MessageEntity;
 import io.quarkus.hibernate.orm.PersistenceUnit;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.persistence.EntityManager;
+import jakarta.transaction.Transactional;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
 
 @ApplicationScoped
-public class MessageContentErasureService {
+public class MessageContentErasureService implements io.casehub.qhorus.api.message.MessageContentEraser {
 
     @Inject
     @PersistenceUnit("qhorus")
@@ -97,4 +96,14 @@ public class MessageContentErasureService {
         return new MessageErasureResult(
                 entry.id, entry.messageId, entry.channelId, tombstone.id);
     }
+
+    @Override
+    public io.casehub.qhorus.api.message.ErasureResult erase(java.util.UUID ledgerEntryId, String reason) {
+        ErasureReason        erasureReason = ErasureReason.valueOf(reason);
+        MessageErasureResult result        = eraseMessageContent(ledgerEntryId, erasureReason);
+        return new io.casehub.qhorus.api.message.ErasureResult(
+                result.erasedEntryId(), result.erasedMessageId(),
+                result.channelId(), result.tombstoneEntryId());
+    }
+
 }

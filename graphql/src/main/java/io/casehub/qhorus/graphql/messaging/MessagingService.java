@@ -10,7 +10,9 @@ import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DeleteMessageResult;
 import io.casehub.qhorus.api.message.DispatchMessageRequest;
 import io.casehub.qhorus.api.message.DispatchResult;
+import io.casehub.qhorus.api.message.ErasureResult;
 import io.casehub.qhorus.api.message.Message;
+import io.casehub.qhorus.api.message.MessageContentEraser;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.casehub.qhorus.api.message.MessageReactions;
@@ -20,8 +22,8 @@ import io.casehub.qhorus.api.message.ReactionGroup;
 import io.casehub.qhorus.api.message.WaitResult;
 import io.casehub.qhorus.api.spi.messaging.MessagingApi;
 import io.casehub.qhorus.api.store.CommitmentStore;
-import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.MessageReader;
+import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.ReactionReader;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -46,6 +48,8 @@ public class MessagingService implements MessagingApi {
     private final ReactionManager reactionManager;
     private final MessageStore messageStore;
     private final CommitmentStore commitmentStore;
+    private final MessageContentEraser messageContentEraser;
+
 
     public MessagingService(ConsumerMessaging consumerMessaging,
                             MessageReader messageReader,
@@ -54,15 +58,17 @@ public class MessagingService implements MessagingApi {
                             CurrentPrincipal currentPrincipal,
                             ReactionManager reactionManager,
                             MessageStore messageStore,
-                            CommitmentStore commitmentStore) {
-        this.consumerMessaging = consumerMessaging;
-        this.messageReader = messageReader;
-        this.reactionReader = reactionReader;
-        this.messageDispatcher = messageDispatcher;
-        this.currentPrincipal = currentPrincipal;
-        this.reactionManager = reactionManager;
-        this.messageStore = messageStore;
-        this.commitmentStore = commitmentStore;
+                            CommitmentStore commitmentStore,
+                            MessageContentEraser messageContentEraser) {
+        this.consumerMessaging    = consumerMessaging;
+        this.messageReader        = messageReader;
+        this.reactionReader       = reactionReader;
+        this.messageDispatcher    = messageDispatcher;
+        this.currentPrincipal     = currentPrincipal;
+        this.reactionManager      = reactionManager;
+        this.messageStore         = messageStore;
+        this.commitmentStore      = commitmentStore;
+        this.messageContentEraser = messageContentEraser;
     }
 
     @Override
@@ -261,6 +267,49 @@ public class MessagingService implements MessagingApi {
 
         return waitForReply(channelId, correlationId, timeout);
     }
+
+    @Override
+    public DispatchResult correctMessage(UUID channelId, Long messageId, String correctedContent) {
+        String actorId   = currentPrincipal.actorId();
+        String tenancyId = currentPrincipal.tenancyId();
+        Message original = messageStore.find(messageId)
+                                       .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+        MessageDispatch dispatch = MessageDispatch.builder()
+                                                  .channelId(channelId)
+                                                  .sender(actorId)
+                                                  .type(original.messageType())
+                                                  .content(correctedContent)
+                                                  .correctsMessageId(messageId)
+                                                  .actorType(ActorType.HUMAN)
+                                                  .tenancyId(tenancyId)
+                                                  .build();
+        return messageDispatcher.dispatch(dispatch);
+    }
+
+    @Override
+    public DispatchResult retractMessage(UUID channelId, Long messageId, String reason) {
+        String actorId   = currentPrincipal.actorId();
+        String tenancyId = currentPrincipal.tenancyId();
+        Message original = messageStore.find(messageId)
+                                       .orElseThrow(() -> new IllegalArgumentException("Message not found: " + messageId));
+        MessageDispatch dispatch = MessageDispatch.builder()
+                                                  .channelId(channelId)
+                                                  .sender(actorId)
+                                                  .type(original.messageType())
+                                                  .content(reason != null ? reason : "[retracted]")
+                                                  .correctsMessageId(messageId)
+                                                  .retraction(true)
+                                                  .actorType(ActorType.HUMAN)
+                                                  .tenancyId(tenancyId)
+                                                  .build();
+        return messageDispatcher.dispatch(dispatch);
+    }
+
+    @Override
+    public ErasureResult eraseMessageContent(UUID ledgerEntryId, String reason) {
+        return messageContentEraser.erase(ledgerEntryId, reason);
+    }
+
 
     private List<ReactionGroup> groupReactions(Collection<Reaction> reactions) {
         return reactions.stream()
