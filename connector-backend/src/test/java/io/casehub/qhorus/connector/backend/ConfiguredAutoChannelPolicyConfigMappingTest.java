@@ -41,7 +41,7 @@ class ConfiguredAutoChannelPolicyCoreConfigMappingTest {
     ConnectorAutoChannelConfig autoChannelConfig;
 
     @Inject
-    ConfiguredAutoChannelPolicyCore policy;
+    AutoChannelPolicy policy;
 
     @Test
     void configMapping_startupSucceeds_noConfigurationException() {
