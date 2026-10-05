@@ -16,7 +16,7 @@ import io.casehub.qhorus.runtime.channel.ChannelService;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
 import io.casehub.qhorus.runtime.ledger.MessageLedgerEntryRepository;
 import io.casehub.qhorus.runtime.message.MessageEntity;
-import io.casehub.qhorus.runtime.mcp.QhorusMcpTools;
+import io.casehub.qhorus.testing.QhorusTestHelper;
 import io.casehub.qhorus.runtime.privacy.MessageContentErasureEntry;
 import io.casehub.qhorus.runtime.privacy.MessageContentErasureService;
 import io.casehub.qhorus.runtime.privacy.MessageContentErasureService.MessageErasureResult;
@@ -29,7 +29,7 @@ import io.quarkus.test.junit.QuarkusTest;
 class MessageContentErasureServiceIT {
 
     @Inject MessageContentErasureService erasureService;
-    @Inject QhorusMcpTools tools;
+    @Inject QhorusTestHelper helper;
     @Inject ChannelService channelService;
     @Inject MessageLedgerEntryRepository ledgerRepo;
     @Inject @PersistenceUnit("qhorus") EntityManager em;
@@ -37,10 +37,9 @@ class MessageContentErasureServiceIT {
     @Test
     void eraseMessageContent_happyPath_contentNulledAndTombstoneWritten() {
         String chName = "erasure-hp-" + UUID.randomUUID().toString().substring(0, 8);
-        tools.createChannel(chName, "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(chName, "agent-a", null, null, null);
-        tools.sendMessage(chName, "agent-a", "status", "sensitive content to erase",
-                null, null, null, null, null, null, null, null, null);
+        helper.createChannel(chName);
+        helper.registerInstance("agent-a", null);
+        helper.sendMessage(chName, "agent-a", "status", "sensitive content to erase");
 
         UUID channelId = channelService.findByName(chName).map(Channel::id).orElseThrow();
         var entries = ledgerRepo.findByChannelId(channelId, null);
@@ -79,10 +78,9 @@ class MessageContentErasureServiceIT {
     @Test
     void eraseMessageContent_alreadyErased_idempotent() {
         String chName = "erasure-idem-" + UUID.randomUUID().toString().substring(0, 8);
-        tools.createChannel(chName, "APPEND", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
-        tools.registerInstance(chName, "agent-b", null, null, null);
-        tools.sendMessage(chName, "agent-b", "status", "erase me twice",
-                null, null, null, null, null, null, null, null, null);
+        helper.createChannel(chName);
+        helper.registerInstance("agent-b", null);
+        helper.sendMessage(chName, "agent-b", "status", "erase me twice");
 
         UUID channelId = channelService.findByName(chName).map(Channel::id).orElseThrow();
         var entries = ledgerRepo.findByChannelId(channelId, null);

@@ -21,6 +21,9 @@ public class QhorusConfigProperties implements QhorusConfig {
     private ProtocolProps protocol = new ProtocolProps();
     private RoutingProps routing = new RoutingProps();
     private ConnectorBackendProps connectorBackend = new ConnectorBackendProps();
+    private CorrectionProps       correction       = new CorrectionProps();
+    private ErasureProps          erasure          = new ErasureProps();
+
 
     @Override public Cleanup cleanup() { return cleanup; }
     @Override public AgentCard agentCard() { return agentCard; }
@@ -33,6 +36,13 @@ public class QhorusConfigProperties implements QhorusConfig {
     @Override public Routing routing() { return routing; }
     @Override public ConnectorBackend connectorBackend() { return connectorBackend; }
 
+    @Override
+    public Correction correction()                       {return correction;}
+
+    @Override
+    public Erasure erasure()                             {return erasure;}
+
+
     public void setCleanup(CleanupProps cleanup) { this.cleanup = cleanup; }
     public void setAgentCard(AgentCardProps agentCard) { this.agentCard = agentCard; }
     public void setA2a(A2aProps a2a) { this.a2a = a2a; }
@@ -43,6 +53,11 @@ public class QhorusConfigProperties implements QhorusConfig {
     public void setProtocol(ProtocolProps protocol) { this.protocol = protocol; }
     public void setRouting(RoutingProps routing) { this.routing = routing; }
     public void setConnectorBackend(ConnectorBackendProps connectorBackend) { this.connectorBackend = connectorBackend; }
+
+    public void setCorrection(CorrectionProps correction)                   {this.correction = correction;}
+
+    public void setErasure(ErasureProps erasure)                            {this.erasure = erasure;}
+
 
     public static class ConnectorBackendProps implements ConnectorBackend {
         private String deliveryChannel;
@@ -224,4 +239,32 @@ public class QhorusConfigProperties implements QhorusConfig {
         public void setCollusionDetectionEnabled(boolean v) { this.collusionDetectionEnabled = v; }
         public void setCollusionThreshold(double v) { this.collusionThreshold = v; }
     }
+
+    public static class CorrectionProps implements Correction {
+        private int maxPerMessage = 10;
+
+        @Override
+        public int maxPerMessage()          {return maxPerMessage;}
+
+        public void setMaxPerMessage(int v) {this.maxPerMessage = v;}
+    }
+
+    public static class ErasureProps implements Erasure {
+        private MessageContentProps messageContent = new MessageContentProps();
+
+        @Override
+        public MessageContent messageContent()               {return messageContent;}
+
+        public void setMessageContent(MessageContentProps v) {this.messageContent = v;}
+
+        public static class MessageContentProps implements MessageContent {
+            private boolean enabled = true;
+
+            @Override
+            public boolean enabled()          {return enabled;}
+
+            public void setEnabled(boolean v) {this.enabled = v;}
+        }
+    }
+
 }

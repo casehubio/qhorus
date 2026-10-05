@@ -32,6 +32,14 @@ public record DispatchResult(
                           String target, UUID ledgerEntryId, UUID subjectId, UUID causedByEntryId,
                           int parentReplyCount, List<String> advisories) {
         this(messageId, channelId, sender, type, correlationId, inReplyTo, artefactRefs,
-             target, ledgerEntryId, subjectId, causedByEntryId, parentReplyCount, null, advisories);
+             target, ledgerEntryId, subjectId, causedByEntryId, parentReplyCount, null,
+             advisories == null ? List.of() : advisories.stream()
+                     .<io.casehub.qhorus.api.spi.DispatchAdvisory>map(s ->
+                             new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                                     "LEGACY",
+                                     io.casehub.qhorus.api.spi.Severity.WARNING,
+                                     s, java.util.Map.of(),
+                                     io.casehub.qhorus.api.spi.SuggestedAction.LOG))
+                     .toList());
     }
 }
