@@ -15,6 +15,11 @@ public interface CommitmentReader {
 
     Optional<Commitment> findByCorrelationId(String correlationId);
 
+    default Optional<Commitment> findByCorrelationIdForUpdate(String correlationId) {
+        return findByCorrelationId(correlationId);
+    }
+
+
     List<Commitment> findAllByCorrelationId(String correlationId);
 
     List<Commitment> findByIds(Collection<UUID> ids);

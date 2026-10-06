@@ -106,7 +106,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.acknowledge");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "ACKNOWLEDGED");
@@ -131,7 +131,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.fulfill");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "FULFILLED");
@@ -156,7 +156,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.decline");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "DECLINED");
@@ -184,7 +184,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.fail");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "FAILED");
@@ -209,7 +209,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.delegate");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         setSpanAttrs(span, c, correlationId, "DELEGATED");
@@ -298,7 +298,7 @@ public class CommitmentService {
         if (correlationId == null || correlationId.isBlank()) return Optional.empty();
         Span span = startSpan("qhorus.commitment.extend_deadline");
         try {
-            return store.findByCorrelationId(correlationId)
+            return store.findByCorrelationIdForUpdate(correlationId)
                     .filter(c -> c.state().isActive())
                     .map(c -> {
                         if (span != null) {

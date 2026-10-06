@@ -60,6 +60,23 @@ public class JpaCommitmentStore implements CommitmentStore {
     }
 
     @Override
+    @jakarta.transaction.Transactional
+    public java.util.Optional<io.casehub.qhorus.api.message.Commitment> findByCorrelationIdForUpdate(String correlationId) {
+        java.util.List<io.casehub.qhorus.runtime.message.CommitmentEntity> all = em.createQuery(
+                                                                                           "SELECT e FROM Commitment e WHERE e.correlationId = ?1 AND e.tenancyId = ?2 ORDER BY e.createdAt DESC",
+                                                                                           io.casehub.qhorus.runtime.message.CommitmentEntity.class)
+                                                                                   .setParameter(1, correlationId).setParameter(2, currentPrincipal.tenancyId())
+                                                                                   .setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                                                                                   .getResultList();
+        java.util.Optional<io.casehub.qhorus.runtime.message.CommitmentEntity> active = all.stream()
+                                                                                           .filter(c -> c.state.isActive())
+                                                                                           .findFirst();
+        return active.or(() -> all.stream().findFirst())
+                     .map(io.casehub.qhorus.runtime.message.CommitmentEntity::toDomain);
+    }
+
+
+    @Override
     public List<Commitment> findAllByCorrelationId(String correlationId) {
         return em.createQuery("SELECT e FROM Commitment e WHERE e.correlationId = ?1 AND e.tenancyId = ?2 ORDER BY e.createdAt ASC", CommitmentEntity.class)
                    .setParameter(1, correlationId).setParameter(2, currentPrincipal.tenancyId())
