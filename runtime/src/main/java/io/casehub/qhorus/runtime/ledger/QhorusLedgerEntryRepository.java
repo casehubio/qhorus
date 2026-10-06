@@ -2,16 +2,15 @@ package io.casehub.qhorus.runtime.ledger;
 
 import io.casehub.ledger.api.model.LedgerAttestation;
 import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.ledger.api.model.LedgerMerkleFrontier;
 import io.casehub.ledger.api.spi.ActorIdentityProvider;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.ledger.api.model.LedgerMerkleFrontier;
-import io.casehub.ledger.jpa.LedgerPersistenceUnit;
-import io.casehub.ledger.core.privacy.ContentSanitiser;
-import io.casehub.ledger.api.spi.LedgerMerkleFrontierRepository;
-import io.casehub.ledger.core.model.AttestationRecordedEvent;
-import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.ledger.core.merkle.LedgerMerkleTree;
+import io.casehub.ledger.core.model.AttestationRecordedEvent;
+import io.casehub.ledger.core.privacy.ContentSanitiser;
+import io.casehub.ledger.jpa.LedgerPersistenceUnit;
+import io.casehub.ledger.runtime.config.LedgerConfig;
+import io.casehub.ledger.runtime.service.LedgerMerklePublisher;
 import io.casehub.platform.api.identity.TenancyConstants;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Event;
@@ -64,7 +63,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
     LedgerMerklePublisher merklePublisher;
 
     @Inject
-    LedgerMerkleFrontierRepository frontierRepo;
+    QhorusLedgerMerkleFrontierRepository frontierRepo;
 
     @Inject
     ActorIdentityProvider actorIdentityProvider;
@@ -119,7 +118,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
 
     private void updateMerkleFrontier(final LedgerEntry entry, final String tenancyId) {
         final List<LedgerMerkleFrontier> currentFrontier =
-                frontierRepo.findBySubjectId(entry.subjectId, tenancyId);
+                frontierRepo.findBySubjectIdForUpdate(entry.subjectId, tenancyId);
         final List<LedgerMerkleFrontier> newFrontier =
                 LedgerMerkleTree.append(entry.digest, currentFrontier, entry.subjectId);
         frontierRepo.replace(entry.subjectId, newFrontier, tenancyId);
