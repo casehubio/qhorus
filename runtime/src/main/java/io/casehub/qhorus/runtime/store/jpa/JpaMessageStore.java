@@ -136,6 +136,18 @@ public class JpaMessageStore implements MessageStore {
     }
 
     @Override
+    public java.util.Optional<io.casehub.qhorus.api.message.Message> findLastMessageForUpdate(java.util.UUID channelId) {
+        return em.createQuery("SELECT e FROM Message e WHERE e.channelId = ?1 AND e.tenancyId = ?2 ORDER BY e.id DESC",
+                              io.casehub.qhorus.runtime.message.MessageEntity.class)
+                 .setParameter(1, channelId).setParameter(2, currentPrincipal.tenancyId())
+                 .setLockMode(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+                 .setMaxResults(1)
+                 .getResultStream().findFirst()
+                 .map(io.casehub.qhorus.runtime.message.MessageEntity::toDomain);
+    }
+
+
+    @Override
     public int updateTopicName(UUID channelId, String oldTopic, String newTopic) {
         return em.createQuery("UPDATE Message e SET e.topic = ?1 WHERE e.channelId = ?2 AND LOWER(e.topic) = LOWER(?3) AND e.tenancyId = ?4")
                 .setParameter(1, newTopic).setParameter(2, channelId).setParameter(3, oldTopic).setParameter(4, currentPrincipal.tenancyId())

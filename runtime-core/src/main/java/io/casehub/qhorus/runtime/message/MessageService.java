@@ -369,7 +369,7 @@ public class MessageService implements ConsumerMessaging {
         }
 
         if (ch != null && ch.semantic() == ChannelSemantic.LAST_WRITE) {
-            final Optional<Message> existingOpt = messageStore.findLastMessage(ch.id());
+            final Optional<Message> existingOpt = messageStore.findLastMessageForUpdate(ch.id());
             if (existingOpt.isPresent()) {
                 final Message last = existingOpt.get();
                 if (last.sender().equals(dispatch.sender())) {

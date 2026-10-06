@@ -26,6 +26,11 @@ public interface MessageReader {
 
     Optional<Message> findLastMessage(UUID channelId);
 
+    default Optional<Message> findLastMessageForUpdate(UUID channelId) {
+        return findLastMessage(channelId);
+    }
+
+
     List<MessageView> findRecent(UUID channelId, int limit);
 
     int countByCorrectsMessageId(Long messageId);
