@@ -203,6 +203,17 @@ public class ChannelResource {
         return Response.ok(core.postMessage(id, request)).build();
     }
 
+    @GET
+    @Path("/{id}/messages")
+    public List<io.casehub.qhorus.runtime.api.core.MessageResponse> listMessages(
+            @PathParam("id") String id,
+            @QueryParam("afterId") Long afterId,
+            @QueryParam("limit") @DefaultValue("50") Integer limit,
+            @QueryParam("topic") String topic,
+            @QueryParam("type") String type) {
+        return core.listMessages(id, afterId, limit, topic, type);
+    }
+
     // -- Lifecycle --
 
     @POST

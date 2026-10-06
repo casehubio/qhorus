@@ -273,6 +273,19 @@ public class ChannelCore {
         return Map.of("messageId", result.messageId());
     }
 
+    public List<MessageResponse> listMessages(String channelRef, Long afterId,
+                                               Integer limit, String topic, String type) {
+        Channel ch = requireChannel(channelRef);
+        var qb = io.casehub.qhorus.api.store.query.MessageQuery.builder().channelId(ch.id());
+        if (afterId != null) qb.afterId(afterId);
+        qb.limit(limit != null ? limit : 50);
+        if (topic != null && !topic.isBlank()) qb.topic(topic);
+        if (type != null && !type.isBlank()) qb.messageType(MessageType.valueOf(type.toUpperCase()));
+        return messageStore.scan(qb.build()).stream()
+                .map(MessageResponse::from)
+                .toList();
+    }
+
     // -- Lifecycle --
 
     public ChannelResponse pause(String id) {
