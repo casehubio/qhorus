@@ -53,6 +53,7 @@
     <module>testing</module>
     <module>agent-bridge</module>
     <module>mesh</module>
+    <module>cluster</module>
     <module>examples</module>
   </modules>
 
