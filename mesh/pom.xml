@@ -27,7 +27,33 @@
       <version>${project.version}</version>
     </dependency>
 
-    <!-- JDBC driver — non-optional for the mesh app -->
+    <!-- Cluster module — relay infrastructure + optional routing -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-cluster</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- Cross-node delivery via PostgreSQL LISTEN/NOTIFY -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-postgres-broadcaster</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
+    <!-- PostgreSQL driver — production database -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-jdbc-postgresql</artifactId>
+    </dependency>
+
+    <!-- Reactive PG for postgres-broadcaster LISTEN/NOTIFY -->
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-reactive-pg-client</artifactId>
+    </dependency>
+
+    <!-- H2 — dev mode fallback -->
     <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-jdbc-h2</artifactId>
