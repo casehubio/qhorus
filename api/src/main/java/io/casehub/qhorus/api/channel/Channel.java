@@ -133,7 +133,7 @@ public record Channel(
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
         Instant now = Instant.now();
         return new Channel(
-                UUID.randomUUID(),
+                req.preAssignedId() != null ? req.preAssignedId() : UUID.randomUUID(),
                 req.name(),
                 req.description(),
                 req.semantic() != null ? req.semantic() : ChannelSemantic.APPEND,

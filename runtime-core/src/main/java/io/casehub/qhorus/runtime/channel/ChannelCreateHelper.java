@@ -40,7 +40,7 @@ public class ChannelCreateHelper {
     }
 
     private FindOrCreateResult createWithBinding(ChannelCreateRequest req, boolean autoCreated) {
-        UUID channelId = UUID.randomUUID();
+        UUID channelId = req.preAssignedId() != null ? req.preAssignedId() : UUID.randomUUID();
 
         Channel channel = Channel.fromRequest(req, currentPrincipal.tenancyId())
                                  .toBuilder().id(channelId).build();
