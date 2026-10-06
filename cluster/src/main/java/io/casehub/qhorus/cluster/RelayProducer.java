@@ -12,11 +12,11 @@ import java.util.List;
 import java.util.Map;
 
 @ApplicationScoped
-@IfBuildProperty(name = "casehub.qhorus.cluster.enabled", stringValue = "true", enableIfMissing = false)
-public class ClusterProducer {
+@IfBuildProperty(name = "casehub.qhorus.relay.enabled", stringValue = "true", enableIfMissing = false)
+public class RelayProducer {
 
     @Inject
-    ClusterConfig config;
+    RelayConfig config;
 
     @Produces
     @ApplicationScoped

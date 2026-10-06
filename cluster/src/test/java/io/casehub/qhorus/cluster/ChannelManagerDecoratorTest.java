@@ -28,7 +28,7 @@ class ChannelManagerDecoratorTest {
         delegate = mock(ChannelManager.class);
         clusterManager = mock(ClusterManager.class);
         proxyClient = mock(WriteProxyClient.class);
-        decorator = new ChannelManagerDecorator(delegate, clusterManager, proxyClient);
+        decorator = new ChannelManagerDecorator(delegate, clusterManager, proxyClient, true);
     }
 
     @Test

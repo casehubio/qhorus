@@ -18,17 +18,23 @@ public class ChannelManagerDecorator implements ChannelManager {
     private final ChannelManager delegate;
     private final ClusterManager clusterManager;
     private final WriteProxyClient proxyClient;
+    private final boolean routingEnabled;
 
     public ChannelManagerDecorator(ChannelManager delegate,
                                    ClusterManager clusterManager,
-                                   WriteProxyClient proxyClient) {
+                                   WriteProxyClient proxyClient,
+                                   boolean routingEnabled) {
         this.delegate = delegate;
         this.clusterManager = clusterManager;
         this.proxyClient = proxyClient;
+        this.routingEnabled = routingEnabled;
     }
 
     @Override
     public Channel create(ChannelCreateRequest request) {
+        if (!routingEnabled) {
+            return delegate.create(request);
+        }
         if (!clusterManager.canServeWrites()) {
             throw new QuorumViolationException("minority partition");
         }
@@ -69,6 +75,9 @@ public class ChannelManagerDecorator implements ChannelManager {
 
     @Override
     public long delete(UUID channelId, boolean force) {
+        if (!routingEnabled) {
+            return delegate.delete(channelId, force);
+        }
         if (!clusterManager.canServeWrites()) {
             throw new QuorumViolationException("minority partition");
         }
@@ -165,6 +174,9 @@ public class ChannelManagerDecorator implements ChannelManager {
     }
 
     private Channel routeChannelMutation(UUID channelId, Function<UUID, Channel> localAction) {
+        if (!routingEnabled) {
+            return localAction.apply(channelId);
+        }
         NodeInfo owner = clusterManager.owner(channelId);
         if (clusterManager.isLocal(owner)) {
             return localAction.apply(channelId);

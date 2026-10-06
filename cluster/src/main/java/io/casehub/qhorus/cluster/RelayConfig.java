@@ -7,8 +7,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-@ConfigMapping(prefix = "casehub.qhorus.cluster")
-public interface ClusterConfig {
+@ConfigMapping(prefix = "casehub.qhorus.relay")
+public interface RelayConfig {
 
     @WithDefault("false")
     boolean enabled();
@@ -16,6 +16,12 @@ public interface ClusterConfig {
     Optional<List<String>> peers();
 
     Optional<String> nodeId();
+
+    @WithDefault("none")
+    String routing();             // "none" (Level 3) | "dynamic" | "hash-ring" (Level 4)
+
+    @WithDefault("shallow")
+    String depth();               // "shallow" | "full"
 
     @WithDefault("128")
     int virtualNodes();
