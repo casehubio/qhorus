@@ -148,6 +148,12 @@ public class RuntimeBeans {
                 causalGraphService, ledgerRepo, channelStore, currentPrincipal);
     }
 
+    @Produces @ApplicationScoped
+    public io.casehub.qhorus.runtime.api.core.InstanceCore instanceCore(
+            InstanceService instanceService, InstanceStore instanceStore) {
+        return new io.casehub.qhorus.runtime.api.core.InstanceCore(instanceService, instanceStore);
+    }
+
     // ── Channel ────────────────────────────────────────────────────────────
 
     // SpaceService → CdiSpaceService (runtime/cdi/)
