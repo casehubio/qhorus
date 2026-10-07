@@ -68,6 +68,13 @@ public class InternalMeshResource {
         return channelService.resume(channelId);
     }
 
+    @POST
+    @Path("/channel/{id}/config")
+    public Channel channelConfig(@PathParam("id") UUID channelId, ChannelConfigRequest request) {
+        return request.applyTo(channelService, channelId);
+    }
+
+
     @GET
     @Path("/heartbeat")
     public HeartbeatResponse heartbeat() {

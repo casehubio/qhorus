@@ -66,6 +66,11 @@ public class WriteProxyClient {
         return post(target, path("/internal/channel/" + channelId + "/resume"), null, Channel.class);
     }
 
+    public Channel channelConfig(NodeInfo target, UUID channelId, ChannelConfigRequest request) {
+        return post(target, "/internal/channel/" + channelId + "/config", request, Channel.class);
+    }
+
+
     public HeartbeatResponse heartbeat(NodeInfo target) {
         return get(target, "/internal/heartbeat", HeartbeatResponse.class);
     }

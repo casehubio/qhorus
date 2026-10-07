@@ -107,4 +107,36 @@ class ChannelManagerDecoratorTest {
         assertThatThrownBy(() -> decorator.delete(UUID.randomUUID(), false))
                 .isInstanceOf(QuorumViolationException.class);
     }
+
+    @Test
+    void remotePauseProxiesViaProxyClient() {
+        UUID channelId  = UUID.randomUUID();
+        var  remoteNode = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.owner(channelId)).thenReturn(remoteNode);
+        when(clusterManager.isLocal(remoteNode)).thenReturn(false);
+        var channel = mock(Channel.class);
+        when(proxyClient.pauseChannel(remoteNode, channelId)).thenReturn(channel);
+
+        Channel result = decorator.pause(channelId);
+
+        assertThat(result).isEqualTo(channel);
+        verify(proxyClient).pauseChannel(remoteNode, channelId);
+    }
+
+    @Test
+    void remoteSetAllowedWritersProxiesViaConfigEndpoint() {
+        UUID channelId  = UUID.randomUUID();
+        var  remoteNode = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.owner(channelId)).thenReturn(remoteNode);
+        when(clusterManager.isLocal(remoteNode)).thenReturn(false);
+        var channel = mock(Channel.class);
+        when(proxyClient.channelConfig(any(), any(), any())).thenReturn(channel);
+
+        Channel result = decorator.setAllowedWriters(channelId, java.util.List.of("agent-1"));
+
+        assertThat(result).isEqualTo(channel);
+        verify(proxyClient).channelConfig(any(), any(), argThat(req ->
+                                                                        "setAllowedWriters".equals(req.operation())));
+    }
+
 }
