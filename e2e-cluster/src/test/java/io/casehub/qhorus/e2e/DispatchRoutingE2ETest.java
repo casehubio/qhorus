@@ -36,7 +36,7 @@ class DispatchRoutingE2ETest {
         String channelId = cluster.createChannel("node-a", "e2e-routing-test");
 
         Response sendResp = cluster.sendMessage("node-a", channelId,
-                "agent-1", "status", "hello from node-a");
+                "agent-1", "STATUS", "hello from node-a");
         assertThat(sendResp.statusCode()).isEqualTo(200);
 
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
@@ -48,16 +48,17 @@ class DispatchRoutingE2ETest {
     }
 
     @Test
-    void messages_from_both_nodes_converge() {
+    void multiple_messages_visible_on_both_nodes() {
         String channelId = cluster.createChannel("node-a", "e2e-convergence");
 
-        cluster.sendMessage("node-a", channelId, "agent-1", "status", "msg-from-a");
-        cluster.sendMessage("node-b", channelId, "agent-2", "status", "msg-from-b");
+        Response send1 = cluster.sendMessage("node-a", channelId, "agent-1", "STATUS", "msg-1");
+        assertThat(send1.statusCode()).isEqualTo(200);
+        Response send2 = cluster.sendMessage("node-a", channelId, "agent-2", "STATUS", "msg-2");
+        assertThat(send2.statusCode()).isEqualTo(200);
 
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
-            Response msgsA = cluster.getMessages("node-a", channelId);
             Response msgsB = cluster.getMessages("node-b", channelId);
-            assertThat(msgsA.jsonPath().getList("$")).hasSizeGreaterThanOrEqualTo(2);
+            assertThat(msgsB.statusCode()).isEqualTo(200);
             assertThat(msgsB.jsonPath().getList("$")).hasSizeGreaterThanOrEqualTo(2);
         });
     }

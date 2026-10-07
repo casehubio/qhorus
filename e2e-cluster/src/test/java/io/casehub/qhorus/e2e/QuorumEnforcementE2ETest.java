@@ -40,7 +40,7 @@ class QuorumEnforcementE2ETest {
     @Order(1)
     void full_cluster_accepts_writes() {
         Response resp = cluster.sendMessage("node-a", channelId,
-                "agent-1", "status", "quorum-ok");
+                "agent-1", "STATUS", "quorum-ok");
         assertThat(resp.statusCode()).isEqualTo(200);
     }
 
@@ -56,7 +56,7 @@ class QuorumEnforcementE2ETest {
         });
 
         Response resp = cluster.sendMessage("node-a", channelId,
-                "agent-1", "status", "should-be-rejected");
+                "agent-1", "STATUS", "should-be-rejected");
         assertThat(resp.statusCode()).isGreaterThanOrEqualTo(400);
     }
 
@@ -68,7 +68,7 @@ class QuorumEnforcementE2ETest {
 
         await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
             Response resp = cluster.sendMessage("node-a", channelId,
-                    "agent-1", "status", "quorum-restored");
+                    "agent-1", "STATUS", "quorum-restored");
             assertThat(resp.statusCode()).isEqualTo(200);
         });
     }

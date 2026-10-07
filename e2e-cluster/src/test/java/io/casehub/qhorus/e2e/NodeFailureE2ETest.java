@@ -59,7 +59,7 @@ class NodeFailureE2ETest {
     @Order(3)
     void surviving_node_still_accepts_writes() {
         Response resp = cluster.sendMessage("node-a", channelId,
-                "agent-1", "status", "still-alive");
+                "agent-1", "STATUS", "still-alive");
         assertThat(resp.statusCode()).isEqualTo(200);
     }
 

@@ -8,17 +8,20 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 
+import org.testcontainers.lifecycle.Startables;
+
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 
 public class ClusterTestHarness implements AutoCloseable {
 
-    private static final int APP_PORT = 8080;
+    private static final int APP_PORT = 9741;
     private final Network network = Network.newNetwork();
     private final PostgreSQLContainer<?> postgres;
     private final Map<String, GenericContainer<?>> nodes = new LinkedHashMap<>();
@@ -40,12 +43,21 @@ public class ClusterTestHarness implements AutoCloseable {
 
     public void start() {
         postgres.start();
-        for (String nodeId : allNodeIds) {
-            startNode(nodeId);
+        List<GenericContainer<?>> containers = allNodeIds.stream()
+                .map(this::buildNodeContainer).toList();
+        Startables.deepStart(containers).join();
+        for (int i = 0; i < allNodeIds.size(); i++) {
+            nodes.put(allNodeIds.get(i), containers.get(i));
         }
     }
 
     public void startNode(String nodeId) {
+        GenericContainer<?> container = buildNodeContainer(nodeId);
+        container.start();
+        nodes.put(nodeId, container);
+    }
+
+    private GenericContainer<?> buildNodeContainer(String nodeId) {
         String peers = String.join(",",
                 allNodeIds.stream().map(id -> id + ":" + APP_PORT).toList());
 
@@ -54,6 +66,7 @@ public class ClusterTestHarness implements AutoCloseable {
                 .withNetwork(network)
                 .withNetworkAliases(nodeId)
                 .withExposedPorts(APP_PORT)
+                .withEnv("QHORUS_HTTP_PORT", String.valueOf(APP_PORT))
                 .withEnv("CASEHUB_QHORUS_RELAY_ENABLED", "true")
                 .withEnv("CASEHUB_QHORUS_RELAY_NODE_ID", nodeId)
                 .withEnv("CASEHUB_QHORUS_RELAY_PEERS", peers)
@@ -62,20 +75,14 @@ public class ClusterTestHarness implements AutoCloseable {
                 .withEnv("CASEHUB_QHORUS_RELAY_HEARTBEAT_INTERVAL", "2s")
                 .withEnv("CASEHUB_QHORUS_RELAY_HEARTBEAT_MISS_THRESHOLD", "3")
                 .withEnv("CASEHUB_QHORUS_CACHE_ENABLED", "true")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_DB_KIND", "postgresql")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_JDBC_URL",
-                        "jdbc:postgresql://postgres:5432/qhorus")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_USERNAME", "qhorus")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_PASSWORD", "qhorus")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_REACTIVE_URL",
-                        "postgresql://postgres:5432/qhorus")
-                .withEnv("QUARKUS_DATASOURCE_QHORUS_REACTIVE_MAX_SIZE", "5")
-                .withEnv("QUARKUS_FLYWAY_QHORUS_MIGRATE_AT_START", "true")
-                .withEnv("QUARKUS_HIBERNATE_ORM_QHORUS_DATABASE_GENERATION", "none")
+                .withEnv("QHORUS_DB_HOST", "postgres")
+                .withEnv("QHORUS_DB_PORT", "5432")
+                .withEnv("QHORUS_DB_NAME", "qhorus")
+                .withEnv("QHORUS_DB_USER", "qhorus")
+                .withEnv("QHORUS_DB_PASSWORD", "qhorus")
                 .waitingFor(Wait.forHttp("/health/cluster").forPort(APP_PORT)
                         .withStartupTimeout(Duration.ofSeconds(90)));
-        container.start();
-        nodes.put(nodeId, container);
+        return container;
     }
 
     public void stopNode(String nodeId) {
@@ -135,7 +142,7 @@ public class ClusterTestHarness implements AutoCloseable {
                 .body(body)
                 .post("/api/channels");
         response.then().statusCode(201);
-        return response.jsonPath().getString("id");
+        return response.jsonPath().getString("channelId");
     }
 
     public Response getClusterHealth(String nodeId) {
