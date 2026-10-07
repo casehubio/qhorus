@@ -76,6 +76,14 @@ public class RelayProducer {
 
     @Produces
     @ApplicationScoped
+    public HeartbeatService heartbeatService(ClusterManager clusterManager,
+                                             WriteProxyClient proxyClient) {
+        return new HeartbeatService(clusterManager, proxyClient::heartbeat);
+    }
+
+
+    @Produces
+    @ApplicationScoped
     @jakarta.annotation.Priority(100)
     @jakarta.enterprise.inject.Alternative
     public io.casehub.qhorus.api.message.MessageDispatcher messageDispatcher(

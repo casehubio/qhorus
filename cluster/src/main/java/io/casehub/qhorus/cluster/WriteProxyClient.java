@@ -59,6 +59,34 @@ public class WriteProxyClient {
         return post(target, path("/internal/channel/" + channelId + "/resume"), null, Channel.class);
     }
 
+    public HeartbeatResponse heartbeat(NodeInfo target) {
+        return get(target, "/internal/heartbeat", HeartbeatResponse.class);
+    }
+
+    public void sendLeave(NodeInfo target, String localNodeId) {
+        post(target, "/internal/leave", new LeaveRequest(localNodeId), Void.class);
+    }
+
+    private <T> T get(NodeInfo target, String path, Class<T> responseType) {
+        try {
+            String url = "http://" + target.address() + path;
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                                                                     .uri(java.net.URI.create(url))
+                                                                     .timeout(timeout)
+                                                                     .GET()
+                                                                     .build();
+            java.net.http.HttpResponse<String> response = httpClient.send(
+                    req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() >= 400) {
+                throw new RuntimeException("HTTP " + response.statusCode() + " from " + url);
+            }
+            return objectMapper.readValue(response.body(), responseType);
+        } catch (java.io.IOException | InterruptedException e) {
+            throw new RuntimeException("GET " + target.nodeId() + " failed: " + e.getMessage(), e);
+        }
+    }
+
+
     private <T> T post(NodeInfo target, String path, Object body, Class<T> responseType) {
         try {
             String url = "http://" + target.address() + path;
