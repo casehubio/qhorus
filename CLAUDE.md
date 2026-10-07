@@ -342,10 +342,33 @@ casehub-qhorus/
 │   └── src/main/java/io/casehub/qhorus/postgres/broadcaster/
 │       ├── PostgresChannelActivityBroadcaster.java
 │       └── SelfNotificationFilter.java
+├── cluster/                             — Multi-node clustering: hash ring, heartbeat, write routing
+│   └── src/main/java/io/casehub/qhorus/cluster/
+│       ├── ClusterManager.java          — Cluster state, peer tracking, quorum enforcement
+│       ├── HeartbeatService.java         — Heartbeat protocol (send/receive)
+│       ├── HeartbeatScheduler.java       — @Scheduled driver for heartbeat ticks
+│       ├── WriteRoutingDecorator.java    — @Alternative MessageDispatcher: routes writes to channel owner
+│       ├── ChannelManagerDecorator.java  — @Alternative ChannelManager: proxies config mutations
+│       ├── WriteProxyClient.java         — HTTP client for cross-node dispatch
+│       ├── RelayProducer.java            — CDI producer for all relay beans (@IfBuildProperty gated)
+│       ├── InternalMeshResource.java     — REST endpoints for /internal/* (dispatch, heartbeat, config)
+│       └── InternalSecretFilter.java     — @PreMatching auth filter for X-Internal-Secret
+├── cache/                               — In-memory message cache: shallow (LRU) and full (background sync)
+│   └── src/main/java/io/casehub/qhorus/cache/
+│       ├── CachingMessageStore.java      — @Alternative MessageStore with Caffeine cache
+│       ├── ChannelMessageBuffer.java     — Per-channel message buffer (ConcurrentSkipListMap)
+│       ├── CacheProducer.java            — CDI producer (@IfBuildProperty, enableIfMissing=true)
+│       └── CacheSyncScheduler.java       — @Scheduled driver for full-sync mode
 ├── mesh/                                — Standalone mesh relay node for LLM-to-LLM communication
 │   └── src/main/java/io/casehub/qhorus/mesh/
 │       ├── MeshApp.java                 — @QuarkusMain entry point
 │       └── MeshService.java             — MeshApi @McpDomain implementation: meshRegister, meshDeregister, meshSendMessage, meshCheckMessages, meshCreateChannel, meshListChannels, meshDiscoverPeers
+├── e2e-cluster/                         — Podman e2e tests for distributed mesh scenarios (-Pwith-e2e-cluster)
+│   └── src/test/java/io/casehub/qhorus/e2e/
+│       ├── ClusterTestHarness.java      — Testcontainers: PostgreSQL + N mesh containers on shared network
+│       ├── DispatchRoutingE2ETest.java   — Message routing, cross-node visibility, cluster health
+│       ├── NodeFailureE2ETest.java       — DEAD detection, fallback-to-local, node rejoin
+│       └── QuorumEnforcementE2ETest.java — Minority partition write rejection, majority restore
 ├── examples/
 │   ├── examples/type-system/            — Fast regression tests for the 10-type taxonomy; runs in CI with no model (MessageTaxonomyTest)
 │   ├── examples/normative-layout/       — Deterministic 3-channel NormativeChannelLayout tests (CI, no LLM); canonical Layer 1 reference
@@ -492,6 +515,12 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 - `fanOut()` returns `boolean hasTracked` — callers in `MessageService.dispatch()` use this to trigger post-commit delivery signaling.
 - `CrossTenantMessageStore.find(Long id)` — new cross-tenant lookup method added for `ChannelGateway.deliverRemote()`. Used when receiving cross-node broadcast notifications where the message could originate from any tenant. Unit tests using `InMemoryCrossTenantMessageStore` should verify the cross-tenant lookup path works independently of `CurrentPrincipal.tenancyId()`.
 - `postgres-broadcaster/` tests: unit tests (self-notification filter, no-op broadcaster) run in the standard test phase with no external dependencies. Integration tests (`PostgresChannelActivityBroadcasterIT`) require DevServices PostgreSQL (Podman ≥ 4 GB) — pattern follows `casehub-work` precedent. Use `@QuarkusTest` with `%postgres-pg` profile to activate `quarkus-reactive-pg-client` and PostgreSQL DevServices. Full round-trip tests verify: dispatch → pg_notify → LISTEN → deliverRemote() → backend.post().
+
+- **Jandex indexes are mandatory for library modules.** Any module whose CDI beans must be discovered by a consuming Quarkus application (e.g. `cluster/`, `cache/`) must include the `jandex-maven-plugin`. Without a Jandex index (`META-INF/jandex.idx`), `@IfBuildProperty`-gated beans are silently excluded during augmentation. Refs #484.
+- **`@IfBuildProperty` is build-time only.** Runtime environment variables cannot activate build-time gates. The property must be present in the application module's `application.properties` at augmentation time. The mesh module sets `casehub.qhorus.relay.enabled=true` for this reason. Refs #484.
+- **`@IfBuildProperty` removal unregisters `@ConfigMapping`.** When the gate excludes all beans that inject a `@ConfigMapping` interface, the config mapping is unregistered. Remaining properties under that prefix fail SmallRye validation. Test profiles for disabled gates must NOT set properties under the gated prefix. Refs #484.
+- **Cluster module has `@QuarkusTest` infrastructure.** Test deps: `quarkus-junit`, `quarkus-junit-mockito`, `persistence-memory`, `casehub-platform`, H2. Both `ClusterCdiWiringTest` and `ClusterDisabledTest` use `@TestProfile` with full datasource overrides. `ClientProxy.unwrap()` needed for `instanceof` checks on CDI-produced beans. Refs #484.
+- **E2E cluster tests (`-Pwith-e2e-cluster`)** require: (1) mesh module built first (`mvn package -pl mesh -am`), (2) Podman machine running, (3) `CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT=3s` in containers for timely dead-peer detection. Tests use `Startables.deepStart()` for parallel container startup — sequential startup causes permanent DEAD state (HeartbeatService skips DEAD peers). Refs #484.
 
 **Format check:** CI runs `mvn -Dno-format` to skip the enforced code formatting. Run `mvn` locally to apply formatting (via the formatter plugin in the Maven parent).
 
