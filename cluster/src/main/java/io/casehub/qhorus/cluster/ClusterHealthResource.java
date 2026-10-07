@@ -44,4 +44,15 @@ public class ClusterHealthResource {
         }
         return new TopologyResponse(nodes);
     }
+
+    @GET
+    @Path("/health/ownership")
+    public OwnershipHealthResponse ownership() {
+        var claims = clusterManager.getLocalClaims();
+        return new OwnershipHealthResponse(
+                clusterManager.nodeId(),
+                claims.size(),
+                claims);
+    }
+
 }
