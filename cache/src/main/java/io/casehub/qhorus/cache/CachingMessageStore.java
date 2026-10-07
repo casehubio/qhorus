@@ -127,6 +127,7 @@ public class CachingMessageStore implements MessageStore {
     @Override
     public void delete(Long id) {
         delegate.delete(id);
+        channelCache.asMap().values().forEach(b -> b.remove(id));
     }
 
     @Override

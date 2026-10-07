@@ -10,7 +10,7 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 
 @ApplicationScoped
-@IfBuildProperty(name = "casehub.qhorus.cache.enabled", stringValue = "true", enableIfMissing = false)
+@IfBuildProperty(name = "casehub.qhorus.cache.enabled", stringValue = "true", enableIfMissing = true)
 public class CacheProducer {
 
     @Inject

@@ -134,4 +134,56 @@ class ChannelMessageBufferTest {
                 null, null, null, 0, null, null, null, null, null, null, 0, Instant.now()));
         assertThat(buf.size()).isZero();
     }
+
+    @Test
+    void removeDeletesMessageById() {
+        var buf = new ChannelMessageBuffer(10);
+        buf.add(msg(1, "a", MessageType.STATUS, "one"));
+        buf.add(msg(2, "a", MessageType.STATUS, "two"));
+        buf.add(msg(3, "a", MessageType.STATUS, "three"));
+
+        buf.remove(2L);
+
+        assertThat(buf.size()).isEqualTo(2);
+        assertThat(buf.findById(2L)).isEmpty();
+        assertThat(buf.findById(1L)).isPresent();
+        assertThat(buf.findById(3L)).isPresent();
+    }
+
+    @Test
+    void removeNullIsNoOp() {
+        var buf = new ChannelMessageBuffer(10);
+        buf.add(msg(1, "a", MessageType.STATUS, "one"));
+
+        buf.remove(null);
+
+        assertThat(buf.size()).isEqualTo(1);
+    }
+
+    @Test
+    void recentMessagesReturnsTailDescending() {
+        var buf = new ChannelMessageBuffer(10);
+        buf.add(msg(1, "a", MessageType.STATUS, "one"));
+        buf.add(msg(2, "a", MessageType.STATUS, "two"));
+        buf.add(msg(3, "a", MessageType.STATUS, "three"));
+        buf.add(msg(4, "a", MessageType.STATUS, "four"));
+
+        List<Message> recent = buf.recentMessages(2);
+
+        assertThat(recent).hasSize(2);
+        assertThat(recent.get(0).id()).isEqualTo(4L);
+        assertThat(recent.get(1).id()).isEqualTo(3L);
+    }
+
+    @Test
+    void recentMessagesReturnsAllWhenLimitExceedsSize() {
+        var buf = new ChannelMessageBuffer(10);
+        buf.add(msg(1, "a", MessageType.STATUS, "one"));
+        buf.add(msg(2, "a", MessageType.STATUS, "two"));
+
+        List<Message> recent = buf.recentMessages(5);
+
+        assertThat(recent).hasSize(2);
+    }
+
 }

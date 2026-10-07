@@ -67,4 +67,15 @@ public class ChannelMessageBuffer {
     public Long lastId() {
         return messages.isEmpty() ? null : messages.lastKey();
     }
+
+    public void remove(Long messageId) {
+        if (messageId != null) {
+            messages.remove(messageId);
+        }
+    }
+
+    public List<Message> recentMessages(int limit) {
+        return messages.descendingMap().values().stream().limit(limit).toList();
+    }
+
 }
