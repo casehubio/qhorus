@@ -173,6 +173,12 @@
         <quarkus.native.enabled>true</quarkus.native.enabled>
       </properties>
     </profile>
+    <profile>
+      <id>with-e2e-cluster</id>
+      <modules>
+        <module>e2e-cluster</module>
+      </modules>
+    </profile>
   </profiles>
 
 </project>
