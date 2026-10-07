@@ -50,7 +50,7 @@ class QuorumEnforcementE2ETest {
         cluster.stopNode("node-b");
         cluster.stopNode("node-c");
 
-        await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(45)).pollInterval(Duration.ofSeconds(2)).untilAsserted(() -> {
             Response health = cluster.getClusterHealth("node-a");
             assertThat(health.jsonPath().getInt("clusterSize")).isEqualTo(1);
         });

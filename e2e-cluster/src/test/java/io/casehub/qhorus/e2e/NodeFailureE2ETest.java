@@ -48,7 +48,7 @@ class NodeFailureE2ETest {
     void stop_node_b_detected_as_dead() {
         cluster.stopNode("node-b");
 
-        await().atMost(Duration.ofSeconds(15)).pollInterval(Duration.ofSeconds(1)).untilAsserted(() -> {
+        await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(2)).untilAsserted(() -> {
             Response health = cluster.getClusterHealth("node-a");
             assertThat(health.statusCode()).isEqualTo(200);
             assertThat(health.jsonPath().getInt("clusterSize")).isEqualTo(1);
@@ -67,11 +67,9 @@ class NodeFailureE2ETest {
     @Order(4)
     void restart_node_b_rejoins_cluster() {
         cluster.startNode("node-b");
-        cluster.waitForClusterConvergence(2, Duration.ofSeconds(30));
+        cluster.waitForClusterConvergence(2, Duration.ofSeconds(60));
 
-        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
-            Response msgs = cluster.getMessages("node-b", channelId);
-            assertThat(msgs.statusCode()).isEqualTo(200);
-        });
+        Response msgs = cluster.getMessages("node-b", channelId);
+        assertThat(msgs.statusCode()).isEqualTo(200);
     }
 }

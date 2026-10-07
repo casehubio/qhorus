@@ -74,6 +74,7 @@ public class ClusterTestHarness implements AutoCloseable {
                 .withEnv("CASEHUB_QHORUS_RELAY_INTERNAL_SECRET", internalSecret)
                 .withEnv("CASEHUB_QHORUS_RELAY_HEARTBEAT_INTERVAL", "2s")
                 .withEnv("CASEHUB_QHORUS_RELAY_HEARTBEAT_MISS_THRESHOLD", "3")
+                .withEnv("CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT", "3s")
                 .withEnv("CASEHUB_QHORUS_CACHE_ENABLED", "true")
                 .withEnv("QHORUS_DB_HOST", "postgres")
                 .withEnv("QHORUS_DB_PORT", "5432")
