@@ -1,5 +1,6 @@
 package io.casehub.qhorus.cluster;
 
+import io.quarkus.arc.properties.IfBuildProperty;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -10,6 +11,8 @@ import java.util.List;
 
 @Path("/")
 @Produces(MediaType.APPLICATION_JSON)
+@IfBuildProperty(name = "casehub.qhorus.relay.enabled", stringValue = "true",
+                 enableIfMissing = false)
 public class ClusterHealthResource {
 
     private final ClusterManager clusterManager;
