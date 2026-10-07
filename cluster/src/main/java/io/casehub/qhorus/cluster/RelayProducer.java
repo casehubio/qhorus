@@ -95,6 +95,18 @@ public class RelayProducer {
         return new WriteRoutingDecorator(delegate, clusterManager, proxyClient, routing, tracker);
     }
 
+    @Produces
+    @ApplicationScoped
+    @jakarta.annotation.Priority(100)
+    @jakarta.enterprise.inject.Alternative
+    public io.casehub.qhorus.api.channel.ChannelManager channelManager(
+            io.casehub.qhorus.runtime.channel.ChannelService delegate,
+            ClusterManager clusterManager,
+            WriteProxyClient proxyClient) {
+        boolean routing = !"none".equals(config.routing());
+        return new ChannelManagerDecorator(delegate, clusterManager, proxyClient, routing);
+    }
+
 
     @Produces
     @ApplicationScoped

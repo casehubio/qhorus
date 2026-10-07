@@ -42,21 +42,23 @@ public class WriteRoutingDecorator implements MessageDispatcher {
             throw new QuorumViolationException("This node is in a minority partition and cannot serve writes");
         }
         NodeInfo owner = clusterManager.owner(dispatch.channelId());
-        DispatchResult result;
         if (clusterManager.isLocal(owner)) {
-            result = delegate.dispatch(dispatch);
-        } else {
-            try {
-                result = proxyClient.dispatch(owner, dispatch);
-            } catch (Exception e) {
-                LOG.warnf("Proxy to %s failed, falling back to local dispatch: %s",
-                        owner.nodeId(), e.getMessage());
-                result = delegate.dispatch(dispatch);
+            DispatchResult result = delegate.dispatch(dispatch);
+            if (tracker != null) {
+                tracker.recordWrite(dispatch.channelId());
             }
+            return result;
         }
-        if (tracker != null) {
-            tracker.recordWrite(dispatch.channelId());
+        try {
+            return proxyClient.dispatch(owner, dispatch);
+        } catch (Exception e) {
+            LOG.warnf("Proxy to %s failed, falling back to local dispatch: %s",
+                      owner.nodeId(), e.getMessage());
+            DispatchResult result = delegate.dispatch(dispatch);
+            if (tracker != null) {
+                tracker.recordWrite(dispatch.channelId());
+            }
+            return result;
         }
-        return result;
     }
 }
