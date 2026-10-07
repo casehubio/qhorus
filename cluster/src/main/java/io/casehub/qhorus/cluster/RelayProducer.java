@@ -86,13 +86,14 @@ public class RelayProducer {
     @ApplicationScoped
     @jakarta.annotation.Priority(100)
     @jakarta.enterprise.inject.Alternative
-    public io.casehub.qhorus.api.message.MessageDispatcher messageDispatcher(
+    public io.casehub.qhorus.api.message.ConsumerMessaging consumerMessaging(
             io.casehub.qhorus.runtime.cdi.CdiMessageService delegate,
             ClusterManager clusterManager,
             WriteProxyClient proxyClient,
             WriteFrequencyTracker tracker) {
-        boolean routing = !"none".equals(config.routing());
-        return new WriteRoutingDecorator(delegate, clusterManager, proxyClient, routing, tracker);
+        boolean               routing = !"none".equals(config.routing());
+        WriteRoutingDecorator router  = new WriteRoutingDecorator(delegate, clusterManager, proxyClient, routing, tracker);
+        return new RoutingConsumerMessaging(router, delegate);
     }
 
     @Produces

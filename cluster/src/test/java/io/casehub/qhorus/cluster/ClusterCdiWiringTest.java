@@ -1,6 +1,7 @@
 package io.casehub.qhorus.cluster;
 
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.MessageDispatcher;
 import io.quarkus.arc.ClientProxy;
 import io.quarkus.test.junit.QuarkusTest;
@@ -28,6 +29,7 @@ class ClusterCdiWiringTest {
     @Inject Instance<ClusterShutdownHandler> shutdownHandler;
 
     @Inject MessageDispatcher messageDispatcher;
+    @Inject ConsumerMessaging consumerMessaging;
     @Inject ChannelManager channelManager;
 
     @Test
@@ -43,9 +45,15 @@ class ClusterCdiWiringTest {
     }
 
     @Test
-    void message_dispatcher_is_write_routing_decorator() {
-        assertThat(ClientProxy.unwrap(messageDispatcher)).isInstanceOf(WriteRoutingDecorator.class);
+    void message_dispatcher_is_routing_consumer_messaging() {
+        assertThat(ClientProxy.unwrap(messageDispatcher)).isInstanceOf(RoutingConsumerMessaging.class);
     }
+
+    @Test
+    void consumer_messaging_is_routing_consumer_messaging() {
+        assertThat(ClientProxy.unwrap(consumerMessaging)).isInstanceOf(RoutingConsumerMessaging.class);
+    }
+
 
     @Test
     void channel_manager_is_decorator() {
