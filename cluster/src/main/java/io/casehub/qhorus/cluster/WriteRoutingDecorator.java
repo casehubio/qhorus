@@ -12,15 +12,25 @@ public class WriteRoutingDecorator implements MessageDispatcher {
     private final ClusterManager clusterManager;
     private final WriteProxyClient proxyClient;
     private final boolean routingEnabled;
+    private final WriteFrequencyTracker tracker;
+
+    public WriteRoutingDecorator(MessageDispatcher delegate,
+                                 ClusterManager clusterManager,
+                                 WriteProxyClient proxyClient,
+                                 boolean routingEnabled,
+                                 WriteFrequencyTracker tracker) {
+        this.delegate = delegate;
+        this.clusterManager = clusterManager;
+        this.proxyClient = proxyClient;
+        this.routingEnabled = routingEnabled;
+        this.tracker = tracker;
+    }
 
     public WriteRoutingDecorator(MessageDispatcher delegate,
                                  ClusterManager clusterManager,
                                  WriteProxyClient proxyClient,
                                  boolean routingEnabled) {
-        this.delegate = delegate;
-        this.clusterManager = clusterManager;
-        this.proxyClient = proxyClient;
-        this.routingEnabled = routingEnabled;
+        this(delegate, clusterManager, proxyClient, routingEnabled, null);
     }
 
     @Override
@@ -32,15 +42,21 @@ public class WriteRoutingDecorator implements MessageDispatcher {
             throw new QuorumViolationException("This node is in a minority partition and cannot serve writes");
         }
         NodeInfo owner = clusterManager.owner(dispatch.channelId());
+        DispatchResult result;
         if (clusterManager.isLocal(owner)) {
-            return delegate.dispatch(dispatch);
+            result = delegate.dispatch(dispatch);
+        } else {
+            try {
+                result = proxyClient.dispatch(owner, dispatch);
+            } catch (Exception e) {
+                LOG.warnf("Proxy to %s failed, falling back to local dispatch: %s",
+                        owner.nodeId(), e.getMessage());
+                result = delegate.dispatch(dispatch);
+            }
         }
-        try {
-            return proxyClient.dispatch(owner, dispatch);
-        } catch (Exception e) {
-            LOG.warnf("Proxy to %s failed, falling back to local dispatch: %s",
-                    owner.nodeId(), e.getMessage());
-            return delegate.dispatch(dispatch);
+        if (tracker != null) {
+            tracker.recordWrite(dispatch.channelId());
         }
+        return result;
     }
 }

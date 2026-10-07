@@ -28,10 +28,14 @@ public class HeartbeatService {
             try {
                 HeartbeatResponse resp = heartbeatCaller.apply(ps.nodeInfo());
                 clusterManager.recordHeartbeat(entry.getKey());
-                if (resp != null && resp.ringHash() != null
-                        && !resp.ringHash().equals(localRingHash)) {
-                    LOG.warnf("Ring disagreement with %s — local=%s remote=%s",
-                            entry.getKey(), localRingHash, resp.ringHash());
+                if (resp != null) {
+                    if (resp.ringHash() != null && !resp.ringHash().equals(localRingHash)) {
+                        LOG.warnf("Ring disagreement with %s — local=%s remote=%s",
+                                entry.getKey(), localRingHash, resp.ringHash());
+                    }
+                    if (resp.ownershipClaims() != null && !resp.ownershipClaims().isEmpty()) {
+                        clusterManager.updateRemoteOwnership(entry.getKey(), resp.ownershipClaims());
+                    }
                 }
             } catch (Exception e) {
                 clusterManager.recordMiss(entry.getKey());
@@ -44,6 +48,7 @@ public class HeartbeatService {
                 clusterManager.nodeId(),
                 Instant.now(),
                 clusterManager.ringHash(),
-                "UP");
+                "UP",
+                clusterManager.getLocalClaims());
     }
 }

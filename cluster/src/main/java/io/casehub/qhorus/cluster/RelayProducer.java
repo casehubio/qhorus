@@ -7,6 +7,7 @@ import jakarta.inject.Inject;
 
 import java.net.InetAddress;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,9 @@ public class RelayProducer {
 
     @Inject
     RelayConfig config;
+
+    @Inject
+    OwnershipConfig ownershipConfig;
 
     @Produces
     @ApplicationScoped
@@ -47,14 +51,34 @@ public class RelayProducer {
             peerMap.put(id, peer);
         }
 
-        return new ClusterManager(nodeId, peerMap, config.virtualNodes(),
+        ClusterManager manager = new ClusterManager(nodeId, peerMap, config.virtualNodes(),
                 config.heartbeatMissThreshold(), config.quorumEnforced(),
                 Clock.systemUTC());
+
+        if ("dynamic".equals(config.routing())) {
+            ConsistentHashRing ring = new ConsistentHashRing(peerMap.keySet(), config.virtualNodes());
+            DynamicOwnershipResolver resolver = new DynamicOwnershipResolver(ring, peerMap);
+            manager.setResolver(resolver);
+        }
+
+        return manager;
     }
 
     @Produces
     @ApplicationScoped
     public WriteProxyClient writeProxyClient() {
         return new WriteProxyClient();
+    }
+
+    @Produces
+    @ApplicationScoped
+    public WriteFrequencyTracker writeFrequencyTracker() {
+        if (!"dynamic".equals(config.routing())) {
+            return null;
+        }
+        int bucketCount = ownershipConfig.bucketCount();
+        int windowSeconds = ownershipConfig.windowSeconds();
+        Duration bucketDuration = Duration.ofSeconds(windowSeconds / bucketCount);
+        return new WriteFrequencyTracker(bucketCount, bucketDuration, Clock.systemUTC());
     }
 }

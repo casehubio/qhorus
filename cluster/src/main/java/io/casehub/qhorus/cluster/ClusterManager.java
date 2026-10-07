@@ -25,6 +25,8 @@ public class ClusterManager {
     private final AtomicReference<ConsistentHashRing> ringRef;
     private final ConcurrentHashMap<String, PeerState> peerStates = new ConcurrentHashMap<>();
     private final ConcurrentLinkedQueue<ClusterMembershipEvent> pendingEvents = new ConcurrentLinkedQueue<>();
+    private DynamicOwnershipResolver resolver;
+    private OwnershipEvaluator evaluator;
 
     public ClusterManager(String localNodeId, Map<String, String> peers,
                           int virtualNodes, int missThreshold,
@@ -53,12 +55,41 @@ public class ClusterManager {
     }
 
     public NodeInfo owner(UUID channelId) {
+        if (resolver != null) {
+            return resolver.owner(channelId);
+        }
         String nodeId = ringRef.get().owner(channelId);
         NodeInfo info = configuredPeers.get(nodeId);
         if (info == null) {
             return new NodeInfo(nodeId, nodeId + ":8080");
         }
         return info;
+    }
+
+    public void setResolver(DynamicOwnershipResolver resolver) {
+        this.resolver = resolver;
+    }
+
+    public void setEvaluator(OwnershipEvaluator evaluator) {
+        this.evaluator = evaluator;
+    }
+
+    public void updateRemoteOwnership(String peerId, Map<UUID, OwnershipClaim> claims) {
+        if (resolver == null) return;
+        resolver.clearClaimsForNode(peerId);
+        for (var entry : claims.entrySet()) {
+            resolver.updateClaim(entry.getKey(), entry.getValue());
+        }
+    }
+
+    public Map<UUID, OwnershipClaim> getLocalClaims() {
+        return evaluator != null ? evaluator.getLocalClaims() : Map.of();
+    }
+
+    public void clearPeerOwnership(String peerId) {
+        if (resolver != null) {
+            resolver.clearClaimsForNode(peerId);
+        }
     }
 
     public boolean isLocal(NodeInfo node) {
@@ -104,6 +135,7 @@ public class ClusterManager {
                 emitEvent(id, old.state(), newState);
                 if (newState == NodeState.DEAD) {
                     removeFromRing(id);
+                    clearPeerOwnership(id);
                 }
             }
             return new PeerState(old.nodeInfo(), newState, old.lastHeartbeat(), newMissCount);
@@ -115,6 +147,7 @@ public class ClusterManager {
             if (old.state() != NodeState.DEAD) {
                 emitEvent(id, old.state(), NodeState.DEAD);
                 removeFromRing(id);
+                clearPeerOwnership(id);
             }
             return new PeerState(old.nodeInfo(), NodeState.DEAD, old.lastHeartbeat(), old.missCount());
         });
