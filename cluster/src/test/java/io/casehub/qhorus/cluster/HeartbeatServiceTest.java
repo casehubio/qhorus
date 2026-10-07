@@ -54,7 +54,7 @@ class HeartbeatServiceTest {
     }
 
     @Test
-    void tickDoesNotPollDeadNodes() {
+    void tickSkipsDeadNodesOnNonProbeTicks() {
         clusterManager.recordMiss("node-2");
         clusterManager.recordMiss("node-2");
         assertThat(clusterManager.peerStates().get("node-2").state()).isEqualTo(NodeState.DEAD);
@@ -64,6 +64,56 @@ class HeartbeatServiceTest {
         service.tick();
         verify(heartbeatCaller, times(1)).apply(any());
     }
+
+    @Test
+    void deadPeersReProbeEveryFifthTick() {
+        clusterManager.recordMiss("node-2");
+        clusterManager.recordMiss("node-2");
+        assertThat(clusterManager.peerStates().get("node-2").state()).isEqualTo(NodeState.DEAD);
+
+        var resp = new HeartbeatResponse("node-3", NOW, clusterManager.ringHash(), "UP");
+        when(heartbeatCaller.apply(any())).thenReturn(resp);
+
+        // Ticks 1-4: DEAD peer not probed
+        for (int i = 0; i < 4; i++) {
+            reset(heartbeatCaller);
+            when(heartbeatCaller.apply(any())).thenReturn(resp);
+            service.tick();
+            verify(heartbeatCaller, times(1)).apply(any()); // only node-3
+        }
+
+        // Tick 5: DEAD peer IS probed
+        reset(heartbeatCaller);
+        when(heartbeatCaller.apply(any())).thenReturn(resp);
+        service.tick();
+        verify(heartbeatCaller, times(2)).apply(any()); // node-2 + node-3
+    }
+
+    @Test
+    void deadPeerRecoveredOnSuccessfulProbe() {
+        clusterManager.recordMiss("node-2");
+        clusterManager.recordMiss("node-2");
+        assertThat(clusterManager.peerStates().get("node-2").state()).isEqualTo(NodeState.DEAD);
+
+        var resp2 = new HeartbeatResponse("node-2", NOW, clusterManager.ringHash(), "UP");
+        var resp3 = new HeartbeatResponse("node-3", NOW, clusterManager.ringHash(), "UP");
+        when(heartbeatCaller.apply(any())).thenReturn(resp3);
+
+        // Advance to 5th tick where DEAD peers are probed
+        for (int i = 0; i < 4; i++) {
+            service.tick();
+        }
+        reset(heartbeatCaller);
+        when(heartbeatCaller.apply(any())).thenReturn(resp3);
+        // node-2 probe also succeeds — responds
+        when(heartbeatCaller.apply(clusterManager.peerStates().get("node-2").nodeInfo())).thenReturn(resp2);
+        service.tick();
+
+        // node-2 should transition back to ALIVE
+        assertThat(clusterManager.peerStates().get("node-2").state()).isEqualTo(NodeState.ALIVE);
+        assertThat(clusterManager.clusterSize()).isEqualTo(3);
+    }
+
 
     @Test
     void buildLocalResponseReturnsNodeInfo() {

@@ -8,9 +8,13 @@ import java.util.function.Function;
 public class HeartbeatService {
 
     private static final Logger LOG = Logger.getLogger(HeartbeatService.class);
+    static final         int    DEAD_PROBE_INTERVAL = 5;
+
 
     private final ClusterManager clusterManager;
     private final Function<NodeInfo, HeartbeatResponse> heartbeatCaller;
+    private       int                                   tickCount = 0;
+
 
     public HeartbeatService(ClusterManager clusterManager,
                             Function<NodeInfo, HeartbeatResponse> heartbeatCaller) {
@@ -19,10 +23,12 @@ public class HeartbeatService {
     }
 
     public void tick() {
-        String localRingHash = clusterManager.ringHash();
+        tickCount++;
+        String  localRingHash     = clusterManager.ringHash();
+        boolean probeDeadThisTick = tickCount % DEAD_PROBE_INTERVAL == 0;
         for (var entry : clusterManager.peerStates().entrySet()) {
             PeerState ps = entry.getValue();
-            if (ps.state() == NodeState.DEAD) {
+            if (ps.state() == NodeState.DEAD && !probeDeadThisTick) {
                 continue;
             }
             try {
@@ -31,7 +37,7 @@ public class HeartbeatService {
                 if (resp != null) {
                     if (resp.ringHash() != null && !resp.ringHash().equals(localRingHash)) {
                         LOG.warnf("Ring disagreement with %s — local=%s remote=%s",
-                                entry.getKey(), localRingHash, resp.ringHash());
+                                  entry.getKey(), localRingHash, resp.ringHash());
                     }
                     if (resp.ownershipClaims() != null && !resp.ownershipClaims().isEmpty()) {
                         clusterManager.updateRemoteOwnership(entry.getKey(), resp.ownershipClaims());
