@@ -54,6 +54,7 @@
     <module>agent-bridge</module>
     <module>mesh</module>
     <module>cluster</module>
+    <module>cache</module>
     <module>examples</module>
   </modules>
 
