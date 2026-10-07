@@ -34,6 +34,13 @@
       <version>${project.version}</version>
     </dependency>
 
+    <!-- In-memory message cache — shallow and full modes -->
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-qhorus-cache</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+
     <!-- Cross-node delivery via PostgreSQL LISTEN/NOTIFY -->
     <dependency>
       <groupId>io.casehub</groupId>
