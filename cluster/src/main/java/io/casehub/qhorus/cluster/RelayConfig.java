@@ -40,4 +40,7 @@ public interface RelayConfig {
 
     @WithDefault("10s")
     Duration proxyTimeout();
+
+    Optional<String> internalSecret();
+
 }

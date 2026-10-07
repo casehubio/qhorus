@@ -14,8 +14,9 @@ public class WriteProxyClient {
     private final java.net.http.HttpClient                    httpClient;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final java.time.Duration                          timeout;
+    private final String                                      internalSecret;
 
-    public WriteProxyClient(java.time.Duration timeout) {
+    public WriteProxyClient(java.time.Duration timeout, String internalSecret) {
         this.httpClient   = java.net.http.HttpClient.newBuilder()
                                                     .connectTimeout(timeout)
                                                     .build();
@@ -23,6 +24,11 @@ public class WriteProxyClient {
                                     .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
                                     .configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         this.timeout      = timeout;
+        this.internalSecret = internalSecret;
+    }
+
+    public WriteProxyClient(java.time.Duration timeout) {
+        this(timeout, null);
     }
 
     WriteProxyClient() {
@@ -35,6 +41,7 @@ public class WriteProxyClient {
         this.httpClient   = httpClient;
         this.objectMapper = objectMapper;
         this.timeout      = timeout;
+        this.internalSecret = null;
     }
 
     public DispatchResult dispatch(NodeInfo target, MessageDispatch dispatch) {
@@ -70,11 +77,14 @@ public class WriteProxyClient {
     private <T> T get(NodeInfo target, String path, Class<T> responseType) {
         try {
             String url = "http://" + target.address() + path;
-            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-                                                                     .uri(java.net.URI.create(url))
-                                                                     .timeout(timeout)
-                                                                     .GET()
-                                                                     .build();
+            java.net.http.HttpRequest.Builder reqBuilder = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(url))
+                    .timeout(timeout)
+                    .GET();
+            if (internalSecret != null) {
+                reqBuilder.header("X-Internal-Secret", internalSecret);
+            }
+            java.net.http.HttpRequest req = reqBuilder.build();
             java.net.http.HttpResponse<String> response = httpClient.send(
                     req, java.net.http.HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() >= 400) {
@@ -94,6 +104,9 @@ public class WriteProxyClient {
                                                                                     .uri(java.net.URI.create(url))
                                                                                     .timeout(timeout)
                                                                                     .header("Content-Type", "application/json");
+            if (internalSecret != null) {
+                reqBuilder.header("X-Internal-Secret", internalSecret);
+            }
             if (body != null) {
                 reqBuilder.POST(java.net.http.HttpRequest.BodyPublishers.ofString(
                         objectMapper.writeValueAsString(body)));

@@ -71,7 +71,7 @@ public class RelayProducer {
     @Produces
     @ApplicationScoped
     public WriteProxyClient writeProxyClient() {
-        return new WriteProxyClient(config.proxyTimeout());
+        return new WriteProxyClient(config.proxyTimeout(), config.internalSecret().orElse(null));
     }
 
     @Produces
