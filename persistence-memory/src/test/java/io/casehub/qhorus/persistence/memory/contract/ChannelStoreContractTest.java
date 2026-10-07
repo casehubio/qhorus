@@ -1,7 +1,12 @@
 package io.casehub.qhorus.persistence.memory.contract;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.assertj.core.api.Assertions.assertThat;
+import io.casehub.platform.api.identity.TenancyConstants;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.List;
@@ -9,14 +14,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import io.casehub.platform.api.identity.TenancyConstants;
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.message.MessageType;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public abstract class ChannelStoreContractTest {
 
@@ -33,6 +35,9 @@ public abstract class ChannelStoreContractTest {
     protected abstract void updateLastActivity(UUID channelId, String tenancyId);
 
     protected abstract List<Channel> findByIds(Collection<UUID> ids);
+
+    protected abstract List<UUID> listAllIds();
+
 
     protected abstract void reset();
 
@@ -182,6 +187,20 @@ public abstract class ChannelStoreContractTest {
     void findByIds_unknownIds_returnsEmpty() {
         assertThat(findByIds(List.of(UUID.randomUUID(), UUID.randomUUID()))).isEmpty();
     }
+
+    @Test
+    void listAllIds_returnsAllChannelIds() {
+        Channel    ch1 = put(channel("listIds-1-" + UUID.randomUUID(), ChannelSemantic.APPEND));
+        Channel    ch2 = put(channel("listIds-2-" + UUID.randomUUID(), ChannelSemantic.COLLECT));
+        List<UUID> ids = listAllIds();
+        assertThat(ids).contains(ch1.id(), ch2.id());
+    }
+
+    @Test
+    void listAllIds_returnsEmpty_whenNoChannels() {
+        assertThat(listAllIds()).isEmpty();
+    }
+
 
     protected Channel channel(String name, ChannelSemantic semantic) {
         return Channel.builder(name).semantic(semantic).build();

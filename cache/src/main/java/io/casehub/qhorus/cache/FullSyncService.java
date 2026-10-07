@@ -1,10 +1,8 @@
 package io.casehub.qhorus.cache;
 
-import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 
 import java.util.List;
@@ -39,22 +37,22 @@ public class FullSyncService {
     }
 
     public void syncBatch() {
-        if (status != SyncStatus.SYNCING) return;
+        if (status != SyncStatus.SYNCING) {return;}
 
-        List<Channel> channels = channelStore.scan(ChannelQuery.all());
-        channelsTotal = channels.size();
+        List<UUID> channelIds = channelStore.listAllIds();
+        channelsTotal = channelIds.size();
 
         boolean allDone = true;
-        for (Channel ch : channels) {
-            Long cursor = cursors.getOrDefault(ch.id(), 0L);
-            MessageQuery q = MessageQuery.poll(ch.id(), cursor, batchSize);
-            List<Message> batch = jpaStore.scan(q);
+        for (UUID channelId : channelIds) {
+            Long          cursor = cursors.getOrDefault(channelId, 0L);
+            MessageQuery  q      = MessageQuery.poll(channelId, cursor, batchSize);
+            List<Message> batch  = jpaStore.scan(q);
 
             if (!batch.isEmpty()) {
                 for (Message msg : batch) {
-                    cachingStore.addToBuffer(ch.id(), msg);
+                    cachingStore.addToBuffer(channelId, msg);
                 }
-                cursors.put(ch.id(), batch.getLast().id());
+                cursors.put(channelId, batch.getLast().id());
                 allDone = false;
                 return;
             }
@@ -62,7 +60,7 @@ public class FullSyncService {
 
         if (allDone) {
             status = SyncStatus.READY;
-            LOG.infof("Full sync complete — %d channels cached", channels.size());
+            LOG.infof("Full sync complete — %d channels cached", channelIds.size());
         }
     }
 

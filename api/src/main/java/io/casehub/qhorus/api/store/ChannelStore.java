@@ -33,6 +33,11 @@ public interface ChannelStore {
                 .toList();
     }
 
+
+    default List<UUID> listAllIds() {
+        return scan(ChannelQuery.all()).stream().map(Channel::id).toList();
+    }
+
     default boolean hasChannelsInSpace(UUID spaceId) {
         if (spaceId == null) {return false;}
         return !scan(io.casehub.qhorus.api.store.query.ChannelQuery.bySpaceId(spaceId)).isEmpty();

@@ -1,18 +1,19 @@
 package io.casehub.qhorus.persistence.memory;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.store.query.ChannelQuery;
+import io.casehub.qhorus.persistence.memory.contract.ChannelStoreContractTest;
+import org.junit.jupiter.api.Test;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.junit.jupiter.api.Test;
-
-import io.casehub.qhorus.api.channel.Channel;
-import io.casehub.qhorus.api.channel.ChannelSemantic;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
-import io.casehub.qhorus.persistence.memory.contract.ChannelStoreContractTest;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InMemoryChannelStoreTest extends ChannelStoreContractTest {
     private final InMemoryChannelStore store = new InMemoryChannelStore();
@@ -39,6 +40,10 @@ class InMemoryChannelStoreTest extends ChannelStoreContractTest {
 
     @Override
     protected List<Channel> findByIds(Collection<UUID> ids) { return store.findByIds(ids); }
+
+    @Override
+    protected List<UUID> listAllIds() {return store.listAllIds();}
+
 
     @Override
     protected void reset() { store.clear(); }

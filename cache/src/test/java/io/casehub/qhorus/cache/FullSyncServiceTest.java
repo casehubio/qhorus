@@ -1,11 +1,9 @@
 package io.casehub.qhorus.cache;
 
-import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
-import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,12 +31,6 @@ class FullSyncServiceTest {
                 "content", null, null, null, 0, null, null, null, null, null, null, 0, Instant.now());
     }
 
-    private static Channel channel(UUID id) {
-        return new Channel(id, "ch-" + id.toString().substring(0, 8), null, null,
-                List.of(), List.of(), List.of(), null, null, null, null,
-                false, false, null, "default", Instant.now(), Instant.now());
-    }
-
     @BeforeEach
     void setUp() {
         jpaStore = mock(MessageStore.class);
@@ -50,8 +42,7 @@ class FullSyncServiceTest {
 
     @Test
     void syncBatchLoadsOneChannelPerTick() {
-        when(channelStore.scan(any(ChannelQuery.class)))
-                .thenReturn(List.of(channel(CH1), channel(CH2)));
+        when(channelStore.listAllIds()).thenReturn(List.of(CH1, CH2));
         when(jpaStore.scan(any(MessageQuery.class)))
                 .thenReturn(List.of(msg(1, CH1), msg(2, CH1)))
                 .thenReturn(List.of());
@@ -65,8 +56,7 @@ class FullSyncServiceTest {
 
     @Test
     void syncCompletesWhenAllChannelsDrained() {
-        when(channelStore.scan(any(ChannelQuery.class)))
-                .thenReturn(List.of(channel(CH1)));
+        when(channelStore.listAllIds()).thenReturn(List.of(CH1));
         when(jpaStore.scan(any(MessageQuery.class)))
                 .thenReturn(List.of(msg(1, CH1)))
                 .thenReturn(List.of());
@@ -89,7 +79,7 @@ class FullSyncServiceTest {
 
     @Test
     void emptyDatabaseCompletesImmediately() {
-        when(channelStore.scan(any(ChannelQuery.class))).thenReturn(List.of());
+        when(channelStore.listAllIds()).thenReturn(List.of());
 
         syncService.syncBatch();
 
@@ -98,8 +88,7 @@ class FullSyncServiceTest {
 
     @Test
     void channelsTotalReflectsScannedChannels() {
-        when(channelStore.scan(any(ChannelQuery.class)))
-                .thenReturn(List.of(channel(CH1), channel(CH2)));
+        when(channelStore.listAllIds()).thenReturn(List.of(CH1, CH2));
         when(jpaStore.scan(any(MessageQuery.class))).thenReturn(List.of());
 
         syncService.syncBatch();

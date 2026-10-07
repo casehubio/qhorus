@@ -136,6 +136,14 @@ public class JpaChannelStore implements ChannelStore {
         return entities.stream().map(ChannelEntity::toDomain).toList();
     }
 
+
+    @Override
+    public List<UUID> listAllIds() {
+        return em.createQuery("SELECT e.id FROM Channel e WHERE e.tenancyId = ?1", UUID.class)
+                 .setParameter(1, currentPrincipal.tenancyId())
+                 .getResultList();
+    }
+
     @Override
     public boolean hasChannelsInSpace(UUID spaceId) {
         if (spaceId == null) {return false;}

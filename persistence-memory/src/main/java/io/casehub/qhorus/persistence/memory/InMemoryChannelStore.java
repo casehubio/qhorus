@@ -93,6 +93,12 @@ public class InMemoryChannelStore implements ChannelStore {
                 .toList();
     }
 
+
+    @Override
+    public List<UUID> listAllIds() {
+        return List.copyOf(store.keySet());
+    }
+
     /** All channels with no tenant filter — for cross-tenant delegation. */
     List<Channel> scanAll() {
         return List.copyOf(store.values());
