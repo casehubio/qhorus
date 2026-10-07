@@ -347,7 +347,9 @@ casehub-qhorus/
 │       ├── ClusterManager.java          — Cluster state, peer tracking, quorum enforcement
 │       ├── HeartbeatService.java         — Heartbeat protocol (send/receive)
 │       ├── HeartbeatScheduler.java       — @Scheduled driver for heartbeat ticks
-│       ├── WriteRoutingDecorator.java    — @Alternative MessageDispatcher: routes writes to channel owner
+│       ├── WriteRoutingDecorator.java    — MessageDispatcher: routes writes to channel owner (wrapped by RoutingConsumerMessaging)
+│       ├── RoutingConsumerMessaging.java  — @Alternative ConsumerMessaging: routes dispatch through WriteRoutingDecorator, delegates queries to CdiMessageService
+│       ├── QuorumViolationExceptionMapper.java — JAX-RS mapper: QuorumViolationException → HTTP 503
 │       ├── ChannelManagerDecorator.java  — @Alternative ChannelManager: proxies config mutations
 │       ├── WriteProxyClient.java         — HTTP client for cross-node dispatch
 │       ├── RelayProducer.java            — CDI producer for all relay beans (@IfBuildProperty gated)
@@ -520,7 +522,7 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 - **`@IfBuildProperty` is build-time only.** Runtime environment variables cannot activate build-time gates. The property must be present in the application module's `application.properties` at augmentation time. The mesh module sets `casehub.qhorus.relay.enabled=true` for this reason. Refs #484.
 - **`@IfBuildProperty` removal unregisters `@ConfigMapping`.** When the gate excludes all beans that inject a `@ConfigMapping` interface, the config mapping is unregistered. Remaining properties under that prefix fail SmallRye validation. Test profiles for disabled gates must NOT set properties under the gated prefix. Refs #484.
 - **Cluster module has `@QuarkusTest` infrastructure.** Test deps: `quarkus-junit`, `quarkus-junit-mockito`, `persistence-memory`, `casehub-platform`, H2. Both `ClusterCdiWiringTest` and `ClusterDisabledTest` use `@TestProfile` with full datasource overrides. `ClientProxy.unwrap()` needed for `instanceof` checks on CDI-produced beans. Refs #484.
-- **E2E cluster tests (`-Pwith-e2e-cluster`)** require: (1) mesh module built first (`mvn package -pl mesh -am`), (2) Podman machine running, (3) `CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT=3s` in containers for timely dead-peer detection. Tests use `Startables.deepStart()` for parallel container startup — sequential startup causes permanent DEAD state (HeartbeatService skips DEAD peers). Refs #484.
+- **E2E cluster tests (`-Pwith-e2e-cluster`)** require: (1) mesh module built first (`mvn package -pl mesh -am`), (2) Podman machine running, (3) `CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT=3s` in containers for timely dead-peer detection. Tests use `Startables.deepStart()` for parallel container startup — sequential startup causes permanent DEAD state (HeartbeatService probes DEAD peers only every 5th tick). Refs #484.
 
 **Format check:** CI runs `mvn -Dno-format` to skip the enforced code formatting. Run `mvn` locally to apply formatting (via the formatter plugin in the Maven parent).
 
