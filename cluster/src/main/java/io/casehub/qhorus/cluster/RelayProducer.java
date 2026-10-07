@@ -24,7 +24,7 @@ public class RelayProducer {
 
     @Produces
     @ApplicationScoped
-    public ClusterManager clusterManager() {
+    public ClusterManager clusterManager(WriteFrequencyTracker tracker) {
         String nodeId = config.nodeId().orElseGet(() -> {
             try {
                 return InetAddress.getLocalHost().getHostName();
@@ -52,13 +52,17 @@ public class RelayProducer {
         }
 
         ClusterManager manager = new ClusterManager(nodeId, peerMap, config.virtualNodes(),
-                config.heartbeatMissThreshold(), config.quorumEnforced(),
-                Clock.systemUTC());
+                                                    config.heartbeatMissThreshold(), config.quorumEnforced(),
+                                                    Clock.systemUTC());
 
         if ("dynamic".equals(config.routing())) {
-            ConsistentHashRing ring = new ConsistentHashRing(peerMap.keySet(), config.virtualNodes());
+            ConsistentHashRing       ring     = new ConsistentHashRing(peerMap.keySet(), config.virtualNodes());
             DynamicOwnershipResolver resolver = new DynamicOwnershipResolver(ring, peerMap);
             manager.setResolver(resolver);
+
+            OwnershipEvaluator evaluator = new OwnershipEvaluator(nodeId, tracker, resolver,
+                                                                  ownershipConfig.hysteresisRatio(), ownershipConfig.minClaimWrites());
+            manager.setEvaluator(evaluator);
         }
 
         return manager;
@@ -72,12 +76,23 @@ public class RelayProducer {
 
     @Produces
     @ApplicationScoped
+    @jakarta.annotation.Priority(100)
+    @jakarta.enterprise.inject.Alternative
+    public io.casehub.qhorus.api.message.MessageDispatcher messageDispatcher(
+            io.casehub.qhorus.runtime.cdi.CdiMessageService delegate,
+            ClusterManager clusterManager,
+            WriteProxyClient proxyClient,
+            WriteFrequencyTracker tracker) {
+        boolean routing = !"none".equals(config.routing());
+        return new WriteRoutingDecorator(delegate, clusterManager, proxyClient, routing, tracker);
+    }
+
+
+    @Produces
+    @ApplicationScoped
     public WriteFrequencyTracker writeFrequencyTracker() {
-        if (!"dynamic".equals(config.routing())) {
-            return null;
-        }
-        int bucketCount = ownershipConfig.bucketCount();
-        int windowSeconds = ownershipConfig.windowSeconds();
+        int      bucketCount    = ownershipConfig.bucketCount();
+        int      windowSeconds  = ownershipConfig.windowSeconds();
         Duration bucketDuration = Duration.ofSeconds(windowSeconds / bucketCount);
         return new WriteFrequencyTracker(bucketCount, bucketDuration, Clock.systemUTC());
     }

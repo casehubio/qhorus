@@ -86,6 +86,13 @@ public class ClusterManager {
         return evaluator != null ? evaluator.getLocalClaims() : Map.of();
     }
 
+    public void evaluateOwnership() {
+        if (evaluator != null) {
+            evaluator.evaluate();
+        }
+    }
+
+
     public void clearPeerOwnership(String peerId) {
         if (resolver != null) {
             resolver.clearClaimsForNode(peerId);

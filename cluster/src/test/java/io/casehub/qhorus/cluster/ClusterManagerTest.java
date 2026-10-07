@@ -162,4 +162,34 @@ class ClusterManagerTest {
         assertThat(events.get(0).newState()).isEqualTo(NodeState.SUSPECT);
         assertThat(events.get(1).newState()).isEqualTo(NodeState.DEAD);
     }
+
+    @Test
+    void evaluateOwnershipDelegatesToEvaluator() {
+        var mgr     = managerWithPeers("node-1", "node-1", "node-2");
+        var ring    = new ConsistentHashRing(java.util.Set.of("node-1", "node-2"), 128);
+        var peerMap = new LinkedHashMap<String, String>();
+        peerMap.put("node-1", "node-1:8080");
+        peerMap.put("node-2", "node-2:8080");
+        var resolver = new DynamicOwnershipResolver(ring, peerMap);
+        mgr.setResolver(resolver);
+
+        var tracker   = new WriteFrequencyTracker(10, java.time.Duration.ofSeconds(30), clock);
+        var evaluator = new OwnershipEvaluator("node-1", tracker, resolver, 2.0, 5);
+        mgr.setEvaluator(evaluator);
+
+        UUID channelId = UUID.randomUUID();
+        for (int i = 0; i < 10; i++) {
+            tracker.recordWrite(channelId);
+        }
+
+        mgr.evaluateOwnership();
+
+        assertThat(evaluator.getLocalClaims()).containsKey(channelId);
+    }
+
+    @Test
+    void evaluateOwnershipNoOpWithoutEvaluator() {
+        var mgr = managerWithPeers("node-1", "node-1", "node-2");
+        mgr.evaluateOwnership();
+    }
 }
