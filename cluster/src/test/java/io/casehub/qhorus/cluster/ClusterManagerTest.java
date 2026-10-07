@@ -178,6 +178,8 @@ class ClusterManagerTest {
         mgr.setEvaluator(evaluator);
 
         UUID channelId = UUID.randomUUID();
+        resolver.updateClaim(channelId, new OwnershipClaim("node-2", 1));
+
         for (int i = 0; i < 10; i++) {
             tracker.recordWrite(channelId);
         }
