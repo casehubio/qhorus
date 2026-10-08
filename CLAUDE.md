@@ -347,7 +347,9 @@ casehub-qhorus/
 │       ├── ClusterManager.java          — Cluster state, peer tracking, quorum enforcement
 │       ├── HeartbeatService.java         — Heartbeat protocol (send/receive)
 │       ├── HeartbeatScheduler.java       — @Scheduled driver for heartbeat ticks
-│       ├── WriteRoutingDecorator.java    — MessageDispatcher: routes writes to channel owner (wrapped by RoutingConsumerMessaging)
+│       ├── WriteRoutingDecorator.java    — MessageDispatcher: routes writes to channel owner (wrapped by RoutingConsumerMessaging); fires ProxyFallbackEvent on proxy failure; configurable fail-fast via casehub.qhorus.relay.proxy-fallback (local|fail)
+│       ├── ProxyFallbackEvent.java       — CDI event record: fired on every proxy failure (channelId, ownerNodeId, localNodeId, sender, messageType, errorMessage)
+│       ├── ProxyDispatchException.java   — RuntimeException thrown in fail-fast mode; carries ProxyFallbackEvent
 │       ├── RoutingConsumerMessaging.java  — @Alternative ConsumerMessaging: routes dispatch through WriteRoutingDecorator, delegates queries to CdiMessageService
 │       ├── QuorumViolationExceptionMapper.java — JAX-RS mapper: QuorumViolationException → HTTP 503
 │       ├── ChannelManagerDecorator.java  — @Alternative ChannelManager: proxies config mutations
@@ -359,7 +361,7 @@ casehub-qhorus/
 │   └── src/main/java/io/casehub/qhorus/cache/
 │       ├── CachingMessageStore.java      — @Alternative MessageStore with Caffeine cache
 │       ├── ChannelMessageBuffer.java     — Per-channel message buffer (ConcurrentSkipListMap)
-│       ├── CacheProducer.java            — CDI producer (@IfBuildProperty, enableIfMissing=true)
+│       ├── CacheProducer.java            — CDI producer (@IfBuildProperty, enableIfMissing=false)
 │       └── CacheSyncScheduler.java       — @Scheduled driver for full-sync mode
 ├── mesh/                                — Standalone mesh relay node for LLM-to-LLM communication
 │   └── src/main/java/io/casehub/qhorus/mesh/
