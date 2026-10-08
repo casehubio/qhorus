@@ -7,7 +7,7 @@ import jakarta.inject.Inject;
 
 @ApplicationScoped
 @IfBuildProperty(name = "casehub.qhorus.cache.enabled", stringValue = "true",
-                 enableIfMissing = true)
+                 enableIfMissing = false)
 public class CacheSyncScheduler {
 
     @Inject
