@@ -2,6 +2,7 @@ package io.casehub.qhorus.cluster;
 
 import io.quarkus.arc.properties.IfBuildProperty;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Inject;
 
@@ -21,6 +22,9 @@ public class RelayProducer {
 
     @Inject
     OwnershipConfig ownershipConfig;
+
+    @Inject
+    Event<ProxyFallbackEvent> proxyFallbackEvent;
 
     @Produces
     @ApplicationScoped
@@ -92,7 +96,9 @@ public class RelayProducer {
             WriteProxyClient proxyClient,
             WriteFrequencyTracker tracker) {
         boolean               routing = !"none".equals(config.routing());
-        WriteRoutingDecorator router  = new WriteRoutingDecorator(delegate, clusterManager, proxyClient, routing, tracker);
+        WriteRoutingDecorator router  = new WriteRoutingDecorator(
+                delegate, clusterManager, proxyClient, routing, tracker,
+                proxyFallbackEvent, config.proxyFallback(), clusterManager.nodeId());
         return new RoutingConsumerMessaging(router, delegate);
     }
 

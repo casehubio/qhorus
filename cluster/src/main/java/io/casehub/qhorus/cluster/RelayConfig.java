@@ -43,4 +43,7 @@ public interface RelayConfig {
 
     Optional<String> internalSecret();
 
+    @WithDefault("local")
+    String proxyFallback();
+
 }
