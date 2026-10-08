@@ -64,6 +64,29 @@ class DispatchRoutingE2ETest {
     }
 
     @Test
+    void cross_node_dispatch_via_proxy() {
+        String channelId = cluster.createChannel("node-a", "e2e-cross-node-proxy");
+
+        Response sendResp = cluster.sendMessage("node-b", channelId,
+                "agent-on-b", "STATUS", "proxied from node-b");
+        assertThat(sendResp.statusCode()).isEqualTo(200);
+
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
+            Response msgsA = cluster.getMessages("node-a", channelId);
+            assertThat(msgsA.statusCode()).isEqualTo(200);
+            List<String> contents = msgsA.jsonPath().getList("content");
+            assertThat(contents).contains("proxied from node-b");
+        });
+
+        await().atMost(Duration.ofSeconds(10)).pollInterval(Duration.ofMillis(500)).untilAsserted(() -> {
+            Response msgsB = cluster.getMessages("node-b", channelId);
+            assertThat(msgsB.statusCode()).isEqualTo(200);
+            List<String> contents = msgsB.jsonPath().getList("content");
+            assertThat(contents).contains("proxied from node-b");
+        });
+    }
+
+    @Test
     void cluster_health_reports_both_nodes_alive() {
         Response healthA = cluster.getClusterHealth("node-a");
         Response healthB = cluster.getClusterHealth("node-b");
