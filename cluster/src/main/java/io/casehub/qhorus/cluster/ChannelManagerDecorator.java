@@ -70,6 +70,9 @@ public class ChannelManagerDecorator implements ChannelManager {
 
     @Override
     public FindOrCreateResult findOrCreate(ChannelCreateRequest request) {
+        if (routingEnabled && !clusterManager.canServeWrites()) {
+            throw new QuorumViolationException("minority partition");
+        }
         return delegate.findOrCreate(request);
     }
 

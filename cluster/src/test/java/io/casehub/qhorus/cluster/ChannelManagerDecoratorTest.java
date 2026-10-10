@@ -3,6 +3,7 @@ package io.casehub.qhorus.cluster;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -138,5 +139,25 @@ class ChannelManagerDecoratorTest {
         verify(proxyClient).channelConfig(any(), any(), argThat(req ->
                                                                         "setAllowedWriters".equals(req.operation())));
     }
+
+    @Test
+    void findOrCreate_rejects_in_minority_partition() {
+        when(clusterManager.canServeWrites()).thenReturn(false);
+        var request = ChannelCreateRequest.builder("quorum-test").build();
+        assertThatThrownBy(() -> decorator.findOrCreate(request))
+                .isInstanceOf(QuorumViolationException.class);
+    }
+
+    @Test
+    void findOrCreate_delegates_when_quorum_present() {
+        when(clusterManager.canServeWrites()).thenReturn(true);
+        var request  = ChannelCreateRequest.builder("quorum-ok").build();
+        var channel  = mock(Channel.class);
+        var expected = new FindOrCreateResult(channel, false);
+        when(delegate.findOrCreate(request)).thenReturn(expected);
+        var result = decorator.findOrCreate(request);
+        assertThat(result).isEqualTo(expected);
+    }
+
 
 }
