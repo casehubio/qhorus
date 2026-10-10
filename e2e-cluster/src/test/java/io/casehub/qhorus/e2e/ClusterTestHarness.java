@@ -76,6 +76,7 @@ public class ClusterTestHarness implements AutoCloseable {
                 .withEnv("CASEHUB_QHORUS_RELAY_HEARTBEAT_MISS_THRESHOLD", "3")
                 .withEnv("CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT", "3s")
                 .withEnv("CASEHUB_QHORUS_CACHE_ENABLED", "true")
+                .withEnv("CASEHUB_QHORUS_RELAY_OWNERSHIP_EVALUATION_INTERVAL_SECONDS", "3")
                 .withEnv("QHORUS_DB_HOST", "postgres")
                 .withEnv("QHORUS_DB_PORT", "5432")
                 .withEnv("QHORUS_DB_NAME", "qhorus")
@@ -151,6 +152,52 @@ public class ClusterTestHarness implements AutoCloseable {
                 .baseUri(nodeUrl(nodeId))
                 .get("/health/cluster");
     }
+
+
+    public ChannelOwnershipInfo getOwnership(String nodeId, String channelId) {
+        Response response = RestAssured.given()
+                                       .baseUri(nodeUrl(nodeId))
+                                       .get("/health/cluster/ownership/" + channelId);
+        response.then().statusCode(200);
+        return new ChannelOwnershipInfo(
+                response.jsonPath().getString("owner"),
+                response.jsonPath().getString("source"),
+                response.jsonPath().getLong("claimWriteCount"));
+    }
+
+    public Response getLocalClaims(String nodeId) {
+        return RestAssured.given()
+                          .baseUri(nodeUrl(nodeId))
+                          .get("/health/ownership");
+    }
+
+    public CacheStats getCacheStats(String nodeId) {
+        Response response = RestAssured.given()
+                                       .baseUri(nodeUrl(nodeId))
+                                       .get("/health/cache");
+        response.then().statusCode(200);
+        return new CacheStats(
+                response.jsonPath().getString("status"),
+                response.jsonPath().getInt("channelsCached"),
+                response.jsonPath().getLong("messagesCached"));
+    }
+
+    public String createChannelWithId(String nodeId, String channelName, String preAssignedId) {
+        String body = String.format(
+                "{\"name\":\"%s\",\"semantic\":\"APPEND\",\"preAssignedId\":\"%s\"}",
+                channelName, preAssignedId);
+        Response response = RestAssured.given()
+                                       .baseUri(nodeUrl(nodeId))
+                                       .header("Content-Type", "application/json")
+                                       .body(body)
+                                       .post("/api/channels");
+        response.then().statusCode(201);
+        return response.jsonPath().getString("channelId");
+    }
+
+    public record ChannelOwnershipInfo(String owner, String source, long claimWriteCount) {}
+
+    public record CacheStats(String status, int channelsCached, long messagesCached) {}
 
     @Override
     public void close() {
