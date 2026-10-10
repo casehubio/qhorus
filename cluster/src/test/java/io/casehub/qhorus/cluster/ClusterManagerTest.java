@@ -194,4 +194,47 @@ class ClusterManagerTest {
         var mgr = managerWithPeers("node-1", "node-1", "node-2");
         mgr.evaluateOwnership();
     }
+
+    @Test
+    void resolveOwnership_returns_hash_ring_when_no_resolver() {
+        var  mgr       = managerWithPeers("node-a", "node-a", "node-b");
+        UUID channelId = UUID.randomUUID();
+        var  response  = mgr.resolveOwnership(channelId);
+        assertThat(response.source()).isEqualTo("hash-ring");
+        assertThat(response.claimWriteCount()).isEqualTo(0);
+        assertThat(response.owner()).isNotNull();
+    }
+
+    @Test
+    void resolveOwnership_returns_dynamic_claim_when_claimed() {
+        var mgr      = managerWithPeers("node-a", "node-a", "node-b");
+        var ring     = new ConsistentHashRing(java.util.Set.of("node-a", "node-b"), 128);
+        var resolver = new DynamicOwnershipResolver(ring, Map.of("node-a", "node-a:8080", "node-b", "node-b:8080"));
+        mgr.setResolver(resolver);
+
+        UUID channelId = UUID.randomUUID();
+        resolver.updateClaim(channelId, new OwnershipClaim("node-b", 42));
+
+        var response = mgr.resolveOwnership(channelId);
+        assertThat(response.source()).isEqualTo("dynamic-claim");
+        assertThat(response.owner()).isEqualTo("node-b");
+        assertThat(response.claimWriteCount()).isEqualTo(42);
+    }
+
+    @Test
+    void resolveOwnership_returns_hash_ring_when_claim_differs_from_owner() {
+        var mgr      = managerWithPeers("node-a", "node-a", "node-b");
+        var ring     = new ConsistentHashRing(java.util.Set.of("node-a", "node-b"), 128);
+        var resolver = new DynamicOwnershipResolver(ring, Map.of("node-a", "node-a:8080", "node-b", "node-b:8080"));
+        mgr.setResolver(resolver);
+
+        UUID   channelId = UUID.randomUUID();
+        String hashOwner = ring.owner(channelId);
+        String otherNode = hashOwner.equals("node-a") ? "node-b" : "node-a";
+        resolver.updateClaim(channelId, new OwnershipClaim(otherNode, 10));
+
+        var response = mgr.resolveOwnership(channelId);
+        assertThat(response.source()).isEqualTo("dynamic-claim");
+        assertThat(response.owner()).isEqualTo(otherNode);
+    }
 }

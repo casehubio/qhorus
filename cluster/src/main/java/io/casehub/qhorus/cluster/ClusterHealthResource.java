@@ -58,4 +58,11 @@ public class ClusterHealthResource {
                 claims);
     }
 
+    @GET
+    @Path("/health/cluster/ownership/{channelId}")
+    public ChannelOwnershipResponse channelOwnership(@jakarta.ws.rs.PathParam("channelId") java.util.UUID channelId) {
+        return clusterManager.resolveOwnership(channelId);
+    }
+
+
 }

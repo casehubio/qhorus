@@ -103,6 +103,19 @@ public class ClusterManager {
         return localNodeId.equals(node.nodeId());
     }
 
+    public ChannelOwnershipResponse resolveOwnership(UUID channelId) {
+        NodeInfo ownerNode = owner(channelId);
+        if (resolver != null) {
+            OwnershipClaim claim = resolver.getClaim(channelId);
+            if (claim != null && claim.nodeId().equals(ownerNode.nodeId())) {
+                return new ChannelOwnershipResponse(
+                        ownerNode.nodeId(), "dynamic-claim", claim.writeCount());
+            }
+        }
+        return new ChannelOwnershipResponse(ownerNode.nodeId(), "hash-ring", 0);
+    }
+
+
     public boolean canServeWrites() {
         if (!quorumEnforced || configuredPeers.size() <= 1) {
             return true;
