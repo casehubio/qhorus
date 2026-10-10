@@ -209,17 +209,33 @@ public class ClusterTestHarness implements AutoCloseable {
 
     private ImageFromDockerfile buildImage() {
         if (image == null) {
-            String meshAppPath = System.getProperty("mesh.quarkus-app.path",
-                    "../mesh/target/quarkus-app");
-            Path meshTarget = Path.of(meshAppPath);
-            if (!meshTarget.toFile().exists()) {
-                throw new IllegalStateException(
-                        "Mesh quarkus-app not found at " + meshTarget.toAbsolutePath()
-                                + " — run 'mvn package -pl mesh' first");
+            String containerMode = System.getProperty("mesh.container.mode", "jvm");
+            if ("native".equals(containerMode)) {
+                Path meshTarget = Path.of(System.getProperty("mesh.quarkus-app.path",
+                                                             "../mesh/target"));
+                java.io.File[] runners = meshTarget.toFile().listFiles(
+                        (dir, name) -> name.endsWith("-runner"));
+                if (runners == null || runners.length == 0) {
+                    throw new IllegalStateException(
+                            "Native runner not found in " + meshTarget.toAbsolutePath()
+                            + " — run 'mvn package -Pnative -pl mesh -am' first");
+                }
+                image = new ImageFromDockerfile()
+                                .withFileFromClasspath("Dockerfile", "Dockerfile.native")
+                                .withFileFromPath("mesh-runner", runners[0].toPath());
+            } else {
+                String meshAppPath = System.getProperty("mesh.quarkus-app.path",
+                                                        "../mesh/target/quarkus-app");
+                Path meshTarget = Path.of(meshAppPath);
+                if (!meshTarget.toFile().exists()) {
+                    throw new IllegalStateException(
+                            "Mesh quarkus-app not found at " + meshTarget.toAbsolutePath()
+                            + " — run 'mvn package -pl mesh' first");
+                }
+                image = new ImageFromDockerfile()
+                                .withFileFromClasspath("Dockerfile", "Dockerfile")
+                                .withFileFromPath("quarkus-app", meshTarget);
             }
-            image = new ImageFromDockerfile()
-                    .withFileFromClasspath("Dockerfile", "Dockerfile")
-                    .withFileFromPath("quarkus-app", meshTarget);
         }
         return image;
     }

@@ -349,7 +349,10 @@ casehub-qhorus/
 │       ├── HeartbeatScheduler.java       — @Scheduled driver for heartbeat ticks
 │       ├── WriteRoutingDecorator.java    — MessageDispatcher: routes writes to channel owner (wrapped by RoutingConsumerMessaging); fires ProxyFallbackEvent on proxy failure; configurable fail-fast via casehub.qhorus.relay.proxy-fallback (local|fail)
 │       ├── ProxyFallbackEvent.java       — CDI event record: fired on every proxy failure (channelId, ownerNodeId, localNodeId, sender, messageType, errorMessage)
-│       ├── ProxyDispatchException.java   — RuntimeException thrown in fail-fast mode; carries ProxyFallbackEvent
+│       ├── ProxyDispatchException.java   — RuntimeException thrown in fail-fast mode; carries ProxyFallbackEvent; also has 3-arg constructor (nodeId, statusCode, message) for WriteProxyClient HTTP error mapping
+│       ├── ProxyTimeoutException.java   — RuntimeException for proxy IO/timeout failures (IOException, InterruptedException); WriteRoutingDecorator logs at WARN and falls back
+│       ├── ProxyAuthException.java      — RuntimeException for HTTP 401/403 from InternalSecretFilter; WriteRoutingDecorator logs at ERROR (misconfiguration signal)
+│       ├── ChannelOwnershipResponse.java — record: per-channel ownership resolution result (owner, source: hash-ring|dynamic-claim, claimWriteCount)
 │       ├── RoutingConsumerMessaging.java  — @Alternative ConsumerMessaging: routes dispatch through WriteRoutingDecorator, delegates queries to CdiMessageService
 │       ├── QuorumViolationExceptionMapper.java — JAX-RS mapper: QuorumViolationException → HTTP 503
 │       ├── ChannelManagerDecorator.java  — @Alternative ChannelManager: proxies config mutations
@@ -372,7 +375,11 @@ casehub-qhorus/
 │       ├── ClusterTestHarness.java      — Testcontainers: PostgreSQL + N mesh containers on shared network
 │       ├── DispatchRoutingE2ETest.java   — Message routing, cross-node visibility, cluster health
 │       ├── NodeFailureE2ETest.java       — DEAD detection, fallback-to-local, node rejoin
-│       └── QuorumEnforcementE2ETest.java — Minority partition write rejection, majority restore
+│       ├── QuorumEnforcementE2ETest.java — Minority partition write rejection, majority restore
+│       ├── OwnershipTransferE2ETest.java — Dynamic ownership claim, post-transfer proxy, relinquish
+│       ├── NodeFailureFallbackE2ETest.java — Fallback-to-local dispatch, ownership reconstruction after recovery
+│       ├── CacheCoherenceE2ETest.java    — Cross-node cache population, rapid convergence, invalidation on delete
+│       └── ChannelCreationRoutingE2ETest.java — Basic creation, preAssignedId routing, concurrent findOrCreate
 ├── examples/
 │   ├── examples/type-system/            — Fast regression tests for the 10-type taxonomy; runs in CI with no model (MessageTaxonomyTest)
 │   ├── examples/normative-layout/       — Deterministic 3-channel NormativeChannelLayout tests (CI, no LLM); canonical Layer 1 reference
@@ -524,7 +531,11 @@ JAVA_HOME=/Library/Java/JavaVirtualMachines/graalvm-25.jdk/Contents/Home \
 - **`@IfBuildProperty` is build-time only.** Runtime environment variables cannot activate build-time gates. The property must be present in the application module's `application.properties` at augmentation time. The mesh module sets `casehub.qhorus.relay.enabled=true` for this reason. Refs #484.
 - **`@IfBuildProperty` removal unregisters `@ConfigMapping`.** When the gate excludes all beans that inject a `@ConfigMapping` interface, the config mapping is unregistered. Remaining properties under that prefix fail SmallRye validation. Test profiles for disabled gates must NOT set properties under the gated prefix. Refs #484.
 - **Cluster module has `@QuarkusTest` infrastructure.** Test deps: `quarkus-junit`, `quarkus-junit-mockito`, `persistence-memory`, `casehub-platform`, H2. Both `ClusterCdiWiringTest` and `ClusterDisabledTest` use `@TestProfile` with full datasource overrides. `ClientProxy.unwrap()` needed for `instanceof` checks on CDI-produced beans. Refs #484.
-- **E2E cluster tests (`-Pwith-e2e-cluster`)** require: (1) mesh module built first (`mvn package -pl mesh -am`), (2) Podman machine running, (3) `CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT=3s` in containers for timely dead-peer detection. Tests use `Startables.deepStart()` for parallel container startup — sequential startup causes permanent DEAD state (HeartbeatService probes DEAD peers only every 5th tick). Refs #484.
+- **E2E cluster tests (`-Pwith-e2e-cluster`)** require: (1) mesh module built first (`mvn package -pl mesh -am`), (2) Podman machine running, (3) `CASEHUB_QHORUS_RELAY_PROXY_TIMEOUT=3s` in containers for timely dead-peer detection. Tests use `Startables.deepStart()` for parallel container startup — sequential startup causes permanent DEAD state (HeartbeatService probes DEAD peers only every 5th tick). Ownership evaluation interval shortened to 3s in containers for faster test convergence. 7 test classes total (3 original + 4 added in #484). Refs #484.
+- **E2E native image mode (`-Pwith-e2e-native`)** — opt-in profile that builds the mesh module as a GraalVM native image and runs e2e tests against it. Requires `mvn package -Pnative -pl mesh -am` first. Uses `Dockerfile.native` (UBI9-minimal, 128MB heap). System property `mesh.container.mode=native` selects between JVM and native Dockerfiles in `ClusterTestHarness.buildImage()`. Refs #484.
+- `GET /health/cluster/ownership/{channelId}` — per-channel ownership query returning `ChannelOwnershipResponse(owner, source: "hash-ring"|"dynamic-claim", claimWriteCount)`. Distinguishes hash-ring default from dynamic claim-based ownership. Used by `OwnershipTransferE2ETest` for transfer assertions. Refs #484.
+- `ChannelManagerDecorator.findOrCreate()` has a quorum check — throws `QuorumViolationException` in minority partition. This was a gap found during the audit: every other mutation method had a quorum check, but `findOrCreate` delegated directly. Refs #484.
+- `BucketWindow` and `WriteFrequencyTracker` are package-private — internal implementation details with no cross-package references. `OwnershipClaim` must remain public (serialized in `HeartbeatResponse` and `OwnershipHealthResponse`). Refs #484.
 
 **Format check:** CI runs `mvn -Dno-format` to skip the enforced code formatting. Run `mvn` locally to apply formatting (via the formatter plugin in the Maven parent).
 

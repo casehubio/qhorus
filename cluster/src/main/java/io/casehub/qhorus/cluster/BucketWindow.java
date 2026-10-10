@@ -51,7 +51,5 @@ class BucketWindow {
 
     void setClock(Clock newClock) {
         this.clock = newClock;
-        for (long b : buckets) {
-        }
     }
 }
