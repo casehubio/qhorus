@@ -66,46 +66,86 @@ class WriteProxyClientTest {
     }
 
     @Test
-    void dispatchThrowsOnHttpError() throws Exception {
+    void dispatchThrowsProxyDispatchExceptionOnHttpError() throws Exception {
         HttpResponse<String> response = mock(HttpResponse.class);
         when(response.statusCode()).thenReturn(500);
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenReturn(response);
 
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(CHANNEL_ID)
-                .sender("agent-1")
-                .type(MessageType.STATUS)
-                .content("test")
-                .actorType(ActorType.AGENT)
-                .build();
+                                                  .channelId(CHANNEL_ID)
+                                                  .sender("agent-1")
+                                                  .type(MessageType.STATUS)
+                                                  .content("test")
+                                                  .actorType(ActorType.AGENT)
+                                                  .build();
 
         assertThatThrownBy(() -> proxyClient.dispatch(TARGET, dispatch))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ProxyDispatchException.class)
                 .hasMessageContaining("HTTP 500");
     }
 
     @Test
-    void dispatchThrowsOnConnectionFailure() throws Exception {
+    void dispatchThrowsProxyTimeoutOnConnectionFailure() throws Exception {
         when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
                 .thenThrow(new java.io.IOException("Connection refused"));
 
         MessageDispatch dispatch = MessageDispatch.builder()
-                .channelId(CHANNEL_ID)
-                .sender("agent-1")
-                .type(MessageType.STATUS)
-                .content("test")
-                .actorType(ActorType.AGENT)
-                .build();
+                                                  .channelId(CHANNEL_ID)
+                                                  .sender("agent-1")
+                                                  .type(MessageType.STATUS)
+                                                  .content("test")
+                                                  .actorType(ActorType.AGENT)
+                                                  .build();
 
         assertThatThrownBy(() -> proxyClient.dispatch(TARGET, dispatch))
-                .isInstanceOf(RuntimeException.class)
+                .isInstanceOf(ProxyTimeoutException.class)
                 .hasMessageContaining("Proxy call to node-2 failed");
     }
 
     @Test
-    void defaultConstructorCreatesWorkingClient() {
-        WriteProxyClient defaultClient = new WriteProxyClient();
-        assertThat(defaultClient).isNotNull();
+    void dispatchThrowsProxyAuthExceptionOn401() throws Exception {
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(401);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(response);
+
+        MessageDispatch dispatch = MessageDispatch.builder()
+                                                  .channelId(CHANNEL_ID)
+                                                  .sender("agent-1")
+                                                  .type(MessageType.STATUS)
+                                                  .content("test")
+                                                  .actorType(ActorType.AGENT)
+                                                  .build();
+
+        assertThatThrownBy(() -> proxyClient.dispatch(TARGET, dispatch))
+                .isInstanceOf(ProxyAuthException.class)
+                .hasMessageContaining("Authentication rejected");
+    }
+
+    @Test
+    void dispatchThrowsProxyAuthExceptionOn403() throws Exception {
+        HttpResponse<String> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(403);
+        when(httpClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class)))
+                .thenReturn(response);
+
+        MessageDispatch dispatch = MessageDispatch.builder()
+                                                  .channelId(CHANNEL_ID)
+                                                  .sender("agent-1")
+                                                  .type(MessageType.STATUS)
+                                                  .content("test")
+                                                  .actorType(ActorType.AGENT)
+                                                  .build();
+
+        assertThatThrownBy(() -> proxyClient.dispatch(TARGET, dispatch))
+                .isInstanceOf(ProxyAuthException.class);
+    }
+
+
+    @Test
+    void primaryConstructorCreatesWorkingClient() {
+        WriteProxyClient client = new WriteProxyClient(Duration.ofSeconds(10), null);
+        assertThat(client).isNotNull();
     }
 }

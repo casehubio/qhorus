@@ -71,22 +71,34 @@ public class WriteRoutingDecorator implements MessageDispatcher {
         }
         try {
             return proxyClient.dispatch(owner, dispatch);
+        } catch (ProxyTimeoutException e) {
+            LOG.warnf("Proxy timeout to %s: %s", owner.nodeId(), e.getMessage());
+            return fallbackToLocal(dispatch, owner, e);
+        } catch (ProxyAuthException e) {
+            LOG.errorf("Proxy auth rejected by %s (HTTP %d) — check internal-secret config",
+                       owner.nodeId(), e.statusCode());
+            return fallbackToLocal(dispatch, owner, e);
         } catch (Exception e) {
             LOG.warnf("Proxy to %s failed: %s", owner.nodeId(), e.getMessage());
-            var event = new ProxyFallbackEvent(
-                    dispatch.channelId(), owner.nodeId(), localNodeId,
-                    dispatch.sender(), dispatch.type(), e.getMessage());
-            if (fallbackEvent != null) {
-                fallbackEvent.fireAsync(event);
-            }
-            if ("fail".equals(proxyFallback)) {
-                throw new ProxyDispatchException(event, e);
-            }
-            DispatchResult result = delegate.dispatch(dispatch);
-            if (tracker != null) {
-                tracker.recordWrite(dispatch.channelId());
-            }
-            return result;
+            return fallbackToLocal(dispatch, owner, e);
         }
     }
+
+    private DispatchResult fallbackToLocal(MessageDispatch dispatch, NodeInfo owner, Exception e) {
+        var event = new ProxyFallbackEvent(
+                dispatch.channelId(), owner.nodeId(), localNodeId,
+                dispatch.sender(), dispatch.type(), e.getMessage());
+        if (fallbackEvent != null) {
+            fallbackEvent.fireAsync(event);
+        }
+        if ("fail".equals(proxyFallback)) {
+            throw new ProxyDispatchException(event, e);
+        }
+        DispatchResult result = delegate.dispatch(dispatch);
+        if (tracker != null) {
+            tracker.recordWrite(dispatch.channelId());
+        }
+        return result;
+    }
+
 }

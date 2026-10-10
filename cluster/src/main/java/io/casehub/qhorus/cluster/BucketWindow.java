@@ -3,71 +3,55 @@ package io.casehub.qhorus.cluster;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.atomic.AtomicLong;
 
-public class BucketWindow {
+class BucketWindow {
 
-    private final AtomicLong[] buckets;
-    private final long bucketDurationMillis;
-    private Clock clock;
-    private int currentIndex;
-    private Instant currentBucketStart;
+    private final long[]   buckets;
+    private final Duration bucketDuration;
+    private       int      headIndex;
+    private       Clock    clock;
+    private       Instant  lastRotation;
 
-    public BucketWindow(int bucketCount, Duration bucketDuration, Clock clock) {
-        this.buckets = new AtomicLong[bucketCount];
-        for (int i = 0; i < bucketCount; i++) {
-            this.buckets[i] = new AtomicLong(0);
-        }
-        this.bucketDurationMillis = bucketDuration.toMillis();
-        this.clock = clock;
-        this.currentIndex = 0;
-        this.currentBucketStart = clock.instant();
+    BucketWindow(int bucketCount, Duration bucketDuration, Clock clock) {
+        this.buckets        = new long[bucketCount];
+        this.bucketDuration = bucketDuration;
+        this.clock          = clock;
+        this.lastRotation   = clock.instant();
     }
 
-    public void recordWrite() {
-        buckets[currentIndex].incrementAndGet();
+    void recordWrite() {
+        buckets[headIndex]++;
     }
 
-    public long getCount() {
-        long sum = 0;
-        for (AtomicLong bucket : buckets) {
-            sum += bucket.get();
+    long getCount() {
+        long total = 0;
+        for (long b : buckets) {
+            total += b;
         }
-        return sum;
+        return total;
     }
 
-    public boolean tryRotate() {
-        Instant now = clock.instant();
-        long elapsedMillis = now.toEpochMilli() - currentBucketStart.toEpochMilli();
-        if (elapsedMillis < bucketDurationMillis) {
-            return false;
+    boolean tryRotate() {
+        Instant now       = clock.instant();
+        long    elapsed   = Duration.between(lastRotation, now).toMillis();
+        long    rotations = elapsed / bucketDuration.toMillis();
+        if (rotations <= 0) {return false;}
+
+        for (long i = 0; i < Math.min(rotations, buckets.length); i++) {
+            headIndex          = (headIndex + 1) % buckets.length;
+            buckets[headIndex] = 0;
         }
-        int steps = (int) (elapsedMillis / bucketDurationMillis);
-        if (steps >= buckets.length) {
-            for (AtomicLong bucket : buckets) {
-                bucket.set(0);
-            }
-            currentIndex = 0;
-        } else {
-            for (int i = 0; i < steps; i++) {
-                currentIndex = (currentIndex + 1) % buckets.length;
-                buckets[currentIndex].set(0);
-            }
-        }
-        currentBucketStart = now;
+        lastRotation = now;
         return true;
     }
 
-    public boolean isEmpty() {
-        for (AtomicLong bucket : buckets) {
-            if (bucket.get() != 0) {
-                return false;
-            }
-        }
-        return true;
+    boolean isEmpty() {
+        return getCount() == 0;
     }
 
-    void setClock(Clock clock) {
-        this.clock = clock;
+    void setClock(Clock newClock) {
+        this.clock = newClock;
+        for (long b : buckets) {
+        }
     }
 }

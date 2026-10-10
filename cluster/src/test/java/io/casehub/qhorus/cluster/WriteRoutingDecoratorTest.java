@@ -274,4 +274,71 @@ class WriteRoutingDecoratorTest {
         assertThat(result).isEqualTo(expectedResult);
     }
 
+    @Test
+    void proxyTimeoutFallsBackToLocalWithWarnLevel() {
+        var dec = new WriteRoutingDecorator(delegate, clusterManager, proxyClient, true,
+                                            null, fallbackEvent, "local", "node-1");
+        var remoteNode = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.canServeWrites()).thenReturn(true);
+        when(clusterManager.owner(CHANNEL_ID)).thenReturn(remoteNode);
+        when(clusterManager.isLocal(remoteNode)).thenReturn(false);
+        var dispatch = MessageDispatch.builder().channelId(CHANNEL_ID)
+                                      .sender("agent-1").type(MessageType.STATUS).content("test")
+                                      .actorType(ActorType.AGENT).build();
+        when(proxyClient.dispatch(remoteNode, dispatch))
+                .thenThrow(new ProxyTimeoutException("timeout", new java.io.IOException()));
+        var expectedResult = new DispatchResult(1L, CHANNEL_ID, "agent-1",
+                                                MessageType.STATUS, null, null, List.of(), null, null, null, null, 0, null, List.of());
+        when(delegate.dispatch(dispatch)).thenReturn(expectedResult);
+
+        DispatchResult result = dec.dispatch(dispatch);
+
+        assertThat(result).isEqualTo(expectedResult);
+        verify(delegate).dispatch(dispatch);
+        verify(fallbackEvent).fireAsync(any(ProxyFallbackEvent.class));
+    }
+
+    @Test
+    void proxyAuthFailureFallsBackToLocal() {
+        var dec = new WriteRoutingDecorator(delegate, clusterManager, proxyClient, true,
+                                            null, fallbackEvent, "local", "node-1");
+        var remoteNode = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.canServeWrites()).thenReturn(true);
+        when(clusterManager.owner(CHANNEL_ID)).thenReturn(remoteNode);
+        when(clusterManager.isLocal(remoteNode)).thenReturn(false);
+        var dispatch = MessageDispatch.builder().channelId(CHANNEL_ID)
+                                      .sender("agent-1").type(MessageType.STATUS).content("test")
+                                      .actorType(ActorType.AGENT).build();
+        when(proxyClient.dispatch(remoteNode, dispatch))
+                .thenThrow(new ProxyAuthException("node-2", 403));
+        var expectedResult = new DispatchResult(1L, CHANNEL_ID, "agent-1",
+                                                MessageType.STATUS, null, null, List.of(), null, null, null, null, 0, null, List.of());
+        when(delegate.dispatch(dispatch)).thenReturn(expectedResult);
+
+        DispatchResult result = dec.dispatch(dispatch);
+
+        assertThat(result).isEqualTo(expectedResult);
+        verify(delegate).dispatch(dispatch);
+    }
+
+    @Test
+    void proxyAuthInFailModeThrowsProxyDispatchException() {
+        var dec = new WriteRoutingDecorator(delegate, clusterManager, proxyClient, true,
+                                            null, fallbackEvent, "fail", "node-1");
+        var remoteNode = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.canServeWrites()).thenReturn(true);
+        when(clusterManager.owner(CHANNEL_ID)).thenReturn(remoteNode);
+        when(clusterManager.isLocal(remoteNode)).thenReturn(false);
+        var dispatch = MessageDispatch.builder().channelId(CHANNEL_ID)
+                                      .sender("agent-1").type(MessageType.STATUS).content("test")
+                                      .actorType(ActorType.AGENT).build();
+        when(proxyClient.dispatch(remoteNode, dispatch))
+                .thenThrow(new ProxyAuthException("node-2", 403));
+
+        assertThatThrownBy(() -> dec.dispatch(dispatch))
+                .isInstanceOf(ProxyDispatchException.class)
+                .hasCauseInstanceOf(ProxyAuthException.class);
+    }
+
+
 }

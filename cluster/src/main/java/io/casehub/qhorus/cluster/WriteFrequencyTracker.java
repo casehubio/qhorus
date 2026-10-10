@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class WriteFrequencyTracker {
+class WriteFrequencyTracker {
 
     private final int bucketCount;
     private final Duration bucketDuration;

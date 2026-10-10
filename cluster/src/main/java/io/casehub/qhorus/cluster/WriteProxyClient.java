@@ -27,14 +27,6 @@ public class WriteProxyClient {
         this.internalSecret = internalSecret;
     }
 
-    public WriteProxyClient(java.time.Duration timeout) {
-        this(timeout, null);
-    }
-
-    WriteProxyClient() {
-        this(java.time.Duration.ofSeconds(10));
-    }
-
     WriteProxyClient(java.net.http.HttpClient httpClient,
                      com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                      java.time.Duration timeout) {
@@ -59,11 +51,11 @@ public class WriteProxyClient {
     }
 
     public Channel pauseChannel(NodeInfo target, UUID channelId) {
-        return post(target, path("/internal/channel/" + channelId + "/pause"), null, Channel.class);
+        return post(target, "/internal/channel/" + channelId + "/pause", null, Channel.class);
     }
 
     public Channel resumeChannel(NodeInfo target, UUID channelId) {
-        return post(target, path("/internal/channel/" + channelId + "/resume"), null, Channel.class);
+        return post(target, "/internal/channel/" + channelId + "/resume", null, Channel.class);
     }
 
     public Channel channelConfig(NodeInfo target, UUID channelId, ChannelConfigRequest request) {
@@ -83,21 +75,31 @@ public class WriteProxyClient {
         try {
             String url = "http://" + target.address() + path;
             java.net.http.HttpRequest.Builder reqBuilder = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(url))
-                    .timeout(timeout)
-                    .GET();
+                                                                                    .uri(java.net.URI.create(url))
+                                                                                    .timeout(timeout)
+                                                                                    .GET();
             if (internalSecret != null) {
                 reqBuilder.header("X-Internal-Secret", internalSecret);
             }
             java.net.http.HttpRequest req = reqBuilder.build();
             java.net.http.HttpResponse<String> response = httpClient.send(
                     req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 401 || response.statusCode() == 403) {
+                throw new ProxyAuthException(target.nodeId(), response.statusCode());
+            }
             if (response.statusCode() >= 400) {
-                throw new RuntimeException("HTTP " + response.statusCode() + " from " + url);
+                throw new ProxyDispatchException(target.nodeId(), response.statusCode(),
+                                                 "HTTP " + response.statusCode() + " from " + url);
             }
             return objectMapper.readValue(response.body(), responseType);
+        } catch (ProxyAuthException | ProxyDispatchException e) {
+            throw e;
         } catch (java.io.IOException | InterruptedException e) {
-            throw new RuntimeException("GET " + target.nodeId() + " failed: " + e.getMessage(), e);
+            throw new ProxyTimeoutException(
+                    "GET " + target.nodeId() + " failed: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new ProxyDispatchException(target.nodeId(), -1,
+                                             "GET " + target.nodeId() + " failed: " + e.getMessage());
         }
     }
 
@@ -121,19 +123,26 @@ public class WriteProxyClient {
             java.net.http.HttpResponse<String> response = httpClient.send(
                     reqBuilder.build(),
                     java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() == 401 || response.statusCode() == 403) {
+                throw new ProxyAuthException(target.nodeId(), response.statusCode());
+            }
             if (response.statusCode() >= 400) {
-                throw new RuntimeException("HTTP " + response.statusCode() + " from " + url);
+                throw new ProxyDispatchException(target.nodeId(), response.statusCode(),
+                                                 "HTTP " + response.statusCode() + " from " + url);
             }
             if (responseType == Void.class || response.body() == null || response.body().isEmpty()) {
                 return null;
             }
             return objectMapper.readValue(response.body(), responseType);
+        } catch (ProxyAuthException | ProxyDispatchException e) {
+            throw e;
+        } catch (java.io.IOException | InterruptedException e) {
+            throw new ProxyTimeoutException(
+                    "Proxy call to " + target.nodeId() + " failed: " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new RuntimeException("Proxy call to " + target.nodeId() + " failed: " + e.getMessage(), e);
+            throw new ProxyDispatchException(target.nodeId(), -1,
+                                             "Proxy call to " + target.nodeId() + " failed: " + e.getMessage());
         }
     }
 
-    private static String path(String p) {
-        return p;
-    }
 }

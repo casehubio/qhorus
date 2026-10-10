@@ -10,6 +10,12 @@ public class ProxyDispatchException extends RuntimeException {
         this.event = event;
     }
 
+    public ProxyDispatchException(String nodeId, int statusCode, String message) {
+        super("Proxy to " + nodeId + " failed (HTTP " + statusCode + "): " + message);
+        this.event = null;
+    }
+
+
     public ProxyFallbackEvent event() {
         return event;
     }
