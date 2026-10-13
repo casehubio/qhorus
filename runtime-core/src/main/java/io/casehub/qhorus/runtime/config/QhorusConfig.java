@@ -1,11 +1,16 @@
 package io.casehub.qhorus.runtime.config;
 
+import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.EnforcementMode;
+import io.casehub.qhorus.api.message.MessageType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
 import io.smallrye.config.WithName;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 
 @ConfigMapping(prefix = "casehub.qhorus")
 public interface QhorusConfig {
@@ -23,6 +28,60 @@ public interface QhorusConfig {
     Correction correction();
 
     Instance instance();
+
+    Map<String, ChannelConfig> channels();
+
+    interface ChannelConfig {
+        @WithDefault("APPEND")
+        ChannelSemantic semantic();
+
+        Optional<String> description();
+
+        Optional<List<String>> allowedWriters();
+
+        Optional<List<String>> adminInstances();
+
+        Optional<List<String>> barrierContributors();
+
+        Optional<List<String>> reviewerInstances();
+
+        Optional<List<MessageType>> allowedTypes();
+
+        Optional<List<MessageType>> deniedTypes();
+
+        Optional<List<String>> protocols();
+
+        Optional<List<String>> protocolParticipants();
+
+        Optional<EnforcementMode> enforcementMode();
+
+        Optional<List<String>> enforcementExclusions();
+
+        OptionalInt rateLimitPerChannel();
+
+        OptionalInt rateLimitPerInstance();
+
+        Optional<Double> routingTrustThreshold();
+
+        Optional<Boolean> trackDelivery();
+
+        Optional<String> space();
+
+        Map<String, String> metadata();
+
+        Optional<ConnectorConfig> connector();
+
+        interface ConnectorConfig {
+            String inboundConnectorId();
+
+            String externalKey();
+
+            String outboundConnectorId();
+
+            String outboundDestination();
+        }
+    }
+
 
     interface Instance {
         @WithDefault("false")

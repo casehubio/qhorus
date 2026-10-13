@@ -87,7 +87,7 @@ class RegistryBackedInstanceManagerTest {
         registry.register(new RegistryEntry(
                 "service-1", "service", "default", "default",
                 Map.of(), Instant.now(), Instant.now(),
-                Duration.ofMinutes(5), HealthStatus.HEALTHY));
+                Duration.ofMinutes(5), HealthStatus.HEALTHY, Instant.now()));
 
         List<InstanceInfo> infos = manager.listInfo();
         assertThat(infos).hasSize(1);
@@ -129,7 +129,7 @@ class RegistryBackedInstanceManagerTest {
         registry.register(new RegistryEntry(
                 "service-1", "service", "default", "default",
                 Map.of(), Instant.now(), Instant.now(),
-                Duration.ofMinutes(5), HealthStatus.HEALTHY));
+                Duration.ofMinutes(5), HealthStatus.HEALTHY, Instant.now()));
 
         assertThatThrownBy(() -> manager.findInfo("service-1"))
                 .isInstanceOf(IllegalArgumentException.class);

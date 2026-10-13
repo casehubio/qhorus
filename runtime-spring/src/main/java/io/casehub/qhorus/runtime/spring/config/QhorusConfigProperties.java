@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @ConfigurationProperties(prefix = "casehub.qhorus")
@@ -24,6 +25,12 @@ public class QhorusConfigProperties implements QhorusConfig {
     private CorrectionProps       correction       = new CorrectionProps();
     private ErasureProps          erasure          = new ErasureProps();
     private InstanceProps         instance         = new InstanceProps();
+    private java.util.LinkedHashMap<String, ChannelConfigProps> channels = new java.util.LinkedHashMap<>();
+
+    @Override
+    public Map<String, ChannelConfig> channels()                                   {return Map.copyOf(channels);}
+
+    public void setChannels(java.util.LinkedHashMap<String, ChannelConfigProps> v) {this.channels = v;}
 
 
     @Override public Cleanup cleanup() { return cleanup; }
@@ -280,6 +287,150 @@ public class QhorusConfigProperties implements QhorusConfig {
         public boolean registryBacked() {return registryBacked;}
 
         public void setRegistryBacked(boolean v) {this.registryBacked = v;}
+    }
+
+    public static class ChannelConfigProps implements ChannelConfig {
+        private io.casehub.qhorus.api.channel.ChannelSemantic   semantic = io.casehub.qhorus.api.channel.ChannelSemantic.APPEND;
+        private String                                          description;
+        private List<String>                                    allowedWriters;
+        private List<String>                                    adminInstances;
+        private List<String>                                    barrierContributors;
+        private List<String>                                    reviewerInstances;
+        private List<io.casehub.qhorus.api.message.MessageType> allowedTypes;
+        private List<io.casehub.qhorus.api.message.MessageType> deniedTypes;
+        private List<String>                                    protocols;
+        private List<String>                                    protocolParticipants;
+        private io.casehub.qhorus.api.channel.EnforcementMode   enforcementMode;
+        private List<String>                                    enforcementExclusions;
+        private Integer                                         rateLimitPerChannel;
+        private Integer                                         rateLimitPerInstance;
+        private Double                                          routingTrustThreshold;
+        private Boolean                                         trackDelivery;
+        private String                                          space;
+        private java.util.Map<String, String>                   metadata;
+        private ConnectorConfigProps                            connector;
+
+        @Override
+        public io.casehub.qhorus.api.channel.ChannelSemantic semantic()                  {return semantic;}
+
+        @Override
+        public Optional<String> description()                                            {return Optional.ofNullable(description);}
+
+        @Override
+        public Optional<List<String>> allowedWriters()                                   {return Optional.ofNullable(allowedWriters);}
+
+        @Override
+        public Optional<List<String>> adminInstances()                                   {return Optional.ofNullable(adminInstances);}
+
+        @Override
+        public Optional<List<String>> barrierContributors()                              {return Optional.ofNullable(barrierContributors);}
+
+        @Override
+        public Optional<List<String>> reviewerInstances()                                {return Optional.ofNullable(reviewerInstances);}
+
+        @Override
+        public Optional<List<io.casehub.qhorus.api.message.MessageType>> allowedTypes()  {return Optional.ofNullable(allowedTypes);}
+
+        @Override
+        public Optional<List<io.casehub.qhorus.api.message.MessageType>> deniedTypes()   {return Optional.ofNullable(deniedTypes);}
+
+        @Override
+        public Optional<List<String>> protocols()                                        {return Optional.ofNullable(protocols);}
+
+        @Override
+        public Optional<List<String>> protocolParticipants()                             {return Optional.ofNullable(protocolParticipants);}
+
+        @Override
+        public Optional<io.casehub.qhorus.api.channel.EnforcementMode> enforcementMode() {return Optional.ofNullable(enforcementMode);}
+
+        @Override
+        public Optional<List<String>> enforcementExclusions()                            {return Optional.ofNullable(enforcementExclusions);}
+
+        @Override
+        public java.util.OptionalInt rateLimitPerChannel()                               {return rateLimitPerChannel != null ? java.util.OptionalInt.of(rateLimitPerChannel) : java.util.OptionalInt.empty();}
+
+        @Override
+        public java.util.OptionalInt rateLimitPerInstance()                              {return rateLimitPerInstance != null ? java.util.OptionalInt.of(rateLimitPerInstance) : java.util.OptionalInt.empty();}
+
+        @Override
+        public Optional<Double> routingTrustThreshold()                                  {return Optional.ofNullable(routingTrustThreshold);}
+
+        @Override
+        public Optional<Boolean> trackDelivery()                                         {return Optional.ofNullable(trackDelivery);}
+
+        @Override
+        public Optional<String> space()                                                  {return Optional.ofNullable(space);}
+
+        @Override
+        public java.util.Map<String, String> metadata()                        {return metadata != null ? metadata : java.util.Map.of();}
+
+        @Override
+        public Optional<ConnectorConfig> connector()                                     {return Optional.ofNullable(connector);}
+
+        public void setSemantic(io.casehub.qhorus.api.channel.ChannelSemantic v)         {this.semantic = v;}
+
+        public void setDescription(String v)                                             {this.description = v;}
+
+        public void setAllowedWriters(List<String> v)                                    {this.allowedWriters = v;}
+
+        public void setAdminInstances(List<String> v)                                    {this.adminInstances = v;}
+
+        public void setBarrierContributors(List<String> v)                               {this.barrierContributors = v;}
+
+        public void setReviewerInstances(List<String> v)                                 {this.reviewerInstances = v;}
+
+        public void setAllowedTypes(List<io.casehub.qhorus.api.message.MessageType> v)   {this.allowedTypes = v;}
+
+        public void setDeniedTypes(List<io.casehub.qhorus.api.message.MessageType> v)    {this.deniedTypes = v;}
+
+        public void setProtocols(List<String> v)                                         {this.protocols = v;}
+
+        public void setProtocolParticipants(List<String> v)                              {this.protocolParticipants = v;}
+
+        public void setEnforcementMode(io.casehub.qhorus.api.channel.EnforcementMode v)  {this.enforcementMode = v;}
+
+        public void setEnforcementExclusions(List<String> v)                             {this.enforcementExclusions = v;}
+
+        public void setRateLimitPerChannel(Integer v)                                    {this.rateLimitPerChannel = v;}
+
+        public void setRateLimitPerInstance(Integer v)                                   {this.rateLimitPerInstance = v;}
+
+        public void setRoutingTrustThreshold(Double v)                                   {this.routingTrustThreshold = v;}
+
+        public void setTrackDelivery(Boolean v)                                          {this.trackDelivery = v;}
+
+        public void setSpace(String v)                                                   {this.space = v;}
+
+        public void setMetadata(java.util.Map<String, String> v)                         {this.metadata = v;}
+
+        public void setConnector(ConnectorConfigProps v)                                 {this.connector = v;}
+    }
+
+    public static class ConnectorConfigProps implements ChannelConfig.ConnectorConfig {
+        private String inboundConnectorId;
+        private String externalKey;
+        private String outboundConnectorId;
+        private String outboundDestination;
+
+        @Override
+        public String inboundConnectorId()           {return inboundConnectorId;}
+
+        @Override
+        public String externalKey()                  {return externalKey;}
+
+        @Override
+        public String outboundConnectorId()          {return outboundConnectorId;}
+
+        @Override
+        public String outboundDestination()          {return outboundDestination;}
+
+        public void setInboundConnectorId(String v)  {this.inboundConnectorId = v;}
+
+        public void setExternalKey(String v)         {this.externalKey = v;}
+
+        public void setOutboundConnectorId(String v) {this.outboundConnectorId = v;}
+
+        public void setOutboundDestination(String v) {this.outboundDestination = v;}
     }
 
 

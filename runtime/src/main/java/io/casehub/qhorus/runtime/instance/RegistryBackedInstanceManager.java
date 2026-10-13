@@ -65,7 +65,7 @@ public class RegistryBackedInstanceManager implements InstanceManager {
 
         var entry = new RegistryEntry(
                 instanceId, TYPE, NAMESPACE, TENANCY_ID,
-                metadata, now, now, DEFAULT_TTL, HealthStatus.HEALTHY
+                metadata, now, now, DEFAULT_TTL, HealthStatus.HEALTHY, now
         );
         registry.register(entry);
 
