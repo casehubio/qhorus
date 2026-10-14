@@ -43,13 +43,6 @@
     <module>agent-card-signing-core</module>
     <module>agent-card-signing</module>
     <module>persistence-memory</module>
-    <module>graphql-spring</module>
-    <module>runtime-spring</module>
-    <module>kafka-observer-spring</module>
-    <module>postgres-broadcaster-spring</module>
-    <module>websocket-observer-spring</module>
-    <module>qhorus-rest-spring</module>
-    <module>spring-integration-test</module>
     <module>testing</module>
     <module>agent-bridge</module>
     <module>mesh</module>
@@ -172,6 +165,18 @@
         <skipITs>false</skipITs>
         <quarkus.native.enabled>true</quarkus.native.enabled>
       </properties>
+    </profile>
+    <profile>
+      <id>with-spring</id>
+      <modules>
+        <module>graphql-spring</module>
+        <module>runtime-spring</module>
+        <module>kafka-observer-spring</module>
+        <module>postgres-broadcaster-spring</module>
+        <module>websocket-observer-spring</module>
+        <module>qhorus-rest-spring</module>
+        <module>spring-integration-test</module>
+      </modules>
     </profile>
     <profile>
       <id>with-e2e-cluster</id>
