@@ -143,6 +143,7 @@ public class RegistryBackedInstanceManager implements InstanceManager {
             case HEALTHY -> "online";
             case DEGRADED -> "stale";
             case DOWN -> "offline";
+            case SUSPENDED -> "suspended";
         };
     }
 }

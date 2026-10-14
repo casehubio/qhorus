@@ -9,8 +9,10 @@ import jakarta.enterprise.context.ApplicationScoped;
  * <p>Inherits all behaviour from {@link JpaLedgerMerkleFrontierRepository}: frontier
  * read, delete-and-replace for the Merkle tree append operation.
  *
- * <p>Plain {@code @ApplicationScoped} — displaces the {@code @DefaultBean}
- * no-op producer in {@code LedgerCoreProducer} automatically. Refs qhorus#255, qhorus#490.
+ * <p>Plain {@code @ApplicationScoped} — displaces both the {@code @DefaultBean}
+ * no-op producer in {@code LedgerCoreProducer} and the {@code @DefaultBean}
+ * {@code JpaLedgerMerkleFrontierRepository} from casehub-ledger (a normal bean
+ * beats {@code @DefaultBean}). Refs qhorus#255, qhorus#490, qhorus#491.
  */
 @ApplicationScoped
 class QhorusLedgerMerkleFrontierRepository extends JpaLedgerMerkleFrontierRepository {
