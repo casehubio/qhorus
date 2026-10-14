@@ -1,15 +1,12 @@
 package io.casehub.qhorus.runtime.identity;
 
-import java.util.Set;
-
-import jakarta.annotation.Priority;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.context.ContextNotActiveException;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
-
 import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.platform.api.identity.TenancyConstants;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ContextNotActiveException;
+import jakarta.inject.Inject;
+
+import java.util.Set;
 
 /**
  * Qhorus default {@link CurrentPrincipal} for HTTP requests without OIDC authentication.
@@ -17,13 +14,12 @@ import io.casehub.platform.api.identity.TenancyConstants;
  * <p>Reads {@code tenancyId} from {@link InboundTenancyContext}, which is populated by
  * {@link TenancyContextFilter} from the {@code X-Tenancy-ID} request header.
  *
- * <p><strong>CDI resolution:</strong> plain {@code @ApplicationScoped} (Tier 2 per
- * persistence-backend-cdi-priority protocol). Displaces {@code MockCurrentPrincipal @DefaultBean}
- * automatically. Displaced by any {@code @Alternative @Priority(N)} bean: {@code FixedCurrentPrincipal
- * @Priority(1)} in test fixtures, or {@code OidcCurrentPrincipal @Priority(100)} when
- * {@code casehub-platform-oidc} is on the classpath. Must NOT be {@code @DefaultBean} —
- * two {@code @DefaultBean} implementations of the same type in consumer deployments (e.g.
- * DraftHouse, aml, clinical) cause CDI ambiguity. Refs qhorus#276.
+ * <p><strong>CDI resolution:</strong> plain {@code @ApplicationScoped}. Displaces
+ * {@code MockCurrentPrincipal @DefaultBean} from {@code casehub-platform} automatically
+ * (a normal bean beats a {@code @DefaultBean}). Displaced by any {@code @Alternative}
+ * bean with {@code @Priority}: {@code FixedCurrentPrincipal @Priority(1)} in test
+ * fixtures, or {@code OidcCurrentPrincipal @Priority(100)} in OIDC deployments.
+ * Refs qhorus#265, qhorus#490.
  *
  * <p><strong>Scope:</strong> {@code @ApplicationScoped} (not {@code @RequestScoped}).
  * The bean itself is stateless — per-request isolation comes from the
@@ -44,10 +40,8 @@ import io.casehub.platform.api.identity.TenancyConstants;
  * return {@code false}. The mock defaults to {@code "system"} (configurable).
  * No qhorus-internal code currently gates on {@code isAuthenticated()}.
  *
- * <p>Refs qhorus#265, qhorus#276.
+ * <p>Refs qhorus#265, qhorus#276, qhorus#490.
  */
-@Alternative
-@Priority(200)
 @ApplicationScoped
 public class QhorusInboundCurrentPrincipal implements CurrentPrincipal {
 
@@ -69,9 +63,6 @@ public class QhorusInboundCurrentPrincipal implements CurrentPrincipal {
         try {
             return ctx.tenancyId();
         } catch (final ContextNotActiveException e) {
-            // Background threads have no request scope — InboundTenancyContext is unreachable.
-            // Per PP-20260609-scheduled-service-cross-tenant-stores, background code should use
-            // CrossTenant*Store interfaces. This catch is a safety net; DEFAULT_TENANT_ID is correct here.
             return TenancyConstants.DEFAULT_TENANT_ID;
         }
     }
