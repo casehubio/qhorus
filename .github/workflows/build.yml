@@ -24,6 +24,11 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
 
+      - name: Install Quarkus deployment artifact for test discovery
+        run: mvn -B -pl deployment -am install -DskipTests -Dno-format
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build with Maven
         # LLM examples (examples/agent-communication) are behind -Pwith-llm-examples.
         # Default CI build runs the type-system regression tests (no model download required).

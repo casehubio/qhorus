@@ -28,6 +28,11 @@ jobs:
           server-username: GITHUB_ACTOR
           server-password: GITHUB_TOKEN
 
+      - name: Install Quarkus deployment artifact for test discovery
+        run: mvn --batch-mode -pl deployment -am install -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Build and test
         run: mvn --batch-mode verify
         env:
