@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-parent</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-notification-bridge</artifactId>
@@ -33,7 +33,7 @@ transitions generate NotificationInput for the affected party.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>

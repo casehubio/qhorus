@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-parent</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-connectors</artifactId>
@@ -26,7 +26,7 @@
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-connectors-core</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <!-- CDI — required for @ApplicationScoped, @ObservesAsync -->

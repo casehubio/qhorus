@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-parent</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-compliance-report</artifactId>
@@ -39,25 +39,25 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-ledger</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-graphql</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-graphql-generator</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
       <scope>provided</scope>
     </dependency>
 
@@ -95,7 +95,7 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-pdf</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
@@ -134,7 +134,7 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
       <scope>test</scope>
     </dependency>
 
@@ -149,7 +149,7 @@ Optional module activated by classpath presence.</description>
             <path>
               <groupId>io.casehub</groupId>
               <artifactId>casehub-platform-graphql-generator</artifactId>
-              <version>0.2-SNAPSHOT</version>
+              <version>0.3</version>
             </path>
             <path>
               <groupId>io.casehub</groupId>

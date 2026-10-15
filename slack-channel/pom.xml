@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-parent</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-slack-channel</artifactId>
@@ -36,19 +36,19 @@
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-connectors-slack-bot</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-connectors-core</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
@@ -117,7 +117,7 @@
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

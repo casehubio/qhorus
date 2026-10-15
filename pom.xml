@@ -6,7 +6,7 @@
 
   <groupId>io.casehub</groupId>
   <artifactId>casehub-qhorus-parent</artifactId>
-  <version>0.2-SNAPSHOT</version>
+  <version>0.3</version>
   <packaging>pom</packaging>
 
   <name>CaseHub Qhorus - Parent</name>
