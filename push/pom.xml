@@ -7,7 +7,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-parent</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-push</artifactId>
@@ -33,13 +33,13 @@ real-time dataset delivery.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-pages-push</artifactId>
-      <version>0.2-SNAPSHOT</version>
+      <version>0.3</version>
     </dependency>
 
     <dependency>

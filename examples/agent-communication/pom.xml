@@ -6,7 +6,7 @@
   <parent>
     <groupId>io.casehub</groupId>
     <artifactId>casehub-qhorus-examples</artifactId>
-    <version>0.2-SNAPSHOT</version>
+    <version>0.3</version>
   </parent>
 
   <artifactId>casehub-qhorus-example-agent-communication</artifactId>
