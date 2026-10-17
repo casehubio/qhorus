@@ -36,7 +36,7 @@
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-connectors-core</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
@@ -123,7 +123,7 @@
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

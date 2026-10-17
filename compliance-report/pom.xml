@@ -39,25 +39,25 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-ledger</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-graphql</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-graphql-generator</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
       <scope>provided</scope>
     </dependency>
 
@@ -95,7 +95,7 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-pdf</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
@@ -134,7 +134,7 @@ Optional module activated by classpath presence.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
 

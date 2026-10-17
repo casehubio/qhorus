@@ -33,7 +33,7 @@ transitions generate NotificationInput for the affected party.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>

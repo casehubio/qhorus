@@ -53,7 +53,7 @@ dynamic registration. HMAC-SHA256 signature when secret is configured.</descript
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <!-- Testing -->
@@ -86,7 +86,7 @@ dynamic registration. HMAC-SHA256 signature when secret is configured.</descript
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
 

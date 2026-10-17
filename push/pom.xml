@@ -33,13 +33,13 @@ real-time dataset delivery.</description>
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-platform-api</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
       <groupId>io.casehub</groupId>
       <artifactId>casehub-pages-push</artifactId>
-      <version>0.3</version>
+      <version>${casehub.version}</version>
     </dependency>
 
     <dependency>
