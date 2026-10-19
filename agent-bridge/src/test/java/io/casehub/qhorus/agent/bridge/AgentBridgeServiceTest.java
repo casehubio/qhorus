@@ -48,7 +48,7 @@ class AgentBridgeServiceTest {
             @Override public Multi<AgentEvent> query(String prompt) {
                 return Multi.createFrom().<AgentEvent>items(
                         new AgentEvent.TextDelta("ok"),
-                        new AgentEvent.InvocationComplete(0, 0, 0, 0, 0, null, 0, 0, null, 0, false));
+                        new AgentEvent.InvocationComplete(0, 0, 0, 0, 0, null, 0, 0, null, 0, false, null, null));
             }
             @Override public Uni<Void> interrupt() { return Uni.createFrom().voidItem(); }
             @Override public void close(Duration maxWait) {}

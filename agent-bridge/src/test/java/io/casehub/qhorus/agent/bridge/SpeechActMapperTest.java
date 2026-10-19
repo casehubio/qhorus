@@ -26,7 +26,7 @@ class SpeechActMapperTest {
 
     @Test
     void mapToDispatch_commandCommitment_producesResponseOnly() {
-        var stats = new AgentEvent.InvocationComplete(100, 50, 10, 0, 0, 0.01, 2000L, 1800L, "sess-1", 1, false);
+        var stats = new AgentEvent.InvocationComplete(100, 50, 10, 0, 0, 0.01, 2000L, 1800L, "sess-1", 1, false, null, null);
         MessageDispatch dispatch = SpeechActMapper.mapToDispatch(
                 CHANNEL_ID, inbound(MessageType.COMMAND), AGENT_ID, "LGTM", stats);
 
@@ -40,7 +40,7 @@ class SpeechActMapperTest {
 
     @Test
     void mapToDispatch_queryCommitment_producesResponseOnly() {
-        var stats = new AgentEvent.InvocationComplete(80, 40, 0, 0, 0, null, 1500L, 1200L, "sess-1", 1, false);
+        var stats = new AgentEvent.InvocationComplete(80, 40, 0, 0, 0, null, 1500L, 1200L, "sess-1", 1, false, null, null);
         MessageDispatch dispatch = SpeechActMapper.mapToDispatch(
                 CHANNEL_ID, inbound(MessageType.QUERY), AGENT_ID, "The answer is 42", stats);
 

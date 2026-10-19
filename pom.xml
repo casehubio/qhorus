@@ -83,7 +83,7 @@
   </repositories>
 
   <properties>
-    <casehub.version>0.3</casehub.version>
+    <casehub.version>0.4-SNAPSHOT</casehub.version>
     <quarkus.version>3.32.2</quarkus.version>
     <quarkus-mcp-server.version>1.11.1</quarkus-mcp-server.version>
     <compiler-plugin.version>3.13.0</compiler-plugin.version>

@@ -614,5 +614,5 @@ All casehubio projects align on these conventions:
 ```
 CI must use `server-id: github` + `GITHUB_TOKEN` in `actions/setup-java`.
 
-**Cross-project SNAPSHOT versions:** `casehub-ledger` and `casehub-work` modules are `0.2-SNAPSHOT` resolved from GitHub Packages. Declare in `pom.xml` properties and `<dependencyManagement>` — no hardcoded versions in submodule poms.
+**Cross-project SNAPSHOT versions:** casehub ecosystem dependencies (`casehub-platform`, `casehub-ledger`, `casehub-eidos`, etc.) use `${casehub.version}` (currently `0.4-SNAPSHOT`) resolved from GitHub Packages. Declare in `pom.xml` properties and `<dependencyManagement>` — no hardcoded versions in submodule poms.
 

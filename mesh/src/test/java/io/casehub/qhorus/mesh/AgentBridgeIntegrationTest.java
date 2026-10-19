@@ -60,7 +60,7 @@ class AgentBridgeIntegrationTest {
             @Override public Multi<AgentEvent> invoke(AgentSessionConfig c) {
                 return Multi.createFrom().<AgentEvent>items(
                         new AgentEvent.TextDelta("Echo: " + c.userPrompt()),
-                        new AgentEvent.InvocationComplete(10, 5, 0, 0, 0, null, 100L, 90L, "s", 1, false));
+                        new AgentEvent.InvocationComplete(10, 5, 0, 0, 0, null, 100L, 90L, "s", 1, false, null, null));
             }
             @Override public AgentSession openSession(AgentSessionInit init) { return null; }
         };

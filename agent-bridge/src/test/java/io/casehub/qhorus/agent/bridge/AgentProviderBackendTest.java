@@ -44,7 +44,7 @@ class AgentProviderBackendTest {
             @Override public Multi<AgentEvent> invoke(AgentSessionConfig config) {
                 return Multi.createFrom().<AgentEvent>items(
                         new AgentEvent.TextDelta("LGTM"),
-                        new AgentEvent.InvocationComplete(100, 50, 0, 0, 0, null, 1000L, 900L, "s1", 1, false)
+                        new AgentEvent.InvocationComplete(100, 50, 0, 0, 0, null, 1000L, 900L, "s1", 1, false, null, null)
                 );
             }
             @Override public AgentSession openSession(AgentSessionInit init) { return null; }
