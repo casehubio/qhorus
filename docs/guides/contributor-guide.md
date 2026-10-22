@@ -243,7 +243,7 @@ V50 migration: `shared_data.binary_content` (BYTEA) + 6 `compliance_report` sign
 |------|-----|
 | `claudony` | Embeds Qhorus directly; named `qhorus` datasource; provides CaseChannel SPI implementation |
 | `casehub-engine` | Future -- via CaseChannelProvider SPI (implemented by Claudony) |
-| `casehub-blocks` | Channel projections, summary integration, convergence detection |
+| `casehub-agency` | Channel projections, summary integration, convergence detection |
 
 ---
 

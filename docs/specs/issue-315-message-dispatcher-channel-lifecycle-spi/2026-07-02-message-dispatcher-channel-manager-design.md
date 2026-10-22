@@ -6,7 +6,7 @@
 
 ## Problem
 
-casehubio/blocks#14 needs to dispatch messages and manage channel lifecycles from
+casehubio/agency#14 needs to dispatch messages and manage channel lifecycles from
 `PlatformAgentInvoker`. Currently `MessageService.dispatch()` and
 `ChannelService.create()/delete()` live in `casehub-qhorus` runtime — a Tier 3
 module. Blocks cannot reference runtime types without violating the tier dependency

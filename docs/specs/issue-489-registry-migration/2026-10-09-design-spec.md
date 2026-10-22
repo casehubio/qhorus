@@ -175,7 +175,7 @@ Target decomposition for composability:
 
 The existing panels (`claudony-fleet-panel`, `claudony-pool-panel`, `claudony-mesh-panel`) are already self-contained Lit web components. The extraction path:
 
-1. Extract panels into `@casehubio/blocks-ui-fleet` (or similar npm package)
+1. Extract panels into `@casehubio/agency-ui-fleet` (or similar npm package)
 2. Panels talk to backend APIs (REST/GraphQL, SSE for real-time)
 3. Any shell (scaffold ops perspective, standalone Claudony, trellis) imports and composes them
 4. Runtime discovery: the shell queries the registry for available backends and loads matching panels
@@ -220,7 +220,7 @@ The `casehub-pages` composition model (`registerPanel`, `hostPanel`, `tabs`) wor
 - Relationship graph: app → fleet → pool → node, channel → app
 - Allocation model decision: shared capacity vs per-app pools with ceiling
 - Claudony module decomposition (fleet/mesh/terminal split)
-- `@casehubio/blocks-ui-fleet` package extraction
+- `@casehubio/agency-ui-fleet` package extraction
 - Scaffold ops perspective composing fleet/mesh panels
 - GraphQL API surface for fleet and mesh services
 
