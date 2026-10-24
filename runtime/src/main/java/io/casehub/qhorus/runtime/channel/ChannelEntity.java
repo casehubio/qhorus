@@ -2,6 +2,7 @@ package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ParticipationPolicyMode;
 import io.casehub.qhorus.api.message.MessageType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -118,6 +119,9 @@ public class ChannelEntity {
     @Column(name = "metadata", columnDefinition = "TEXT")
     public String metadata;
 
+    @Column(name = "participation_policy")
+    public String participationPolicy;
+
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
     public String tenancyId = "278776f9-e1b0-46fb-9032-8bddebdcf9ce"; // TenancyConstants.DEFAULT_TENANT_ID
@@ -170,6 +174,7 @@ public class ChannelEntity {
         e.routingCapacityThreshold = channel.routingCapacityThreshold();
         e.policyOverrides  = serializeMap(channel.policyOverrides());
         e.metadata         = serializeMap(channel.metadata());
+        e.participationPolicy = channel.participationPolicy() != null ? channel.participationPolicy().name() : null;
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -196,7 +201,8 @@ public class ChannelEntity {
                 redistributionCapacityThreshold,
                 routingCapacityThreshold,
                 deserializeMap(policyOverrides),
-                deserializeMap(metadata));}
+                deserializeMap(metadata),
+                participationPolicy != null ? ParticipationPolicyMode.valueOf(participationPolicy) : null);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);
