@@ -102,6 +102,8 @@ public class MessageService implements ConsumerMessaging {
     private final ActivityEventCallback      activityEventCallback;
     private final io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore;
     private final int maxCorrectionsPerMessage;
+    private final io.casehub.qhorus.api.spi.MeshAutoRegistrar meshAutoRegistrar;
+    private final io.casehub.qhorus.api.channel.ParticipationPolicyMode globalParticipationPolicy;
 
     private ChannelGateway channelGateway;
 
@@ -139,6 +141,8 @@ public class MessageService implements ConsumerMessaging {
         this.activityEventCallback       = null;
         this.channelMembershipStore      = null;
         this.maxCorrectionsPerMessage    = 10;
+        this.meshAutoRegistrar           = null;
+        this.globalParticipationPolicy   = null;
     }
 
     public MessageService(ChannelService channelService,
@@ -168,7 +172,9 @@ public class MessageService implements ConsumerMessaging {
                           ProtocolEvaluationCallback protocolEvaluationCallback,
                           ActivityEventCallback activityEventCallback,
                           io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore,
-                          int maxCorrectionsPerMessage) {
+                          int maxCorrectionsPerMessage,
+                          io.casehub.qhorus.api.spi.MeshAutoRegistrar meshAutoRegistrar,
+                          io.casehub.qhorus.api.channel.ParticipationPolicyMode globalParticipationPolicy) {
         this.channelService              = channelService;
         this.crossTenantChannelStore     = crossTenantChannelStore;
         this.currentPrincipal            = currentPrincipal;
@@ -198,6 +204,8 @@ public class MessageService implements ConsumerMessaging {
         this.activityEventCallback       = activityEventCallback;
         this.channelMembershipStore      = channelMembershipStore;
         this.maxCorrectionsPerMessage    = maxCorrectionsPerMessage;
+        this.meshAutoRegistrar           = meshAutoRegistrar;
+        this.globalParticipationPolicy   = globalParticipationPolicy;
     }
 
     public void setChannelGateway(ChannelGateway channelGateway) {
@@ -247,6 +255,24 @@ public class MessageService implements ConsumerMessaging {
                     span.setAttribute("qhorus.tenancy.id", effectiveTenancyId);
                 }
             }
+
+        if (ch != null && dispatch.type() != MessageType.EVENT && !dispatch.sender().contains(":")) {
+            io.casehub.qhorus.api.channel.ParticipationPolicyMode mode =
+                    ch.participationPolicy() != null ? ch.participationPolicy() : globalParticipationPolicy;
+            if (mode != null && mode.requiresLookup()) {
+                boolean registered = instanceService.findByInstanceId(dispatch.sender()).isPresent();
+                if (!registered) {
+                    if (mode == io.casehub.qhorus.api.channel.ParticipationPolicyMode.ENFORCE) {
+                        throw new IllegalStateException(
+                                "Sender '" + dispatch.sender() + "' is not a registered mesh instance. "
+                                + "Register via meshRegister or POST /api/instances before posting.");
+                    }
+                    meshAutoRegistrar.autoRegister(dispatch).ifPresent(reg ->
+                            instanceService.register(reg.instanceId(), reg.description(),
+                                    reg.capabilityTags(), null, reg.readOnly(), reg.metadata()));
+                }
+            }
+        }
 
         if (ch != null && dispatch.type() != MessageType.EVENT) {
             final String sender = dispatch.sender();

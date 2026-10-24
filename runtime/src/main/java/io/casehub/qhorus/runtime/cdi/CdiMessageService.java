@@ -61,7 +61,8 @@ public class CdiMessageService extends MessageService {
                              LedgerWriteService ledgerWriteService,
                              Event<io.casehub.qhorus.api.spi.ProtocolEvaluationEvent> protocolEvaluationEvents,
                              Event<io.casehub.qhorus.api.gateway.ChannelActivityBroadcaster.ChannelActivityEvent> activityEvents,
-                             io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore) {
+                             io.casehub.qhorus.api.store.ChannelMembershipStore channelMembershipStore,
+                             io.casehub.qhorus.api.spi.MeshAutoRegistrar meshAutoRegistrar) {
         super(channelService, crossTenantChannelStore, currentPrincipal,
               messageStore, commitmentService, messageTypePolicy, rateLimiter, config,
               obligorTrustPolicy, tsr, instanceService, deliverySignalQueue, topicService,
@@ -79,7 +80,9 @@ public class CdiMessageService extends MessageService {
               protocolEvaluationEvents::fireAsync,
               activityEvents::fireAsync,
               channelMembershipStore,
-              config.correction().maxPerMessage());
+              config.correction().maxPerMessage(),
+              meshAutoRegistrar,
+              config.mesh().participationPolicy());
     }
 
     CdiMessageService() {}
