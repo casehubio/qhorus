@@ -53,7 +53,10 @@ public class ChannelConfigBootstrap {
     FindOrCreateResult processChannel(String name, ChannelConfig cfg) {
         var request = toRequest(name, cfg);
         var result = channelService.findOrCreate(request);
-        if (!result.wasCreated()) {
+        if (result.wasCreated()) {
+            cfg.participationPolicy().ifPresent(policy ->
+                    channelService.setParticipationPolicy(result.channel().id(), policy));
+        } else {
             var drifts = detectDrift(name, cfg, result.channel());
             for (var drift : drifts) {
                 LOG.warnf("Channel '%s': drift detected — %s declared as %s, actual is %s",
@@ -182,6 +185,12 @@ public class ChannelConfigBootstrap {
         cfg.enforcementMode().ifPresent(declared -> {
             if (!java.util.Objects.equals(declared, existing.enforcementMode())) {
                 drifts.add(new ChannelDrift(name, "enforcementMode", declared.name(), String.valueOf(existing.enforcementMode())));
+            }
+        });
+
+        cfg.participationPolicy().ifPresent(declared -> {
+            if (!java.util.Objects.equals(declared, existing.participationPolicy())) {
+                drifts.add(new ChannelDrift(name, "participationPolicy", declared.name(), String.valueOf(existing.participationPolicy())));
             }
         });
 

@@ -181,6 +181,14 @@ public class ChannelService implements ChannelManager, ChannelReader {
     }
 
     @Transactional
+    public Channel setParticipationPolicy(UUID channelId, io.casehub.qhorus.api.channel.ParticipationPolicyMode policy) {
+        Channel ch = channelStore.find(channelId)
+                                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return channelStore.put(ch.toBuilder().participationPolicy(policy).build());
+    }
+
+
+    @Transactional
     public Channel setRoutingTrustThreshold(UUID channelId, Double threshold) {
         Channel ch = channelStore.find(channelId)
                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));

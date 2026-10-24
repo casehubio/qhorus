@@ -350,6 +350,18 @@ public class ChannelCore {
         return toResponse(ch);
     }
 
+    public ChannelResponse setParticipationPolicy(String id, String policy) {
+        UUID channelId = requireChannel(id).id();
+        io.casehub.qhorus.api.channel.ParticipationPolicyMode mode =
+                io.casehub.qhorus.api.channel.ParticipationPolicyMode.valueOf(policy.toUpperCase());
+        return toResponse(channelService.setParticipationPolicy(channelId, mode));
+    }
+
+    public io.casehub.qhorus.api.channel.ParticipationPolicyMode getParticipationPolicy(String id) {
+        return requireChannel(id).participationPolicy();
+    }
+
+
     public ChannelResponse setMetadata(String id, java.util.Map<String, String> metadata) {
         return toResponse(channelService.setMetadata(requireChannel(id).id(), metadata));
     }

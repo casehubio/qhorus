@@ -296,6 +296,20 @@ public class ChannelResource {
     }
 
     @PUT
+    @Path("/{id}/participation-policy")
+    public ChannelResponse setParticipationPolicy(@PathParam("id") final String id,
+                                                   final java.util.Map<String, String> body) {
+        return core.setParticipationPolicy(id, body.get("policy"));
+    }
+
+    @GET
+    @Path("/{id}/participation-policy")
+    public io.casehub.qhorus.api.channel.ParticipationPolicyMode getParticipationPolicy(
+            @PathParam("id") final String id) {
+        return core.getParticipationPolicy(id);
+    }
+
+    @PUT
     @Path("/{id}/metadata")
     public ChannelResponse setMetadata(@PathParam("id") final String id,
                                         final Map<String, String> metadata) {

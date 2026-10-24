@@ -10,6 +10,7 @@ import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelEnforcementConfig;
 import io.casehub.qhorus.api.channel.ChannelMembership;
 import io.casehub.qhorus.api.channel.ChannelPage;
+import io.casehub.qhorus.api.channel.ParticipationPolicyMode;
 import io.casehub.qhorus.api.channel.ChannelProtocolConfig;
 import io.casehub.qhorus.api.channel.ChannelQuery;
 import io.casehub.qhorus.api.channel.ChannelRoutingConfig;
@@ -109,6 +110,14 @@ public interface ChannelsApi {
 
     @PlatformMutation("Set enforcement exclusions for a channel")
     Channel setEnforcementExclusions(UUID channelId, List<String> exclusions);
+
+    // --- Mesh Participation ---
+
+    @PlatformQuery("Get participation policy for a channel")
+    ParticipationPolicyMode channelParticipationPolicy(UUID channelId);
+
+    @PlatformMutation("Set participation policy on a channel (OPEN, AUTO_REGISTER, ENFORCE)")
+    Channel setParticipationPolicy(UUID channelId, String policy);
 
     // --- Policy Overrides ---
 
