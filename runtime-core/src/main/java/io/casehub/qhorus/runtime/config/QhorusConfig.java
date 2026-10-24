@@ -2,6 +2,7 @@ package io.casehub.qhorus.runtime.config;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.EnforcementMode;
+import io.casehub.qhorus.api.channel.ParticipationPolicyMode;
 import io.casehub.qhorus.api.message.MessageType;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
@@ -28,6 +29,7 @@ public interface QhorusConfig {
     Correction correction();
 
     Instance instance();
+    Mesh mesh();
 
     Map<String, ChannelConfig> channels();
 
@@ -54,6 +56,8 @@ public interface QhorusConfig {
         Optional<List<String>> protocolParticipants();
 
         Optional<EnforcementMode> enforcementMode();
+
+        Optional<ParticipationPolicyMode> participationPolicy();
 
         Optional<List<String>> enforcementExclusions();
 
@@ -87,6 +91,11 @@ public interface QhorusConfig {
         @WithDefault("false")
         @WithName("registry-backed")
         boolean registryBacked();
+    }
+
+    interface Mesh {
+        @WithDefault("OPEN")
+        ParticipationPolicyMode participationPolicy();
     }
 
     interface ConnectorBackend {

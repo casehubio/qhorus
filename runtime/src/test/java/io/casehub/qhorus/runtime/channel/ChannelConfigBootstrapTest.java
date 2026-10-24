@@ -318,6 +318,7 @@ class ChannelConfigBootstrapTest {
         @Override public Optional<String> space() { return Optional.ofNullable(spaceValue); }
         @Override public Map<String, String> metadata() { return metadataValue != null ? metadataValue : Map.of(); }
         @Override public Optional<ChannelConfig.ConnectorConfig> connector() { return Optional.ofNullable(connectorValue); }
+        @Override public Optional<io.casehub.qhorus.api.channel.ParticipationPolicyMode> participationPolicy() { return Optional.empty(); }
     }
 
     static class StubQhorusConfig implements QhorusConfig {
@@ -337,5 +338,6 @@ class ChannelConfigBootstrapTest {
         @Override public Correction correction() { return null; }
         @Override public Erasure erasure() { return null; }
         @Override public Instance instance() { return null; }
+        @Override public Mesh mesh() { return null; }
     }
 }
