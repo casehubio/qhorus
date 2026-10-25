@@ -269,6 +269,21 @@ public class ChannelsService implements ChannelsApi {
         return channelManager.setEnforcementExclusions(channelId, exclusions);
     }
 
+    @Override
+    public io.casehub.qhorus.api.channel.ParticipationPolicyMode channelParticipationPolicy(UUID channelId) {
+        Channel ch = channelReader.findById(channelId)
+                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        return ch.participationPolicy();
+    }
+
+    @Override
+    public Channel setParticipationPolicy(UUID channelId, String policy) {
+        io.casehub.qhorus.api.channel.ParticipationPolicyMode mode =
+                io.casehub.qhorus.api.channel.ParticipationPolicyMode.valueOf(policy.toUpperCase());
+        return channelManager.setParticipationPolicy(channelId, mode);
+    }
+
+
     // --- Policy Overrides ---
 
     @Override

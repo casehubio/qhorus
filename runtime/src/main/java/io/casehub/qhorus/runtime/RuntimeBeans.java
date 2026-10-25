@@ -381,6 +381,13 @@ public class RuntimeBeans {
         return new ProjectionService(messageStore, mapper::toMessageView);
     }
 
+    @Produces
+    @ApplicationScoped
+    public io.casehub.qhorus.api.channel.ChannelProjector channelProjector(ProjectionService projectionService) {
+        return new io.casehub.qhorus.runtime.message.DefaultChannelProjector(projectionService);
+    }
+
+
     @Produces @ApplicationScoped
     public io.casehub.qhorus.runtime.audit.EvidentialChecker evidentialChecker(DataStore dataStore,
                                                                                MessageStore messageStore,

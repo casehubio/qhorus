@@ -163,6 +163,13 @@ public class ChannelManagerDecorator implements ChannelManager {
     }
 
     @Override
+    public Channel setParticipationPolicy(UUID id, io.casehub.qhorus.api.channel.ParticipationPolicyMode p) {
+        return routeChannelMutation(id, i -> delegate.setParticipationPolicy(i, p),
+                (proxy, i) -> proxy.channelConfig(clusterManager.owner(i), i,
+                        new ChannelConfigRequest("setParticipationPolicy", Map.of("policy", p.name()))));
+    }
+
+    @Override
     public Channel setEnforcementExclusions(UUID id, List<String> e) {
         return routeChannelMutation(id, i -> delegate.setEnforcementExclusions(i, e),
                 (proxy, i) -> proxy.channelConfig(clusterManager.owner(i), i,

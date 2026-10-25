@@ -33,6 +33,8 @@ public interface ChannelManager {
 
     Channel setEnforcementMode(UUID channelId, EnforcementMode mode);
 
+    Channel setParticipationPolicy(UUID channelId, ParticipationPolicyMode policy);
+
     Channel setEnforcementExclusions(UUID channelId, List<String> exclusions);
 
     Channel setRoutingTrustThreshold(UUID channelId, Double threshold);
