@@ -266,7 +266,7 @@ public class ChannelCore {
                 .channelId(ch.id())
                 .sender(request.sender())
                 .type(MessageType.valueOf(request.type()))
-                .actorType(io.casehub.platform.api.identity.ActorType.valueOf(request.actorType()))
+                .actorType(request.actorType() != null ? io.casehub.platform.api.identity.ActorType.valueOf(request.actorType()) : io.casehub.platform.api.identity.ActorType.HUMAN)
                 .content(request.content())
                 .build();
         var result = messaging.dispatch(dispatch);
