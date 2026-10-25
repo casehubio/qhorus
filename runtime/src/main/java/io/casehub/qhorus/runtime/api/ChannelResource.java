@@ -324,7 +324,7 @@ public class ChannelResource {
     }
 
     @org.jboss.resteasy.reactive.server.ServerExceptionMapper
-    Response handleIllegalArgument(IllegalArgumentException e) {
+    public Response handleIllegalArgument(IllegalArgumentException e) {
         return Response.status(400)
                 .entity(new ErrorResponse(e.getMessage()))
                 .type(MediaType.APPLICATION_JSON)
@@ -332,7 +332,7 @@ public class ChannelResource {
     }
 
     @org.jboss.resteasy.reactive.server.ServerExceptionMapper
-    Response handleNotFound(NoSuchElementException e) {
+    public Response handleNotFound(NoSuchElementException e) {
         return Response.status(404)
                 .entity(new ErrorResponse(e.getMessage()))
                 .type(MediaType.APPLICATION_JSON)
@@ -340,7 +340,7 @@ public class ChannelResource {
     }
 
     @org.jboss.resteasy.reactive.server.ServerExceptionMapper
-    Response handleConflict(IllegalStateException e) {
+    public Response handleConflict(IllegalStateException e) {
         return Response.status(409)
                 .entity(new ErrorResponse(e.getMessage()))
                 .type(MediaType.APPLICATION_JSON)
