@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +24,7 @@ class TaskCompletionProtocolTest {
 
     private ProtocolContext ctx(MessageType incoming, String sender, List<Commitment> commitments) {
         return new ProtocolContext(UUID.randomUUID(), "test-channel", incoming, sender,
-                                   UUID.randomUUID().toString(), List.of(), List.of(), commitments);
+                                   UUID.randomUUID().toString(), List.of(), List.of(), commitments, Map.of());
     }
 
     private Commitment openCommand(String correlationId, String requester, String obligor) {

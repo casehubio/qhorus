@@ -355,7 +355,8 @@ public class MessageService implements ConsumerMessaging {
                         new io.casehub.qhorus.api.spi.ProtocolContext(
                                 ch.id(), ch.name(), dispatch.type(), dispatch.sender(),
                                 dispatch.correlationId(), ch.protocolParticipants(),
-                                recent, activeCommitments);
+                                recent, activeCommitments,
+                                ch.policyOverrides() != null ? ch.policyOverrides() : java.util.Map.of());
                 for (io.casehub.qhorus.api.spi.ChannelProtocol protocol : activeProtocols) {
                     advisories.addAll(protocol.evaluate(protocolCtx));
                 }

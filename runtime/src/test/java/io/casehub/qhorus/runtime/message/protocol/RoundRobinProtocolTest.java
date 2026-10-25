@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +22,7 @@ class RoundRobinProtocolTest {
 
     private ProtocolContext ctx(String sender, List<String> participants, List<MessageView> messages) {
         return new ProtocolContext(CH, "test-channel", MessageType.STATUS, sender,
-                                   null, participants, messages, List.of());
+                                   null, participants, messages, List.of(), Map.of());
     }
 
     private MessageView mv(String sender) {
