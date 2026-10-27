@@ -63,14 +63,15 @@ class DeliveryServiceIntegrationTest {
     static class TrackedRecordingBackend implements ChannelBackend {
         private final String id;
         private final List<OutboundMessage> posts = Collections.synchronizedList(new ArrayList<>());
-        private volatile RuntimeException throwOnPost;
+        private volatile RuntimeException postFailure;
+        private volatile boolean postFailed;
 
         TrackedRecordingBackend(String id) {
             this.id = id;
         }
 
-        void throwOnNextPost(RuntimeException ex) {
-            this.throwOnPost = ex;
+        void setPostFailure(RuntimeException ex) {
+            this.postFailure = ex;
         }
 
         @Override public String backendId() { return id; }
@@ -78,10 +79,10 @@ class DeliveryServiceIntegrationTest {
         @Override public DeliveryGuarantee deliveryGuarantee() { return DeliveryGuarantee.AT_LEAST_ONCE; }
         @Override public void open(ChannelRef channel, Map<String, String> metadata) {}
         @Override public void post(ChannelRef channel, OutboundMessage message) {
-            if (throwOnPost != null) {
-                RuntimeException ex = throwOnPost;
-                throwOnPost = null;
-                throw ex;
+            RuntimeException failure = postFailure;
+            if (failure != null) {
+                postFailed = true;
+                throw failure;
             }
             posts.add(message);
         }
@@ -191,12 +192,12 @@ class DeliveryServiceIntegrationTest {
     }
 
     @Test
-    void dispatch_backendFailsThenRecovers_reconcilerCatchesUp() throws InterruptedException {
+    void dispatch_backendFailsThenRecovers_reconcilerCatchesUp() {
         String channelName = "pump-e2e-reconcile-" + UUID.randomUUID();
         TrackedRecordingBackend backend = new TrackedRecordingBackend("pump-reconcile-" + UUID.randomUUID());
 
-        // Configure backend to throw on the first post() call, then succeed on subsequent calls
-        backend.throwOnNextPost(new RuntimeException("transient failure"));
+        // Keep the backend unavailable until the test explicitly recovers it.
+        backend.setPostFailure(new RuntimeException("transient failure"));
 
         UUID channelId = createChannelCommitted(channelName);
         gateway.registerBackend(channelId, backend, "agent");
@@ -205,9 +206,13 @@ class DeliveryServiceIntegrationTest {
         // Dispatch a message — the pump will try to deliver but the backend throws
         dispatchCommitted(channelId, "agent:reconcile-test", MessageType.COMMAND, "Hello reconciler");
 
-        // Wait briefly for the pump's first attempt to fail
-        Thread.sleep(500);
-        assertThat(backend.posts()).isEmpty(); // first attempt failed
+        // Wait for a failed delivery to finish before recovering the backend.
+        await().atMost(5, SECONDS).until(() -> backend.postFailed
+                && !deliveryService.activeDeliveries().contains(channelId + ":" + backend.backendId()));
+        assertThat(backend.posts()).isEmpty();
+        assertThat(cursorStore.findByChannelAndBackend(channelId, backend.backendId()))
+                .get().extracting(DeliveryCursor::lastDeliveredId).isEqualTo(0L);
+        backend.setPostFailure(null);
 
         // Trigger reconciliation manually (don't wait 30s for @Scheduled)
         deliveryService.reconcileAll();
