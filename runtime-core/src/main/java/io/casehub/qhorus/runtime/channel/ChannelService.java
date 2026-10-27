@@ -15,6 +15,7 @@ import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
+import io.casehub.qhorus.api.gateway.ChannelProtocolsChangedEvent;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ChannelService implements ChannelManager, ChannelReader {
@@ -35,6 +37,7 @@ public class ChannelService implements ChannelManager, ChannelReader {
     ChannelBindingStore channelBindingStore;
     ChannelGateway channelGateway;
     ChannelCreateHelper channelCreateHelper;
+    Consumer<ChannelProtocolsChangedEvent> protocolsChangedConsumer;
 
 
     ChannelService() {}
@@ -46,6 +49,18 @@ public class ChannelService implements ChannelManager, ChannelReader {
                           ChannelBindingStore channelBindingStore,
                           ChannelGateway channelGateway,
                           ChannelCreateHelper channelCreateHelper) {
+        this(currentPrincipal, channelStore, messageStore, membershipStore,
+             channelBindingStore, channelGateway, channelCreateHelper, e -> {});
+    }
+
+    public ChannelService(CurrentPrincipal currentPrincipal,
+                          ChannelStore channelStore,
+                          MessageStore messageStore,
+                          io.casehub.qhorus.api.store.ChannelMembershipStore membershipStore,
+                          ChannelBindingStore channelBindingStore,
+                          ChannelGateway channelGateway,
+                          ChannelCreateHelper channelCreateHelper,
+                          Consumer<ChannelProtocolsChangedEvent> protocolsChangedConsumer) {
         this.currentPrincipal = currentPrincipal;
         this.channelStore = channelStore;
         this.messageStore = messageStore;
@@ -53,6 +68,7 @@ public class ChannelService implements ChannelManager, ChannelReader {
         this.channelBindingStore = channelBindingStore;
         this.channelGateway = channelGateway;
         this.channelCreateHelper = channelCreateHelper;
+        this.protocolsChangedConsumer = protocolsChangedConsumer;
     }
 
     @Override
@@ -162,7 +178,17 @@ public class ChannelService implements ChannelManager, ChannelReader {
     public Channel setProtocols(UUID channelId, List<String> protocols) {
         Channel ch = channelStore.find(channelId)
                                  .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
-        return channelStore.put(ch.toBuilder().protocols(protocols).build());
+        Channel updated = channelStore.put(ch.toBuilder().protocols(protocols).build());
+
+        List<String> added = protocols.stream()
+                .filter(p -> !ch.protocols().contains(p)).toList();
+        List<String> removed = ch.protocols().stream()
+                .filter(p -> !protocols.contains(p)).toList();
+        if (!added.isEmpty() || !removed.isEmpty()) {
+            protocolsChangedConsumer.accept(
+                    new ChannelProtocolsChangedEvent(channelId, ch.name(), added, removed));
+        }
+        return updated;
     }
 
     @Override
@@ -348,6 +374,7 @@ public class ChannelService implements ChannelManager, ChannelReader {
         if (messageCount > 0) {
             messageStore.deleteAll(ch.id());
         }
+        channelGateway.closeChannel(ch.id(), new ChannelRef(ch.id(), ch.name()));
         channelStore.delete(ch.id());
         return messageCount;
     }

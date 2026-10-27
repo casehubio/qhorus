@@ -10,11 +10,13 @@ import io.casehub.qhorus.api.channel.PresenceChangedEvent;
 import io.casehub.qhorus.api.gateway.AgentChannelBackend;
 import io.casehub.qhorus.api.gateway.ChannelClosedEvent;
 import io.casehub.qhorus.api.gateway.ChannelInitialisedEvent;
+import io.casehub.qhorus.api.gateway.ChannelProtocolsChangedEvent;
 import io.casehub.qhorus.api.gateway.InboundNormaliser;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
 import io.casehub.qhorus.api.message.ReactionChangedEvent;
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.PeerReviewRequestedEvent;
+import io.casehub.qhorus.api.spi.ProtocolLifecycleHandler;
 import io.casehub.qhorus.api.spi.RenderableProjection;
 import io.casehub.qhorus.api.spi.SummaryUpdateHook;
 import io.casehub.qhorus.api.store.ChannelBindingStore;
@@ -67,6 +69,7 @@ import io.casehub.qhorus.runtime.message.ReactionService;
 import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.StoredMessageTypePolicy;
 import io.casehub.qhorus.runtime.message.TopicService;
+import io.casehub.qhorus.runtime.message.protocol.ProtocolLifecycleManager;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.cloudevents.CloudEvent;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -205,9 +208,11 @@ public class RuntimeBeans {
                                          ChannelMembershipStore membershipStore,
                                          ChannelBindingStore channelBindingStore,
                                          ChannelGateway channelGateway,
-                                         ChannelCreateHelper channelCreateHelper) {
+                                         ChannelCreateHelper channelCreateHelper,
+                                         Event<ChannelProtocolsChangedEvent> protocolsChangedEvents) {
         return new ChannelService(currentPrincipal, channelStore, messageStore, membershipStore,
-                channelBindingStore, channelGateway, channelCreateHelper);
+                channelBindingStore, channelGateway, channelCreateHelper,
+                e -> protocolsChangedEvents.fireAsync(e));
     }
 
     // ── Gateway ────────────────────────────────────────────────────────────
@@ -298,6 +303,17 @@ public class RuntimeBeans {
     public ProtocolRegistry protocolRegistry(@Any Instance<ChannelProtocol> protocols) {
         List<ChannelProtocol> list = StreamSupport.stream(protocols.spliterator(), false).toList();
         return new ProtocolRegistry(list);
+    }
+
+    @Produces @ApplicationScoped
+    public ProtocolLifecycleManager protocolLifecycleManager(
+            @Any Instance<ProtocolLifecycleHandler> handlers,
+            CrossTenantChannelStore crossTenantChannelStore,
+            CrossTenantMessageStore crossTenantMessageStore,
+            QhorusEntityMapper entityMapper) {
+        List<ProtocolLifecycleHandler> list = StreamSupport.stream(handlers.spliterator(), false).toList();
+        return new ProtocolLifecycleManager(list, crossTenantChannelStore, crossTenantMessageStore,
+                entityMapper::toMessageView);
     }
 
     // MessageService → CdiMessageService (runtime/cdi/)
@@ -533,6 +549,21 @@ public class RuntimeBeans {
 
     void onShutdown(@Observes io.quarkus.runtime.ShutdownEvent ev, DeliveryService deliveryService) {
         deliveryService.stop();
+    }
+
+    void onChannelInitialisedForLifecycle(@Observes ChannelInitialisedEvent event,
+                                          ProtocolLifecycleManager manager) {
+        manager.onChannelInitialised(event);
+    }
+
+    void onChannelClosedForLifecycle(@Observes ChannelClosedEvent event,
+                                     ProtocolLifecycleManager manager) {
+        manager.onChannelClosed(event);
+    }
+
+    void onProtocolsChanged(@ObservesAsync ChannelProtocolsChangedEvent event,
+                            ProtocolLifecycleManager manager) {
+        manager.onProtocolsChanged(event);
     }
 
     // ── Scheduled tasks ────────────────────────────────────────────────────
