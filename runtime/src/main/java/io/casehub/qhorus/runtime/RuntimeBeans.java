@@ -284,13 +284,15 @@ public class RuntimeBeans {
                                       Instance<io.casehub.eidos.api.AgentSelector> agentSelectorInstance,
                                       Instance<io.casehub.ledger.core.trust.TrustGateService> trustGateServiceInstance,
                                       Instance<ActorCapacityView> capacityViewInstance,
-                                      QhorusConfig config) {
+                                      QhorusConfig config,
+                                      Instance<io.casehub.eidos.api.OrgAwareDispatch> orgAwareDispatchInstance) {
         return new RoutingBridge(
                 agentRegistryInstance.isResolvable() ? agentRegistryInstance.get() : null,
                 agentSelectorInstance.isResolvable() ? agentSelectorInstance.get() : null,
                 trustGateServiceInstance.isResolvable() ? trustGateServiceInstance.get() : null,
                 capacityViewInstance.isResolvable() ? capacityViewInstance.get() : null,
-                config);
+                config,
+                orgAwareDispatchInstance.isResolvable() ? orgAwareDispatchInstance.get() : null);
     }
 
     @Produces @ApplicationScoped

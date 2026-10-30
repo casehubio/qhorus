@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.message;
 
 import io.casehub.eidos.api.AgentMatch;
+import io.casehub.eidos.api.OrgAwareDispatch;
 import io.casehub.eidos.api.AgentQuery;
 import io.casehub.eidos.api.AgentRegistry;
 import io.casehub.eidos.api.AgentSelection;
@@ -13,6 +14,7 @@ import io.casehub.qhorus.api.message.RoutingRejectedException;
 import io.casehub.qhorus.runtime.config.QhorusConfig;
 import org.jboss.logging.Logger;
 
+import java.util.HashSet;
 import java.util.List;
 
 public class RoutingBridge {
@@ -24,17 +26,20 @@ public class RoutingBridge {
     private final TrustGateService trustGateService;
     private final io.casehub.platform.api.capacity.ActorCapacityView capacityView;
     private final QhorusConfig config;
+    private final OrgAwareDispatch orgAwareDispatch;
 
     public RoutingBridge(AgentRegistry agentRegistry,
                          AgentSelector agentSelector,
                          TrustGateService trustGateService,
                          io.casehub.platform.api.capacity.ActorCapacityView capacityView,
-                         QhorusConfig config) {
+                         QhorusConfig config,
+                         OrgAwareDispatch orgAwareDispatch) {
         this.agentRegistry = agentRegistry;
         this.agentSelector = agentSelector;
         this.trustGateService = trustGateService;
         this.capacityView = capacityView;
         this.config = config;
+        this.orgAwareDispatch = orgAwareDispatch;
     }
 
     public record RoutingOutcome(
@@ -70,10 +75,28 @@ public class RoutingBridge {
         List<AgentMatch> matches = agentRegistry.find(
                 AgentQuery.byCapability(capability, tenancyId));
 
+        List<AgentMatch> candidates = matches;
+        String strategy = "eidos-simple";
+
+        if (orgAwareDispatch != null) {
+            List<String> teamMemberIds = orgAwareDispatch.teamMembers(dispatch.sender(), tenancyId);
+            if (teamMemberIds != null && !teamMemberIds.isEmpty()) {
+                var teamSet = new HashSet<>(teamMemberIds);
+                List<AgentMatch> teamMatches = matches.stream()
+                        .filter(m -> teamSet.contains(m.descriptor().agentId()))
+                        .toList();
+                if (!teamMatches.isEmpty()) {
+                    candidates = teamMatches;
+                    strategy = "eidos-org-preferred";
+                }
+            }
+        }
+
         SelectionContext ctx = SelectionContext.of(tenancyId, capability);
-        AgentSelection selection = agentSelector.select(matches, ctx);
+        AgentSelection selection = agentSelector.select(candidates, ctx);
 
         double channelThreshold = effectiveThreshold(channel);
+        String resolvedStrategy = strategy;
 
         return switch (selection) {
             case AgentSelection.Selected s -> {
@@ -94,8 +117,8 @@ public class RoutingBridge {
                 yield new RoutingOutcome(
                         s.agent().agentId(),
                         target,
-                        "eidos-simple",
-                        matches.size(),
+                        resolvedStrategy,
+                        candidates.size(),
                         s.trustScore());
             }
             case AgentSelection.NoneQualified nq ->

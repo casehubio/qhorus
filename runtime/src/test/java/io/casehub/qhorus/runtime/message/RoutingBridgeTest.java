@@ -7,6 +7,7 @@ import io.casehub.eidos.api.AgentRegistry;
 import io.casehub.eidos.api.AgentSelection;
 import io.casehub.eidos.api.AgentSelector;
 import io.casehub.eidos.api.EscalationKind;
+import io.casehub.eidos.api.OrgAwareDispatch;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.message.MessageDispatch;
@@ -34,6 +35,7 @@ class RoutingBridgeTest {
     private io.casehub.ledger.core.trust.TrustGateService trustGateService;
     private QhorusConfig config;
     private QhorusConfig.Routing routingConfig;
+    private OrgAwareDispatch orgAwareDispatch;
     private RoutingBridge bridge;
 
     @SuppressWarnings("unchecked")
@@ -49,7 +51,8 @@ class RoutingBridgeTest {
         trustGateService = Mockito.mock(io.casehub.ledger.core.trust.TrustGateService.class);
         when(trustGateService.currentScore(any(String.class))).thenReturn(java.util.OptionalDouble.of(0.5));
 
-        bridge = new RoutingBridge(registry, selector, trustGateService, null, config);
+        orgAwareDispatch = Mockito.mock(OrgAwareDispatch.class);
+        bridge = new RoutingBridge(registry, selector, trustGateService, null, config, null);
     }
 
     @Test
@@ -243,6 +246,76 @@ class RoutingBridgeTest {
     void effectiveThreshold_nullChannel_usesGlobal() {
         when(routingConfig.defaultTrustThreshold()).thenReturn(0.3);
         assertThat(bridge.effectiveThreshold(null)).isEqualTo(0.3);
+    }
+
+
+    @Test
+    void resolve_teamMembersPreferred_selectsFromFilteredList() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        var allMatches    = List.of(agentMatch("agent-a"), agentMatch("agent-b"), agentMatch("agent-c"));
+        when(registry.find(any())).thenReturn(allMatches);
+        when(orgAwareDispatch.teamMembers("sender-1", "tenant")).thenReturn(List.of("agent-a", "agent-c"));
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.Selected(descriptor("agent-a"), null, 0.8, "team member"));
+
+        var outcome = bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome.resolvedTarget()).isEqualTo("agent-a");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-org-preferred");
+
+        @SuppressWarnings("unchecked")
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(selector).select(captor.capture(), any());
+        assertThat(captor.getValue()).hasSize(2);
+    }
+
+    @Test
+    void resolve_noTeamMemberHasCapability_fallsBackToFullList() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        var allMatches    = List.of(agentMatch("agent-a"), agentMatch("agent-b"));
+        when(registry.find(any())).thenReturn(allMatches);
+        when(orgAwareDispatch.teamMembers("sender-1", "tenant")).thenReturn(List.of("agent-x", "agent-y"));
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.Selected(descriptor("agent-a"), null, 0.7, "best available"));
+
+        var outcome = bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome.resolvedTarget()).isEqualTo("agent-a");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-simple");
+
+        @SuppressWarnings("unchecked")
+        var captor = org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(selector).select(captor.capture(), any());
+        assertThat(captor.getValue()).hasSize(2);
+    }
+
+    @Test
+    void resolve_nullOrgAwareDispatch_usesFullList() {
+        var bridgeNoOrg = new RoutingBridge(registry, selector, trustGateService, null, config, null);
+        var matches     = List.of(agentMatch("agent-a"));
+        when(registry.find(any())).thenReturn(matches);
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.Selected(descriptor("agent-a"), null, 0.9, "only candidate"));
+
+        var outcome = bridgeNoOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome.resolvedTarget()).isEqualTo("agent-a");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-simple");
+    }
+
+    @Test
+    void resolve_emptyTeamMembers_usesFullList() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        var matches       = List.of(agentMatch("agent-a"));
+        when(registry.find(any())).thenReturn(matches);
+        when(orgAwareDispatch.teamMembers("sender-1", "tenant")).thenReturn(List.of());
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.Selected(descriptor("agent-a"), null, 0.9, "only one"));
+
+        var outcome = bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome.resolvedTarget()).isEqualTo("agent-a");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-simple");
     }
 
 

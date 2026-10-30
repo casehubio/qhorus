@@ -336,9 +336,11 @@ public class RuntimeAutoConfiguration {
     public RoutingBridge routingBridge(Optional<io.casehub.eidos.api.AgentRegistry> agentRegistry,
                                       Optional<io.casehub.eidos.api.AgentSelector> agentSelector,
                                       Optional<io.casehub.ledger.core.trust.TrustGateService> trustGateService,
-                                      Optional<ActorCapacityView> capacityView, QhorusConfig config) {
+                                      Optional<ActorCapacityView> capacityView, QhorusConfig config,
+                                      Optional<io.casehub.eidos.api.OrgAwareDispatch> orgAwareDispatch) {
         return new RoutingBridge(agentRegistry.orElse(null), agentSelector.orElse(null),
-                trustGateService.orElse(null), capacityView.orElse(null), config);
+                trustGateService.orElse(null), capacityView.orElse(null), config,
+                orgAwareDispatch.orElse(null));
     }
 
     @Bean
