@@ -64,7 +64,8 @@ class WatchdogAlertE2ETest {
         assertThat(AlertEventCapture.events.get(0).conditionType())
                 .isEqualTo(WatchdogConditionType.BARRIER_STUCK);
 
-        assertThat(TestSlackConnectorE2E.sent).hasSize(1);
+        org.awaitility.Awaitility.await().atMost(5, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(TestSlackConnectorE2E.sent).hasSize(1));
         var msg = TestSlackConnectorE2E.sent.get(0);
         assertThat(msg.destination()).isEqualTo("https://hooks.slack.com/test");
         assertThat(msg.title()).startsWith("[Qhorus Alert] BARRIER_STUCK:");
