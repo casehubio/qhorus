@@ -320,6 +320,24 @@ public class MessageService implements ConsumerMessaging {
         }
 
         List<io.casehub.qhorus.api.spi.DispatchAdvisory> advisories = new ArrayList<>();
+
+        if (ch != null && dispatch.type() == MessageType.HANDOFF
+                && dispatch.target() != null
+                && !dispatch.sender().contains(":")) {
+            var delegationAllowed = routingBridge.canDelegateTo(dispatch.sender(), dispatch.target(), effectiveTenancyId);
+            if (delegationAllowed.isPresent() && !delegationAllowed.get()) {
+                var msg = "Cross-unit delegation from '%s' to '%s' not authorised"
+                        .formatted(dispatch.sender(), dispatch.target());
+                LOG.warn(msg);
+                advisories.add(new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                        "ORG_DELEGATION",
+                        io.casehub.qhorus.api.spi.Severity.WARNING,
+                        msg,
+                        java.util.Map.of("sender", dispatch.sender(), "target", dispatch.target()),
+                        io.casehub.qhorus.api.spi.SuggestedAction.ESCALATE));
+            }
+        }
+
         if (ch != null) {
             messageTypePolicy.validate(ch, dispatch.type());
             final String adv = messageTypePolicy.advisory(ch, dispatch.type());

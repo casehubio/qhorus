@@ -375,6 +375,32 @@ class RoutingBridgeTest {
                 .isInstanceOf(RoutingRejectedException.class);
     }
 
+    @Test
+    void canDelegateTo_orgDispatchReturnsTrue_returnsTrue() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        when(orgAwareDispatch.canDelegateTo("sender-1", "target-1", "tenant")).thenReturn(true);
+
+        var result = bridgeWithOrg.canDelegateTo("sender-1", "target-1", "tenant");
+        assertThat(result).isPresent().contains(true);
+    }
+
+    @Test
+    void canDelegateTo_orgDispatchReturnsFalse_returnsFalse() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        when(orgAwareDispatch.canDelegateTo("sender-1", "target-1", "tenant")).thenReturn(false);
+
+        var result = bridgeWithOrg.canDelegateTo("sender-1", "target-1", "tenant");
+        assertThat(result).isPresent().contains(false);
+    }
+
+    @Test
+    void canDelegateTo_nullOrgDispatch_returnsEmpty() {
+        var bridgeNoOrg = new RoutingBridge(registry, selector, trustGateService, null, config, null);
+
+        var result = bridgeNoOrg.canDelegateTo("sender-1", "target-1", "tenant");
+        assertThat(result).isEmpty();
+    }
+
 
     private static MessageDispatch dispatch(String target) {
         return MessageDispatch.builder()

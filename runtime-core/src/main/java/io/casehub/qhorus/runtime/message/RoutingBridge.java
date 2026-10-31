@@ -1,11 +1,11 @@
 package io.casehub.qhorus.runtime.message;
 
 import io.casehub.eidos.api.AgentMatch;
-import io.casehub.eidos.api.OrgAwareDispatch;
 import io.casehub.eidos.api.AgentQuery;
 import io.casehub.eidos.api.AgentRegistry;
 import io.casehub.eidos.api.AgentSelection;
 import io.casehub.eidos.api.AgentSelector;
+import io.casehub.eidos.api.OrgAwareDispatch;
 import io.casehub.eidos.api.SelectionContext;
 import io.casehub.ledger.core.trust.TrustGateService;
 import io.casehub.qhorus.api.channel.Channel;
@@ -16,6 +16,7 @@ import org.jboss.logging.Logger;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 
 public class RoutingBridge {
 
@@ -122,32 +123,14 @@ public class RoutingBridge {
                         s.trustScore());
             }
             case AgentSelection.NoneQualified nq -> {
-                if (orgAwareDispatch != null) {
-                    var escalated = orgAwareDispatch.escalate(dispatch.sender(), capability, tenancyId);
-                    if (escalated.isPresent()) {
-                        yield new RoutingOutcome(
-                                escalated.get().descriptor().agentId(),
-                                target,
-                                "eidos-org-escalated",
-                                1,
-                                0.0);
-                    }
-                }
+                var esc = tryOrgEscalation(dispatch.sender(), capability, target, tenancyId);
+                if (esc != null) yield esc;
                 throw new RoutingRejectedException(
                         "No agent qualified for capability '%s': %s".formatted(capability, nq.reason()));
             }
             case AgentSelection.Escalated e -> {
-                if (orgAwareDispatch != null) {
-                    var escalated = orgAwareDispatch.escalate(dispatch.sender(), capability, tenancyId);
-                    if (escalated.isPresent()) {
-                        yield new RoutingOutcome(
-                                escalated.get().descriptor().agentId(),
-                                target,
-                                "eidos-org-escalated",
-                                1,
-                                0.0);
-                    }
-                }
+                var esc = tryOrgEscalation(dispatch.sender(), capability, target, tenancyId);
+                if (esc != null) yield esc;
                 throw new RoutingRejectedException(
                         "Routing escalation for capability '%s': %s — %s".formatted(
                                 capability, e.kind(), e.reason()));
@@ -202,6 +185,26 @@ public class RoutingBridge {
         }
         return config.routing().defaultCapacityThreshold().orElse(0.8);
     }
+
+    public Optional<Boolean> canDelegateTo(String sender, String target, String tenancyId) {
+        if (orgAwareDispatch == null) {
+            return Optional.empty();
+        }
+        return Optional.of(orgAwareDispatch.canDelegateTo(sender, target, tenancyId));
+    }
+
+    private RoutingOutcome tryOrgEscalation(String sender, String capability, String target, String tenancyId) {
+        if (orgAwareDispatch == null) {return null;}
+        var escalated = orgAwareDispatch.escalate(sender, capability, tenancyId);
+        if (escalated.isEmpty()) {return null;}
+        return new RoutingOutcome(
+                escalated.get().descriptor().agentId(),
+                target,
+                "eidos-org-escalated",
+                1,
+                0.0);
+    }
+
 
     private double lookupTrustScore(String agentId) {
         if (trustGateService == null) {
