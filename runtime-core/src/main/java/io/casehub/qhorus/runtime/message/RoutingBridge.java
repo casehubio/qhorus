@@ -121,13 +121,37 @@ public class RoutingBridge {
                         candidates.size(),
                         s.trustScore());
             }
-            case AgentSelection.NoneQualified nq ->
-                    throw new RoutingRejectedException(
-                            "No agent qualified for capability '%s': %s".formatted(capability, nq.reason()));
-            case AgentSelection.Escalated e ->
-                    throw new RoutingRejectedException(
-                            "Routing escalation for capability '%s': %s — %s".formatted(
-                                    capability, e.kind(), e.reason()));
+            case AgentSelection.NoneQualified nq -> {
+                if (orgAwareDispatch != null) {
+                    var escalated = orgAwareDispatch.escalate(dispatch.sender(), capability, tenancyId);
+                    if (escalated.isPresent()) {
+                        yield new RoutingOutcome(
+                                escalated.get().descriptor().agentId(),
+                                target,
+                                "eidos-org-escalated",
+                                1,
+                                0.0);
+                    }
+                }
+                throw new RoutingRejectedException(
+                        "No agent qualified for capability '%s': %s".formatted(capability, nq.reason()));
+            }
+            case AgentSelection.Escalated e -> {
+                if (orgAwareDispatch != null) {
+                    var escalated = orgAwareDispatch.escalate(dispatch.sender(), capability, tenancyId);
+                    if (escalated.isPresent()) {
+                        yield new RoutingOutcome(
+                                escalated.get().descriptor().agentId(),
+                                target,
+                                "eidos-org-escalated",
+                                1,
+                                0.0);
+                    }
+                }
+                throw new RoutingRejectedException(
+                        "Routing escalation for capability '%s': %s — %s".formatted(
+                                capability, e.kind(), e.reason()));
+            }
         };
     }
 

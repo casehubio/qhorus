@@ -318,6 +318,63 @@ class RoutingBridgeTest {
         assertThat(outcome.strategyName()).isEqualTo("eidos-simple");
     }
 
+    @Test
+    void resolve_noneQualified_escalationSucceeds_returnsEscalatedAgent() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        when(registry.find(any())).thenReturn(List.of());
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.NoneQualified("no candidates"));
+        when(orgAwareDispatch.escalate("sender-1", "analyst", "tenant"))
+                .thenReturn(java.util.Optional.of(agentMatch("supervisor-1")));
+
+        var outcome = bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome).isNotNull();
+        assertThat(outcome.resolvedTarget()).isEqualTo("supervisor-1");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-org-escalated");
+        assertThat(outcome.candidateCount()).isEqualTo(1);
+    }
+
+    @Test
+    void resolve_noneQualified_escalationEmpty_throws() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        when(registry.find(any())).thenReturn(List.of());
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.NoneQualified("no candidates"));
+        when(orgAwareDispatch.escalate("sender-1", "analyst", "tenant"))
+                .thenReturn(java.util.Optional.empty());
+
+        assertThatThrownBy(() -> bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant"))
+                .isInstanceOf(RoutingRejectedException.class)
+                .hasMessageContaining("No agent qualified");
+    }
+
+    @Test
+    void resolve_escalated_orgEscalationSucceeds_returnsEscalatedAgent() {
+        var bridgeWithOrg = new RoutingBridge(registry, selector, trustGateService, null, config, orgAwareDispatch);
+        when(registry.find(any())).thenReturn(List.of(agentMatch("agent-1")));
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.Escalated("analyst", EscalationKind.NO_QUALIFIED_AGENT, "all bootstrap"));
+        when(orgAwareDispatch.escalate("sender-1", "analyst", "tenant"))
+                .thenReturn(java.util.Optional.of(agentMatch("manager-1")));
+
+        var outcome = bridgeWithOrg.resolve(dispatch("role:analyst"), channel(), "tenant");
+
+        assertThat(outcome.resolvedTarget()).isEqualTo("manager-1");
+        assertThat(outcome.strategyName()).isEqualTo("eidos-org-escalated");
+    }
+
+    @Test
+    void resolve_noneQualified_nullOrgDispatch_throwsWithoutEscalation() {
+        var bridgeNoOrg = new RoutingBridge(registry, selector, trustGateService, null, config, null);
+        when(registry.find(any())).thenReturn(List.of());
+        when(selector.select(any(), any())).thenReturn(
+                new AgentSelection.NoneQualified("no candidates"));
+
+        assertThatThrownBy(() -> bridgeNoOrg.resolve(dispatch("role:analyst"), channel(), "tenant"))
+                .isInstanceOf(RoutingRejectedException.class);
+    }
+
 
     private static MessageDispatch dispatch(String target) {
         return MessageDispatch.builder()
