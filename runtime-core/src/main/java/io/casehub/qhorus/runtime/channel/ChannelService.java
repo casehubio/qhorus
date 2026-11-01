@@ -8,14 +8,16 @@ import io.casehub.qhorus.api.channel.ChannelManager;
 import io.casehub.qhorus.api.channel.ChannelReader;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
+import io.casehub.qhorus.api.channel.Space;
+import io.casehub.qhorus.api.gateway.ChannelProtocolsChangedEvent;
 import io.casehub.qhorus.api.gateway.ChannelRef;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
+import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import io.casehub.qhorus.runtime.gateway.ChannelGateway;
-import io.casehub.qhorus.api.gateway.ChannelProtocolsChangedEvent;
 import jakarta.persistence.PersistenceException;
 import jakarta.transaction.Transactional;
 
@@ -38,6 +40,7 @@ public class ChannelService implements ChannelManager, ChannelReader {
     ChannelGateway channelGateway;
     ChannelCreateHelper channelCreateHelper;
     Consumer<ChannelProtocolsChangedEvent> protocolsChangedConsumer;
+    SpaceStore spaceStore;
 
 
     ChannelService() {}
@@ -61,6 +64,19 @@ public class ChannelService implements ChannelManager, ChannelReader {
                           ChannelGateway channelGateway,
                           ChannelCreateHelper channelCreateHelper,
                           Consumer<ChannelProtocolsChangedEvent> protocolsChangedConsumer) {
+        this(currentPrincipal, channelStore, messageStore, membershipStore,
+             channelBindingStore, channelGateway, channelCreateHelper, protocolsChangedConsumer, null);
+    }
+
+    public ChannelService(CurrentPrincipal currentPrincipal,
+                          ChannelStore channelStore,
+                          MessageStore messageStore,
+                          io.casehub.qhorus.api.store.ChannelMembershipStore membershipStore,
+                          ChannelBindingStore channelBindingStore,
+                          ChannelGateway channelGateway,
+                          ChannelCreateHelper channelCreateHelper,
+                          Consumer<ChannelProtocolsChangedEvent> protocolsChangedConsumer,
+                          SpaceStore spaceStore) {
         this.currentPrincipal = currentPrincipal;
         this.channelStore = channelStore;
         this.messageStore = messageStore;
@@ -69,12 +85,13 @@ public class ChannelService implements ChannelManager, ChannelReader {
         this.channelGateway = channelGateway;
         this.channelCreateHelper = channelCreateHelper;
         this.protocolsChangedConsumer = protocolsChangedConsumer;
+        this.spaceStore = spaceStore;
     }
 
     @Override
     @Transactional
     public Channel create(final ChannelCreateRequest req) {
-        FindOrCreateResult result = channelCreateHelper.createInNewTransaction(req, false);
+        FindOrCreateResult result = channelCreateHelper.createInNewTransaction(applySpaceDefaults(req), false);
         if (req.hasConnectorBinding() && !result.wasCreated()) {
             throw new IllegalStateException(
                     "Connector binding already exists for connector '"
@@ -86,10 +103,11 @@ public class ChannelService implements ChannelManager, ChannelReader {
     @Override
     @Transactional(Transactional.TxType.REQUIRES_NEW)
     public FindOrCreateResult findOrCreate(final ChannelCreateRequest req) {
-        if (req.hasConnectorBinding()) {
-            return findOrCreateWithBinding(req);
+        ChannelCreateRequest effective = applySpaceDefaults(req);
+        if (effective.hasConnectorBinding()) {
+            return findOrCreateWithBinding(effective);
         }
-        return findOrCreateByName(req);
+        return findOrCreateByName(effective);
     }
 
     private FindOrCreateResult findOrCreateWithBinding(final ChannelCreateRequest req) {
@@ -136,6 +154,19 @@ public class ChannelService implements ChannelManager, ChannelReader {
             throw ex;
         }
     }
+
+    ChannelCreateRequest applySpaceDefaults(ChannelCreateRequest req) {
+        if (spaceStore == null || req.spaceId() == null || !req.protocols().isEmpty()) {
+            return req;
+        }
+        Optional<Space> space = spaceStore.find(req.spaceId());
+        if (space.isEmpty() || space.get().defaultProtocols().isEmpty()) {
+            return req;
+        }
+        return req.withProtocolDefaults(
+                space.get().defaultProtocols(), space.get().defaultProtocolParticipants());
+    }
+
 
     @Override
     @Transactional

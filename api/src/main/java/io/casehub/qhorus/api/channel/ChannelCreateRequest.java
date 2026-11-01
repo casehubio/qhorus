@@ -127,6 +127,16 @@ public record ChannelCreateRequest(
         return inboundConnectorId != null;
     }
 
+
+    public ChannelCreateRequest withProtocolDefaults(List<String> defaultProtocols,
+                                                     List<String> defaultProtocolParticipants) {
+        return new ChannelCreateRequest(name, description, semantic, barrierContributors, allowedWriters,
+                                        adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
+                                        spaceId, reviewerInstances, defaultProtocols, defaultProtocolParticipants, trackDelivery,
+                                        enforcementMode, enforcementExclusions, routingTrustThreshold, metadata,
+                                        inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, preAssignedId);
+    }
+
     public static Builder builder(String name) {
         return new Builder(name);
     }

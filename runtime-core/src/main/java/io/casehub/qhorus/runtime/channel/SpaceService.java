@@ -62,7 +62,8 @@ public class SpaceService implements io.casehub.qhorus.api.channel.SpaceManager 
                     "Space name '" + request.name() + "' already exists under the same parent");
         }
         Space space = new Space(UUID.randomUUID(), request.name(), request.description(),
-                                request.parentSpaceId(), currentPrincipal.tenancyId(), Instant.now());
+                                request.parentSpaceId(), currentPrincipal.tenancyId(), Instant.now(),
+                                request.defaultProtocols(), request.defaultProtocolParticipants());
         Space created = spaceStore.put(space);
         mutationConsumer.accept(new ChannelMutationEvent.SpaceCreated(created.id(), created.name(), created.tenancyId()));
         return created;
@@ -125,7 +126,8 @@ public class SpaceService implements io.casehub.qhorus.api.channel.SpaceManager 
         Space space = spaceStore.find(spaceId)
                                 .orElseThrow(() -> new IllegalArgumentException("Space not found: " + spaceId));
         Space updated = new Space(space.id(), newName, space.description(),
-                                  space.parentSpaceId(), space.tenancyId(), space.createdAt());
+                                  space.parentSpaceId(), space.tenancyId(), space.createdAt(),
+                                  space.defaultProtocols(), space.defaultProtocolParticipants());
         Space result = spaceStore.put(updated);
         mutationConsumer.accept(new ChannelMutationEvent.SpaceRenamed(spaceId, newName));
         return result;
@@ -137,7 +139,8 @@ public class SpaceService implements io.casehub.qhorus.api.channel.SpaceManager 
                                 .orElseThrow(() -> new IllegalArgumentException("Space not found: " + spaceId));
         String desc = newDescription != null ? newDescription.trim() : null;
         Space updated = new Space(space.id(), space.name(), desc,
-                                  space.parentSpaceId(), space.tenancyId(), space.createdAt());
+                                  space.parentSpaceId(), space.tenancyId(), space.createdAt(),
+                                  space.defaultProtocols(), space.defaultProtocolParticipants());
         return spaceStore.put(updated);
     }
 
@@ -171,7 +174,8 @@ public class SpaceService implements io.casehub.qhorus.api.channel.SpaceManager 
             }
         }
         Space updated = new Space(space.id(), space.name(), space.description(),
-                                  newParentSpaceId, space.tenancyId(), space.createdAt());
+                                  newParentSpaceId, space.tenancyId(), space.createdAt(),
+                                  space.defaultProtocols(), space.defaultProtocolParticipants());
         return spaceStore.put(updated);
     }
 

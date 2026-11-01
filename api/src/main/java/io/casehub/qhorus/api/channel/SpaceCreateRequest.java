@@ -1,12 +1,19 @@
 package io.casehub.qhorus.api.channel;
 
+import java.util.List;
 import java.util.UUID;
 
 public record SpaceCreateRequest(
         String name,
         String description,
-        UUID parentSpaceId
+        UUID parentSpaceId,
+        List<String> defaultProtocols,
+        List<String> defaultProtocolParticipants
 ) {
+    public SpaceCreateRequest(String name, String description, UUID parentSpaceId) {
+        this(name, description, parentSpaceId, null, null);
+    }
+
     public SpaceCreateRequest {
         if (name == null || name.isBlank()) {
             throw new IllegalArgumentException("Space name must not be blank");
@@ -22,5 +29,7 @@ public record SpaceCreateRequest(
             throw new IllegalArgumentException("Space name must not be UUID-shaped: '" + name + "'");
         }
         if (description != null) description = description.trim();
+        defaultProtocols = defaultProtocols != null ? List.copyOf(defaultProtocols) : List.of();
+        defaultProtocolParticipants = defaultProtocolParticipants != null ? List.copyOf(defaultProtocolParticipants) : List.of();
     }
 }

@@ -33,6 +33,7 @@ import io.casehub.qhorus.api.store.DeliveryCursorStore;
 import io.casehub.qhorus.api.store.InstanceStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.ReactionStore;
+import io.casehub.qhorus.api.store.SpaceStore;
 import io.casehub.qhorus.api.store.TopicStore;
 import io.casehub.qhorus.runtime.capacity.QhorusRedistributionExecutor;
 import io.casehub.qhorus.runtime.capacity.RedistributionDelegate;
@@ -209,10 +210,11 @@ public class RuntimeBeans {
                                          ChannelBindingStore channelBindingStore,
                                          ChannelGateway channelGateway,
                                          ChannelCreateHelper channelCreateHelper,
-                                         Event<ChannelProtocolsChangedEvent> protocolsChangedEvents) {
+                                         Event<ChannelProtocolsChangedEvent> protocolsChangedEvents,
+                                         SpaceStore spaceStore) {
         return new ChannelService(currentPrincipal, channelStore, messageStore, membershipStore,
                 channelBindingStore, channelGateway, channelCreateHelper,
-                e -> protocolsChangedEvents.fireAsync(e));
+                e -> protocolsChangedEvents.fireAsync(e), spaceStore);
     }
 
     // ── Gateway ────────────────────────────────────────────────────────────
