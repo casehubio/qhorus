@@ -62,6 +62,9 @@ public class WatchdogEntity {
     @Enumerated(EnumType.STRING)
     public io.casehub.qhorus.api.watchdog.WatchdogAction action;
 
+    @Column(name = "org_unit_scope")
+    public UUID orgUnitScope;
+
     public static WatchdogEntity fromDomain(io.casehub.qhorus.api.watchdog.Watchdog w) {
         WatchdogEntity e = new WatchdogEntity();
         e.id                  = w.id();
@@ -76,6 +79,7 @@ public class WatchdogEntity {
         e.createdAt           = w.createdAt();
         e.lastFiredAt         = w.lastFiredAt();
         e.action              = w.action();
+        e.orgUnitScope        = w.orgUnitScope();
         return e;
     }
 
@@ -88,7 +92,7 @@ public class WatchdogEntity {
         return new io.casehub.qhorus.api.watchdog.Watchdog(
                 id, type, targetName, thresholdSeconds, thresholdCount,
                 similarityPct, notificationChannel, createdBy, tenancyId,
-                createdAt, lastFiredAt, action);
+                createdAt, lastFiredAt, action, orgUnitScope);
     }
 
     @PrePersist

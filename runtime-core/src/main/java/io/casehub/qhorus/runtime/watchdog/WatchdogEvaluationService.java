@@ -1,5 +1,6 @@
 package io.casehub.qhorus.runtime.watchdog;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
@@ -22,26 +23,24 @@ import io.casehub.qhorus.api.watchdog.ApprovalPendingContext;
 import io.casehub.qhorus.api.watchdog.BarrierStuckContext;
 import io.casehub.qhorus.api.watchdog.ChannelIdleContext;
 import io.casehub.qhorus.api.watchdog.CircularDelegationContext;
-import io.casehub.qhorus.api.watchdog.DeliveryLagContext;
 import io.casehub.qhorus.api.watchdog.ContextPressureContext;
 import io.casehub.qhorus.api.watchdog.ConversationStallContext;
+import io.casehub.qhorus.api.watchdog.DeliveryLagContext;
 import io.casehub.qhorus.api.watchdog.EchoChamberContext;
 import io.casehub.qhorus.api.watchdog.LoopDetectedContext;
 import io.casehub.qhorus.api.watchdog.ObligationFanOutContext;
 import io.casehub.qhorus.api.watchdog.QueueDepthContext;
 import io.casehub.qhorus.api.watchdog.Watchdog;
 import io.casehub.qhorus.api.watchdog.WatchdogAlertEvent;
-import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.channel.ChannelService;
+import io.casehub.qhorus.runtime.config.QhorusConfig;
 import io.casehub.qhorus.runtime.instance.InstanceService;
 import io.casehub.qhorus.runtime.message.CommitmentService;
 import io.casehub.qhorus.runtime.message.MessageService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.Instant;
-import java.util.UUID;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -50,6 +49,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -164,13 +164,21 @@ public class WatchdogEvaluationService {
         return w.lastFiredAt().isAfter(now.minusSeconds(windowSeconds));
     }
 
+    private boolean matchesWatchdogTarget(Watchdog w, Channel ch) {
+        if (w.orgUnitScope() != null) {
+            if (!w.orgUnitScope().equals(ch.spaceId())) {return false;}
+        }
+        return "*".equals(w.targetName()) || ch.name().equals(w.targetName());
+    }
+
+
     private boolean evaluateBarrierStuck(Watchdog w, Instant now) {
         int     threshold = w.thresholdSeconds() != null ? w.thresholdSeconds() : 300;
         Instant cutoff    = now.minusSeconds(threshold);
 
         List<Channel> barriers = crossTenantChannelStore.listAll().stream()
                 .filter(ch -> ch.semantic() == ChannelSemantic.BARRIER)
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .filter(ch -> ch.lastActivityAt() == null || ch.lastActivityAt().isBefore(cutoff) || threshold == 0)
                 .toList();
 
@@ -263,7 +271,7 @@ public class WatchdogEvaluationService {
         Instant cutoff    = now.minusSeconds(threshold);
 
         List<Channel> idle = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .filter(ch -> threshold == 0 || ch.lastActivityAt() == null || ch.lastActivityAt().isBefore(cutoff))
                 .toList();
 
@@ -281,7 +289,7 @@ public class WatchdogEvaluationService {
         int threshold = w.thresholdCount() != null ? w.thresholdCount() : 100;
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         for (Channel ch : channels) {
@@ -382,7 +390,7 @@ public class WatchdogEvaluationService {
         int threshold = w.thresholdCount() != null ? w.thresholdCount() : 80;
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -410,7 +418,7 @@ public class WatchdogEvaluationService {
         Instant cutoff              = now.minusSeconds(windowSeconds);
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -465,7 +473,7 @@ public class WatchdogEvaluationService {
         Instant cutoff          = now.minusSeconds(deadlineSeconds);
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -502,7 +510,7 @@ public class WatchdogEvaluationService {
         Instant cutoff       = now.minusSeconds(stallSeconds);
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -582,7 +590,7 @@ public class WatchdogEvaluationService {
         Instant cutoff              = now.minusSeconds(windowSeconds);
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -637,7 +645,7 @@ public class WatchdogEvaluationService {
         int maxDepth = w.thresholdCount() != null ? w.thresholdCount() : 10;
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .toList();
 
         boolean fired = false;
@@ -683,7 +691,7 @@ public class WatchdogEvaluationService {
         int threshold = w.thresholdCount() != null ? w.thresholdCount() : 10;
 
         List<Channel> channels = crossTenantChannelStore.listAll().stream()
-                .filter(ch -> "*".equals(w.targetName()) || ch.name().equals(w.targetName()))
+                .filter(ch -> matchesWatchdogTarget(w, ch))
                 .filter(ch -> !ch.name().equals(w.notificationChannel()))
                 .filter(ch -> ChannelService.isDeliveryTrackingEnabled(ch))
                 .toList();

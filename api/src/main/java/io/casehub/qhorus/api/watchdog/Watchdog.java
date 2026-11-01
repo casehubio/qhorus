@@ -15,7 +15,8 @@ public record Watchdog(
         String tenancyId,
         Instant createdAt,
         Instant lastFiredAt,
-        WatchdogAction action) {
+        WatchdogAction action,
+        UUID orgUnitScope) {
 
     public Watchdog {
         action = action != null ? action : WatchdogAction.ALERT;
@@ -24,9 +25,17 @@ public record Watchdog(
     public Watchdog(UUID id, WatchdogConditionType conditionType, String targetName,
                     Integer thresholdSeconds, Integer thresholdCount, Integer similarityPct,
                     String notificationChannel, String createdBy, String tenancyId,
+                    Instant createdAt, Instant lastFiredAt, WatchdogAction action) {
+        this(id, conditionType, targetName, thresholdSeconds, thresholdCount, similarityPct,
+             notificationChannel, createdBy, tenancyId, createdAt, lastFiredAt, action, null);
+    }
+
+    public Watchdog(UUID id, WatchdogConditionType conditionType, String targetName,
+                    Integer thresholdSeconds, Integer thresholdCount, Integer similarityPct,
+                    String notificationChannel, String createdBy, String tenancyId,
                     Instant createdAt, Instant lastFiredAt) {
         this(id, conditionType, targetName, thresholdSeconds, thresholdCount, similarityPct,
-             notificationChannel, createdBy, tenancyId, createdAt, lastFiredAt, null);
+             notificationChannel, createdBy, tenancyId, createdAt, lastFiredAt, null, null);
     }
 
     public Builder toBuilder() {
@@ -35,7 +44,7 @@ public record Watchdog(
                                                      .similarityPct(similarityPct)
                                                      .notificationChannel(notificationChannel).createdBy(createdBy)
                                                      .tenancyId(tenancyId).createdAt(createdAt).lastFiredAt(lastFiredAt)
-                                                     .action(action);
+                                                     .action(action).orgUnitScope(orgUnitScope);
     }
 
     public static Builder builder(WatchdogConditionType conditionType, String targetName) {
@@ -55,6 +64,7 @@ public record Watchdog(
         private       Instant               createdAt;
         private       Instant               lastFiredAt;
         private       WatchdogAction        action;
+        private       UUID                  orgUnitScope;
 
         private Builder(WatchdogConditionType conditionType, String targetName) {
             this.conditionType = conditionType;
@@ -71,11 +81,12 @@ public record Watchdog(
         public Builder createdAt(Instant v)          { this.createdAt = v; return this; }
         public Builder lastFiredAt(Instant v)        { this.lastFiredAt = v; return this; }
         public Builder action(WatchdogAction v)      { this.action = v; return this; }
+        public Builder orgUnitScope(UUID v)          { this.orgUnitScope = v; return this; }
 
         public Watchdog build() {
             return new Watchdog(id, conditionType, targetName, thresholdSeconds,
                                 thresholdCount, similarityPct, notificationChannel, createdBy,
-                                tenancyId, createdAt, lastFiredAt, action);
+                                tenancyId, createdAt, lastFiredAt, action, orgUnitScope);
         }
     }
 }

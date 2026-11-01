@@ -1,6 +1,7 @@
 package io.casehub.qhorus.api.watchdog;
 
 import java.util.List;
+import java.util.UUID;
 
 public sealed interface AlertContext
         permits BarrierStuckContext, ApprovalPendingContext,
@@ -13,4 +14,6 @@ public sealed interface AlertContext
     WatchdogConditionType conditionType();
 
     default List<String> affectedAgentIds() { return List.of(); }
+
+    default UUID orgUnitId() { return null; }
 }
