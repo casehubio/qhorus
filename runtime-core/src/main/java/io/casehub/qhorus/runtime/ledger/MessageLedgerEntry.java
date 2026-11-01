@@ -94,6 +94,9 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
     public String routingStrategy;
     @Column(name = "routing_candidate_count")
     public Integer routingCandidateCount;
+    @Column(name = "org_unit_id")
+    public UUID    orgUnitId;
+
     @Column(name = "corrects_message_id")
     public Long correctsMessageId;
 
@@ -128,7 +131,8 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
                                        tokenCount != null ? tokenCount.toString() : "",
                                        contextRefs != null ? contextRefs : "",
                                        sourceEntity != null ? sourceEntity : "",
-                                       contextWindowPct != null ? contextWindowPct.toString() : ""
+                                       contextWindowPct != null ? contextWindowPct.toString() : "",
+                                       orgUnitId != null ? orgUnitId.toString() : ""
                                       );
         if (judgmentId != null || judgmentType != null
             || verificationOutcome != null || evidenceQuality != null || reasoning != null) {

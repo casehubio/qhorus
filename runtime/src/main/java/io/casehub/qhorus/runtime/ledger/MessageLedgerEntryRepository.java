@@ -131,6 +131,57 @@ public class MessageLedgerEntryRepository implements MessageLedgerReader {
     }
 
     /**
+     * Extended variant adding optional {@code orgUnitId} filter for compliance scoping.
+     */
+    public List<MessageLedgerEntry> listEntries(final UUID channelId, final Set<String> messageTypes,
+                                                final Long afterSequence, final String agentId, final Instant since,
+                                                final String correlationId, final UUID orgUnitId,
+                                                final boolean sortDesc, final int limit, final String tenancyId) {
+
+        final StringBuilder jpql = new StringBuilder(
+                "SELECT e FROM MessageLedgerEntry e WHERE e.subjectId = ?1 AND e.tenancyId = ?2");
+        final List<Object> params = new ArrayList<>();
+        params.add(channelId);
+        params.add(tenancyId(tenancyId));
+
+        if (messageTypes != null && !messageTypes.isEmpty()) {
+            jpql.append(" AND e.messageType IN (?").append(params.size() + 1).append(")");
+            params.add(messageTypes);
+        }
+        if (afterSequence != null) {
+            jpql.append(" AND e.sequenceNumber > ?").append(params.size() + 1);
+            params.add(afterSequence);
+        }
+        if (agentId != null && !agentId.isBlank()) {
+            jpql.append(" AND e.actorId = ?").append(params.size() + 1);
+            params.add(agentId);
+        }
+        if (since != null) {
+            jpql.append(" AND e.occurredAt >= ?").append(params.size() + 1);
+            params.add(since);
+        }
+        if (correlationId != null && !correlationId.isBlank()) {
+            jpql.append(" AND e.correlationId = ?").append(params.size() + 1);
+            params.add(correlationId);
+        }
+        if (orgUnitId != null) {
+            jpql.append(" AND e.orgUnitId = ?").append(params.size() + 1);
+            params.add(orgUnitId);
+        }
+        jpql.append(sortDesc
+                    ? " ORDER BY e.sequenceNumber DESC"
+                    : " ORDER BY e.sequenceNumber ASC");
+
+        final TypedQuery<MessageLedgerEntry> query = em.createQuery(jpql.toString(), MessageLedgerEntry.class);
+        for (int i = 0; i < params.size(); i++) {
+            query.setParameter(i + 1, params.get(i));
+        }
+        query.setMaxResults(limit);
+        return query.getResultList();
+    }
+
+
+    /**
      * All ledger entries for a given {@code correlationId} on this channel in {@code tenancyId},
      * ordered ASC. Used by {@code get_obligation_chain} and as an alternative to the filtered
      * {@link #listEntries} when no other filters are needed.

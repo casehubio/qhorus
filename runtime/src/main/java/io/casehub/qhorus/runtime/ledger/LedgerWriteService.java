@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.ledger.api.model.CapabilityTag;
 import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
-import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.ledger.jpa.LedgerAttestation;
+import io.casehub.ledger.runtime.config.LedgerConfig;
 import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
@@ -120,6 +120,9 @@ public class LedgerWriteService {
 
     @Inject
     public QhorusTracingConfig tracingConfig;
+    @Inject
+    public io.casehub.qhorus.api.store.ChannelStore channelStore;
+
 
     /**
      * Record the given dispatch as an immutable ledger entry.
@@ -245,6 +248,10 @@ public class LedgerWriteService {
                 populateTelemetry(entry, dispatch.telemetry());
             } else {
                 entry.content = dispatch.content();
+            }
+
+            if (channelStore != null) {
+                channelStore.find(dispatch.channelId()).ifPresent(ch -> entry.orgUnitId = ch.spaceId());
             }
 
             // ── Save the entry FIRST — the critical audit record ─────────────────────
