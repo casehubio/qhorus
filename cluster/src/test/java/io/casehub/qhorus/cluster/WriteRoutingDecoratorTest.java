@@ -341,4 +341,16 @@ class WriteRoutingDecoratorTest {
     }
 
 
+    @Test
+    void broadcastDelegatesToDelegate() {
+        var expected = new DispatchResult(1L, CHANNEL_ID, "agent-1",
+                                          MessageType.STATUS, null, null, List.of(), null, null, null, null, 0, null, List.of());
+        when(delegate.broadcast("planner", MessageType.STATUS, "update", "agent-1", "default"))
+                .thenReturn(expected);
+
+        DispatchResult result = decorator.broadcast("planner", MessageType.STATUS, "update", "agent-1", "default");
+
+        assertThat(result).isEqualTo(expected);
+        verify(delegate).broadcast("planner", MessageType.STATUS, "update", "agent-1", "default");
+    }
 }

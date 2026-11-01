@@ -4,6 +4,7 @@ import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
+import io.casehub.qhorus.api.message.MessageType;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +24,13 @@ public class RoutingConsumerMessaging implements ConsumerMessaging {
     public DispatchResult dispatch(MessageDispatch dispatch) {
         return router.dispatch(dispatch);
     }
+
+    @Override
+    public DispatchResult broadcast(String capabilityTag, MessageType type, String content,
+                                    String sender, String tenancyId) {
+        return queries.broadcast(capabilityTag, type, content, sender, tenancyId);
+    }
+
 
     @Override
     public List<Message> history(UUID channelId, long afterId, int limit) {

@@ -81,4 +81,18 @@ class RoutingConsumerMessagingTest {
         verify(queries).findById(42L);
         verifyNoInteractions(router);
     }
+
+    @Test
+    void broadcastDelegatesToQueries() {
+        var expected = new DispatchResult(1L, UUID.randomUUID(), "agent-1",
+                                          MessageType.STATUS, null, null, List.of(), null, null, null, null, 0, null, List.of());
+        when(queries.broadcast("planner", MessageType.STATUS, "update", "agent-1", "default"))
+                .thenReturn(expected);
+
+        DispatchResult result = sut.broadcast("planner", MessageType.STATUS, "update", "agent-1", "default");
+
+        assertThat(result).isEqualTo(expected);
+        verify(queries).broadcast("planner", MessageType.STATUS, "update", "agent-1", "default");
+        verifyNoInteractions(router);
+    }
 }

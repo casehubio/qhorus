@@ -3,6 +3,7 @@ package io.casehub.qhorus.cluster;
 import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageDispatcher;
+import io.casehub.qhorus.api.message.MessageType;
 import jakarta.enterprise.event.Event;
 
 public class WriteRoutingDecorator implements MessageDispatcher {
@@ -83,6 +84,13 @@ public class WriteRoutingDecorator implements MessageDispatcher {
             return fallbackToLocal(dispatch, owner, e);
         }
     }
+
+    @Override
+    public DispatchResult broadcast(String capabilityTag, MessageType type, String content,
+                                    String sender, String tenancyId) {
+        return delegate.broadcast(capabilityTag, type, content, sender, tenancyId);
+    }
+
 
     private DispatchResult fallbackToLocal(MessageDispatch dispatch, NodeInfo owner, Exception e) {
         var event = new ProxyFallbackEvent(
