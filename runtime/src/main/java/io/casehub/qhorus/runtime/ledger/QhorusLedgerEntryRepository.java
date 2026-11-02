@@ -134,7 +134,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
                 LedgerEntry.class)
                 .setParameter("id", attestation.ledgerEntryId)
                 .setParameter("tid", tenancyId(tenancyId))
-                .getResultStream().findFirst()
+                .getResultList().stream().findFirst()
                 .orElseThrow(() -> new IllegalArgumentException(
                         "LedgerEntry " + attestation.ledgerEntryId + " not found in tenant " + tenancyId));
         if (attestation.attestorId != null) {
@@ -180,7 +180,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
                 .setParameter("sid", subjectId)
                 .setParameter("tid", tenancyId(tenancyId))
                 .setMaxResults(1)
-                .getResultStream().findFirst();
+                .getResultList().stream().findFirst();
     }
 
     @Override
@@ -190,7 +190,7 @@ class QhorusLedgerEntryRepository implements LedgerEntryRepository {
                 LedgerEntry.class)
                 .setParameter("id", id)
                 .setParameter("tid", tenancyId(tenancyId))
-                .getResultStream().findFirst();
+                .getResultList().stream().findFirst();
     }
 
     @Override
