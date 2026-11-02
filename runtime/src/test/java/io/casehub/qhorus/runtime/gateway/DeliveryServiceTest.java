@@ -967,6 +967,53 @@ class DeliveryServiceTest {
     }
 
     @Test
+    void laterSuccessDoesNotHideParticipantFailureInSameBatch() {
+        assertParticipantGapPreserved(100);
+    }
+
+    @Test
+    void laterSuccessDoesNotHideParticipantFailureAcrossBatches() {
+        assertParticipantGapPreserved(1);
+    }
+
+    private void assertParticipantGapPreserved(int batchSize) {
+        UUID ch = UUID.randomUUID();
+        channelStore.put(Channel.builder("delivery-gap").id(ch).trackDelivery(true).build());
+        var memStore = new StubChannelMembershipStore();
+        memStore.put(new io.casehub.qhorus.api.channel.ChannelMembership(null, ch, "agent:a",
+                io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT, "default", Instant.now(), 0L, 0L));
+        batchExecutor.channelMembershipStore = memStore;
+        batchExecutor.config = new StubDeliveryConfig(true, batchSize, 3);
+        var backend = new TestParticipantBackend("gap-backend", DeliveryGuarantee.AT_LEAST_ONCE) {
+            @Override
+            public io.casehub.qhorus.api.gateway.PostResult postTracked(ChannelRef channel, OutboundMessage message) {
+                return message.content().equals("fail")
+                        ? new io.casehub.qhorus.api.gateway.PostResult(Set.of("agent:a"))
+                        : io.casehub.qhorus.api.gateway.PostResult.ALL_DELIVERED;
+            }
+        };
+        createCursor(ch, backend.backendId(), 0L);
+        Message failed = addMessage(ch, "system", MessageType.STATUS, "fail");
+        Message delivered = addMessage(ch, "system", MessageType.STATUS, "success");
+
+        batchExecutor.deliverBatch(ch, backend, service);
+        if (batchSize == 1) {
+            batchExecutor.deliverBatch(ch, backend, service);
+        }
+
+        assertThat(cursorStore.findByChannelAndBackend(ch, backend.backendId()).orElseThrow().lastDeliveredId())
+                .isEqualTo(delivered.id());
+        assertThat(memStore.find(ch, "agent:a").orElseThrow().lastDeliveredMessageId()).isZero();
+        assertThat(memStore.findWithDeliveryLag(ch, delivered.id())).hasSize(1);
+        service.channelMembershipStore = memStore;
+        service.running = true;
+        service.retryLaggingParticipants(ch, backend);
+        assertThat(backend.deliverToCalls).extracting(call -> call.message().sequenceId())
+                .containsExactly(failed.id(), delivered.id());
+        assertThat(memStore.find(ch, "agent:a").orElseThrow().lastDeliveredMessageId()).isEqualTo(delivered.id());
+    }
+
+    @Test
     void deliverBatch_allDelivered_advancesAllMemberCursors() {
         UUID ch = UUID.randomUUID();
         channelStore.put(Channel.builder("tracked-ch2").id(ch)
