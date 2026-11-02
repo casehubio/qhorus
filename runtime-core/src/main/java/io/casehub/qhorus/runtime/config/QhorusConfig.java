@@ -31,6 +31,12 @@ public interface QhorusConfig {
     Instance instance();
     Mesh mesh();
 
+    @WithName("api-keys")
+    Map<String, ApiKeyEntry> apiKeys();
+
+    @WithName("default-tenancy-id")
+    Optional<String> defaultTenancyId();
+
     Map<String, ChannelConfig> channels();
 
     interface ChannelConfig {
@@ -84,6 +90,13 @@ public interface QhorusConfig {
 
             String outboundDestination();
         }
+    }
+
+    interface ApiKeyEntry {
+        String key();
+
+        @WithDefault("")
+        Optional<java.util.Set<String>> roles();
     }
 
 
