@@ -150,6 +150,10 @@ public class CachingMessageStore implements MessageStore {
         buffer.add(msg);
     }
 
+    public void invalidateChannel(UUID channelId) {
+        channelCache.invalidate(channelId);
+    }
+
     public void invalidateAll() {
         channelCache.invalidateAll();
     }

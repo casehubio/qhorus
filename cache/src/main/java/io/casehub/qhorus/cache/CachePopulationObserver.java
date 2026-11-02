@@ -2,12 +2,9 @@ package io.casehub.qhorus.cache;
 
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
-import io.casehub.qhorus.api.message.Message;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
-
-import java.util.List;
 
 @ApplicationScoped
 public class CachePopulationObserver implements MessageObserver {
@@ -20,13 +17,8 @@ public class CachePopulationObserver implements MessageObserver {
         if (!cachingStore.isResolvable() || event.messageId() == null || event.channelId() == null) {
             return;
         }
-        Message msg = new Message(
-                event.messageId(), event.channelId(), event.senderId(),
-                event.messageType(), event.actorType(), event.tenancyId(),
-                event.content(), event.payload(), event.correlationId(),
-                null, 0, List.of(), event.target(), event.topic(),
-                null, null, null, 0, event.occurredAt(), null, false);
-        cachingStore.get().addToBuffer(event.channelId(), msg);
+        // The event omits message metadata, so it cannot replace a persisted cache entry.
+        cachingStore.get().invalidateChannel(event.channelId());
     }
 
     @Override
