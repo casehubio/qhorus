@@ -45,10 +45,7 @@ class CachingMessageStoreTest {
         assertThat(result.id()).isEqualTo(1L);
         verify(delegate).put(input);
 
-        MessageQuery q = MessageQuery.forChannel(CH);
-        List<Message> cached = cache.scan(q);
-        assertThat(cached).hasSize(1);
-        verify(delegate, never()).scan(any());
+        assertThat(cache.messagesCached()).isEqualTo(1);
     }
 
     @Test
@@ -78,18 +75,43 @@ class CachingMessageStoreTest {
     }
 
     @Test
-    void scanServesFromCacheWhenInRange() {
+    void scanDoesNotTreatSparseBufferAsCompleteHistory() {
         cache.addToBuffer(CH, msg(10, CH));
-        cache.addToBuffer(CH, msg(20, CH));
         cache.addToBuffer(CH, msg(30, CH));
-
         MessageQuery q = MessageQuery.poll(CH, 10L, 50);
-        List<Message> result = cache.scan(q);
+        List<Message> expected = List.of(msg(20, CH), msg(30, CH));
+        when(delegate.scan(q)).thenReturn(expected);
 
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).id()).isEqualTo(20L);
-        assertThat(result.get(1).id()).isEqualTo(30L);
-        verify(delegate, never()).scan(any());
+        assertThat(cache.scan(q)).isEqualTo(expected);
+        verify(delegate).scan(q);
+    }
+
+    @Test
+    void readingOneOldMessageDoesNotHideTheRestOfTheHistory() {
+        Message first = msg(10, CH);
+        Message last = msg(11, CH);
+        when(delegate.find(10L)).thenReturn(Optional.of(first));
+        MessageQuery q = MessageQuery.forChannel(CH);
+        when(delegate.scan(q)).thenReturn(List.of(first, last));
+        when(delegate.findLastMessage(CH)).thenReturn(Optional.of(last));
+
+        cache.find(10L);
+
+        assertThat(cache.scan(q)).containsExactly(first, last);
+        assertThat(cache.findLastMessage(CH)).contains(last);
+    }
+
+    @Test
+    void boundedBufferDoesNotTruncateAnUnboundedHistoryQuery() {
+        cache = new CachingMessageStore(delegate, 100, 1, false);
+        Message first = msg(1, CH);
+        Message last = msg(2, CH);
+        cache.addToBuffer(CH, first);
+        cache.addToBuffer(CH, last);
+        MessageQuery q = MessageQuery.forChannel(CH);
+        when(delegate.scan(q)).thenReturn(List.of(first, last));
+
+        assertThat(cache.scan(q)).containsExactly(first, last);
     }
 
     @Test
@@ -142,13 +164,12 @@ class CachingMessageStoreTest {
     }
 
     @Test
-    void findLastMessageServesFromCache() {
+    void findLastMessageUsesAuthoritativeHeadEvenWithWarmBuffer() {
         cache.addToBuffer(CH, msg(10, CH));
-        cache.addToBuffer(CH, msg(20, CH));
+        Message last = msg(20, CH);
+        when(delegate.findLastMessage(CH)).thenReturn(Optional.of(last));
 
-        Optional<Message> result = cache.findLastMessage(CH);
-        assertThat(result).isPresent();
-        assertThat(result.get().id()).isEqualTo(20L);
-        verify(delegate, never()).findLastMessage(any());
+        assertThat(cache.findLastMessage(CH)).contains(last);
+        verify(delegate).findLastMessage(CH);
     }
 }
