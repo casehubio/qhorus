@@ -72,7 +72,8 @@ public class QhorusSubscriptionBootstrapCore {
                             null,
                             "channel",
                             "channelId",
-                            "senderId"),
+                            "senderId",
+                            null),
                     true,
                     SubscriptionScope.SYSTEM));
         } catch (Exception ignored) {
@@ -100,7 +101,8 @@ public class QhorusSubscriptionBootstrapCore {
                         null,
                         "channel",
                         "channelId",
-                        "senderId"),
+                        "senderId",
+                        null),
                 true,
                     SubscriptionScope.SYSTEM));
         } catch (Exception ignored) {

@@ -47,7 +47,7 @@ class QhorusSubscriptionBootstrapTest {
                 "io.casehub.qhorus.obligation.assigned",
                 List.of(), List.of(), false,
                 new NotificationTemplate("t", null, NotificationSeverity.INFO,
-                        "qhorus.obligation.assigned", null, "channel", "channelId", "senderId"),
+                        "qhorus.obligation.assigned", null, "channel", "channelId", "senderId", null),
                 true, SubscriptionScope.SYSTEM, Instant.now(), Instant.now());
 
         when(subscriptionStore.findAllEnabled()).thenReturn(Stream.of(existing));
