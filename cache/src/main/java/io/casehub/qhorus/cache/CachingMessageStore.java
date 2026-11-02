@@ -50,30 +50,14 @@ public class CachingMessageStore implements MessageStore {
         return result;
     }
 
+    // shortcut: sparse buffers have no coverage/freshness proof; use storage until they track both.
     @Override
     public List<Message> scan(MessageQuery query) {
-        if (query.channelId() == null) {
-            return delegate.scan(query);
-        }
-        ChannelMessageBuffer buffer = channelCache.getIfPresent(query.channelId());
-        if (buffer != null && buffer.covers(query.afterId())) {
-            List<Message> cached = buffer.query(query);
-            if (!cached.isEmpty() || buffer.covers(query.afterId())) {
-                return cached;
-            }
-        }
         return delegate.scan(query);
     }
 
     @Override
     public Optional<Message> findLastMessage(UUID channelId) {
-        ChannelMessageBuffer buffer = channelCache.getIfPresent(channelId);
-        if (buffer != null && buffer.size() > 0) {
-            Long lastId = buffer.lastId();
-            if (lastId != null) {
-                return buffer.findById(lastId);
-            }
-        }
         return delegate.findLastMessage(channelId);
     }
 
