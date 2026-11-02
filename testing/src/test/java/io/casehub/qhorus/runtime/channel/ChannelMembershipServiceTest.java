@@ -59,12 +59,14 @@ class ChannelMembershipServiceTest {
 
         ChannelMembership m = service.join(channelId, "bob", MemberRole.PARTICIPANT, "default");
         assertThat(m.lastReadMessageId()).isEqualTo(last.id());
+        assertThat(m.lastDeliveredMessageId()).isEqualTo(last.id());
     }
 
     @Test
     void join_emptyChannel_initializesLastReadMessageIdToZero() {
         ChannelMembership m = service.join(channelId, "agent-1", MemberRole.PARTICIPANT, "default");
         assertThat(m.lastReadMessageId()).isEqualTo(0L);
+        assertThat(m.lastDeliveredMessageId()).isZero();
     }
 
     @Test
