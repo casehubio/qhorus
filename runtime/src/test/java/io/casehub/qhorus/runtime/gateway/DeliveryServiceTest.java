@@ -1071,6 +1071,29 @@ class DeliveryServiceTest {
     }
 
     @Test
+    void retryLaggingParticipants_recoversFailedFirstDeliveryWithNullCursor() {
+        UUID ch = UUID.randomUUID();
+        channelStore.put(Channel.builder("first-delivery-failure").id(ch).trackDelivery(true).build());
+        var backend = new TestParticipantBackend("first-failure", DeliveryGuarantee.AT_LEAST_ONCE);
+        backend.failParticipants = Set.of("agent:a");
+        var members = new StubChannelMembershipStore();
+        members.put(new io.casehub.qhorus.api.channel.ChannelMembership(null, ch, "agent:a",
+                io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT, "default", Instant.now(), 0L));
+        batchExecutor.channelMembershipStore = members;
+        service.channelMembershipStore = members;
+        service.running = true;
+        createCursor(ch, backend.backendId(), 0L);
+        Message first = addMessage(ch, "system", MessageType.STATUS, "retry me");
+
+        batchExecutor.deliverBatch(ch, backend, service);
+        assertThat(members.find(ch, "agent:a").orElseThrow().lastDeliveredMessageId()).isNull();
+        service.retryLaggingParticipants(ch, backend);
+
+        assertThat(backend.deliverToCalls).extracting(call -> call.message().sequenceId()).containsExactly(first.id());
+        assertThat(members.find(ch, "agent:a").orElseThrow().lastDeliveredMessageId()).isEqualTo(first.id());
+    }
+
+    @Test
     void retryLaggingParticipants_stopsAtVolumeCap() {
         UUID ch = UUID.randomUUID();
         channelStore.put(Channel.builder("retry-cap-ch").id(ch)

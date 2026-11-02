@@ -63,7 +63,7 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
         }
         Long maxId = messageStore.findLastMessage(channelId).map(Message::id).orElse(0L);
         return membershipStore.put(new ChannelMembership(
-                null, channelId, memberId, role, tenancyId, Instant.now(), maxId));
+                null, channelId, memberId, role, tenancyId, Instant.now(), maxId, maxId));
     }
 
     @Override

@@ -254,7 +254,7 @@ public class DeliveryService implements DeliveryBatchExecutor.HealthCallback {
             java.util.List<io.casehub.qhorus.api.message.Message> missed = messageStore.scan(
                     io.casehub.qhorus.api.store.query.MessageQuery.builder()
                             .channelId(channelId)
-                            .afterId(member.lastDeliveredMessageId())
+                            .afterId(member.lastDeliveredMessageId() != null ? member.lastDeliveredMessageId() : 0L)
                             .beforeId(backendCursor.lastDeliveredId())
                             .limit(config.batchSize())
                             .build());

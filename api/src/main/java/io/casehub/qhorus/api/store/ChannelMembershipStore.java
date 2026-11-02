@@ -19,8 +19,8 @@ public interface ChannelMembershipStore extends MembershipReader {
     default java.util.List<io.casehub.qhorus.api.channel.ChannelMembership> findWithDeliveryLag(
             java.util.UUID channelId, Long backendCursorId) {
         return findByChannel(channelId).stream()
-                                       .filter(m -> m.lastDeliveredMessageId() != null
-                                                    && m.lastDeliveredMessageId() < backendCursorId)
+                                       .filter(m -> m.lastDeliveredMessageId() == null
+                                                    || m.lastDeliveredMessageId() < backendCursorId)
                                        .toList();
     }
 
