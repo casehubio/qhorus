@@ -156,15 +156,16 @@ abstract class ChannelMembershipStoreContractTest {
 
 
     @Test
-    void findWithDeliveryLag_returnsOnlyMembersWithCursorBehind() {
+    void findWithDeliveryLag_returnsMembersWithMissingOrBehindCursors() {
         put(new ChannelMembership(null, channelId, "agent-a", MemberRole.PARTICIPANT, "default", Instant.now(), null, 50L));
         put(new ChannelMembership(null, channelId, "agent-b", MemberRole.PARTICIPANT, "default", Instant.now(), null, 100L));
         put(new ChannelMembership(null, channelId, "agent-c", MemberRole.PARTICIPANT, "default", Instant.now(), null, null));
+        put(new ChannelMembership(null, channelId, "agent-d", MemberRole.PARTICIPANT, "default", Instant.now(), null, 150L));
 
         var lagging = findWithDeliveryLag(channelId, 100L);
 
-        assertThat(lagging).hasSize(1);
-        assertThat(lagging.get(0).memberId()).isEqualTo("agent-a");
+        assertThat(lagging).extracting(ChannelMembership::memberId)
+                .containsExactlyInAnyOrder("agent-a", "agent-c");
     }
 
     @Test
@@ -177,11 +178,11 @@ abstract class ChannelMembershipStoreContractTest {
     }
 
     @Test
-    void findWithDeliveryLag_skipsNullCursors() {
+    void findWithDeliveryLag_includesNullCursorsForFirstDeliveryRetry() {
         put(new ChannelMembership(null, channelId, "agent-a", MemberRole.PARTICIPANT, "default", Instant.now(), null, null));
 
         var lagging = findWithDeliveryLag(channelId, 100L);
 
-        assertThat(lagging).isEmpty();
+        assertThat(lagging).extracting(ChannelMembership::memberId).containsExactly("agent-a");
     }
 }
