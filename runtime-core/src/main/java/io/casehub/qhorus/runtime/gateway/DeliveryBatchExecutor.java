@@ -23,7 +23,6 @@ import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -114,6 +113,9 @@ public class DeliveryBatchExecutor {
             if (trackDelivery && channelMembershipStore != null) {
                 deliveryMemberIds = channelMembershipStore.findByChannel(channelId).stream()
                         .filter(mem -> ActorTypeResolver.resolve(mem.memberId()) == backend.actorType())
+                        .filter(mem -> mem.lastDeliveredMessageId() == null
+                                ? startCursor == 0L
+                                : mem.lastDeliveredMessageId() >= startCursor)
                         .map(io.casehub.qhorus.api.channel.ChannelMembership::memberId)
                         .collect(Collectors.toSet());
             }
@@ -130,10 +132,10 @@ public class DeliveryBatchExecutor {
                                    .build();
                     delivered++;
                     if (trackDelivery && !deliveryMemberIds.isEmpty()) {
-                        Set<String> successfulMembers = new HashSet<>(deliveryMemberIds);
-                        successfulMembers.removeAll(result.failedParticipantIds());
-                        if (!successfulMembers.isEmpty()) {
-                            channelMembershipStore.advanceDeliveredCursorForMembers(channelId, successfulMembers, m.id());
+                        // A later success must not hide an earlier delivery gap.
+                        deliveryMemberIds.removeAll(result.failedParticipantIds());
+                        if (!deliveryMemberIds.isEmpty()) {
+                            channelMembershipStore.advanceDeliveredCursorForMembers(channelId, deliveryMemberIds, m.id());
                         }
                     }
                 } catch (Exception e) {
