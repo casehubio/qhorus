@@ -173,7 +173,8 @@ public class JpaMessageStore implements MessageStore {
             views.add(new io.casehub.qhorus.api.message.MessageView(
                     m.id(), m.channelId(), m.sender(), m.messageType(), m.content(), m.payload(),
                     m.correlationId(), m.inReplyTo(), m.target(), m.topic(),
-                    m.artefactRefs(), m.actorType(), m.createdAt(), m.deadline(), m.replyCount()));
+                    m.artefactRefs(), m.actorType(), m.createdAt(), m.deadline(), m.replyCount(),
+                    m.correctsMessageId(), m.retraction()));
         }
         return views;
     }
