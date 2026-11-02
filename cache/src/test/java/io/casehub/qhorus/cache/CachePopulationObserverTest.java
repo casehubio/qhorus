@@ -3,38 +3,46 @@ package io.casehub.qhorus.cache;
 import io.casehub.platform.api.identity.ActorType;
 import io.casehub.qhorus.api.gateway.MessageObserver;
 import io.casehub.qhorus.api.gateway.MessageReceivedEvent;
+import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.qhorus.api.store.MessageStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CachePopulationObserverTest {
 
+    private MessageStore delegate;
     private CachingMessageStore cachingStore;
     private CachePopulationObserver observer;
 
     @BeforeEach
     void setUp() {
-        MessageStore delegate = mock(MessageStore.class);
+        delegate = mock(MessageStore.class);
         cachingStore = new CachingMessageStore(delegate, 100, 200, false);
         observer = new CachePopulationObserver();
         observer.cachingStore = new MockInstance<>(cachingStore);
     }
 
     @Test
-    void onMessageAddsToCache() {
+    void onMessageInvalidatesOnlyItsChannel() {
         UUID channelId = UUID.randomUUID();
         MessageReceivedEvent event = new MessageReceivedEvent(
                 42L, "test-channel", channelId, "default",
                 MessageType.STATUS, "agent-1", null, ActorType.AGENT,
                 null, Instant.now(), "hello", null, null);
 
+        cachingStore.addToBuffer(channelId, Message.builder().id(42L).channelId(channelId).build());
+        UUID otherChannel = UUID.randomUUID();
+        cachingStore.addToBuffer(otherChannel, Message.builder().id(43L).channelId(otherChannel).build());
         observer.onMessage(event);
 
         assertThat(cachingStore.channelsCached()).isEqualTo(1);
@@ -54,6 +62,24 @@ class CachePopulationObserverTest {
     }
 
     @Test
+    void notificationDoesNotReplaceCompleteMessageWithMissingMetadata() {
+        UUID channelId = UUID.randomUUID();
+        Message full = Message.builder().id(42L).channelId(channelId).sender("agent-1")
+                .actorType(ActorType.AGENT).messageType(MessageType.STATUS).tenancyId("default")
+                .content("reply").createdAt(Instant.now()).inReplyTo(10L).replyCount(2)
+                .commitmentId(UUID.randomUUID()).deadline(Instant.now().plusSeconds(60))
+                .version(3).correctsMessageId(10L).retraction(true).build();
+        cachingStore.addToBuffer(channelId, full);
+        MessageQuery query = MessageQuery.forChannel(channelId);
+        when(delegate.scan(query)).thenReturn(List.of(full));
+
+        observer.onMessage(MessageReceivedEvent.fromMessage(full, "test-channel"));
+
+        assertThat(cachingStore.scan(query)).containsExactly(full);
+        assertThat(cachingStore.messagesCached()).isZero();
+    }
+
+    @Test
     void scopeIsCluster() {
         assertThat(observer.scope()).isEqualTo(MessageObserver.Scope.CLUSTER);
     }
@@ -69,7 +95,7 @@ class CachePopulationObserverTest {
         observer.onMessage(event);
         observer.onMessage(event);
 
-        assertThat(cachingStore.messagesCached()).isGreaterThanOrEqualTo(1);
+        assertThat(cachingStore.messagesCached()).isZero();
     }
 
     @SuppressWarnings("unchecked")
