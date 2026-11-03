@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.channel;
 
 import io.casehub.qhorus.api.channel.ChannelMembership;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.MembershipManager;
 import io.casehub.qhorus.api.channel.MemberRole;
 import io.casehub.qhorus.api.channel.UnreadCountProvider;
@@ -8,6 +9,7 @@ import io.casehub.qhorus.api.channel.UnreadCount;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.store.ChannelMembershipStore;
+import io.casehub.qhorus.api.store.ChannelStore;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.MessageQuery;
 import io.casehub.platform.api.identity.CurrentPrincipal;
@@ -23,13 +25,22 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
     private final ChannelMembershipStore membershipStore;
     private final MessageStore messageStore;
     private final CurrentPrincipal currentPrincipal;
+    private final ChannelStore channelStore;
 
     public ChannelMembershipService(ChannelMembershipStore membershipStore,
                                      MessageStore messageStore,
                                      CurrentPrincipal currentPrincipal) {
+        this(membershipStore, messageStore, currentPrincipal, null);
+    }
+
+    public ChannelMembershipService(ChannelMembershipStore membershipStore,
+                                     MessageStore messageStore,
+                                     CurrentPrincipal currentPrincipal,
+                                     ChannelStore channelStore) {
         this.membershipStore = membershipStore;
         this.messageStore = messageStore;
         this.currentPrincipal = currentPrincipal;
+        this.channelStore = channelStore;
     }
 
     @Override
@@ -39,6 +50,13 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
 
     @Override
     public void leave(UUID channelId, String memberId) {
+        if (channelStore != null) {
+            channelStore.find(channelId).ifPresent(ch -> {
+                if (ch.visibility() == ChannelVisibility.DIRECT) {
+                    throw new IllegalStateException("Cannot leave a DIRECT channel");
+                }
+            });
+        }
         membershipStore.delete(channelId, memberId);
     }
 
@@ -54,6 +72,17 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
 
 
     public ChannelMembership join(UUID channelId, String memberId, MemberRole role, String tenancyId) {
+        if (channelStore != null) {
+            channelStore.find(channelId).ifPresent(ch -> {
+                if (ch.visibility() == ChannelVisibility.DIRECT) {
+                    long count = membershipStore.findByChannel(channelId).size();
+                    if (count >= 2) {
+                        throw new IllegalStateException(
+                            "DIRECT channels have immutable membership — exactly 2 members");
+                    }
+                }
+            });
+        }
         var existing = membershipStore.find(channelId, memberId);
         if (existing.isPresent()) {
             if (existing.get().role() != role) {
