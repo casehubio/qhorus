@@ -48,4 +48,6 @@ public interface ChannelManager {
     void setTrackDelivery(UUID channelId, Boolean tracking);
 
     void updateLastActivity(UUID channelId, String tenancyId);
+
+    Channel setVisibility(UUID channelId, ChannelVisibility visibility);
 }

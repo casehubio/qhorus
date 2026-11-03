@@ -20,4 +20,6 @@ public interface ChannelReader {
     List<Channel> scan(ChannelQuery query);
 
     List<Channel> findByIds(Collection<UUID> ids);
+
+    List<Channel> findByVisibility(ChannelVisibility visibility);
 }

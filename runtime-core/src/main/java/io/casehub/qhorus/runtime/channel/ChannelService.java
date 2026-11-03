@@ -7,6 +7,7 @@ import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
 import io.casehub.qhorus.api.channel.ChannelReader;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.channel.Space;
 import io.casehub.qhorus.api.gateway.ChannelProtocolsChangedEvent;
@@ -450,6 +451,26 @@ public class ChannelService implements ChannelManager, ChannelReader {
                 }
             }
         }
+    }
+
+    @Override
+    public Channel setVisibility(UUID channelId, ChannelVisibility visibility) {
+        Channel ch = channelStore.find(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channelId));
+        if (visibility == ChannelVisibility.DIRECT) {
+            long memberCount = membershipStore.findByChannel(channelId).size();
+            if (memberCount != 2) {
+                throw new IllegalStateException(
+                    "Cannot set visibility to DIRECT — channel must have exactly 2 members (has " + memberCount + ")");
+            }
+        }
+        Channel updated = ch.toBuilder().visibility(visibility).build();
+        return channelStore.put(updated);
+    }
+
+    @Override
+    public List<Channel> findByVisibility(ChannelVisibility visibility) {
+        return channelStore.scan(io.casehub.qhorus.api.store.query.ChannelQuery.byVisibility(visibility));
     }
 
     public static boolean isDeliveryTrackingEnabled(Channel ch) {
