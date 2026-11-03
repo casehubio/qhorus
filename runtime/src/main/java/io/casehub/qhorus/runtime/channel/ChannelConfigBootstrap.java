@@ -89,6 +89,10 @@ public class ChannelConfigBootstrap {
         if (!cfg.metadata().isEmpty())
             builder.metadata(cfg.metadata());
 
+        cfg.visibility().ifPresent(builder::visibility);
+        cfg.boundGroupId().ifPresent(id -> builder.boundGroupId(java.util.UUID.fromString(id)));
+        cfg.participationPolicy().ifPresent(builder::participationPolicy);
+
         cfg.space().ifPresent(spaceName -> resolveSpace(name, spaceName, builder));
 
         cfg.connector().ifPresent(conn -> {

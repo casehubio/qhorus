@@ -241,8 +241,9 @@ public class RuntimeAutoConfiguration {
     @Bean
     public ChannelMembershipService channelMembershipService(ChannelMembershipStore membershipStore,
                                                              MessageStore messageStore,
-                                                             CurrentPrincipal currentPrincipal) {
-        return new ChannelMembershipService(membershipStore, messageStore, currentPrincipal);
+                                                             CurrentPrincipal currentPrincipal,
+                                                             ChannelStore channelStore) {
+        return new ChannelMembershipService(membershipStore, messageStore, currentPrincipal, channelStore);
     }
 
     @Bean

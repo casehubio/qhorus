@@ -3,6 +3,7 @@ package io.casehub.qhorus.runtime.api.core;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.MembershipManager;
 import io.casehub.qhorus.api.channel.PresenceTracker;
 import io.casehub.qhorus.api.channel.ReactionManager;
@@ -105,6 +106,8 @@ public class ChannelCore {
         if (req.trackDelivery() != null) builder.trackDelivery(req.trackDelivery());
         if (req.rateLimitPerChannel() != null) builder.rateLimitPerChannel(req.rateLimitPerChannel());
         if (req.rateLimitPerInstance() != null) builder.rateLimitPerInstance(req.rateLimitPerInstance());
+        if (req.visibility() != null) builder.visibility(ChannelVisibility.valueOf(req.visibility()));
+        if (req.boundGroupId() != null) builder.boundGroupId(req.boundGroupId());
         return toResponse(channelService.create(builder.build()));
     }
 
@@ -113,13 +116,19 @@ public class ChannelCore {
     }
 
     public List<ChannelResponse> list(String prefix, UUID spaceId, Boolean paused, String metadataKey, String metadataValue) {
+        return list(prefix, spaceId, paused, metadataKey, metadataValue, null);
+    }
+
+    public List<ChannelResponse> list(String prefix, UUID spaceId, Boolean paused, String metadataKey, String metadataValue, String visibility) {
         List<Channel> channels;
-        if (prefix != null || spaceId != null || paused != null || metadataKey != null) {
+        ChannelVisibility vis = visibility != null ? ChannelVisibility.valueOf(visibility) : null;
+        if (prefix != null || spaceId != null || paused != null || metadataKey != null || vis != null) {
             var qb = ChannelQuery.builder();
             if (prefix != null) qb.namePrefix(prefix);
             if (spaceId != null) qb.spaceId(spaceId);
             if (paused != null) qb.paused(paused);
             if (metadataKey != null) qb.metadataKey(metadataKey).metadataValue(metadataValue);
+            if (vis != null) qb.visibility(vis);
             channels = channelService.scan(qb.build());
         } else {
             channels = channelService.listAll();
@@ -361,6 +370,12 @@ public class ChannelCore {
         return requireChannel(id).participationPolicy();
     }
 
+
+    public ChannelResponse setVisibility(String id, String visibility) {
+        UUID channelId = requireChannel(id).id();
+        ChannelVisibility vis = visibility != null ? ChannelVisibility.valueOf(visibility.toUpperCase()) : null;
+        return toResponse(channelService.setVisibility(channelId, vis));
+    }
 
     public ChannelResponse setMetadata(String id, java.util.Map<String, String> metadata) {
         return toResponse(channelService.setMetadata(requireChannel(id).id(), metadata));

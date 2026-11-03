@@ -319,6 +319,8 @@ class ChannelConfigBootstrapTest {
         @Override public Map<String, String> metadata() { return metadataValue != null ? metadataValue : Map.of(); }
         @Override public Optional<ChannelConfig.ConnectorConfig> connector() { return Optional.ofNullable(connectorValue); }
         @Override public Optional<io.casehub.qhorus.api.channel.ParticipationPolicyMode> participationPolicy() { return Optional.empty(); }
+        @Override public Optional<io.casehub.qhorus.api.channel.ChannelVisibility> visibility() { return Optional.empty(); }
+        @Override public Optional<String> boundGroupId() { return Optional.empty(); }
     }
 
     static class StubQhorusConfig implements QhorusConfig {

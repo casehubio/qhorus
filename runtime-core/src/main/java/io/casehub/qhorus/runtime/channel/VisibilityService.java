@@ -23,6 +23,14 @@ import java.util.stream.Collectors;
 
 public class VisibilityService implements VisibilityManager {
 
+    protected VisibilityService() {
+        this.channelService = null;
+        this.membershipService = null;
+        this.membershipStore = null;
+        this.channelStore = null;
+        this.currentPrincipal = null;
+    }
+
     private final ChannelService channelService;
     private final ChannelMembershipService membershipService;
     private final ChannelMembershipStore membershipStore;

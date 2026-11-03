@@ -19,4 +19,6 @@ public record CreateChannelRequest(
         UUID spaceId,
         Boolean trackDelivery,
         Integer rateLimitPerChannel,
-        Integer rateLimitPerInstance) {}
+        Integer rateLimitPerInstance,
+        String visibility,
+        UUID boundGroupId) {}

@@ -3,6 +3,7 @@ package io.casehub.qhorus.runtime.broadcast;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.channel.MemberRole;
 import io.casehub.qhorus.api.instance.InstanceDeregisteredEvent;
@@ -62,6 +63,7 @@ public class BroadcastMembershipManager {
         try {
             ChannelCreateRequest req = ChannelCreateRequest.builder(BROADCAST_PREFIX + capability)
                     .semantic(ChannelSemantic.BROADCAST)
+                    .visibility(ChannelVisibility.PUBLIC)
                     .description("Broadcast channel for capability: " + capability)
                     .allowedTypes(Set.of(MessageType.STATUS, MessageType.EVENT))
                     .build();

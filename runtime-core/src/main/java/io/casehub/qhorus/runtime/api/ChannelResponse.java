@@ -31,7 +31,9 @@ public record ChannelResponse(
         Boolean trackDelivery,
         String enforcementMode,
         List<String> enforcementExclusions,
-        java.util.Map<String, String> metadata) {
+        java.util.Map<String, String> metadata,
+        String visibility,
+        UUID boundGroupId) {
 
     public static ChannelResponse from(final Channel ch, final long messageCount, final String spaceName) {
         return new ChannelResponse(
@@ -59,6 +61,8 @@ public record ChannelResponse(
                 ch.enforcementMode() != null && ch.enforcementMode() != io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY
                         ? ch.enforcementMode().name() : null,
                 ch.enforcementExclusions(),
-                ch.metadata());
+                ch.metadata(),
+                ch.visibility() != null ? ch.visibility().name() : null,
+                ch.boundGroupId());
     }
 }

@@ -55,7 +55,9 @@ public class QhorusEntityMapper {
                 io.casehub.qhorus.runtime.channel.ChannelService.isDeliveryTrackingEnabled(ch),
                 ch.enforcementMode() != null && ch.enforcementMode() != io.casehub.qhorus.api.channel.EnforcementMode.ADVISORY ? ch.enforcementMode().name() : null,
                 joinCsv(ch.enforcementExclusions()),
-                detailBinding);}
+                detailBinding,
+                ch.visibility() != null ? ch.visibility().name() : null,
+                ch.boundGroupId());}
 
     public MessageView toMessageView(final Message msg) {
         return new MessageView(

@@ -14,7 +14,7 @@ import io.casehub.qhorus.api.message.MessageType;
 class ChannelCreateRequestBuilderTest {
 
     @Test
-    void builder_minimalArgs_defaultsSemanticToAppend() {
+    void builder_minimalArgs_semanticDefaultsToNull() {
         io.casehub.qhorus.api.channel.ChannelCreateRequest req = io.casehub.qhorus.api.channel.ChannelCreateRequest.builder("test-ch").build();
         assertThat(req.name()).isEqualTo("test-ch");
         assertThat(req.semantic()).isNull();

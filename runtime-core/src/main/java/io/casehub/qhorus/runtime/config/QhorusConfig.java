@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.config;
 
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.EnforcementMode;
 import io.casehub.qhorus.api.channel.ParticipationPolicyMode;
 import io.casehub.qhorus.api.message.MessageType;
@@ -76,6 +77,10 @@ public interface QhorusConfig {
         Optional<Boolean> trackDelivery();
 
         Optional<String> space();
+
+        Optional<ChannelVisibility> visibility();
+
+        Optional<String> boundGroupId();
 
         Map<String, String> metadata();
 

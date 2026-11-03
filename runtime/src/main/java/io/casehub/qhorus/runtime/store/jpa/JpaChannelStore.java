@@ -96,6 +96,14 @@ public class JpaChannelStore implements ChannelStore {
             jpql.append(" AND e.metadata LIKE ?").append(idx++);
             params.add("%" + escapeJsonKeyValue(q.metadataKey(), q.metadataValue()) + "%");
         }
+        if (q.visibility() != null) {
+            jpql.append(" AND e.visibility = ?").append(idx++);
+            params.add(q.visibility().name());
+        }
+        if (q.boundGroupId() != null) {
+            jpql.append(" AND e.boundGroupId = ?").append(idx++);
+            params.add(q.boundGroupId());
+        }
 
         var query = em.createQuery("SELECT e " + jpql.toString(), ChannelEntity.class);
         for (int i = 0; i < params.size(); i++) query.setParameter(i + 1, params.get(i));

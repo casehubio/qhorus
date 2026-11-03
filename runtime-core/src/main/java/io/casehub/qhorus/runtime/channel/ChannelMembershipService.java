@@ -72,7 +72,8 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
 
 
     public ChannelMembership join(UUID channelId, String memberId, MemberRole role, String tenancyId) {
-        if (channelStore != null) {
+        var existing = membershipStore.find(channelId, memberId);
+        if (existing.isEmpty() && channelStore != null) {
             channelStore.find(channelId).ifPresent(ch -> {
                 if (ch.visibility() == ChannelVisibility.DIRECT) {
                     long count = membershipStore.findByChannel(channelId).size();
@@ -83,7 +84,6 @@ public class ChannelMembershipService implements MembershipManager, UnreadCountP
                 }
             });
         }
-        var existing = membershipStore.find(channelId, memberId);
         if (existing.isPresent()) {
             if (existing.get().role() != role) {
                 membershipStore.updateRole(channelId, memberId, role);

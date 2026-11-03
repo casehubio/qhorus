@@ -42,8 +42,9 @@ public class ChannelResource {
             @QueryParam("spaceId") final UUID spaceId,
             @QueryParam("paused") final Boolean paused,
             @QueryParam("metadataKey") final String metadataKey,
-            @QueryParam("metadataValue") final String metadataValue) {
-        return core.list(prefix, spaceId, paused, metadataKey, metadataValue);
+            @QueryParam("metadataValue") final String metadataValue,
+            @QueryParam("visibility") final String visibility) {
+        return core.list(prefix, spaceId, paused, metadataKey, metadataValue, visibility);
     }
 
     @GET
@@ -314,6 +315,13 @@ public class ChannelResource {
     public ChannelResponse setMetadata(@PathParam("id") final String id,
                                         final Map<String, String> metadata) {
         return core.setMetadata(id, metadata);
+    }
+
+    @PUT
+    @Path("/{id}/visibility")
+    public ChannelResponse setVisibility(@PathParam("id") final String id,
+                                          final Map<String, String> body) {
+        return core.setVisibility(id, body.get("visibility"));
     }
 
     @PUT
