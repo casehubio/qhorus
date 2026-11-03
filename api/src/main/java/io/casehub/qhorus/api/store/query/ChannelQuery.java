@@ -2,6 +2,7 @@ package io.casehub.qhorus.api.store.query;
 
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 
 import java.util.UUID;
 
@@ -16,6 +17,8 @@ public final class ChannelQuery {
     private final boolean         topLevelOnly;
     private final String          metadataKey;
     private final String          metadataValue;
+    private final ChannelVisibility visibility;
+    private final UUID            boundGroupId;
 
     private ChannelQuery(Builder b) {
         this.namePattern  = b.namePattern;
@@ -27,6 +30,8 @@ public final class ChannelQuery {
         this.topLevelOnly = b.topLevelOnly;
         this.metadataKey  = b.metadataKey;
         this.metadataValue = b.metadataValue;
+        this.visibility   = b.visibility;
+        this.boundGroupId = b.boundGroupId;
     }
 
     public static ChannelQuery all() {
@@ -65,6 +70,14 @@ public final class ChannelQuery {
         return new Builder().metadataKey(key).metadataValue(value).build();
     }
 
+    public static ChannelQuery byVisibility(ChannelVisibility v) {
+        return new Builder().visibility(v).build();
+    }
+
+    public static ChannelQuery byBoundGroupId(UUID groupId) {
+        return new Builder().boundGroupId(groupId).build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }
@@ -86,6 +99,10 @@ public final class ChannelQuery {
     public String metadataKey()       {return metadataKey;}
 
     public String metadataValue()     {return metadataValue;}
+
+    public ChannelVisibility visibility() {return visibility;}
+
+    public UUID boundGroupId()        {return boundGroupId;}
 
     public boolean matches(Channel ch) {
         if (paused != null && paused != ch.paused()) {
@@ -117,13 +134,20 @@ public final class ChannelQuery {
                 return false;
             }
         }
+        if (visibility != null && visibility != ch.visibility()) {
+            return false;
+        }
+        if (boundGroupId != null && !boundGroupId.equals(ch.boundGroupId())) {
+            return false;
+        }
         return true;
     }
 
     public Builder toBuilder() {
         return new Builder().namePattern(namePattern).namePrefix(namePrefix).keyword(keyword)
                             .semantic(semantic).paused(paused).spaceId(spaceId).topLevelOnly(topLevelOnly)
-                            .metadataKey(metadataKey).metadataValue(metadataValue);
+                            .metadataKey(metadataKey).metadataValue(metadataValue)
+                            .visibility(visibility).boundGroupId(boundGroupId);
     }
 
     public static final class Builder {
@@ -136,6 +160,8 @@ public final class ChannelQuery {
         private boolean         topLevelOnly;
         private String          metadataKey;
         private String          metadataValue;
+        private ChannelVisibility visibility;
+        private UUID            boundGroupId;
 
         public Builder namePattern(String v)       {
                                                        this.namePattern = v;
@@ -179,6 +205,16 @@ public final class ChannelQuery {
 
         public Builder metadataValue(String v)     {
                                                        this.metadataValue = v;
+                                                       return this;
+                                                   }
+
+        public Builder visibility(ChannelVisibility v) {
+                                                       this.visibility = v;
+                                                       return this;
+                                                   }
+
+        public Builder boundGroupId(UUID v)        {
+                                                       this.boundGroupId = v;
                                                        return this;
                                                    }
 

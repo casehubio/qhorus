@@ -38,7 +38,9 @@ public record Channel(
         Double routingCapacityThreshold,
         Map<String, String> policyOverrides,
         Map<String, String> metadata,
-        ParticipationPolicyMode participationPolicy) {
+        ParticipationPolicyMode participationPolicy,
+        ChannelVisibility visibility,
+        UUID boundGroupId) {
 
     public Channel {
         policyOverrides      = policyOverrides != null ? Map.copyOf(policyOverrides) : null;
@@ -73,7 +75,7 @@ public record Channel(
              protocols, protocolParticipants, trackDelivery, enforcementMode,
              enforcementExclusions, routingTrustThreshold, tenancyId, createdAt, lastActivityAt,
              displayOrder, redistributionCapacityThreshold, routingCapacityThreshold,
-             policyOverrides, null, null);
+             policyOverrides, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -87,7 +89,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null);
+             protocols, protocolParticipants, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -100,7 +102,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -112,7 +114,7 @@ public record Channel(
         this(id, name, description, semantic, barrierContributors, allowedWriters,
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, null,
-             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null);
+             null, null, null, null, null, null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null, null, null);
     }
 
     public Channel(UUID id, String name, String description, ChannelSemantic semantic,
@@ -128,16 +130,36 @@ public record Channel(
              adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes,
              deniedTypes, paused, autoCreated, spaceId, reviewerInstances,
              protocols, protocolParticipants, trackDelivery, null, null,
-             null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null);
+             null, tenancyId, createdAt, lastActivityAt, null, null, null, null, null, null, null, null);
     }
 
     public static Channel fromRequest(ChannelCreateRequest req, String tenancyId) {
         Instant now = Instant.now();
+        ChannelSemantic semantic = req.semantic();
+        ParticipationPolicyMode policy = req.participationPolicy();
+
+        if (req.visibility() != null) {
+            if (semantic == null) {
+                semantic = switch (req.visibility()) {
+                    case PUBLIC -> ChannelSemantic.BROADCAST;
+                    case PRIVATE, DIRECT -> ChannelSemantic.APPEND;
+                };
+            }
+            if (policy == null) {
+                policy = switch (req.visibility()) {
+                    case PUBLIC -> ParticipationPolicyMode.OPEN;
+                    case PRIVATE, DIRECT -> ParticipationPolicyMode.ENFORCE;
+                };
+            }
+        } else {
+            if (semantic == null) semantic = ChannelSemantic.APPEND;
+        }
+
         return new Channel(
                 req.preAssignedId() != null ? req.preAssignedId() : UUID.randomUUID(),
                 req.name(),
                 req.description(),
-                req.semantic() != null ? req.semantic() : ChannelSemantic.APPEND,
+                semantic,
                 req.barrierContributors(),
                 req.allowedWriters(),
                 req.adminInstances(),
@@ -163,7 +185,9 @@ public record Channel(
                 null,
                 null,
                 req.metadata(),
-                null);
+                policy,
+                req.visibility(),
+                req.boundGroupId());
     }
 
     public Builder toBuilder() {
@@ -184,7 +208,9 @@ public record Channel(
                        .routingCapacityThreshold(routingCapacityThreshold)
                        .policyOverrides(policyOverrides)
                        .metadata(metadata)
-                       .participationPolicy(participationPolicy);
+                       .participationPolicy(participationPolicy)
+                       .visibility(visibility)
+                       .boundGroupId(boundGroupId);
     }
 
     public static Builder builder(String name) {
@@ -222,6 +248,8 @@ public record Channel(
         private       Map<String, String> policyOverrides;
         private       Map<String, String> metadata;
         private       ParticipationPolicyMode participationPolicy;
+        private       ChannelVisibility visibility;
+        private       UUID             boundGroupId;
 
 
         private Builder(String name) {this.name = name;}
@@ -371,6 +399,16 @@ public record Channel(
             return this;
         }
 
+        public Builder visibility(ChannelVisibility v) {
+            this.visibility = v;
+            return this;
+        }
+
+        public Builder boundGroupId(UUID v) {
+            this.boundGroupId = v;
+            return this;
+        }
+
         public Channel build() {
             return new Channel(id, name, description, semantic,
                                barrierContributors, allowedWriters, adminInstances,
@@ -385,7 +423,9 @@ public record Channel(
                                routingCapacityThreshold,
                                policyOverrides,
                                metadata,
-                               participationPolicy);
+                               participationPolicy,
+                               visibility,
+                               boundGroupId);
         }
     }
 }

@@ -31,7 +31,10 @@ public record ChannelCreateRequest(
         String externalKey,
         String outboundConnectorId,
         String outboundDestination,
-        UUID preAssignedId) {
+        UUID preAssignedId,
+        ChannelVisibility visibility,
+        ParticipationPolicyMode participationPolicy,
+        UUID boundGroupId) {
 
     public ChannelCreateRequest {
         io.casehub.qhorus.api.channel.ChannelSlugValidator.validateSlugPath(name);
@@ -78,7 +81,7 @@ public record ChannelCreateRequest(
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
              spaceId, reviewerInstances, protocols, protocolParticipants, null, null, null, null, null,
-             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null);
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
     public ChannelCreateRequest(
@@ -92,7 +95,7 @@ public record ChannelCreateRequest(
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
              spaceId, reviewerInstances, null, null, null, null, null, null, null,
-             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null);
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
     public ChannelCreateRequest(
@@ -106,7 +109,7 @@ public record ChannelCreateRequest(
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
              spaceId, null, null, null, null, null, null, null, null,
-             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null);
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
     public ChannelCreateRequest(
@@ -120,7 +123,7 @@ public record ChannelCreateRequest(
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
              null, null, null, null, null, null, null, null, null,
-             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null);
+             inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
     public boolean hasConnectorBinding() {
@@ -134,7 +137,8 @@ public record ChannelCreateRequest(
                                         adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
                                         spaceId, reviewerInstances, defaultProtocols, defaultProtocolParticipants, trackDelivery,
                                         enforcementMode, enforcementExclusions, routingTrustThreshold, metadata,
-                                        inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, preAssignedId);
+                                        inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, preAssignedId,
+                                        visibility, participationPolicy, boundGroupId);
     }
 
     public static Builder builder(String name) {
@@ -144,7 +148,7 @@ public record ChannelCreateRequest(
     public static final class Builder {
         private final String           name;
         private       String           description;
-        private       ChannelSemantic  semantic = ChannelSemantic.APPEND;
+        private       ChannelSemantic  semantic;
         private       List<String>     barrierContributors;
         private       List<String>     allowedWriters;
         private       List<String>     adminInstances;
@@ -166,6 +170,9 @@ public record ChannelCreateRequest(
         private       String           outboundConnectorId;
         private       String           outboundDestination;
         private       UUID             preAssignedId;
+        private       ChannelVisibility visibility;
+        private       ParticipationPolicyMode participationPolicy;
+        private       UUID             boundGroupId;
 
         private Builder(String name) {this.name = name;}
 
@@ -284,6 +291,21 @@ public record ChannelCreateRequest(
             return this;
         }
 
+        public Builder visibility(ChannelVisibility v) {
+            this.visibility = v;
+            return this;
+        }
+
+        public Builder participationPolicy(ParticipationPolicyMode v) {
+            this.participationPolicy = v;
+            return this;
+        }
+
+        public Builder boundGroupId(UUID v) {
+            this.boundGroupId = v;
+            return this;
+        }
+
         public ChannelCreateRequest build() {
             return new ChannelCreateRequest(name, description, semantic,
                                             barrierContributors, allowedWriters, adminInstances,
@@ -296,7 +318,8 @@ public record ChannelCreateRequest(
                                             metadata,
                                             inboundConnectorId, externalKey,
                                             outboundConnectorId, outboundDestination,
-                                            preAssignedId);
+                                            preAssignedId,
+                                            visibility, participationPolicy, boundGroupId);
         }
     }
 }

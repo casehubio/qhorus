@@ -122,6 +122,12 @@ public class ChannelEntity {
     @Column(name = "participation_policy")
     public String participationPolicy;
 
+    @Column(name = "visibility")
+    public String visibility;
+
+    @Column(name = "bound_group_id")
+    public UUID boundGroupId;
+
     /* default = single-tenant sentinel; overridden by ChannelService.create() (Task 10); PP-20260520-e6a5f0 */
     @Column(name = "tenancy_id", nullable = false, updatable = false)
     public String tenancyId = "278776f9-e1b0-46fb-9032-8bddebdcf9ce"; // TenancyConstants.DEFAULT_TENANT_ID
@@ -175,6 +181,8 @@ public class ChannelEntity {
         e.policyOverrides  = serializeMap(channel.policyOverrides());
         e.metadata         = serializeMap(channel.metadata());
         e.participationPolicy = channel.participationPolicy() != null ? channel.participationPolicy().name() : null;
+        e.visibility           = channel.visibility() != null ? channel.visibility().name() : null;
+        e.boundGroupId         = channel.boundGroupId();
         e.tenancyId            = channel.tenancyId() != null ? channel.tenancyId() : TenancyConstants.DEFAULT_TENANT_ID;
         e.createdAt            = channel.createdAt();
         e.lastActivityAt       = channel.lastActivityAt();
@@ -202,7 +210,9 @@ public class ChannelEntity {
                 routingCapacityThreshold,
                 deserializeMap(policyOverrides),
                 deserializeMap(metadata),
-                participationPolicy != null ? ParticipationPolicyMode.valueOf(participationPolicy) : null);}
+                participationPolicy != null ? ParticipationPolicyMode.valueOf(participationPolicy) : null,
+                visibility != null ? io.casehub.qhorus.api.channel.ChannelVisibility.valueOf(visibility) : null,
+                boundGroupId);}
 
     private static String joinCsv(java.util.List<String> list) {
         return list == null || list.isEmpty() ? null : String.join(",", list);

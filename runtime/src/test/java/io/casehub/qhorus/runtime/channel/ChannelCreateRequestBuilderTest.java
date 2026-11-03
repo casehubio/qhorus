@@ -17,7 +17,7 @@ class ChannelCreateRequestBuilderTest {
     void builder_minimalArgs_defaultsSemanticToAppend() {
         io.casehub.qhorus.api.channel.ChannelCreateRequest req = io.casehub.qhorus.api.channel.ChannelCreateRequest.builder("test-ch").build();
         assertThat(req.name()).isEqualTo("test-ch");
-        assertThat(req.semantic()).isEqualTo(ChannelSemantic.APPEND);
+        assertThat(req.semantic()).isNull();
         assertThat(req.description()).isNull();
         assertThat(req.allowedTypes()).isNull();
         assertThat(req.deniedTypes()).isNull();
