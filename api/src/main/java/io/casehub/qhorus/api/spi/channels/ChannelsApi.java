@@ -32,6 +32,7 @@ import io.casehub.qhorus.api.message.Topic;
 import io.casehub.qhorus.api.message.TopicSummary;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -47,7 +48,7 @@ public interface ChannelsApi {
     Channel channel(UUID id, String name);
 
     @PlatformQuery("Get messages in a channel")
-    List<Message> channelMessages(UUID channelId, Long afterId, Integer limit);
+    List<Message> channelMessages(UUID channelId, Optional<Long> afterId, Optional<Integer> limit);
 
     // --- Channel mutations ---
 
@@ -105,7 +106,7 @@ public interface ChannelsApi {
     @PlatformQuery("Get enforcement configuration for a channel")
     ChannelEnforcementConfig channelEnforcement(UUID channelId);
 
-    @PlatformMutation("Set enforcement mode on a channel")
+    @PlatformMutation("Set enforcement mode on a channel — mode: ADVISORY, BLOCKING, QUARANTINE")
     Channel setEnforcementMode(UUID channelId, String mode);
 
     @PlatformMutation("Set enforcement exclusions for a channel")
@@ -158,7 +159,7 @@ public interface ChannelsApi {
     List<String> projections();
 
     @PlatformQuery("Project a channel's message history through a named projection")
-    String projectChannel(UUID channelId, String projectionName, Integer maxMessages, String topic);
+    String projectChannel(UUID channelId, String projectionName, Optional<Integer> maxMessages, Optional<String> topic);
 
     // --- Capacity thresholds ---
 
@@ -213,10 +214,10 @@ public interface ChannelsApi {
     ChannelMembership joinChannel(UUID channelId, String memberId, String role);
 
     @PlatformMutation("Leave a channel, removing membership")
-    void leaveChannel(UUID channelId, String memberId);
+    ChannelMembership leaveChannel(UUID channelId, String memberId);
 
     @PlatformMutation("Mark a channel as read up to a specific message ID")
-    void markChannelRead(UUID channelId, String memberId, Long messageId);
+    UnreadCount markChannelRead(UUID channelId, String memberId, Long messageId);
 
     // --- Space queries ---
 
@@ -257,10 +258,10 @@ public interface ChannelsApi {
     // --- Gateway mutations ---
 
     @PlatformMutation("Register a channel backend")
-    void registerBackend(UUID channelId, String backendId, String backendType);
+    BackendInfo registerBackend(UUID channelId, String backendId, String backendType);
 
     @PlatformMutation("Remove a registered backend from a channel")
-    void deregisterBackend(UUID channelId, String backendId);
+    BackendInfo deregisterBackend(UUID channelId, String backendId);
 
     // --- Force release ---
 

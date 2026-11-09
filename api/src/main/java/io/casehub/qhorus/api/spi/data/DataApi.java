@@ -37,10 +37,10 @@ public interface DataApi {
     SharedData finalizeArtefact(String key, String content);
 
     @PlatformMutation("Manually claim an artefact reference")
-    void claimArtefact(UUID artefactId, UUID instanceId);
+    SharedData claimArtefact(UUID artefactId, UUID instanceId);
 
     @PlatformMutation("Release an artefact claim")
-    void releaseArtefact(UUID artefactId, UUID instanceId);
+    SharedData releaseArtefact(UUID artefactId, UUID instanceId);
 
     @PlatformMutation("Force-delete a shared artefact and release all claims")
     boolean revokeArtefact(UUID artefactId);

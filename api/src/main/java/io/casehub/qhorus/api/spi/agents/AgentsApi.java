@@ -8,13 +8,14 @@ import io.casehub.qhorus.api.instance.InstanceInfo;
 import io.casehub.qhorus.api.instance.RegisterResponse;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @McpDomain(value = "qhorus/agents", app = "qhorus", summary = "Agent registration, capabilities, and lifecycle in channels")
 public interface AgentsApi {
 
     @PlatformQuery("List registered agent instances, optionally filtered by capability tag")
-    List<InstanceInfo> instances(String capability);
+    List<InstanceInfo> instances(Optional<String> capability);
 
     @PlatformQuery("Look up a registered instance by its ID")
     InstanceInfo instance(String instanceId);
@@ -33,5 +34,5 @@ public interface AgentsApi {
     boolean deregister(String instanceId);
 
     @PlatformMutation("Report presence status heartbeat (ONLINE, AVAILABLE, BUSY)")
-    Presence setPresence(String status, String statusMessage, String memberId);
+    Presence setPresence(String status, Optional<String> statusMessage, Optional<String> memberId);
 }

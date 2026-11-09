@@ -17,37 +17,38 @@ import io.casehub.qhorus.api.compliance.report.TrustHistoryReport;
 import io.casehub.qhorus.api.compliance.report.ViolationReport;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @McpDomain(value = "qhorus/compliance", app = "qhorus", summary = "Channel compliance — obligations, violations, audit, trust")
 public interface ComplianceApi {
 
     @PlatformQuery("Get compliance attribution report")
-    AttributionReport complianceAttribution(String correlationId, Integer limit);
+    AttributionReport complianceAttribution(String correlationId, Optional<Integer> limit);
 
-    @PlatformQuery("Get compliance obligations report")
-    ObligationReport complianceObligations(String channelId, String from, String to);
+    @PlatformQuery("Get compliance obligations report. from/to: ISO-8601 instant")
+    ObligationReport complianceObligations(String channelId, Optional<String> from, Optional<String> to);
 
-    @PlatformQuery("Get compliance violations report")
-    ViolationReport complianceViolations(String channelId, String from, String to);
+    @PlatformQuery("Get compliance violations report. from/to: ISO-8601 instant")
+    ViolationReport complianceViolations(String channelId, Optional<String> from, Optional<String> to);
 
-    @PlatformQuery("Get compliance trust history report")
-    TrustHistoryReport complianceTrustHistory(String actorId, String from, String to);
+    @PlatformQuery("Get compliance trust history report. from/to: ISO-8601 instant")
+    TrustHistoryReport complianceTrustHistory(String actorId, Optional<String> from, Optional<String> to);
 
     @PlatformQuery("Get compliance provenance report")
-    ProvenanceReport complianceProvenance(String correlationId, Integer limit);
+    ProvenanceReport complianceProvenance(String correlationId, Optional<Integer> limit);
 
     @PlatformQuery("List compliance reports")
-    List<ComplianceReportRecordView> complianceReports(String reportType, Integer limit);
+    List<ComplianceReportRecordView> complianceReports(Optional<String> reportType, Optional<Integer> limit);
 
     @PlatformQuery("Get judgment attribution report")
-    JudgmentAttributionReport complianceJudgmentAttribution(String judgmentId, Integer limit);
+    JudgmentAttributionReport complianceJudgmentAttribution(String judgmentId, Optional<Integer> limit);
 
-    @PlatformQuery("Get judgment fulfillment report")
-    JudgmentFulfillmentReport complianceJudgmentFulfillment(String from, String to, String judgmentType, String actorId);
+    @PlatformQuery("Get judgment fulfillment report. from/to: ISO-8601 instant")
+    JudgmentFulfillmentReport complianceJudgmentFulfillment(Optional<String> from, Optional<String> to, Optional<String> judgmentType, Optional<String> actorId);
 
-    @PlatformQuery("Get property verification report")
-    PropertyVerificationReport compliancePropertyVerification(String from, String to);
+    @PlatformQuery("Get property verification report. from/to: ISO-8601 instant")
+    PropertyVerificationReport compliancePropertyVerification(Optional<String> from, Optional<String> to);
 
     @PlatformMutation("Create a compliance report schedule")
     ComplianceScheduleView createComplianceSchedule(ComplianceScheduleInput input);

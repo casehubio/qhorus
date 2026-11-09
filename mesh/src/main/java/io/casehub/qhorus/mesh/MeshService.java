@@ -22,7 +22,7 @@ import jakarta.inject.Inject;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @ApplicationScoped
 public class MeshService implements MeshApi {
@@ -45,9 +45,9 @@ public class MeshService implements MeshApi {
     }
 
     @Override
-    public String meshDeregister(String instanceId) {
+    public DeregisterResult meshDeregister(String instanceId) {
         instanceService.deregister(instanceId);
-        return "Deregistered: " + instanceId;
+        return new DeregisterResult(instanceId);
     }
 
     @Override
@@ -68,45 +68,38 @@ public class MeshService implements MeshApi {
     }
 
     @Override
-    public String meshCheckMessages(String channel, Long afterId) {
+    public MeshMessagePage meshCheckMessages(String channel, Optional<Long> afterId) {
         Channel ch = channelService.findByName(channel)
                 .orElseThrow(() -> new IllegalArgumentException("Channel not found: " + channel));
         MessageQuery.Builder qb = MessageQuery.builder().channelId(ch.id());
-        if (afterId != null) {
-            qb.afterId(afterId);
-        }
+        afterId.ifPresent(qb::afterId);
         qb.limit(50);
         List<Message> messages = messageStore.scan(qb.build());
-        if (messages.isEmpty()) {
-            return "No messages in " + channel;
-        }
-        return messages.stream()
-                .map(m -> "[" + m.id() + "] [" + m.messageType() + " from " + m.sender() + "] " + m.content())
-                .collect(Collectors.joining("\n"));
+        List<MeshMessage> items = messages.stream()
+                .map(m -> new MeshMessage(m.id(), m.messageType().name(), m.sender(), m.content()))
+                .toList();
+        return new MeshMessagePage(channel, items);
     }
 
     @Override
-    public String meshCreateChannel(String name, Map<String, String> metadata) {
+    public MeshChannel meshCreateChannel(String name, Map<String, String> metadata) {
         Channel ch = channelService.create(
                 ChannelCreateRequest.builder(name).metadata(metadata).build());
-        return "Created channel: " + ch.name() + " (id=" + ch.id() + ")";
+        return new MeshChannel(ch.id(), ch.name(), ch.metadata());
     }
 
     @Override
-    public String meshListChannels(String metadataKey, String metadataValue) {
+    public List<MeshChannel> meshListChannels(Optional<String> metadataKey, Optional<String> metadataValue) {
         List<Channel> channels;
-        if (metadataKey != null && !metadataKey.isBlank()
-                && metadataValue != null && !metadataValue.isBlank()) {
-            channels = channelService.scan(ChannelQuery.byMetadata(metadataKey, metadataValue));
+        if (metadataKey.filter(k -> !k.isBlank()).isPresent()
+                && metadataValue.filter(v -> !v.isBlank()).isPresent()) {
+            channels = channelService.scan(ChannelQuery.byMetadata(metadataKey.get(), metadataValue.get()));
         } else {
             channels = channelService.scan(ChannelQuery.all());
         }
-        if (channels.isEmpty()) {
-            return "No channels found";
-        }
         return channels.stream()
-                .map(ch -> ch.name() + (ch.metadata() != null ? " " + ch.metadata() : ""))
-                .collect(Collectors.joining("\n"));
+                .map(ch -> new MeshChannel(ch.id(), ch.name(), ch.metadata()))
+                .toList();
     }
 
     @Override

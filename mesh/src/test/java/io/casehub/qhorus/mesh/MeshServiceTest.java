@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -41,16 +42,17 @@ class MeshServiceTest {
     void create_channel_and_send_message() {
         service.meshRegister("test-sender", "test", Map.of());
 
-        String created = service.meshCreateChannel("design-review",
+        MeshChannel created = service.meshCreateChannel("design-review",
                 Map.of("project", "qhorus", "purpose", "review"));
-        assertThat(created).contains("design-review");
+        assertThat(created.name()).isEqualTo("design-review");
 
         MessageResult sent = service.meshSendMessage("design-review", "test-sender",
                 "status", "Has anyone reviewed the mesh spec?");
         assertThat(sent.type()).isEqualTo(io.casehub.qhorus.api.message.MessageType.STATUS);
 
-        String messages = service.meshCheckMessages("design-review", null);
-        assertThat(messages).contains("Has anyone reviewed the mesh spec?");
+        MeshMessagePage messages = service.meshCheckMessages("design-review", Optional.empty());
+        assertThat(messages.messages()).extracting(MeshMessage::content)
+                .contains("Has anyone reviewed the mesh spec?");
     }
 
     @Test
@@ -59,8 +61,8 @@ class MeshServiceTest {
         service.meshCreateChannel("qhorus-work", Map.of("project", "qhorus"));
         service.meshCreateChannel("claudony-work", Map.of("project", "claudony"));
 
-        String filtered = service.meshListChannels("project", "qhorus");
-        assertThat(filtered).contains("qhorus-work");
-        assertThat(filtered).doesNotContain("claudony-work");
+        List<MeshChannel> filtered = service.meshListChannels(Optional.of("project"), Optional.of("qhorus"));
+        assertThat(filtered).extracting(MeshChannel::name).contains("qhorus-work");
+        assertThat(filtered).extracting(MeshChannel::name).doesNotContain("claudony-work");
     }
 }

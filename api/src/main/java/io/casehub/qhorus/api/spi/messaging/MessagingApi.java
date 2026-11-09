@@ -15,6 +15,7 @@ import io.casehub.qhorus.api.message.ReactionGroup;
 import io.casehub.qhorus.api.message.WaitResult;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @McpDomain(value = "qhorus/messaging", app = "qhorus", summary = "Message dispatch, replies, reactions, search")
@@ -24,10 +25,10 @@ public interface MessagingApi {
     Message message(Long id);
 
     @PlatformQuery("Get replies to a message")
-    List<Message> replies(Long messageId, Long afterId, Integer limit);
+    List<Message> replies(Long messageId, Optional<Long> afterId, Optional<Integer> limit);
 
-    @PlatformQuery("Search messages")
-    List<Message> searchMessages(String query, UUID channelId, Integer limit);
+    @PlatformQuery("Search messages across channels or within a specific channel")
+    List<Message> searchMessages(String query, Optional<UUID> channelId, Optional<Integer> limit);
 
     @PlatformQuery("Get reactions for a message")
     List<ReactionGroup> reactions(Long messageId);
@@ -54,10 +55,10 @@ public interface MessagingApi {
     CancelWaitResult cancelWait(String correlationId);
 
     @PlatformMutation("Wait for a reply in a channel")
-    WaitResult waitForReply(UUID channelId, String correlationId, Integer timeoutSeconds);
+    WaitResult waitForReply(UUID channelId, String correlationId, Optional<Integer> timeoutSeconds);
 
     @PlatformMutation("Request approval in a channel")
-    WaitResult requestApproval(UUID channelId, String content, Integer timeoutSeconds);
+    WaitResult requestApproval(UUID channelId, String content, Optional<Integer> timeoutSeconds);
 
     @PlatformMutation("Correct a message — replaces the content of an existing message")
     DispatchResult correctMessage(UUID channelId, Long messageId, String correctedContent);
