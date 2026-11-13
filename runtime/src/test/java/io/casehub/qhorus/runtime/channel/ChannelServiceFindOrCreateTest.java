@@ -8,7 +8,6 @@ import jakarta.inject.Inject;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.connectors.InboundConnectorIds;
-import io.casehub.connectors.twilio.TwilioSmsConnector;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.store.ChannelBindingStore;
 import io.quarkus.test.junit.QuarkusTest;
@@ -39,7 +38,7 @@ class ChannelServiceFindOrCreateTest {
                 "Auto-created on first contact",
                 ChannelSemantic.APPEND,
                 null, null, null, null, null, null, null,
-                null, InboundConnectorIds.TWILIO_SMS, senderPhone, TwilioSmsConnector.ID, senderPhone);
+                null, InboundConnectorIds.TWILIO_SMS, senderPhone, "twilio-sms", senderPhone);
     }
 
     private String uniquePhone() {

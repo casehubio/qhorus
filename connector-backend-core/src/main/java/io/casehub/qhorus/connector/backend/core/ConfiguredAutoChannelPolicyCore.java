@@ -10,8 +10,6 @@ import java.util.Optional;
 
 import io.casehub.connectors.InboundConnectorIds;
 import io.casehub.connectors.InboundMessage;
-import io.casehub.connectors.twilio.TwilioSmsConnector;
-import io.casehub.connectors.whatsapp.WhatsAppConnector;
 import io.casehub.qhorus.api.channel.ChannelSemantic;
 import io.casehub.qhorus.api.channel.ChannelSlugValidator;
 
@@ -23,8 +21,8 @@ public class ConfiguredAutoChannelPolicyCore implements AutoChannelPolicy {
     private static final Logger LOG = Logger.getLogger(ConfiguredAutoChannelPolicyCore.class.getName());
 
     private static final Map<String, String> OUTBOUND_CONVENTION = Map.of(
-            InboundConnectorIds.TWILIO_SMS, TwilioSmsConnector.ID,
-            InboundConnectorIds.WHATSAPP,   WhatsAppConnector.ID
+            InboundConnectorIds.TWILIO_SMS, "twilio-sms",
+            InboundConnectorIds.WHATSAPP,   "whatsapp"
     );
 
     private final AutoChannelEntries config;
