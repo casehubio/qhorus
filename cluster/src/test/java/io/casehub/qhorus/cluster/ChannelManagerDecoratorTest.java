@@ -3,6 +3,7 @@ package io.casehub.qhorus.cluster;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,14 +39,60 @@ class ChannelManagerDecoratorTest {
         when(clusterManager.canServeWrites()).thenReturn(true);
         when(clusterManager.owner(any(UUID.class))).thenReturn(localNode);
         when(clusterManager.isLocal(localNode)).thenReturn(true);
-        var req = ChannelCreateRequest.builder("test-ch").build();
+        var groupId = UUID.randomUUID();
+        var req = ChannelCreateRequest.builder("test-ch")
+                .visibility(ChannelVisibility.PRIVATE)
+                .participationPolicy(io.casehub.qhorus.api.channel.ParticipationPolicyMode.ENFORCE)
+                .boundGroupId(groupId)
+                .inboundConnectorId("twilio-sms-inbound").externalKey("sender")
+                .outboundConnectorId("twilio-sms").outboundDestination("sender")
+                .build();
         var channel = mock(Channel.class);
         when(delegate.create(any())).thenReturn(channel);
 
         Channel result = decorator.create(req);
 
         assertThat(result).isEqualTo(channel);
-        verify(delegate).create(argThat(r -> r.preAssignedId() != null));
+        verify(delegate).create(argThat(r -> r.preAssignedId() != null
+                && r.visibility() == ChannelVisibility.PRIVATE
+                && r.participationPolicy() == req.participationPolicy()
+                && groupId.equals(r.boundGroupId())
+                && req.inboundConnectorId().equals(r.inboundConnectorId())
+                && req.externalKey().equals(r.externalKey())
+                && req.outboundConnectorId().equals(r.outboundConnectorId())
+                && req.outboundDestination().equals(r.outboundDestination())));
+    }
+
+    @Test
+    void visibilityRoutesToLocalOwner() {
+        UUID channelId = UUID.randomUUID();
+        var owner = new NodeInfo("node-1", "node-1:8080");
+        when(clusterManager.owner(channelId)).thenReturn(owner);
+        when(clusterManager.isLocal(owner)).thenReturn(true);
+        var channel = mock(Channel.class);
+        when(delegate.setVisibility(channelId, ChannelVisibility.PRIVATE)).thenReturn(channel);
+
+        assertThat(decorator.setVisibility(channelId, ChannelVisibility.PRIVATE)).isEqualTo(channel);
+        verify(delegate).setVisibility(channelId, ChannelVisibility.PRIVATE);
+    }
+
+    @Test
+    void visibilityRoutesToRemoteOwnerAndAppliesConfig() {
+        UUID channelId = UUID.randomUUID();
+        var owner = new NodeInfo("node-2", "node-2:8080");
+        when(clusterManager.owner(channelId)).thenReturn(owner);
+        when(clusterManager.isLocal(owner)).thenReturn(false);
+        var channel = mock(Channel.class);
+        when(proxyClient.channelConfig(any(), any(), any())).thenReturn(channel);
+
+        assertThat(decorator.setVisibility(channelId, ChannelVisibility.PRIVATE)).isEqualTo(channel);
+
+        var request = org.mockito.ArgumentCaptor.forClass(ChannelConfigRequest.class);
+        verify(proxyClient).channelConfig(org.mockito.ArgumentMatchers.eq(owner),
+                org.mockito.ArgumentMatchers.eq(channelId), request.capture());
+        var service = mock(io.casehub.qhorus.runtime.channel.ChannelService.class);
+        request.getValue().applyTo(service, channelId);
+        verify(service).setVisibility(channelId, ChannelVisibility.PRIVATE);
     }
 
     @Test

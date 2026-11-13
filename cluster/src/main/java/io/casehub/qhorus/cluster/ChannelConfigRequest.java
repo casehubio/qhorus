@@ -1,6 +1,7 @@
 package io.casehub.qhorus.cluster;
 
 import io.casehub.qhorus.api.channel.Channel;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.EnforcementMode;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.runtime.channel.ChannelService;
@@ -28,6 +29,8 @@ public record ChannelConfigRequest(String operation, Map<String, Object> params)
                     (List<String>) params.get("participants"));
             case "setEnforcementMode" -> service.setEnforcementMode(channelId,
                     EnforcementMode.valueOf((String) params.get("mode")));
+            case "setVisibility" -> service.setVisibility(channelId,
+                    ChannelVisibility.valueOf((String) params.get("visibility")));
             case "setEnforcementExclusions" -> service.setEnforcementExclusions(channelId,
                     (List<String>) params.get("exclusions"));
             case "setRoutingTrustThreshold" -> service.setRoutingTrustThreshold(channelId,

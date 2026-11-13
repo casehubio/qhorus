@@ -32,6 +32,7 @@ import io.casehub.qhorus.compliance.core.verification.PropertyVerificationServic
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public class ComplianceService implements ComplianceApi {
@@ -76,13 +77,16 @@ public class ComplianceService implements ComplianceApi {
     }
 
     @Override
-    public AttributionReport complianceAttribution(String correlationId, Integer limit) {
+    public AttributionReport complianceAttribution(String correlationId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         int depth = limit != null ? limit : 100;
         return attributionService.generate(correlationId, depth, currentPrincipal.tenancyId());
     }
 
     @Override
-    public ObligationReport complianceObligations(String channelId, String from, String to) {
+    public ObligationReport complianceObligations(String channelId, Optional<String> fromInput, Optional<String> toInput) {
+        String from = fromInput.orElse(null);
+        String to = toInput.orElse(null);
         UUID chId = channelId != null ? UUID.fromString(channelId) : null;
         Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
         Instant t = to != null ? Instant.parse(to) : Instant.now();
@@ -90,7 +94,9 @@ public class ComplianceService implements ComplianceApi {
     }
 
     @Override
-    public ViolationReport complianceViolations(String channelId, String from, String to) {
+    public ViolationReport complianceViolations(String channelId, Optional<String> fromInput, Optional<String> toInput) {
+        String from = fromInput.orElse(null);
+        String to = toInput.orElse(null);
         UUID chId = channelId != null ? UUID.fromString(channelId) : null;
         Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
         Instant t = to != null ? Instant.parse(to) : Instant.now();
@@ -98,20 +104,25 @@ public class ComplianceService implements ComplianceApi {
     }
 
     @Override
-    public TrustHistoryReport complianceTrustHistory(String actorId, String from, String to) {
+    public TrustHistoryReport complianceTrustHistory(String actorId, Optional<String> fromInput, Optional<String> toInput) {
+        String from = fromInput.orElse(null);
+        String to = toInput.orElse(null);
         Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
         Instant t = to != null ? Instant.parse(to) : Instant.now();
         return trustHistoryService.generate(actorId, f, t, currentPrincipal.tenancyId());
     }
 
     @Override
-    public ProvenanceReport complianceProvenance(String correlationId, Integer limit) {
+    public ProvenanceReport complianceProvenance(String correlationId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         int depth = limit != null ? limit : 100;
         return provenanceService.generate(correlationId, depth, currentPrincipal.tenancyId());
     }
 
     @Override
-    public List<ComplianceReportRecordView> complianceReports(String reportType, Integer limit) {
+    public List<ComplianceReportRecordView> complianceReports(Optional<String> reportTypeInput, Optional<Integer> limitInput) {
+        String reportType = reportTypeInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         int max = limit != null ? limit : 20;
         String tenancyId = currentPrincipal.tenancyId();
         if (reportType != null) {
@@ -124,20 +135,27 @@ public class ComplianceService implements ComplianceApi {
     }
 
     @Override
-    public JudgmentAttributionReport complianceJudgmentAttribution(String judgmentId, Integer limit) {
+    public JudgmentAttributionReport complianceJudgmentAttribution(String judgmentId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         int depth = limit != null ? limit : 200;
         return judgmentAttributionService.generate(UUID.fromString(judgmentId), depth, currentPrincipal.tenancyId());
     }
 
     @Override
-    public JudgmentFulfillmentReport complianceJudgmentFulfillment(String from, String to, String judgmentType, String actorId) {
+    public JudgmentFulfillmentReport complianceJudgmentFulfillment(Optional<String> fromInput, Optional<String> toInput, Optional<String> judgmentTypeInput, Optional<String> actorIdInput) {
+        String from = fromInput.orElse(null);
+        String to = toInput.orElse(null);
+        String judgmentType = judgmentTypeInput.orElse(null);
+        String actorId = actorIdInput.orElse(null);
         Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
         Instant t = to != null ? Instant.parse(to) : Instant.now();
         return judgmentFulfillmentService.generate(f, t, judgmentType, actorId, currentPrincipal.tenancyId());
     }
 
     @Override
-    public PropertyVerificationReport compliancePropertyVerification(String from, String to) {
+    public PropertyVerificationReport compliancePropertyVerification(Optional<String> fromInput, Optional<String> toInput) {
+        String from = fromInput.orElse(null);
+        String to = toInput.orElse(null);
         Instant f = from != null ? Instant.parse(from) : Instant.now().minus(30, ChronoUnit.DAYS);
         Instant t = to != null ? Instant.parse(to) : Instant.now();
         return propertyVerificationService.verify(currentPrincipal.tenancyId(), f, t);
