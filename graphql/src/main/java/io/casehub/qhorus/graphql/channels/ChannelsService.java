@@ -37,6 +37,7 @@ import io.casehub.qhorus.api.channel.TopicRenameResult;
 import io.casehub.qhorus.api.channel.UnreadCount;
 import io.casehub.qhorus.api.channel.UnreadCountProvider;
 import io.casehub.qhorus.api.gateway.BackendRegistry;
+import io.casehub.qhorus.api.gateway.ChannelBackend;
 import io.casehub.qhorus.api.message.ConsumerMessaging;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.Topic;
@@ -45,12 +46,18 @@ import io.casehub.qhorus.api.spi.channels.ChannelsApi;
 import io.casehub.qhorus.api.store.MessageStore;
 import io.casehub.qhorus.api.store.query.ChannelQuery;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
 public class ChannelsService implements ChannelsApi {
+
+    @Inject
+    Instance<ChannelBackend> availableBackends;
 
     private final ChannelReader         channelReader;
     private final ConsumerMessaging     consumerMessaging;
@@ -133,7 +140,9 @@ public class ChannelsService implements ChannelsApi {
     }
 
     @Override
-    public List<Message> channelMessages(UUID channelId, Long afterId, Integer limit) {
+    public List<Message> channelMessages(UUID channelId, Optional<Long> afterIdInput, Optional<Integer> limitInput) {
+        Long afterId = afterIdInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         long cursor      = afterId != null ? afterId : 0;
         int  maxMessages = limit != null ? limit : 50;
         return consumerMessaging.history(channelId, cursor, maxMessages);
@@ -379,7 +388,9 @@ public class ChannelsService implements ChannelsApi {
     }
 
     @Override
-    public String projectChannel(UUID channelId, String projectionName, Integer maxMessages, String topic) {
+    public String projectChannel(UUID channelId, String projectionName, Optional<Integer> maxMessagesInput, Optional<String> topicInput) {
+        Integer maxMessages = maxMessagesInput.orElse(null);
+        String topic = topicInput.orElse(null);
         return projectionReader.project(channelId, projectionName, maxMessages, topic);
     }
 
@@ -497,17 +508,21 @@ public class ChannelsService implements ChannelsApi {
     }
 
     @Override
-    public void leaveChannel(UUID channelId, String memberId) {
+    public ChannelMembership leaveChannel(UUID channelId, String memberId) {
+        ChannelMembership membership = membershipManager.listMembers(channelId).stream()
+                .filter(m -> m.memberId().equals(memberId)).findFirst().orElse(null);
         membershipManager.leave(channelId, memberId);
+        return membership;
     }
 
     @Override
-    public void markChannelRead(UUID channelId, String memberId, Long messageId) {
+    public UnreadCount markChannelRead(UUID channelId, String memberId, Long messageId) {
         Long effectiveId = messageId;
         if (effectiveId == null) {
             effectiveId = messageStore.findLastMessage(channelId).map(Message::id).orElse(0L);
         }
         membershipManager.markRead(channelId, memberId, effectiveId);
+        return unreadCountProvider.getUnreadCounts(memberId, currentPrincipal.tenancyId()).get(channelId);
     }
 
     // --- Space queries ---
@@ -574,13 +589,20 @@ public class ChannelsService implements ChannelsApi {
     // --- Gateway mutations ---
 
     @Override
-    public void registerBackend(UUID channelId, String backendId, String backendType) {
-        backendRegistry.registerBackend(channelId, null, backendType);
+    public BackendInfo registerBackend(UUID channelId, String backendId, String backendType) {
+        ChannelBackend backend = availableBackends.stream()
+                .filter(b -> b.backendId().equals(backendId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Backend not found: " + backendId));
+        backendRegistry.registerBackend(channelId, backend, backendType);
+        return new BackendInfo(backend.backendId(), backendType, backend.actorType().prefix());
     }
 
     @Override
-    public void deregisterBackend(UUID channelId, String backendId) {
+    public BackendInfo deregisterBackend(UUID channelId, String backendId) {
+        BackendInfo backend = backends(channelId).stream()
+                .filter(b -> b.backendId().equals(backendId)).findFirst().orElse(null);
         backendRegistry.deregisterBackend(channelId, backendId);
+        return backend;
     }
 
     // --- Force release ---

@@ -104,7 +104,7 @@ class ChannelsServiceQueryTest {
         Message msg = createMessage(channelId, 1L);
         when(consumerMessaging.history(channelId, 0L, 50)).thenReturn(List.of(msg));
 
-        var result = service.channelMessages(channelId, null, null);
+        var result = service.channelMessages(channelId, Optional.empty(), Optional.empty());
 
         assertThat(result).hasSize(1);
     }
@@ -114,7 +114,7 @@ class ChannelsServiceQueryTest {
         UUID channelId = UUID.randomUUID();
         when(consumerMessaging.history(channelId, 100L, 25)).thenReturn(List.of());
 
-        var result = service.channelMessages(channelId, 100L, 25);
+        var result = service.channelMessages(channelId, Optional.of(100L), Optional.of(25));
 
         assertThat(result).isEmpty();
     }

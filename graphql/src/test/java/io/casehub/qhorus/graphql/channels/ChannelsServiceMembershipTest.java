@@ -1,6 +1,12 @@
 package io.casehub.qhorus.graphql.channels;
 
 import io.casehub.platform.api.identity.CurrentPrincipal;
+import io.casehub.qhorus.api.gateway.ChannelBackend;
+import io.casehub.qhorus.api.gateway.BackendRegistration;
+import io.casehub.qhorus.api.channel.BackendInfo;
+import io.casehub.platform.api.identity.ActorType;
+import jakarta.enterprise.inject.Instance;
+import java.util.stream.Stream;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelManager;
 import io.casehub.qhorus.api.channel.ChannelMembership;
@@ -39,6 +45,7 @@ class ChannelsServiceMembershipTest {
     private ChannelReader channelReader;
     private io.casehub.qhorus.api.store.MessageStore messageStore;
     private CurrentPrincipal currentPrincipal;
+    private BackendRegistry backendRegistry;
 
     @BeforeEach
     void setUp() {
@@ -47,11 +54,12 @@ class ChannelsServiceMembershipTest {
         channelReader = mock(ChannelReader.class);
         messageStore = mock(io.casehub.qhorus.api.store.MessageStore.class);
         currentPrincipal = mock(CurrentPrincipal.class);
+        backendRegistry = mock(BackendRegistry.class);
         service = new ChannelsService(
                 channelReader, mock(ConsumerMessaging.class),
                 mock(ChannelManager.class), mock(TopicManager.class),
                 membershipManager, unreadCountProvider,
-                mock(SpaceManager.class), mock(BackendRegistry.class),
+                mock(SpaceManager.class), backendRegistry,
                 messageStore, currentPrincipal,
                 mock(io.casehub.qhorus.api.channel.ChannelSummaryManager.class),
                 mock(io.casehub.qhorus.api.channel.ProjectionReader.class),
@@ -119,8 +127,11 @@ class ChannelsServiceMembershipTest {
     @Test
     void leaveChannelDelegatesToManager() {
         UUID channelId = UUID.randomUUID();
+        var membership = new ChannelMembership(1L, channelId, "agent-1",
+                io.casehub.qhorus.api.channel.MemberRole.PARTICIPANT, "t", Instant.now(), 0L);
+        when(membershipManager.listMembers(channelId)).thenReturn(List.of(membership));
 
-        service.leaveChannel(channelId, "agent-1");
+        assertThat(service.leaveChannel(channelId, "agent-1")).isEqualTo(membership);
 
         verify(membershipManager).leave(channelId, "agent-1");
     }
@@ -128,8 +139,12 @@ class ChannelsServiceMembershipTest {
     @Test
     void markChannelReadDelegatesToManager() {
         UUID channelId = UUID.randomUUID();
+        when(currentPrincipal.tenancyId()).thenReturn("test-tenant");
+        var unread = new UnreadCount(channelId, "ch1", 0, 50L);
+        when(unreadCountProvider.getUnreadCounts("agent-1", "test-tenant"))
+                .thenReturn(Map.of(channelId, unread));
 
-        service.markChannelRead(channelId, "agent-1", 50L);
+        assertThat(service.markChannelRead(channelId, "agent-1", 50L)).isEqualTo(unread);
 
         verify(membershipManager).markRead(channelId, "agent-1", 50L);
     }
@@ -150,5 +165,45 @@ class ChannelsServiceMembershipTest {
         service.markChannelRead(channelId, "agent-1", null);
 
         verify(membershipManager).markRead(channelId, "agent-1", 99L);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void registerBackendResolvesImplementationAndReturnsInfo() {
+        UUID channelId = UUID.randomUUID();
+        var backend = mock(ChannelBackend.class);
+        when(backend.backendId()).thenReturn("external");
+        when(backend.actorType()).thenReturn(ActorType.HUMAN);
+        service.availableBackends = mock(Instance.class);
+        when(service.availableBackends.stream()).thenReturn(Stream.of(backend));
+
+        var result = service.registerBackend(channelId, "external", "human_participating");
+
+        assertThat(result).isEqualTo(new BackendInfo(
+                "external", "human_participating", "human"));
+        verify(backendRegistry).registerBackend(channelId, backend, "human_participating");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void registerBackendRejectsUnknownImplementation() {
+        service.availableBackends = mock(Instance.class);
+        when(service.availableBackends.stream()).thenReturn(Stream.empty());
+
+        assertThatThrownBy(() -> service.registerBackend(UUID.randomUUID(), "missing", "external"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessage("Backend not found: missing");
+        org.mockito.Mockito.verifyNoInteractions(backendRegistry);
+    }
+
+    @Test
+    void deregisterBackendReturnsRemovedInfo() {
+        UUID channelId = UUID.randomUUID();
+        when(backendRegistry.listBackends(channelId)).thenReturn(List.of(
+                new BackendRegistration("external", "agent",
+                        ActorType.AGENT)));
+
+        assertThat(service.deregisterBackend(channelId, "external"))
+                .isEqualTo(new BackendInfo("external", "agent", "agent"));
+        verify(backendRegistry).deregisterBackend(channelId, "external");
     }
 }

@@ -75,7 +75,7 @@ class MessagingServiceQueryTest {
         Message reply = testMessage(2L, "reply");
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of(reply));
 
-        var results = service.replies(1L, null, null);
+        var results = service.replies(1L, Optional.empty(), Optional.empty());
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().content()).isEqualTo("reply");
@@ -90,7 +90,7 @@ class MessagingServiceQueryTest {
     void repliesRespectsLimitAndAfterId() {
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        service.replies(1L, 5L, 50);
+        service.replies(1L, Optional.of(5L), Optional.of(50));
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());
@@ -102,7 +102,7 @@ class MessagingServiceQueryTest {
     void repliesCapsLimitAt100() {
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        service.replies(1L, null, 999);
+        service.replies(1L, Optional.empty(), Optional.of(999));
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());
@@ -114,7 +114,7 @@ class MessagingServiceQueryTest {
         Message msg = testMessage(1L, "found it");
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of(msg));
 
-        var results = service.searchMessages("found", null, null);
+        var results = service.searchMessages("found", Optional.empty(), Optional.empty());
 
         assertThat(results).hasSize(1);
 
@@ -130,7 +130,7 @@ class MessagingServiceQueryTest {
         UUID channelId = UUID.randomUUID();
         when(messageReader.scan(any(MessageQuery.class))).thenReturn(List.of());
 
-        service.searchMessages("query", channelId, 10);
+        service.searchMessages("query", Optional.of(channelId), Optional.of(10));
 
         ArgumentCaptor<MessageQuery> captor = ArgumentCaptor.forClass(MessageQuery.class);
         verify(messageReader).scan(captor.capture());

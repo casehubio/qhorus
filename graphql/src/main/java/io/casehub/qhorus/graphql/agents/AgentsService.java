@@ -11,6 +11,7 @@ import io.casehub.qhorus.api.spi.agents.AgentsApi;
 import jakarta.enterprise.context.ApplicationScoped;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -26,7 +27,8 @@ public class AgentsService implements AgentsApi {
     }
 
     @Override
-    public List<InstanceInfo> instances(String capability) {
+    public List<InstanceInfo> instances(Optional<String> capabilityInput) {
+        String capability = capabilityInput.orElse(null);
         if (capability != null && !capability.isBlank()) {
             return instanceManager.findInfoByCapability(capability);
         }
@@ -65,7 +67,9 @@ public class AgentsService implements AgentsApi {
     }
 
     @Override
-    public Presence setPresence(String status, String statusMessage, String memberId) {
+    public Presence setPresence(String status, Optional<String> statusMessageInput, Optional<String> memberIdInput) {
+        String statusMessage = statusMessageInput.orElse(null);
+        String memberId = memberIdInput.orElse(null);
         presenceTracker.heartbeat(PresenceStatus.valueOf(status), statusMessage);
         return presenceTracker.getPresence(memberId);
     }
