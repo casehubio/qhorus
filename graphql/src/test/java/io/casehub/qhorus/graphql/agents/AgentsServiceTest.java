@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,7 +38,7 @@ class AgentsServiceTest {
                 List.of("summarize"), Instant.now().toString(), false);
         when(instanceManager.listInfo()).thenReturn(List.of(info));
 
-        var result = service.instances(null);
+        var result = service.instances(Optional.empty());
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).instanceId()).isEqualTo("agent-1");
@@ -50,7 +51,7 @@ class AgentsServiceTest {
                 List.of("summarize"), Instant.now().toString(), false);
         when(instanceManager.findInfoByCapability("summarize")).thenReturn(List.of(info));
 
-        var result = service.instances("summarize");
+        var result = service.instances(Optional.of("summarize"));
 
         assertThat(result).hasSize(1);
         verify(instanceManager).findInfoByCapability("summarize");
@@ -132,7 +133,7 @@ class AgentsServiceTest {
                 Instant.now(), "in meeting");
         when(presenceTracker.getPresence("member-1")).thenReturn(p);
 
-        var result = service.setPresence("BUSY", "in meeting", "member-1");
+        var result = service.setPresence("BUSY", Optional.of("in meeting"), Optional.of("member-1"));
 
         verify(presenceTracker).heartbeat(PresenceStatus.BUSY, "in meeting");
         assertThat(result.status()).isEqualTo(PresenceStatus.BUSY);

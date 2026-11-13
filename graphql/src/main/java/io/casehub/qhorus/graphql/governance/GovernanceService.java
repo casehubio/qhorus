@@ -15,6 +15,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -78,10 +79,13 @@ public class GovernanceService implements GovernanceApi {
     }
 
     @Override
-    public Watchdog registerWatchdog(String conditionType, String targetName,
-                                     Integer thresholdSeconds, Integer thresholdCount,
-                                     Integer similarityPct, String notificationChannel,
-                                     String createdBy, String action) {
+    public Watchdog registerWatchdog(String conditionType, Optional<String> targetNameInput, Optional<Integer> thresholdSecondsInput, Optional<Integer> thresholdCountInput, Optional<Integer> similarityPctInput, Optional<String> notificationChannelInput, String createdBy, Optional<String> actionInput) {
+        String targetName = targetNameInput.orElse(null);
+        Integer thresholdSeconds = thresholdSecondsInput.orElse(null);
+        Integer thresholdCount = thresholdCountInput.orElse(null);
+        Integer similarityPct = similarityPctInput.orElse(null);
+        String notificationChannel = notificationChannelInput.orElse(null);
+        String action = actionInput.orElse(null);
         WatchdogConditionType type = WatchdogConditionType.fromString(conditionType)
                                                           .orElseThrow(() -> new IllegalArgumentException(
                                                                   "Unknown condition_type: " + conditionType));

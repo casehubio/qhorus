@@ -160,8 +160,7 @@ class GovernanceServiceTest {
                         .id(UUID.randomUUID()).build();
         when(watchdogStore.put(any(Watchdog.class))).thenReturn(w);
 
-        var result = service.registerWatchdog("AGENT_STALE", "*", 300, null,
-                                              null, "alerts", "admin", null);
+        var result = service.registerWatchdog("AGENT_STALE", Optional.of("*"), Optional.of(300), Optional.empty(), Optional.empty(), Optional.of("alerts"), "admin", Optional.empty());
 
         assertThat(result).isNotNull();
         verify(watchdogStore).put(any(Watchdog.class));

@@ -198,7 +198,7 @@ class ChannelsServiceConfigTest {
         UUID id = UUID.randomUUID();
         when(projectionReader.project(id, "channel-summary", null, null)).thenReturn("projected output");
 
-        String result = service.projectChannel(id, "channel-summary", null, null);
+        String result = service.projectChannel(id, "channel-summary", Optional.empty(), Optional.empty());
 
         assertThat(result).isEqualTo("projected output");
     }

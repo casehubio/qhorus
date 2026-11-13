@@ -78,7 +78,9 @@ public class MessagingService implements MessagingApi {
     }
 
     @Override
-    public List<Message> replies(Long messageId, Long afterId, Integer limit) {
+    public List<Message> replies(Long messageId, Optional<Long> afterIdInput, Optional<Integer> limitInput) {
+        Long afterId = afterIdInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         int effectiveLimit = (limit != null && limit > 0) ? Math.min(limit, 100) : 20;
         MessageQuery.Builder builder = MessageQuery.builder().inReplyTo(messageId).limit(effectiveLimit);
         if (afterId != null) builder.afterId(afterId);
@@ -86,7 +88,9 @@ public class MessagingService implements MessagingApi {
     }
 
     @Override
-    public List<Message> searchMessages(String query, UUID channelId, Integer limit) {
+    public List<Message> searchMessages(String query, Optional<UUID> channelIdInput, Optional<Integer> limitInput) {
+        UUID channelId = channelIdInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         int pageSize = (limit != null && limit > 0) ? limit : 20;
         MessageQuery.Builder builder = MessageQuery.builder()
                 .contentPattern(query)
@@ -197,7 +201,8 @@ public class MessagingService implements MessagingApi {
     }
 
     @Override
-    public WaitResult waitForReply(UUID channelId, String correlationId, Integer timeoutSeconds) {
+    public WaitResult waitForReply(UUID channelId, String correlationId, Optional<Integer> timeoutSecondsInput) {
+        Integer timeoutSeconds = timeoutSecondsInput.orElse(null);
         int timeout = timeoutSeconds != null ? timeoutSeconds : 90;
         Instant expiresAt = Instant.now().plusSeconds(timeout);
 
@@ -249,7 +254,8 @@ public class MessagingService implements MessagingApi {
     }
 
     @Override
-    public WaitResult requestApproval(UUID channelId, String content, Integer timeoutSeconds) {
+    public WaitResult requestApproval(UUID channelId, String content, Optional<Integer> timeoutSecondsInput) {
+        Integer timeoutSeconds = timeoutSecondsInput.orElse(null);
         String correlationId = UUID.randomUUID().toString();
         int timeout = timeoutSeconds != null ? timeoutSeconds : 300;
         String actorId = currentPrincipal.actorId();
@@ -265,7 +271,7 @@ public class MessagingService implements MessagingApi {
                 .tenancyId(tenancyId)
                 .build());
 
-        return waitForReply(channelId, correlationId, timeout);
+        return waitForReply(channelId, correlationId, Optional.of(timeout));
     }
 
     @Override

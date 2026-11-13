@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -64,9 +65,14 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public List<LedgerEntryView> ledgerEntries(UUID channelId, String typeFilter,
-            String sender, String since, Long afterId, String correlationId,
-            String sort, Integer limit) {
+    public List<LedgerEntryView> ledgerEntries(UUID channelId, Optional<String> typeFilterInput, Optional<String> senderInput, Optional<String> sinceInput, Optional<Long> afterIdInput, Optional<String> correlationIdInput, Optional<String> sortInput, Optional<Integer> limitInput) {
+        String typeFilter = typeFilterInput.orElse(null);
+        String sender = senderInput.orElse(null);
+        String since = sinceInput.orElse(null);
+        Long afterId = afterIdInput.orElse(null);
+        String correlationId = correlationIdInput.orElse(null);
+        String sort = sortInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         return ledgerEntries(channelId, typeFilter, sender, since, afterId,
                 correlationId, sort, limit, null);
     }
@@ -188,7 +194,8 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public CausalGraph causalGraph(String correlationId, Integer limit) {
+    public CausalGraph causalGraph(String correlationId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         return causalGraph(correlationId, limit, null);
     }
 
@@ -201,7 +208,8 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public String renderedCausalGraph(String correlationId, Integer limit) {
+    public String renderedCausalGraph(String correlationId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         return renderedCausalGraph(correlationId, limit, null);
     }
 
@@ -214,8 +222,8 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public List<StalledObligation> stalledObligations(UUID channelId,
-            Integer olderThanSeconds) {
+    public List<StalledObligation> stalledObligations(UUID channelId, Optional<Integer> olderThanSecondsInput) {
+        Integer olderThanSeconds = olderThanSecondsInput.orElse(null);
         return stalledObligations(channelId, olderThanSeconds, null);
     }
 
@@ -267,7 +275,8 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public TelemetrySummary telemetrySummary(UUID channelId, String since) {
+    public TelemetrySummary telemetrySummary(UUID channelId, Optional<String> sinceInput) {
+        String since = sinceInput.orElse(null);
         return telemetrySummary(channelId, since, null);
     }
 
@@ -320,8 +329,9 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public List<TimelineEntry> channelTimeline(UUID channelId, Long afterId,
-            Integer limit) {
+    public List<TimelineEntry> channelTimeline(UUID channelId, Optional<Long> afterIdInput, Optional<Integer> limitInput) {
+        Long afterId = afterIdInput.orElse(null);
+        Integer limit = limitInput.orElse(null);
         return channelTimeline(channelId, afterId, limit, null);
     }
 
@@ -353,8 +363,8 @@ public class AuditService implements AuditApi {
     }
 
     @Override
-    public List<LedgerEntryView> obligationActivity(String correlationId,
-            Integer limit) {
+    public List<LedgerEntryView> obligationActivity(String correlationId, Optional<Integer> limitInput) {
+        Integer limit = limitInput.orElse(null);
         return obligationActivity(correlationId, limit, null);
     }
 

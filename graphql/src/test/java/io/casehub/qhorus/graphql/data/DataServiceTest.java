@@ -32,6 +32,19 @@ class DataServiceTest {
     }
 
     @Test
+    void claimAndReleaseReturnArtefact() {
+        UUID id = UUID.randomUUID();
+        UUID instanceId = UUID.randomUUID();
+        var data = SharedData.builder("doc").id(id).build();
+        when(dataManager.getByUuid(id)).thenReturn(Optional.of(data));
+
+        assertThat(service.claimArtefact(id, instanceId)).isEqualTo(data);
+        verify(dataManager).claim(id, instanceId);
+        assertThat(service.releaseArtefact(id, instanceId)).isEqualTo(data);
+        verify(dataManager).release(id, instanceId);
+    }
+
+    @Test
     void artefactByKeyDelegates() {
         var sd = SharedData.builder("my-doc").id(UUID.randomUUID())
                 .content("hello").complete(true).sizeBytes(5)

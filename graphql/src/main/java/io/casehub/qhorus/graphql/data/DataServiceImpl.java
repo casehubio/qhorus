@@ -75,13 +75,17 @@ public class DataServiceImpl implements DataApi {
     }
 
     @Override
-    public void claimArtefact(UUID artefactId, UUID instanceId) {
+    public SharedData claimArtefact(UUID artefactId, UUID instanceId) {
         dataManager.claim(artefactId, instanceId);
+        return dataManager.getByUuid(artefactId)
+                .orElseThrow(() -> new IllegalArgumentException("Artefact not found: id=" + artefactId));
     }
 
     @Override
-    public void releaseArtefact(UUID artefactId, UUID instanceId) {
+    public SharedData releaseArtefact(UUID artefactId, UUID instanceId) {
         dataManager.release(artefactId, instanceId);
+        return dataManager.getByUuid(artefactId)
+                .orElseThrow(() -> new IllegalArgumentException("Artefact not found: id=" + artefactId));
     }
 
     @Override

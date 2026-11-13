@@ -54,6 +54,15 @@ class AuditServiceTest {
     }
 
     @Test
+    void causalGraphOptionalLimitPreservesDefaultsAndClamp() {
+        service.causalGraph("default", java.util.Optional.empty());
+        verify(causalGraphReader).buildGraph("default", 100, null);
+
+        service.causalGraph("limited", java.util.Optional.of(999));
+        verify(causalGraphReader).buildGraph("limited", 500, null);
+    }
+
+    @Test
     void ledgerEntriesReturnsFilteredEntries() {
         var entry = ledgerEntry("COMMAND");
         when(ledgerReader.listEntries(eq(CHANNEL_ID), any(), any(), any(),
