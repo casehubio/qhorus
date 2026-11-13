@@ -3,6 +3,7 @@ package io.casehub.qhorus.cluster;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.channel.ChannelCreateRequest;
 import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.channel.ChannelVisibility;
 import io.casehub.qhorus.api.channel.EnforcementMode;
 import io.casehub.qhorus.api.channel.FindOrCreateResult;
 import io.casehub.qhorus.api.message.MessageType;
@@ -59,6 +60,13 @@ public class ChannelManagerDecorator implements ChannelManager {
                 .enforcementExclusions(request.enforcementExclusions())
                 .routingTrustThreshold(request.routingTrustThreshold())
                 .metadata(request.metadata())
+                .inboundConnectorId(request.inboundConnectorId())
+                .externalKey(request.externalKey())
+                .outboundConnectorId(request.outboundConnectorId())
+                .outboundDestination(request.outboundDestination())
+                .visibility(request.visibility())
+                .participationPolicy(request.participationPolicy())
+                .boundGroupId(request.boundGroupId())
                 .preAssignedId(channelId)
                 .build();
         NodeInfo owner = clusterManager.owner(channelId);
@@ -209,6 +217,13 @@ public class ChannelManagerDecorator implements ChannelManager {
         routeChannelMutation(id, i -> { delegate.setTrackDelivery(i, t); return null; },
                 (proxy, i) -> { proxy.channelConfig(clusterManager.owner(i), i,
                         new ChannelConfigRequest("setTrackDelivery", Map.of("trackDelivery", t))); return null; });
+    }
+
+    @Override
+    public Channel setVisibility(UUID id, ChannelVisibility visibility) {
+        return routeChannelMutation(id, i -> delegate.setVisibility(i, visibility),
+                (proxy, i) -> proxy.channelConfig(clusterManager.owner(i), i,
+                        new ChannelConfigRequest("setVisibility", Map.of("visibility", visibility.name()))));
     }
 
     @Override

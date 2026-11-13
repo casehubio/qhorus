@@ -86,7 +86,7 @@ class ComplianceServiceTest {
                 "merkle-root", Instant.now(), 1);
         when(attributionService.generate(eq(CORRELATION_ID), eq(100), eq(TENANCY))).thenReturn(report);
 
-        AttributionReport result = service.complianceAttribution(CORRELATION_ID, null);
+        AttributionReport result = service.complianceAttribution(CORRELATION_ID, Optional.empty());
 
         assertThat(result.correlationId()).isEqualTo(CORRELATION_ID);
         assertThat(result.outcome()).isEqualTo("DONE");
@@ -101,7 +101,7 @@ class ComplianceServiceTest {
         when(attributionService.generate(eq(CORRELATION_ID), eq(50), eq(TENANCY)))
                 .thenReturn(emptyAttribution());
 
-        service.complianceAttribution(CORRELATION_ID, 50);
+        service.complianceAttribution(CORRELATION_ID, Optional.of(50));
 
         verify(attributionService).generate(CORRELATION_ID, 50, TENANCY);
     }
@@ -112,7 +112,7 @@ class ComplianceServiceTest {
         when(obligationService.generate(any(), any(), any(), any(), eq(TENANCY)))
                 .thenReturn(emptyObligation());
 
-        ObligationReport result = service.complianceObligations(null, null, null);
+        ObligationReport result = service.complianceObligations(null, Optional.empty(), Optional.empty());
 
         assertThat(result).isNotNull();
         assertThat(result.channels()).isEmpty();
@@ -129,7 +129,7 @@ class ComplianceServiceTest {
         when(obligationService.generate(eq(channelId), eq(Instant.parse(from)), eq(Instant.parse(to)), eq(null), eq(TENANCY)))
                 .thenReturn(emptyObligation());
 
-        service.complianceObligations(channelId.toString(), from, to);
+        service.complianceObligations(channelId.toString(), Optional.of(from), Optional.of(to));
 
         verify(obligationService).generate(channelId, Instant.parse(from), Instant.parse(to), null, TENANCY);
     }
@@ -144,7 +144,7 @@ class ComplianceServiceTest {
                 5, 2, 0, null, null, Instant.now(), 1);
         when(violationService.generate(eq(channelId), any(), any(), eq(TENANCY))).thenReturn(report);
 
-        ViolationReport result = service.complianceViolations(channelId.toString(), null, null);
+        ViolationReport result = service.complianceViolations(channelId.toString(), Optional.empty(), Optional.empty());
 
         assertThat(result.channelId()).isEqualTo(channelId);
         assertThat(result.totalBlocked()).isEqualTo(5);
@@ -166,7 +166,7 @@ class ComplianceServiceTest {
         when(recordStore.findByType(eq(ReportType.OBLIGATION), eq(TENANCY), anyInt()))
                 .thenReturn(List.of(record));
 
-        List<ComplianceReportRecordView> results = service.complianceReports("OBLIGATION", null);
+        List<ComplianceReportRecordView> results = service.complianceReports(Optional.of("OBLIGATION"), Optional.empty());
 
         assertThat(results).hasSize(1);
         assertThat(results.getFirst().reportType()).isEqualTo(ReportType.OBLIGATION);
@@ -177,7 +177,7 @@ class ComplianceServiceTest {
         when(currentPrincipal.tenancyId()).thenReturn(TENANCY);
         when(recordStore.findByTimeRange(any(), any(), eq(TENANCY), anyInt())).thenReturn(List.of());
 
-        List<ComplianceReportRecordView> results = service.complianceReports(null, null);
+        List<ComplianceReportRecordView> results = service.complianceReports(Optional.empty(), Optional.empty());
 
         assertThat(results).isEmpty();
         verify(recordStore).findByTimeRange(any(Instant.class), any(Instant.class), eq(TENANCY), eq(20));
