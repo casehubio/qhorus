@@ -2,7 +2,7 @@
 layout: post
 title: "Governance Follows the Org Chart"
 date: 2026-10-31
-entry_type: article
+entry_type: note
 subtype: diary
 projects: [casehubio/qhorus]
 tags: [governance, org-structure, multi-agent, architecture, eidos]

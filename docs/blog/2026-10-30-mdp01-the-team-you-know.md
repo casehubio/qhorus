@@ -2,7 +2,7 @@
 layout: post
 title: "The Team You Know"
 date: 2026-10-30
-entry_type: article
+entry_type: note
 subtype: diary
 projects: [casehubio/qhorus]
 tags: [routing, eidos, org-structure, multi-agent]

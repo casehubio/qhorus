@@ -2,7 +2,7 @@
 layout: post
 title: "When Agents Need Mailboxes"
 date: 2026-11-03
-entry_type: article
+entry_type: note
 subtype: diary
 projects: [casehubio/qhorus]
 tags: [visibility, channels, multi-agent, direct-messaging, governance]

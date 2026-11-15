@@ -2,7 +2,7 @@
 layout: post
 title: "The Protocol That Remembers"
 date: 2026-10-27
-entry_type: article
+entry_type: note
 subtype: diary
 projects: [casehubio/qhorus]
 tags: [protocol, lifecycle, state-machine, governance, playbook]
