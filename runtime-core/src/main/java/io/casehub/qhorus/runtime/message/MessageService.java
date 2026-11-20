@@ -363,7 +363,7 @@ public class MessageService implements ConsumerMessaging {
 
         if (ch != null && !ch.protocols().isEmpty()) {
             List<io.casehub.qhorus.api.spi.ChannelProtocol> activeProtocols =
-                    protocolRegistry.forProtocols(ch.protocols());
+                    protocolRegistry.forProtocols(ch.protocols(), ch.id());
             if (!activeProtocols.isEmpty()) {
                 List<io.casehub.qhorus.api.message.MessageView> recent =
                         messageStore.findRecent(ch.id(), config.protocol().lookbackSize());

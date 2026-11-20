@@ -1,6 +1,7 @@
 package io.casehub.qhorus.runtime.message.protocol;
 
 import io.casehub.qhorus.api.spi.ChannelProtocol;
+import io.casehub.qhorus.api.spi.ProtocolResolver;
 import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
@@ -10,19 +11,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 
 public class ProtocolRegistry implements io.casehub.qhorus.api.channel.ProtocolReader {
 
     private static final Logger LOG = Logger.getLogger(ProtocolRegistry.class);
 
     private final Map<String, ChannelProtocol> registry;
+    private final ProtocolResolver             resolver;
+
 
     public ProtocolRegistry(final List<? extends ChannelProtocol> protocols) {
-        this(buildMap(protocols));
+        this(protocols, null);
     }
 
-    private ProtocolRegistry(final Map<String, ChannelProtocol> registry) {
-        this.registry = registry;
+    public ProtocolRegistry(final List<? extends ChannelProtocol> protocols,
+                            final ProtocolResolver resolver) {
+        this.registry = buildMap(protocols);
+        this.resolver = resolver;
     }
 
     private static Map<String, ChannelProtocol> buildMap(
@@ -45,17 +51,32 @@ public class ProtocolRegistry implements io.casehub.qhorus.api.channel.ProtocolR
     }
 
     public List<ChannelProtocol> forProtocols(final List<String> names) {
-        final List<ChannelProtocol> result = new ArrayList<>(names.size());
+        return forProtocols(names, null);
+    }
+
+    public List<ChannelProtocol> forProtocols(final List<String> names, final UUID channelId) {
+        final List<ChannelProtocol> result     = new ArrayList<>(names.size());
+        final List<String>          unresolved = new ArrayList<>();
         for (final String name : names) {
             final ChannelProtocol p = registry.get(name);
             if (p != null) {
                 result.add(p);
             } else {
-                LOG.warnf("Unknown protocol '%s' — skipped. Registered: %s", name, registry.keySet());
+                unresolved.add(name);
+            }
+        }
+        if (!unresolved.isEmpty()) {
+            if (resolver != null) {
+                result.addAll(resolver.resolve(unresolved, channelId));
+            } else {
+                for (final String name : unresolved) {
+                    LOG.warnf("Unknown protocol '%s' — skipped. Registered: %s", name, registry.keySet());
+                }
             }
         }
         return result;
     }
+
 
     public Set<String> allNames() {
         return Collections.unmodifiableSet(new TreeSet<>(registry.keySet()));

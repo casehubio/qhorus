@@ -1,16 +1,17 @@
 package io.casehub.qhorus.runtime.message.protocol;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
-
 import io.casehub.qhorus.api.spi.ChannelProtocol;
 import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.ProtocolContext;
+import io.casehub.qhorus.api.spi.ProtocolResolver;
+import org.junit.jupiter.api.Test;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ProtocolRegistryTest {
 
@@ -105,5 +106,48 @@ class ProtocolRegistryTest {
         ProtocolRegistry registry = new ProtocolRegistry(new ArrayList<>(List.of(p)));
 
         assertThat(registry.forProtocols(List.of("EXACT")).get(0)).isSameAs(p);
+    }
+
+    @Test
+    void forProtocols_delegatesToResolver_forUnknownNames() {
+        ChannelProtocol dynamicProtocol = stub("DYNAMIC");
+        ProtocolResolver resolver = (names, channelId) -> {
+            if (names.contains("DYNAMIC")) {return List.of(dynamicProtocol);}
+            return List.of();
+        };
+        ProtocolRegistry registry = new ProtocolRegistry(stubs("STATIC"), resolver);
+
+        UUID channelId = UUID.randomUUID();
+        List<ChannelProtocol> result = registry.forProtocols(
+                List.of("STATIC", "DYNAMIC"), channelId);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).protocolName()).isEqualTo("STATIC");
+        assertThat(result.get(1).protocolName()).isEqualTo("DYNAMIC");
+    }
+
+    @Test
+    void forProtocols_noResolver_unknownNamesSkipped() {
+        ProtocolRegistry registry  = new ProtocolRegistry(stubs("ALPHA"));
+        UUID             channelId = UUID.randomUUID();
+        List<ChannelProtocol> result = registry.forProtocols(
+                List.of("ALPHA", "MISSING"), channelId);
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).protocolName()).isEqualTo("ALPHA");
+    }
+
+    @Test
+    void forProtocols_staticTakesPrecedence_overResolver() {
+        ChannelProtocol  staticP  = stub("SHARED");
+        ChannelProtocol  dynamicP = stub("SHARED");
+        ProtocolResolver resolver = (names, channelId) -> List.of(dynamicP);
+        ProtocolRegistry registry = new ProtocolRegistry(List.of(staticP), resolver);
+
+        UUID channelId = UUID.randomUUID();
+        List<ChannelProtocol> result = registry.forProtocols(
+                List.of("SHARED"), channelId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0)).isSameAs(staticP);
     }
 }

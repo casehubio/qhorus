@@ -71,6 +71,7 @@ import io.casehub.qhorus.runtime.message.RoutingBridge;
 import io.casehub.qhorus.runtime.message.StoredMessageTypePolicy;
 import io.casehub.qhorus.runtime.message.TopicService;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolLifecycleManager;
+import io.casehub.qhorus.api.spi.ProtocolResolver;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import io.cloudevents.CloudEvent;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -303,10 +304,13 @@ public class RuntimeBeans {
         return new ProjectionRegistry(list);
     }
 
-    @Produces @ApplicationScoped
-    public ProtocolRegistry protocolRegistry(@Any Instance<ChannelProtocol> protocols) {
-        List<ChannelProtocol> list = StreamSupport.stream(protocols.spliterator(), false).toList();
-        return new ProtocolRegistry(list);
+    @Produces
+    @ApplicationScoped
+    public ProtocolRegistry protocolRegistry(@Any Instance<ChannelProtocol> protocols,
+                                             Instance<ProtocolResolver> resolverInstance) {
+        List<ChannelProtocol> list     = StreamSupport.stream(protocols.spliterator(), false).toList();
+        ProtocolResolver      resolver = resolverInstance.isUnsatisfied() ? null : resolverInstance.get();
+        return new ProtocolRegistry(list, resolver);
     }
 
     @Produces @ApplicationScoped
