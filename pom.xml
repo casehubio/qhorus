@@ -47,6 +47,7 @@
     <module>a2a-push-notification</module>
     <module>agent-card-signing-core</module>
     <module>agent-card-signing</module>
+    <module>playbook-bridge</module>
     <module>persistence-memory</module>
     <module>testing</module>
     <module>agent-bridge</module>
