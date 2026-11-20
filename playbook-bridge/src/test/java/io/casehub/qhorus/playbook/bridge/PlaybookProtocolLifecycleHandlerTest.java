@@ -1,6 +1,8 @@
 package io.casehub.qhorus.playbook.bridge;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -9,10 +11,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import jakarta.enterprise.inject.Instance;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.casehub.qhorus.api.spi.ProtocolLifecycleContext;
+import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 
 class PlaybookProtocolLifecycleHandlerTest {
 
@@ -29,7 +34,7 @@ class PlaybookProtocolLifecycleHandlerTest {
         handler = new PlaybookProtocolLifecycleHandler();
         handler.definitionStore = store;
         handler.deadlineScheduler = scheduler;
-        handler.protocolRegistry = null;
+        handler.protocolRegistryInstance = null;
     }
 
     private ProtocolDefinition def(UUID channelId, String name, String yaml) {
@@ -48,15 +53,20 @@ class PlaybookProtocolLifecycleHandlerTest {
         assertThat(handler.supports("nonexistent")).isFalse();
     }
 
+    @SuppressWarnings("unchecked")
     @Test
     void supports_false_forStaticProtocol() {
         store.put(def(UUID.randomUUID(), "STATIC", "version: 1.0"));
-        handler.protocolRegistry = new io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry(
+        ProtocolRegistry registry = new ProtocolRegistry(
                 List.of(new io.casehub.qhorus.api.spi.ChannelProtocol() {
                     @Override public String protocolName() { return "STATIC"; }
                     @Override public List<io.casehub.qhorus.api.spi.DispatchAdvisory> evaluate(
                             io.casehub.qhorus.api.spi.ProtocolContext ctx) { return List.of(); }
                 }));
+        Instance<ProtocolRegistry> instance = mock(Instance.class);
+        when(instance.isResolvable()).thenReturn(true);
+        when(instance.get()).thenReturn(registry);
+        handler.protocolRegistryInstance = instance;
         assertThat(handler.supports("STATIC")).isFalse();
     }
 

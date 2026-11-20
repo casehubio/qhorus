@@ -4,6 +4,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
 public class CompilationCache {
 
     private final ConcurrentHashMap<String, String> cache = new ConcurrentHashMap<>();

@@ -23,7 +23,8 @@ public class PlaybookProtocolResolver implements ProtocolResolver {
     @Inject
     PlaybookExecutor executor;
 
-    final CompilationCache cache = new CompilationCache();
+    @Inject
+    CompilationCache cache;
 
     @Override
     public List<ChannelProtocol> resolve(List<String> unresolvedNames, UUID channelId) {

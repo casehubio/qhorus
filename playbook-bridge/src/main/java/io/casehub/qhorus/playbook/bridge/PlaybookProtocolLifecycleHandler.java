@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import io.casehub.qhorus.api.spi.ProtocolLifecycleContext;
@@ -25,11 +26,13 @@ public class PlaybookProtocolLifecycleHandler implements ProtocolLifecycleHandle
     @Inject
     ProtocolDeadlineScheduler deadlineScheduler;
 
-    ProtocolRegistry protocolRegistry;
+    @Inject
+    Instance<ProtocolRegistry> protocolRegistryInstance;
 
     @Override
     public boolean supports(String protocolName) {
-        if (protocolRegistry != null && protocolRegistry.allNames().contains(protocolName)) {
+        if (protocolRegistryInstance != null && protocolRegistryInstance.isResolvable()
+                && protocolRegistryInstance.get().allNames().contains(protocolName)) {
             return false;
         }
         return definitionStore.existsByProtocolName(protocolName);
@@ -71,7 +74,7 @@ public class PlaybookProtocolLifecycleHandler implements ProtocolLifecycleHandle
         int idx = yamlContent.indexOf("deadlines:");
         if (idx < 0) return Map.of();
 
-        java.util.Map<String, String> result = new java.util.LinkedHashMap<>();
+        Map<String, String> result = new java.util.LinkedHashMap<>();
         String[] lines = yamlContent.substring(idx).split("\n");
         for (int i = 1; i < lines.length; i++) {
             String line = lines[i];
@@ -102,9 +105,10 @@ public class PlaybookProtocolLifecycleHandler implements ProtocolLifecycleHandle
             if (value.startsWith("PT") || value.startsWith("P")) {
                 return Duration.parse(value);
             }
-            if (value.endsWith("s")) return Duration.ofSeconds(Long.parseLong(value.replace("s", "")));
-            if (value.endsWith("m")) return Duration.ofMinutes(Long.parseLong(value.replace("m", "")));
-            if (value.endsWith("h")) return Duration.ofHours(Long.parseLong(value.replace("h", "")));
+            String numPart = value.substring(0, value.length() - 1);
+            if (value.endsWith("s")) return Duration.ofSeconds(Long.parseLong(numPart));
+            if (value.endsWith("m")) return Duration.ofMinutes(Long.parseLong(numPart));
+            if (value.endsWith("h")) return Duration.ofHours(Long.parseLong(numPart));
             return Duration.parse("PT" + value);
         } catch (Exception e) {
             LOG.warnf("Invalid deadline duration '%s'", value);

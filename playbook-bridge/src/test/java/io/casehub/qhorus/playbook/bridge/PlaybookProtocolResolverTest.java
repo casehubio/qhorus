@@ -25,6 +25,7 @@ class PlaybookProtocolResolverTest {
         resolver = new PlaybookProtocolResolver();
         resolver.definitionStore = store;
         resolver.executor = executor;
+        resolver.cache = new CompilationCache();
     }
 
     private ProtocolDefinition def(UUID channelId, String name, String yaml) {
