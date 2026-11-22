@@ -1,9 +1,7 @@
 package io.casehub.qhorus.playbook.bridge;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
+import io.casehub.qhorus.api.channel.ChannelManager;
+import io.casehub.qhorus.api.store.ChannelStore;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -15,8 +13,11 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-
 import org.jboss.logging.Logger;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 @Path("/api/channels/{channelId}/protocol-definitions")
 @ApplicationScoped
@@ -30,6 +31,11 @@ public class ProtocolDefinitionResource {
 
     @Inject
     CompilationCache compilationCache;
+    @Inject
+    ChannelStore     channelStore;
+    @Inject
+    ChannelManager   channelManager;
+
 
     @GET
     public List<ProtocolDefinition> list(@PathParam("channelId") UUID channelId) {
@@ -53,15 +59,15 @@ public class ProtocolDefinitionResource {
                         ProtocolDefinitionRequest request) {
         if (request.yamlContent() == null || request.yamlContent().isBlank()) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"error\":\"yamlContent is required\"}")
-                    .build();
+                           .entity("{\"error\":\"yamlContent is required\"}")
+                           .build();
         }
 
         String validationError = validateYaml(request.yamlContent());
         if (validationError != null) {
             return Response.status(Response.Status.BAD_REQUEST)
-                    .entity("{\"error\":\"" + validationError + "\"}")
-                    .build();
+                           .entity("{\"error\":\"" + validationError + "\"}")
+                           .build();
         }
 
         String tenancyId = request.tenancyId() != null ? request.tenancyId() : "DEFAULT";
@@ -70,6 +76,14 @@ public class ProtocolDefinitionResource {
                 request.yamlContent(), tenancyId, Instant.now());
         definitionStore.put(def);
         compilationCache.evict(channelId, protocolName);
+
+        channelStore.find(channelId).ifPresent(channel -> {
+            if (!channel.protocols().contains(protocolName)) {
+                var updated = new java.util.ArrayList<>(channel.protocols());
+                updated.add(protocolName);
+                channelManager.setProtocols(channelId, updated);
+            }
+        });
 
         LOG.infof("Stored protocol definition '%s' for channel %s", protocolName, channelId);
         return Response.ok(def).build();
@@ -81,6 +95,15 @@ public class ProtocolDefinitionResource {
                            @PathParam("protocolName") String protocolName) {
         definitionStore.delete(channelId, protocolName);
         compilationCache.evict(channelId, protocolName);
+
+        channelStore.find(channelId).ifPresent(channel -> {
+            if (channel.protocols().contains(protocolName)) {
+                var updated = new java.util.ArrayList<>(channel.protocols());
+                updated.remove(protocolName);
+                channelManager.setProtocols(channelId, updated);
+            }
+        });
+
         LOG.infof("Deleted protocol definition '%s' for channel %s", protocolName, channelId);
         return Response.noContent().build();
     }
