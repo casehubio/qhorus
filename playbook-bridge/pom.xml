@@ -29,6 +29,12 @@ Activates by classpath presence.</description>
     </dependency>
 
     <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-yaml-step-runtime</artifactId>
+      <version>${casehub.version}</version>
+    </dependency>
+
+    <dependency>
       <groupId>io.quarkus</groupId>
       <artifactId>quarkus-hibernate-orm</artifactId>
     </dependency>
