@@ -1,5 +1,6 @@
 package io.casehub.qhorus.playbook.bridge;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.Channel;
 import io.casehub.qhorus.api.store.ChannelStore;
 import jakarta.ws.rs.core.Response;
@@ -34,6 +35,8 @@ class ProtocolDefinitionResourceTest {
         resource.compilationCache = cache;
         resource.channelStore     = channelStore;
         resource.channelManager   = channelManager;
+        resource.currentPrincipal = mock(CurrentPrincipal.class);
+        when(resource.currentPrincipal.tenancyId()).thenReturn("DEFAULT");
     }
 
     private ProtocolDefinition def(UUID channelId, String name, String yaml) {

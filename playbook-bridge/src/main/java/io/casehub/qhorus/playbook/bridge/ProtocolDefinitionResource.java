@@ -1,5 +1,6 @@
 package io.casehub.qhorus.playbook.bridge;
 
+import io.casehub.platform.api.identity.CurrentPrincipal;
 import io.casehub.qhorus.api.channel.ChannelManager;
 import io.casehub.qhorus.api.store.ChannelStore;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -35,6 +36,8 @@ public class ProtocolDefinitionResource {
     ChannelStore     channelStore;
     @Inject
     ChannelManager   channelManager;
+    @Inject
+    CurrentPrincipal currentPrincipal;
 
 
     @GET
@@ -70,7 +73,7 @@ public class ProtocolDefinitionResource {
                            .build();
         }
 
-        String tenancyId = request.tenancyId() != null ? request.tenancyId() : "DEFAULT";
+        String tenancyId = currentPrincipal.tenancyId();
         ProtocolDefinition def = new ProtocolDefinition(
                 UUID.randomUUID(), channelId, protocolName,
                 request.yamlContent(), tenancyId, Instant.now());
