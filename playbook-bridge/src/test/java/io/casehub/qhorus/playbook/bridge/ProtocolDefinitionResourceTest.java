@@ -54,7 +54,7 @@ class ProtocolDefinitionResourceTest {
     void put_storesDefinition() {
         UUID ch = UUID.randomUUID();
         var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(
-                "version: 1.0\nsteps:\n  - check: open_queries\n", null);
+                "version: 1.0\nsteps:\n  - check: open_queries\n");
 
         Response resp = resource.put(ch, "approval-gate", request);
 
@@ -68,7 +68,7 @@ class ProtocolDefinitionResourceTest {
         cache.put(ch, "gate", "old-yaml");
 
         var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(
-                "version: 2.0\n", null);
+                "version: 2.0\n");
         resource.put(ch, "gate", request);
 
         assertThat(cache.get(ch, "gate")).isEmpty();
@@ -77,7 +77,7 @@ class ProtocolDefinitionResourceTest {
     @Test
     void put_rejectsBlankYaml() {
         UUID ch = UUID.randomUUID();
-        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("", null);
+        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("");
 
         Response resp = resource.put(ch, "gate", request);
 
@@ -87,7 +87,7 @@ class ProtocolDefinitionResourceTest {
     @Test
     void put_rejectsNullYaml() {
         UUID ch = UUID.randomUUID();
-        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(null, null);
+        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(null);
 
         Response resp = resource.put(ch, "gate", request);
 
@@ -98,7 +98,7 @@ class ProtocolDefinitionResourceTest {
     void put_rejectsInvalidDeadlineDuration() {
         UUID ch = UUID.randomUUID();
         var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(
-                "deadlines:\n  timeout: not-a-duration\n", null);
+                "deadlines:\n  timeout: not-a-duration\n");
 
         Response resp = resource.put(ch, "gate", request);
 
@@ -109,7 +109,7 @@ class ProtocolDefinitionResourceTest {
     void put_acceptsValidDeadline() {
         UUID ch = UUID.randomUUID();
         var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest(
-                "deadlines:\n  timeout: PT5M\n", null);
+                "deadlines:\n  timeout: PT5M\n");
 
         Response resp = resource.put(ch, "gate", request);
 
@@ -160,7 +160,7 @@ class ProtocolDefinitionResourceTest {
     @Test
     void put_defaultsTenancyId() {
         UUID ch = UUID.randomUUID();
-        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n", null);
+        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n");
 
         resource.put(ch, "gate", request);
 
@@ -173,7 +173,7 @@ class ProtocolDefinitionResourceTest {
     void put_addsProtocolToChannelList() {
         UUID ch = UUID.randomUUID();
         stubChannel(ch, List.of("existing-protocol"));
-        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n", null);
+        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n");
 
         resource.put(ch, "new-gate", request);
 
@@ -185,7 +185,7 @@ class ProtocolDefinitionResourceTest {
     void put_doesNotDuplicateProtocol() {
         UUID ch = UUID.randomUUID();
         stubChannel(ch, List.of("gate"));
-        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n", null);
+        var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n");
 
         resource.put(ch, "gate", request);
 
@@ -195,7 +195,7 @@ class ProtocolDefinitionResourceTest {
     @Test
     void put_handlesChannelNotFound() {
         UUID ch      = UUID.randomUUID();
-        var  request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n", null);
+        var  request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n");
 
         Response resp = resource.put(ch, "gate", request);
 

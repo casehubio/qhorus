@@ -130,5 +130,5 @@ public class ProtocolDefinitionResource {
         return null;
     }
 
-    public record ProtocolDefinitionRequest(String yamlContent, String tenancyId) {}
+    public record ProtocolDefinitionRequest(String yamlContent) {}
 }
