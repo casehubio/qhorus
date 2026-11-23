@@ -183,7 +183,7 @@ public record Channel(
                 null,
                 null,
                 null,
-                null,
+                req.policyOverrides(),
                 req.metadata(),
                 policy,
                 req.visibility(),

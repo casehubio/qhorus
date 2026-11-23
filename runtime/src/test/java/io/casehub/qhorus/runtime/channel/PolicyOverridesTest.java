@@ -111,4 +111,16 @@ class PolicyOverridesTest {
         Channel ch = Channel.builder("test").id(UUID.randomUUID()).semantic(ChannelSemantic.APPEND).build();
         assertThat(ch.policyOverrides()).isNull();
     }
+
+    @Test
+    void createRequest_policyOverridesSetAtCreationTime() {
+        var req = io.casehub.qhorus.api.channel.ChannelCreateRequest.builder("at-create-" + UUID.randomUUID())
+                                                                    .policyOverrides(Map.of("max_open_queries", "10", "max_consecutive", "3"))
+                                                                    .build();
+        Channel ch = Channel.fromRequest(req, "default");
+        assertThat(ch.policyOverrides())
+                .containsEntry("max_open_queries", "10")
+                .containsEntry("max_consecutive", "3");
+    }
+
 }

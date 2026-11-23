@@ -103,6 +103,7 @@ public class ChannelCore {
         if (req.protocols() != null) builder.protocols(req.protocols());
         if (req.protocolParticipants() != null) builder.protocolParticipants(req.protocolParticipants());
         if (req.spaceId() != null) builder.spaceId(req.spaceId());
+        if (req.policyOverrides() != null) builder.policyOverrides(req.policyOverrides());
         if (req.trackDelivery() != null) builder.trackDelivery(req.trackDelivery());
         if (req.rateLimitPerChannel() != null) builder.rateLimitPerChannel(req.rateLimitPerChannel());
         if (req.rateLimitPerInstance() != null) builder.rateLimitPerInstance(req.rateLimitPerInstance());

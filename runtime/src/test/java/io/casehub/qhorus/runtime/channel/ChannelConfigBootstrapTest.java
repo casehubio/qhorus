@@ -166,9 +166,40 @@ class ChannelConfigBootstrapTest {
 
 
     @Test
+    void policyOverridesIncludedInRequest() {
+        var cfg = new StubChannelConfig(ChannelSemantic.APPEND, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null, null, null, null,
+                                        Map.of("max_open_queries", "5"), null, null);
+        var bootstrap = bootstrap(Map.of("governed", cfg));
+        when(channelService.findOrCreate(any()))
+                .thenReturn(new FindOrCreateResult(stubChannel("governed", ChannelSemantic.APPEND), true));
+
+        bootstrap.onStartup(null);
+
+        var captor = ArgumentCaptor.forClass(ChannelCreateRequest.class);
+        verify(channelService).findOrCreate(captor.capture());
+        assertThat(captor.getValue().policyOverrides()).containsEntry("max_open_queries", "5");
+    }
+
+    @Test
+    void policyOverridesDriftDetected() {
+        var cfg = new StubChannelConfig(ChannelSemantic.APPEND, null, null, null, null, null,
+                                        null, null, null, null, null, null, null, null, null, null, null,
+                                        Map.of("max_open_queries", "5"), null, null);
+        var existing = Channel.builder("governed").id(UUID.randomUUID()).semantic(ChannelSemantic.APPEND)
+                              .policyOverrides(Map.of("max_open_queries", "3"))
+                              .tenancyId("default").createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
+
+        var bootstrap = bootstrap(Map.of("governed", cfg));
+        var drifts    = bootstrap.detectDrift("governed", cfg, existing);
+        assertThat(drifts).hasSize(1);
+        assertThat(drifts.get(0).field()).isEqualTo("policyOverrides");
+    }
+
+    @Test
     void existingChannelWithNoDrift() {
         var cfg = new StubChannelConfig(ChannelSemantic.APPEND, "Reviews", null, null, null, null,
-                                        null, null, null, null, null, null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var existing = Channel.builder("reviews").id(UUID.randomUUID()).semantic(ChannelSemantic.APPEND)
                               .description("Reviews").tenancyId("default")
                               .createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
@@ -185,7 +216,7 @@ class ChannelConfigBootstrapTest {
     @Test
     void existingChannelWithSemanticDrift() {
         var cfg = new StubChannelConfig(ChannelSemantic.COLLECT, null, null, null, null, null,
-                                        null, null, null, null, null, null, null, null, null, null, null, null, null);
+                                        null, null, null, null, null, null, null, null, null, null, null, null, null, null);
         var existing = Channel.builder("reviews").id(UUID.randomUUID()).semantic(ChannelSemantic.APPEND)
                               .tenancyId("default").createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
 
@@ -202,7 +233,7 @@ class ChannelConfigBootstrapTest {
         var cfg = new StubChannelConfig(ChannelSemantic.BROADCAST, "Updated desc",
                                         List.of("agent-x"), null, null, null,
                                         null, null, null, null, EnforcementMode.BLOCKING, null,
-                                        50, null, null, true, null, null, null);
+                                        50, null, null, true, null, null, null, null);
         var existing = Channel.builder("status").id(UUID.randomUUID()).semantic(ChannelSemantic.APPEND)
                               .description("Original desc").allowedWriters(List.of("agent-y"))
                               .tenancyId("default").createdAt(Instant.now()).lastActivityAt(Instant.now()).build();
@@ -237,7 +268,7 @@ class ChannelConfigBootstrapTest {
 
     private static ChannelConfig minimalConfig() {
         return new StubChannelConfig(ChannelSemantic.APPEND, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private static ChannelConfig fullConfig() {
@@ -255,18 +286,19 @@ class ChannelConfigBootstrapTest {
                 EnforcementMode.BLOCKING,
                 List.of("CORRELATION_INTEGRITY"),
                 100, 10, 0.5, true, "ops",
+                null,
                 Map.of("team", "platform"),
                 null);
     }
 
     private static ChannelConfig configWithSpace(String spaceName) {
         return new StubChannelConfig(ChannelSemantic.APPEND, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, spaceName, null, null);
+                null, null, null, null, null, null, null, null, null, null, spaceName, null, null, null);
     }
 
     private static ChannelConfig configWithConnector() {
         return new StubChannelConfig(ChannelSemantic.APPEND, null, null, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null, null, null, null, null, null, null,
                 new StubConnectorConfig("slack", "C0SUPPORT", "slack", "#support"));
     }
 
@@ -297,6 +329,7 @@ class ChannelConfigBootstrapTest {
             Double routingTrustThresholdValue,
             Boolean trackDeliveryValue,
             String spaceValue,
+            Map<String, String> policyOverridesValue,
             Map<String, String> metadataValue,
             ChannelConfig.ConnectorConfig connectorValue
     ) implements ChannelConfig {
@@ -316,6 +349,7 @@ class ChannelConfigBootstrapTest {
         @Override public Optional<Double> routingTrustThreshold() { return Optional.ofNullable(routingTrustThresholdValue); }
         @Override public Optional<Boolean> trackDelivery() { return Optional.ofNullable(trackDeliveryValue); }
         @Override public Optional<String> space() { return Optional.ofNullable(spaceValue); }
+        @Override public Map<String, String> policyOverrides() { return policyOverridesValue != null ? policyOverridesValue : Map.of(); }
         @Override public Map<String, String> metadata() { return metadataValue != null ? metadataValue : Map.of(); }
         @Override public Optional<ChannelConfig.ConnectorConfig> connector() { return Optional.ofNullable(connectorValue); }
         @Override public Optional<io.casehub.qhorus.api.channel.ParticipationPolicyMode> participationPolicy() { return Optional.empty(); }

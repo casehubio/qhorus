@@ -86,6 +86,8 @@ public class ChannelConfigBootstrap {
             builder.rateLimitPerInstance(cfg.rateLimitPerInstance().getAsInt());
         cfg.routingTrustThreshold().ifPresent(builder::routingTrustThreshold);
         cfg.trackDelivery().ifPresent(builder::trackDelivery);
+        if (!cfg.policyOverrides().isEmpty())
+            builder.policyOverrides(cfg.policyOverrides());
         if (!cfg.metadata().isEmpty())
             builder.metadata(cfg.metadata());
 
@@ -229,6 +231,13 @@ public class ChannelConfigBootstrap {
                 drifts.add(new ChannelDrift(name, "trackDelivery", declared.toString(), String.valueOf(existing.trackDelivery())));
             }
         });
+
+        if (!cfg.policyOverrides().isEmpty()) {
+            var declared = cfg.policyOverrides();
+            if (!java.util.Objects.equals(declared, existing.policyOverrides())) {
+                drifts.add(new ChannelDrift(name, "policyOverrides", declared.toString(), String.valueOf(existing.policyOverrides())));
+            }
+        }
 
         return drifts;
     }

@@ -17,6 +17,7 @@ public record CreateChannelRequest(
         List<String> protocols,
         List<String> protocolParticipants,
         UUID spaceId,
+        java.util.Map<String, String> policyOverrides,
         Boolean trackDelivery,
         Integer rateLimitPerChannel,
         Integer rateLimitPerInstance,

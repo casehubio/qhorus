@@ -26,6 +26,7 @@ public record ChannelCreateRequest(
         EnforcementMode enforcementMode,
         List<String> enforcementExclusions,
         Double routingTrustThreshold,
+        java.util.Map<String, String> policyOverrides,
         java.util.Map<String, String> metadata,
         String inboundConnectorId,
         String externalKey,
@@ -55,6 +56,7 @@ public record ChannelCreateRequest(
         protocols            = protocols != null ? List.copyOf(protocols) : List.of();
         protocolParticipants = protocolParticipants != null ? List.copyOf(protocolParticipants) : List.of();
         enforcementExclusions = enforcementExclusions != null ? List.copyOf(enforcementExclusions) : List.of();
+        policyOverrides      = policyOverrides != null ? java.util.Map.copyOf(policyOverrides) : null;
         allowedTypes         = allowedTypes != null ? Set.copyOf(allowedTypes) : null;
         deniedTypes          = deniedTypes != null ? Set.copyOf(deniedTypes) : null;
 
@@ -80,7 +82,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, reviewerInstances, protocols, protocolParticipants, null, null, null, null, null,
+             spaceId, reviewerInstances, protocols, protocolParticipants, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
@@ -94,7 +96,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, reviewerInstances, null, null, null, null, null, null, null,
+             spaceId, reviewerInstances, null, null, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
@@ -108,7 +110,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             spaceId, null, null, null, null, null, null, null, null,
+             spaceId, null, null, null, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
@@ -122,7 +124,7 @@ public record ChannelCreateRequest(
             String outboundConnectorId, String outboundDestination) {
         this(name, description, semantic, barrierContributors, allowedWriters, adminInstances,
              rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
-             null, null, null, null, null, null, null, null, null,
+             null, null, null, null, null, null, null, null, null, null,
              inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, null, null, null, null);
     }
 
@@ -136,7 +138,7 @@ public record ChannelCreateRequest(
         return new ChannelCreateRequest(name, description, semantic, barrierContributors, allowedWriters,
                                         adminInstances, rateLimitPerChannel, rateLimitPerInstance, allowedTypes, deniedTypes,
                                         spaceId, reviewerInstances, defaultProtocols, defaultProtocolParticipants, trackDelivery,
-                                        enforcementMode, enforcementExclusions, routingTrustThreshold, metadata,
+                                        enforcementMode, enforcementExclusions, routingTrustThreshold, policyOverrides, metadata,
                                         inboundConnectorId, externalKey, outboundConnectorId, outboundDestination, preAssignedId,
                                         visibility, participationPolicy, boundGroupId);
     }
@@ -164,6 +166,7 @@ public record ChannelCreateRequest(
         private       EnforcementMode  enforcementMode;
         private       List<String>     enforcementExclusions;
         private       Double           routingTrustThreshold;
+        private       java.util.Map<String, String> policyOverrides;
         private       java.util.Map<String, String> metadata;
         private       String           inboundConnectorId;
         private       String           externalKey;
@@ -261,6 +264,11 @@ public record ChannelCreateRequest(
             return this;
         }
 
+        public Builder policyOverrides(java.util.Map<String, String> v) {
+            this.policyOverrides = v;
+            return this;
+        }
+
         public Builder metadata(java.util.Map<String, String> v) {
             this.metadata = v;
             return this;
@@ -315,6 +323,7 @@ public record ChannelCreateRequest(
                                             protocols, protocolParticipants, trackDelivery,
                                             enforcementMode, enforcementExclusions,
                                             routingTrustThreshold,
+                                            policyOverrides,
                                             metadata,
                                             inboundConnectorId, externalKey,
                                             outboundConnectorId, outboundDestination,

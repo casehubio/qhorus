@@ -82,6 +82,8 @@ public interface QhorusConfig {
 
         Optional<String> boundGroupId();
 
+        Map<String, String> policyOverrides();
+
         Map<String, String> metadata();
 
         Optional<ConnectorConfig> connector();

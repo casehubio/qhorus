@@ -307,6 +307,7 @@ public class QhorusConfigProperties implements QhorusConfig {
         private Double                                          routingTrustThreshold;
         private Boolean                                         trackDelivery;
         private String                                          space;
+        private java.util.Map<String, String>                   policyOverrides;
         private java.util.Map<String, String>                   metadata;
         private ConnectorConfigProps                            connector;
 
@@ -362,6 +363,9 @@ public class QhorusConfigProperties implements QhorusConfig {
         public Optional<String> space()                                                  {return Optional.ofNullable(space);}
 
         @Override
+        public java.util.Map<String, String> policyOverrides()                 {return policyOverrides != null ? policyOverrides : java.util.Map.of();}
+
+        @Override
         public java.util.Map<String, String> metadata()                        {return metadata != null ? metadata : java.util.Map.of();}
 
         @Override
@@ -400,6 +404,8 @@ public class QhorusConfigProperties implements QhorusConfig {
         public void setTrackDelivery(Boolean v)                                          {this.trackDelivery = v;}
 
         public void setSpace(String v)                                                   {this.space = v;}
+
+        public void setPolicyOverrides(java.util.Map<String, String> v)                   {this.policyOverrides = v;}
 
         public void setMetadata(java.util.Map<String, String> v)                         {this.metadata = v;}
 
