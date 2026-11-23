@@ -2,6 +2,7 @@ package io.casehub.qhorus.playbook.bridge;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import io.casehub.qhorus.api.spi.ProtocolLifecycleContext;
 import io.casehub.qhorus.api.spi.ProtocolLifecycleHandler;
 import io.casehub.qhorus.runtime.message.protocol.ProtocolRegistry;
 import org.jboss.logging.Logger;
+import org.yaml.snakeyaml.Yaml;
 
 @ApplicationScoped
 public class PlaybookProtocolLifecycleHandler implements ProtocolLifecycleHandler {
@@ -70,23 +72,26 @@ public class PlaybookProtocolLifecycleHandler implements ProtocolLifecycleHandle
         deadlineScheduler.clear(channelId, protocolName);
     }
 
-    Map<String, String> parseDeadlines(String yamlContent) {
-        int idx = yamlContent.indexOf("deadlines:");
-        if (idx < 0) return Map.of();
-
-        Map<String, String> result = new java.util.LinkedHashMap<>();
-        String[] lines = yamlContent.substring(idx).split("\n");
-        for (int i = 1; i < lines.length; i++) {
-            String line = lines[i];
-            if (!line.startsWith("  ") && !line.startsWith("\t")) break;
-            String trimmed = line.trim();
-            int colon = trimmed.indexOf(':');
-            if (colon > 0 && colon < trimmed.length() - 1) {
-                String name = trimmed.substring(0, colon).trim();
-                String value = trimmed.substring(colon + 1).trim();
-                if (!name.isEmpty() && !value.isEmpty()) {
-                    result.put(name, value);
-                }
+    @SuppressWarnings("unchecked")
+    static Map<String, String> parseDeadlines(String yamlContent) {
+        Map<String, Object> parsed;
+        try {
+            parsed = new Yaml().load(yamlContent);
+        } catch (Exception e) {
+            LOG.warnf("Failed to parse YAML: %s", e.getMessage());
+            return Map.of();
+        }
+        if (parsed == null || !parsed.containsKey("deadlines")) {
+            return Map.of();
+        }
+        Object deadlines = parsed.get("deadlines");
+        if (!(deadlines instanceof Map<?, ?> deadlineMap)) {
+            return Map.of();
+        }
+        Map<String, String> result = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : deadlineMap.entrySet()) {
+            if (entry.getKey() instanceof String name && entry.getValue() != null) {
+                result.put(name, entry.getValue().toString());
             }
         }
         return result;

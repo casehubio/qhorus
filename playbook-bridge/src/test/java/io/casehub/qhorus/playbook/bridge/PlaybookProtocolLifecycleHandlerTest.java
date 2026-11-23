@@ -130,14 +130,43 @@ class PlaybookProtocolLifecycleHandlerTest {
     @Test
     void parseDeadlines_extractsFromYaml() {
         String yaml = "version: 1.0\ndeadlines:\n  timeout: PT5M\n  escalation: 1h\n";
-        Map<String, String> result = handler.parseDeadlines(yaml);
+        Map<String, String> result = PlaybookProtocolLifecycleHandler.parseDeadlines(yaml);
         assertThat(result).containsEntry("timeout", "PT5M");
         assertThat(result).containsEntry("escalation", "1h");
     }
 
     @Test
     void parseDeadlines_emptyWhenNoDeadlinesSection() {
-        assertThat(handler.parseDeadlines("version: 1.0\nsteps:\n")).isEmpty();
+        assertThat(PlaybookProtocolLifecycleHandler.parseDeadlines("version: 1.0\nsteps:\n")).isEmpty();
+    }
+
+    @Test
+    void parseDeadlines_handlesFourSpaceIndent() {
+        String yaml = "version: 1.0\ndeadlines:\n    timeout: PT5M\n    escalation: 1h\n";
+        Map<String, String> result = PlaybookProtocolLifecycleHandler.parseDeadlines(yaml);
+        assertThat(result).containsEntry("timeout", "PT5M");
+        assertThat(result).containsEntry("escalation", "1h");
+    }
+
+    @Test
+    void parseDeadlines_handlesInlineComments() {
+        String yaml = "deadlines:\n  timeout: PT5M  # response deadline\n  escalation: 1h\n";
+        Map<String, String> result = PlaybookProtocolLifecycleHandler.parseDeadlines(yaml);
+        assertThat(result).containsEntry("timeout", "PT5M");
+        assertThat(result).containsEntry("escalation", "1h");
+    }
+
+    @Test
+    void parseDeadlines_ignoresNestedDeadlinesKey() {
+        String yaml = "config:\n  nested:\n    deadlines:\n      inner: PT1M\ndeadlines:\n  actual: PT5M\n";
+        Map<String, String> result = PlaybookProtocolLifecycleHandler.parseDeadlines(yaml);
+        assertThat(result).containsEntry("actual", "PT5M");
+        assertThat(result).doesNotContainKey("inner");
+    }
+
+    @Test
+    void parseDeadlines_handlesInvalidYaml() {
+        assertThat(PlaybookProtocolLifecycleHandler.parseDeadlines("{{invalid yaml")).isEmpty();
     }
 
     @Test

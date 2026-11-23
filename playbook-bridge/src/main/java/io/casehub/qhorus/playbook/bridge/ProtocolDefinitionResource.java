@@ -116,21 +116,15 @@ public class ProtocolDefinitionResource {
             return "YAML content exceeds maximum size (64KB)";
         }
 
-        int idx = yamlContent.indexOf("deadlines:");
-        if (idx >= 0) {
-            String[] lines = yamlContent.substring(idx).split("\n");
-            for (int i = 1; i < lines.length; i++) {
-                String line = lines[i];
-                if (!line.startsWith("  ") && !line.startsWith("\t")) break;
-                String trimmed = line.trim();
-                int colon = trimmed.indexOf(':');
-                if (colon > 0 && colon < trimmed.length() - 1) {
-                    String value = trimmed.substring(colon + 1).trim();
-                    if (!value.isEmpty()
-                            && PlaybookProtocolLifecycleHandler.parseDuration(value) == null) {
-                        return "Invalid deadline duration: " + value;
-                    }
-                }
+        java.util.Map<String, String> deadlines;
+        try {
+            deadlines = PlaybookProtocolLifecycleHandler.parseDeadlines(yamlContent);
+        } catch (Exception e) {
+            return "Invalid YAML: " + e.getMessage();
+        }
+        for (java.util.Map.Entry<String, String> entry : deadlines.entrySet()) {
+            if (PlaybookProtocolLifecycleHandler.parseDuration(entry.getValue()) == null) {
+                return "Invalid deadline duration: " + entry.getValue();
             }
         }
         return null;
