@@ -158,7 +158,7 @@ class ProtocolDefinitionResourceTest {
     }
 
     @Test
-    void put_defaultsTenancyId() {
+    void put_usesCurrentPrincipalTenancyId() {
         UUID ch = UUID.randomUUID();
         var request = new ProtocolDefinitionResource.ProtocolDefinitionRequest("version: 1.0\n");
 
