@@ -52,15 +52,12 @@ public class ChannelConfigBootstrap {
 
     FindOrCreateResult processChannel(String name, ChannelConfig cfg) {
         var request = toRequest(name, cfg);
-        var result = channelService.findOrCreate(request);
-        if (result.wasCreated()) {
-            cfg.participationPolicy().ifPresent(policy ->
-                    channelService.setParticipationPolicy(result.channel().id(), policy));
-        } else {
+        var result  = channelService.findOrCreate(request);
+        if (!result.wasCreated()) {
             var drifts = detectDrift(name, cfg, result.channel());
             for (var drift : drifts) {
                 LOG.warnf("Channel '%s': drift detected — %s declared as %s, actual is %s",
-                        drift.channelName(), drift.field(), drift.declared(), drift.actual());
+                          drift.channelName(), drift.field(), drift.declared(), drift.actual());
             }
         }
         return result;
