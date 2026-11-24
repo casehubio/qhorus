@@ -32,6 +32,9 @@ public interface QhorusConfig {
     Instance instance();
     Mesh mesh();
 
+    Identity identity();
+
+
     @WithName("api-keys")
     Map<String, ApiKeyEntry> apiKeys();
 
@@ -112,6 +115,13 @@ public interface QhorusConfig {
         @WithName("registry-backed")
         boolean registryBacked();
     }
+
+    interface Identity {
+        @WithDefault("false")
+        @WithName("platform-api-keys")
+        boolean platformApiKeys();
+    }
+
 
     interface Mesh {
         @WithDefault("OPEN")

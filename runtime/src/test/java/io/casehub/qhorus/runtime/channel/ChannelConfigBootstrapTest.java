@@ -439,6 +439,10 @@ class ChannelConfigBootstrapTest {
         @Override public Erasure erasure() { return null; }
         @Override public Instance instance() { return null; }
         @Override public Mesh mesh() { return null; }
+
+        @Override
+        public Identity identity()   {return null;}
+
         @Override public Map<String, ApiKeyEntry> apiKeys() { return Map.of(); }
         @Override public Optional<String> defaultTenancyId() { return Optional.empty(); }
     }
