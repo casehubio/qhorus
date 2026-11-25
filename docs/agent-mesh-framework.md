@@ -23,7 +23,7 @@ layer compares to other frameworks — read [normative-layer.md](normative-layer
 ## Part 1 — The Message Vocabulary
 
 Everything in Qhorus is a message. But not all messages mean the same thing. Before you write
-a single line of code, you need the vocabulary: nine message types, each with a precise
+a single line of code, you need the vocabulary: ten message types, each with a precise
 semantic role.
 
 ### Why types matter
@@ -37,7 +37,7 @@ Qhorus message types are **performatives** — each type does something by being
 does not say "please act." It creates an obligation. A DONE does not say "I finished." It
 fulfills one. The type carries the semantics so your code does not have to infer them from content.
 
-### The nine types in three groups
+### The ten types in three groups
 
 Think of the types in three natural groups: **information exchange**, **obligation
 lifecycle**, and **telemetry**.
@@ -84,6 +84,11 @@ GROUP 2 — OBLIGATION LIFECYCLE (creates, extends, or closes a commitment)
                → target is required (instance:id, capability:tag, or role:name)
                → a new commitment opens for the named recipient
                → creates a causal link in the ledger (causedByEntryId)
+
+  PROPOSE  ─── "I suggest we do X."  [COMMISSIVE — creates negotiable commitment]
+               → creates a commitment like COMMAND, but RESPONSE does NOT auto-fulfill
+               → only DONE fulfills (= acceptance); DECLINE rejects the proposal
+               → requires correlationId (auto-generated at MCP layer) and content
 
 GROUP 3 — TELEMETRY (no obligation, no commitment)
 ────────────────────────────────────────────────────
@@ -158,7 +163,7 @@ create_channel(
     name:        "case-abc/work",
     description: "Worker coordination",
     semantic:    "APPEND",
-    allowed_types: null        # null means all 9 types are permitted
+    allowed_types: null        # null means all 10 types are permitted
 )
 ```
 
@@ -234,7 +239,7 @@ The NormativeChannelLayout separates concerns at the channel level:
 
 ```
 case-{caseId}/
-├── work        APPEND   allowedTypes: null (all 9 types)
+├── work        APPEND   allowedTypes: null (all 10 types)
 │                        Agent-to-agent coordination. All obligation-carrying
 │                        acts live here. The CommitmentStore is cleanest when
 │                        this channel has no EVENTs.
@@ -504,7 +509,7 @@ code — any COMMAND that was sent and not resolved is queryable by age.
 
 ## Part 6 — The Normative Ledger
 
-Every message sent through Qhorus — all nine types — is recorded as an immutable `MessageLedgerEntry`.
+Every message sent through Qhorus — all ten types — is recorded as an immutable `MessageLedgerEntry`.
 The ledger is the complete, tamper-evident history of every interaction in every channel. It is
 built as the system runs, not assembled from logs after the fact.
 
@@ -517,7 +522,7 @@ entry_id         — UUID, unique per entry
 sequence_number  — monotonically increasing
 channel          — the channel name
 actor_id         — who sent the message
-message_type     — one of the 9 types
+message_type     — one of the 10 types
 correlation_id   — links the entry to an obligation chain
 caused_by_entry  — UUID of the parent entry; spans channels — may reference an entry in a different channel
 content          — the message body
@@ -1049,7 +1054,121 @@ Every message — whether from an agent via MCP or a human via WhatsApp — flow
 
 ---
 
-## Part 11 — Quick-Start Template
+## Part 11 — Template-Based Communication Governance
+
+Communication governance adds perception to channels: governance acts in agent prose are
+mechanically extracted into structured fields. This is opt-in per channel and requires the
+template registry from `casehub-platform`.
+
+### Defining a governance vocabulary
+
+A YAML corpus file declares the templates a protocol expects:
+
+```yaml
+namespace: protocol:review
+templates:
+  vote:
+    pattern: "I ${decision} this ${subject}[ because ${rationale}]"
+    variables:
+      decision: { type: enum, values: [approve, reject, abstain] }
+      subject: { type: string }
+      rationale: { type: string, optional: true }
+  escalate:
+    pattern: "Escalating to ${target}[ due to ${reason}]"
+    variables:
+      target: { type: string }
+      reason: { type: string, optional: true }
+```
+
+Each template has literal anchors ("I", "this", "because") and variable positions
+(`${decision}`, `${subject}`). Variables carry typed constraints — `enum` restricts to
+declared values; `string` captures any phrase. Optional segments (`[...]`) are matched
+when present, ignored when absent.
+
+### How NLP extraction works
+
+The template registry has two matching tiers:
+
+1. **Regex fast-path.** The template compiles to a regex. If the input matches exactly,
+   extraction is instantaneous and the score is 1.0.
+
+2. **NLP structural matching.** When regex fails, the NLP pipeline tokenises the input,
+   lemmatises each token (reducing inflected forms to base: "approved" → "approve",
+   "these" → "this"), and matches the lemmatised input against compiled structural
+   patterns. This handles tense variation, number agreement, and determiner changes.
+
+Both tiers produce the same output: a `TemplateMatch.Matched` with namespace, template name,
+extracted fields, and a confidence score. If neither matches, the result is `Unmatched`.
+
+### Registering templates and wiring to channels
+
+Templates are registered under namespaces with the `UnifiedTemplateRegistry`:
+
+```java
+registry.register(new TemplateNamespace("protocol:review", templates));
+```
+
+To wire a namespace to a channel as a protocol:
+
+```
+create_channel("architecture-review", "Review channel", "APPEND",
+    protocols=["CONTRIBUTION_REQUIRED", "protocol:review"],
+    protocol_participants=["architect", "security-lead", "tech-lead"],
+    enforcement_mode="BLOCKING")
+```
+
+The `PlaybookProtocolResolver` resolves `protocol:review` to a `ChannelProtocol`
+implementation that evaluates incoming messages against the registered templates.
+
+### Schema publication
+
+The template registry publishes structural schemas for each template — the sentence
+pattern, variable positions, type constraints, and NLP structural elements (literals
+with POS tags and lemmas, clause positions for variables). Schema publication is exposed
+via the `schemas()` API and is available to agents through the registry's MCP domain tools.
+
+An agent receiving a schema knows exactly what sentence shapes the protocol expects:
+"produce a sentence matching 'I ${decision} this ${subject}' where decision is one of
+approve, reject, or abstain." The agent conforms; the extraction is mechanical.
+
+### Enforcement interaction
+
+When a channel has both template-based protocols and an enforcement mode, the pipeline is:
+
+1. Message dispatched via `MessageService.dispatch()`
+2. Protocol evaluation runs — template matching extracts fields (or returns Unmatched)
+3. Protocol rules evaluate extracted fields (contribution check, threshold, handshake gate)
+4. Enforcement gate applies the channel's mode:
+   - **ADVISORY** — message dispatches, advisory recorded
+   - **BLOCKING** — message rejected, advisory returned to sender
+   - **QUARANTINE** — channel paused, commitments expired
+
+The enforcement gate sits after all advisory sources and before the normative ledger write.
+System senders (containing `:`) and obligation-resolving types (DONE, FAILURE, DECLINE,
+RESPONSE) are exempt from enforcement — an agent must always be able to close an obligation.
+
+### Handshake gating
+
+The composition of `CONTRIBUTION_REQUIRED` + template matching produces handshake gating:
+the protocol does not evaluate until all participants have sent messages that structurally
+match a governance template. A message that says "Looks good to me" does not count as a
+vote — only structurally matched extractions with valid field values count.
+
+This is the key distinction: protocols gate on **extracted governance semantics**, not on
+message presence.
+
+### Anti-patterns for communication governance
+
+| Anti-pattern | Why it fails |
+|---|---|
+| Template matching on every channel | Most channels don't need content-level governance. Apply selectively. |
+| BLOCKING without schema publication | Agents can't conform to templates they haven't seen. Publish schemas first. |
+| Governance templates for discussion | Templates are for consequential acts (votes, approvals, escalations), not conversation. |
+| Overly narrow templates | A template that matches only one exact sentence rejects legitimate variation. Use typed constraints, not literal phrases. |
+
+---
+
+## Part 12 — Quick-Start Template
 
 Copy and adapt for any new case. Replace `{caseId}`, `{workerId}`, and `{capabilities}`.
 
@@ -1123,7 +1242,7 @@ send_message("case-{caseId}/work", "{workerId}", "FAILURE",
 
 ---
 
-## What Comes Next
+## What Comes Next — Part 13
 
 **Layer 2 — + casehub-ledger**
 
@@ -1147,7 +1266,7 @@ provisioned automatically when their entry criteria are met, lineage from prior 
 injected into each new agent's context, and case completion closes the work item chain.
 
 The Secure Code Review scenario is the reference example at all four layers. At each layer, the
-same three channels, the same 9 message types, and the same ledger queries carry through
+same three channels, the same 10 message types, and the same ledger queries carry through
 unchanged. The only thing that changes is what provides the agents.
 
 ---

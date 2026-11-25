@@ -1,17 +1,17 @@
 # Normative Layer — Summary and Critique
 
-*A reading guide for the normative body of work. Summarises how the three
-core documents layer and support each other, identifies the gaps, and frames
+*A reading guide for the normative body of work. Summarises how the
+documents layer and support each other, identifies the gaps, and frames
 what needs to be strengthened. This document is a living critique — updated
 as the body of work grows.*
 
 ---
 
-## The Three Documents
+## The Core Documents
 
 | Document | Role |
 |---|---|
-| [normative-layer.md](normative-layer.md) | Theory and business case — the *why* |
+| [normative-layer.md](normative-layer.md) | Composition thesis and business case — the *why* |
 | [agent-mesh-framework.md](agent-mesh-framework.md) | Machine-agent developer guide — the *how for code* |
 | [work-and-workitems.md](work-and-workitems.md) | Human-agent normative extension — the *how for people* |
 
@@ -22,99 +22,104 @@ each other precisely and build without duplication.
 
 ## How They Layer
 
-### normative-layer.md — The Foundation
+### normative-layer.md — The Composition Thesis
 
-Establishes the theoretical and business case. The four-layer stack — speech
-act theory (Layer 1), deontic logic (Layer 2), defeasible reasoning (Layer 3),
-social commitment semantics (Layer 4) — is not invented here; it has a 30-year
-academic lineage (FIPA, Meyer, Singh, Winikoff). The document makes the argument
-that this lineage is precisely why it is the right foundation: formal completeness,
-consistency, and closure are properties of the taxonomy, not aspirations for it.
+Establishes the case for three orthogonal capabilities that compose into
+governed accountability:
 
-The business framing is direct: the seven questions regulators, auditors, and
-boards actually ask — who approved this, what checks ran, which agent is
-accountable, where is the delegation chain — are each answered by a single ledger
-query. Not by log archaeology. By infrastructure that was built as the system ran.
+- **Communication governance** — template registry + NLP extraction. Governance
+  acts in prose are mechanically parsed into structured records with typed
+  fields. Schema publication closes the loop — tell agents what to say,
+  extract mechanically. Grounded in structural linguistics and lemmatisation.
+
+- **Normative accountability** — the 10-type speech act taxonomy, 7-state
+  commitment lifecycle, tamper-evident ledger, Bayesian trust scoring, peer
+  attestation. Grounded in speech act theory, deontic logic, defeasible
+  reasoning, and social commitment semantics — a 30-year academic lineage.
+
+- **Protocol enforcement** — channel protocols, playbook bridge, enforcement
+  modes (advisory/blocking/quarantine), handshake gating. Governed outcomes
+  are gated on participant agreement over template-extracted fields — not
+  message count.
+
+The business framing is direct: the eight questions regulators, auditors, and
+boards actually ask are each answered by a query or a composition of
+capabilities. Not by log archaeology. By infrastructure that was built as
+the system ran.
+
+The three worked examples demonstrate increasing composition:
+- **Insurance claim** — normative accountability with light template annotations
+- **Production incident** — every speech act type under pressure, template
+  extraction adding structured evidence
+- **Governed architecture review** — full composition loop: perception +
+  enforcement + accountability producing a governed voting outcome
 
 ### agent-mesh-framework.md — The Machine Layer
 
-Translates the theory into developer-facing infrastructure. The 9-type message
-taxonomy becomes an enum. The CommitmentStore lifecycle becomes a state machine
-with a clear API. The ledger becomes a query surface with eight tools.
+Translates the composition into developer-facing infrastructure. The 10-type
+message taxonomy becomes an enum. The CommitmentStore lifecycle becomes a
+state machine with a clear API. The ledger becomes a query surface with
+query tools. The template registry becomes a YAML corpus and registration API.
 
 The NormativeChannelLayout — three channels per case: `work` (all types),
 `observe` (EVENT only), `oversight` (QUERY+COMMAND only) — is the principal
-structural contribution. Separating obligations from telemetry from human
-governance is not just organisation; it makes each concern independently
-queryable with no signal pollution.
+structural contribution.
 
-The anti-patterns section is as important as the API: EVENT on the work channel,
-silent failure, obligation flooding, large payloads in message bodies — each one
-describes what the CommitmentStore looks like when the pattern is violated.
+The anti-patterns section is as important as the API: EVENT on the work
+channel, silent failure, obligation flooding, large payloads in message
+bodies — each one describes what the CommitmentStore looks like when the
+pattern is violated.
 
 ### work-and-workitems.md — The Human Layer
 
 The key argument: machine-agent and human-agent obligations differ in one
 fundamental dimension — **obligation continuity**. A machine agent can wait
-hours for a long-running process, block on a signal, or hold an obligation open
-across many STATUS updates — duration is not the distinction. What a machine
-agent does not do is hold an obligation *discontinuously*: set it aside, attend
-to other things, and return. It is either present and working, or it has formally
-released via DONE, FAILURE, DECLINE, or HANDOFF.
+hours for a long-running process, block on a signal, or hold an obligation
+open across many STATUS updates — duration is not the distinction. What a
+machine agent does not do is hold an obligation *discontinuously*: set it
+aside, attend to other things, and return.
 
 A human agent holds obligations discontinuously by nature — stepping away,
-switching context, partially delegating while retaining accountability, returning
-after interruption. Every state WorkItem introduces beyond the machine-layer
-minimum — ACKNOWLEDGED, IN_PROGRESS, SUSPENDED, DELEGATED — is a normative
-artifact of that discontinuous holding, not of duration.
+switching context, partially delegating while retaining accountability,
+returning after interruption. Every state WorkItem introduces beyond the
+machine-layer minimum — ACKNOWLEDGED, IN_PROGRESS, SUSPENDED, DELEGATED —
+is a normative artifact of that discontinuous holding, not of duration.
 
-Two machine-agent scenarios that might appear to challenge this are handled
-deliberately by the model. When a prerequisite is not ready, the correct act is
-DECLINE with a stated reason — the obligation closes, the coordinator re-issues
-when the condition is met. When priority is the constraint, STATUS extends the
-deadline window if the agent will begin shortly; DECLINE is correct if it cannot
-take the obligation on at all. Silent parking — holding OPEN while doing
-unrelated work — is the "stalled obligation" anti-pattern, indistinguishable
-from a crashed agent and correctly surfaced by `list_stalled_obligations`. The
-machine model enforces release-and-reissue over parking; the human model
-accommodates parking because humans have no alternative.
-
-The document establishes this cleanly: casehub-work is not filling gaps in the
-machine-layer taxonomy. It is the human-agent layer — a principled extension of
-the Qhorus normative model for obligations held discontinuously.
-
-The seam between layers is the oversight channel. Layer 1 has a synthetic human
-posting COMMAND directly. Layer 2 replaces that synthetic post with a real
-WorkItem lifecycle — claim, review, possibly delegate, resolve — and the resulting
-COMMAND feeds back into the mesh. The channel is unchanged. The message types are
-unchanged. The seam is invisible to the machine layer.
+The seam between layers is the oversight channel. Layer 1 has a synthetic
+human posting COMMAND directly. Layer 2 replaces that synthetic post with
+a real WorkItem lifecycle — claim, review, possibly delegate, resolve — and
+the resulting COMMAND feeds back into the mesh. The channel is unchanged.
+The message types are unchanged. The seam is invisible to the machine layer.
 
 ---
 
-## What the Three Documents Establish Together
+## What the Documents Establish Together
 
-**The vertical coherence is the primary achievement.** Theory → machine
-implementation → human extension, each layer adding genuine capability without
-modifying the layer below. The layered ecosystem table — Qhorus alone, plus
-casehub-ledger, plus casehub-work, plus Claudony, plus CaseHub — can be read
-as a single coherent specification where each addition is principled rather than
-incremental.
+**The composition model is the primary achievement.** Three orthogonal
+capabilities — each with independent formal grounding, each independently
+useful, each opt-in — that compose into a governance loop no single
+capability can produce alone. The theory → implementation → extension
+vertical is preserved, with each layer adding genuine capability without
+modifying the layer below.
 
-**Formal completeness is a real property, not a claim.** The 9-type taxonomy is
-derived from the formal literature. FAILURE and DECLINE are not interchangeable
-status values; they are categorically distinct speech acts with different
-CommitmentStore transitions and different operational implications. The anti-pattern
-"silent failure" exists precisely because a machine agent that posts nothing leaves
-OPEN in the CommitmentStore forever — the type system is what makes silence
-detectably wrong.
+**Formal completeness is a real property, not a claim.** The 10-type
+taxonomy is derived from the formal literature. FAILURE and DECLINE are
+not interchangeable status values; they are categorically distinct speech
+acts with different CommitmentStore transitions and different operational
+implications. Template schemas extend this to governance vocabularies —
+formal sentence patterns that produce convergence across independently
+trained LLMs.
 
-**The extension model is clean.** SUSPENDED and sub-delegation (DELEGATED with
-retained owner) are correctly identified as human-layer concepts with no
-machine-layer equivalent and no semantic overlap with any existing type. SUSPENDED
-exists because humans can pause an obligation without failing or transferring it —
-a machine agent in the same situation either continues or formally releases. The
-formal extension contract — prove non-overlap before use, namespace new types,
-define a promotion path to core — is the right governance mechanism.
+**The composition is additive and opt-in.** A channel can use normative
+accountability alone (message types, commitments, ledger). Adding
+communication governance adds perception — prose parsed into structured
+acts. Adding protocol enforcement adds rules — governance gated on
+participant agreement. Each combination produces value; removing a
+capability reduces what is governed, not what is possible.
+
+**The extension model is clean.** SUSPENDED and sub-delegation are
+correctly identified as human-layer concepts with no machine-layer
+equivalent and no semantic overlap with any existing type.
 
 ---
 
@@ -122,91 +127,83 @@ define a promotion path to core — is the right governance mechanism.
 
 ### 0. Channel Backend Abstraction *(implemented — casehubio/qhorus#131)*
 
-The `ChannelGateway` is implemented. Qhorus is now backend-agnostic: messages can be delivered
-to external transports (WhatsApp, Slack, Claudony panel) without changes to the normative
-layer. All 9 message types — whether from agents via MCP or humans via external transports —
-flow through `MessageService` and `LedgerWriteService`. The normative pipeline is preserved
-regardless of backend.
+The `ChannelGateway` is implemented. Qhorus is now backend-agnostic:
+messages can be delivered to external transports without changes to the
+normative layer. All 10 message types flow through `MessageService` and
+`LedgerWriteService`. The normative pipeline is preserved regardless
+of backend.
 
-Backend SPI: `AgentChannelBackend` (always `QhorusChannelBackend`),
-`HumanParticipatingChannelBackend` (at most one per channel, full speech act inbound),
-`HumanObserverChannelBackend` (unlimited, EVENT only). New MCP tools: `list_backends`,
-`deregister_backend`. The `register_backend` MCP tool (agent-driven association) is deferred
-to #140. A2A protocol bridge (`A2AChannelBackend`) is deferred to #135.
+### 1. Communication Governance Perception Layer *(implemented — casehubio/platform#943)*
 
-### 1. Cross-Channel Causal Correlation *(implemented)*
+The template registry provides mechanical extraction of governance acts
+from agent prose. The unified registry (#959) consolidates the extraction
+pipeline. NLP structural matching handles grammatical variation (tense,
+number, determiners). Schema publication tells agents what sentence shapes
+the protocol expects. Bidirectional generation produces conformant prose
+from structured fields.
 
-`causedByEntryId` is a UUID reference that resolves across all channels. An
-oversight COMMAND can causally link to a work DONE; `get_causal_chain` now
-traverses channel boundaries. `get_obligation_activity` walks the full causal
-DAG — not just correlationId — so oversight escalations with a different
-correlationId appear in the narrative alongside the work obligation that
-triggered them. See Part 6 of `agent-mesh-framework.md`.
+**Current limitation: paraphrase tolerance.** Structural matching handles
+inflection ("approved" → "approve") but not arbitrary paraphrase ("I'm
+in favour of this" vs. "I approve this"). Adaptive phrase variation —
+learning known variations over time via LLM fallthrough — addresses this
+architecturally. The matching tier is pluggable: NLP structural matching
+today, adaptive variation as it matures.
 
-The remaining open question is ProvenanceLink (PROV-O graph across agents,
-cases, and WorkItems) — the formal specification of the broader causal graph
-once WorkItem audit entries participate in the same DAG as Qhorus ledger
-entries. The cross-channel foundation is in place; WorkItem integration is the
-next step.
+**Related platform issues:**
+- casehubio/platform#969 — YAML corpus format
+- casehubio/platform#970 — `match` playbook step
+- casehubio/platform#972 — atomic namespace update with version safety
+- casehubio/platform#973 — NearMiss guided rejection
+- casehubio/platform#974 — corpus quality testing tooling
 
-### 2. WorkItem Integration into Trust Scoring
+### 2. Cross-Channel Causal Correlation *(implemented)*
+
+`causedByEntryId` resolves across all channels. `get_causal_chain` traverses
+channel boundaries. The remaining open question is ProvenanceLink (PROV-O
+graph across agents, cases, and WorkItems).
+
+### 3. WorkItem Integration into Trust Scoring
 
 The machine layer has a closed feedback loop: `LedgerWriteService` writes
-`LedgerAttestation` on DONE (SOUND), FAILURE (FLAGGED), and DECLINE (FLAGGED).
-Those attestations feed the Bayesian Beta trust score. The loop is implemented.
+attestations on DONE, FAILURE, and DECLINE. The human layer does not yet
+close this loop. When a WorkItem reaches COMPLETED, does that produce a
+LedgerAttestation? Who is the attestor? How do sub-delegation chains
+affect EigenTrust propagation?
 
-The human layer does not yet close this loop. When a WorkItem reaches COMPLETED,
-does that produce a LedgerAttestation on the originating QUERY entry? Who is the
-attestor — the human who resolved it, or the system? And for sub-delegation
-chains: if Alice delegates to Bob and Bob completes, does Alice's trust signal
-propagate to Bob's track record via EigenTrust? The deontic logic of retained
-ownership (DELEGATED) implies it should. The implementation does not yet specify
-this.
+### 4. The Extension Contract
 
-### 3. The Extension Contract Is Underspecified
+Template namespaces provide the extension mechanism for governance
+vocabularies — a protocol author defines a namespace, registers templates,
+and the registry handles composition. The question that remains: how do
+domain-specific governance vocabularies compose with the base normative
+vocabulary? Can two namespaces define conflicting patterns? What happens
+when a namespace is deprecated?
 
-Type namespacing, extension registry, and promotion path are described as needed
-in work-and-workitems.md. They are not yet implemented or formally specified.
-Without them, community or domain-specific extensions risk the same fragmentation
-problem KQML had: same vocabulary, incompatible semantics across implementors.
-This needs to be designed before external extensions exist, not retrofitted after.
+The broader extension contract — namespacing for new speech act types,
+declaration mechanisms for the CommitmentStore and ledger, promotion
+criteria — is described as needed but not yet specified.
 
-Specifically needed:
-- A namespacing convention for extension types (`casehub-work.SUSPEND` vs a
-  future Qhorus `SUSPEND`)
-- A declaration mechanism so the CommitmentStore and ledger handle extension
-  types without hardcoding
-- A promotion criteria definition — what evidence justifies moving an extension
-  type into core?
-
-### 4. The Empirical Hypothesis Remains Unverified
+### 5. The Empirical Hypothesis Remains Unverified
 
 normative-layer.md makes a specific claim: that formal semantic grounding
-produces convergence across independently trained LLM agents. Two agents trained
-independently on the same formal tradition will interpret DECLINE consistently —
-because DECLINE maps to a specific, formally defined concept with an extensive
-training-data footprint.
+produces convergence across independently trained LLM agents. This is
+framed honestly as a hypothesis (engine#189). But it is load-bearing.
+The empirical test needs to run.
 
-This is framed honestly as a hypothesis (engine#189). But it is load-bearing.
-If independently trained agents do not converge on the protocol without explicit
-guidance, the interoperability argument weakens significantly. The empirical test
-needs to run.
+### 6. Corpus Quality Tooling *(casehubio/platform#974)*
 
-### 5. The Oversight Channel Pattern Needs Load-Bearing Examples
+There is no tooling for validating whether a corpus handles the variation
+a specific LLM will produce. A team authors templates, deploys them, and
+discovers in production that different LLMs phrase governance acts
+differently. Match-rate testing, regression fixtures, and cross-namespace
+collision detection are needed before corpus authoring is safe for
+production governance.
 
-The oversight channel is where the two layers meet — machine agents posting
-QUERY, humans resolving via WorkItem, COMMAND feeding back into the mesh. This
-is architecturally elegant. It is also the least-tested path in the current
-normative test suite.
+### 7. Hot-Update Safety *(casehubio/platform#972)*
 
-The Layer 1 example ends with a human posting COMMAND directly (synthetic). The
-Layer 2 description in work-and-workitems.md shows the WorkItem lifecycle in
-prose. There is no canonical executable test that demonstrates the full path:
-QUERY → WorkItem creation → WorkItem lifecycle → COMMAND → downstream DONE — with
-the cross-channel ledger capturing the causal chain.
-
-That test is the Layer 2 equivalent of `SecureCodeReviewScenario.java` and needs
-to be written.
+Template namespace replacement is non-atomic (`deregister` then `register`).
+Channels with active commitments can experience a matching gap during
+updates. Version metadata and atomic swap are needed.
 
 ---
 
@@ -214,25 +211,21 @@ to be written.
 
 In rough priority order:
 
-1. **ProvenanceLink specification** — Cross-channel causal links are implemented.
-   The next step is specifying how WorkItem audit entries participate in the same
-   causal DAG as Qhorus ledger entries, enabling a full PROV-O graph across
-   agents, cases, and human obligations.
+1. **Corpus quality tooling** — Validate templates against real LLM
+   variation before deployment. The composition model's value depends
+   on extraction reliability.
 
-2. **WorkItem → LedgerAttestation path** — Specify the attestation model for
-   human obligations. Define how COMPLETED, REJECTED, and EXPIRED WorkItems
-   produce trust signals, and how sub-delegation chains affect EigenTrust
-   propagation.
+2. **WorkItem → LedgerAttestation path** — Close the trust feedback loop
+   for human obligations.
 
-3. **Extension contract specification** — Namespacing, registry, promotion
-   criteria. Design this before external extensions exist.
+3. **Extension contract specification** — Namespace composition rules,
+   deprecation, promotion criteria. Design this before external extensions
+   exist.
 
-4. **Layer 2 canonical test** — An executable end-to-end test for the oversight
-   channel + WorkItem lifecycle path. Make the human-layer seam as well-tested
-   as the machine layer.
+4. **Layer 2 canonical test** — An executable end-to-end test for the
+   oversight channel + WorkItem lifecycle path.
 
-5. **engine#189 empirical test** — Run the LLM convergence experiment. The
-   interoperability argument needs evidence, not just theory.
+5. **engine#189 empirical test** — Run the LLM convergence experiment.
 
 ---
 

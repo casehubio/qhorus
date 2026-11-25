@@ -18,12 +18,19 @@ between autonomous agents. This is not a model quality problem; even perfectly-r
 operating without formal accountability infrastructure cannot produce the evidence that regulated
 environments require.
 
+And it is not a parsing problem. An agent that writes "I approved this architecture because it
+handles failover" has performed a governance act. Without mechanical extraction, that act exists
+only as a string in a log — indistinguishable from a comment, a suggestion, or a greeting.
+Accountability requires that consequential acts be identified, structured, enforced against
+protocol rules, and recorded in a form that is independently auditable. At some point, agent
+conversation must result in something actionable — a function call, an event, a normalised
+structure — or the conversation produces no accountability at all, which in regulated
+environments is dangerous.
+
 The normative layer is the accountability infrastructure that multi-agent AI has been missing.
-Grounded in thirty years of research at the intersection of speech act theory, deontic logic,
-defeasible reasoning, and social commitment semantics — and now implemented as practical,
-developer-facing infrastructure — it gives every agent interaction the formal status of an
-accountable act: recorded, tracked, causally linked, tamper-evidently proven, and queryable by
-the agents themselves at runtime.
+It comprises three orthogonal capabilities — each independently useful, each addressing a
+distinct gap — that compose into a closed governance loop from natural language to auditable,
+enforced action.
 
 **For business owners and compliance officers, the significance is not the technology — it is
 the methodology.** The normative layer provides a formally-grounded governance framework for AI
@@ -36,107 +43,301 @@ is demanded. That answer cannot be retrofitted. It has to be built in from the s
 
 ---
 
-## The Four Layers
+## Three Capabilities That Compose
+
+Governing agent communication requires solving three problems independently. Each is necessary.
+None is sufficient alone. The problems are orthogonal — they can be solved in any order, with
+any subset, and each solution adds value without requiring the others. But when all three are
+present, they produce something none can produce individually: a closed loop from natural
+language to governed accountability.
 
 ```
 +================================================================================+
-|  THE QHORUS NORMATIVE LAYER STACK                                              |
-|  Theoretical foundations of the agent communication mesh                       |
+|  THE QHORUS NORMATIVE COMPOSITION                                              |
+|  Three capabilities — each independent, together a closed governance loop     |
 +================================================================================+
 
-+--------------------------------------------------------------------------------+
-|  LAYER 4 -- SOCIAL COMMITMENT SEMANTICS                                        |
-|  "Commitments between agents are observable, verifiable social contracts"      |
++------------------------------+     +------------------------------+
+|  COMMUNICATION GOVERNANCE    |     |  PROTOCOL ENFORCEMENT        |
+|  "What did the agent say?"   |     |  "Is it permitted?"          |
+|                              |     |                              |
+|  Template registry + NLP     |     |  Channel protocols           |
+|  YAML corpus definitions     |     |  Playbook bridge             |
+|  Structural extraction       |     |  Enforcement modes           |
+|  Schema publication          |     |  Handshake gating            |
+|  Bidirectional generation    |     |  Dispatch advisories         |
++--------------+---------------+     +---------------+--------------+
+               |   extracts governance acts           |   evaluates rules
+               |   from prose                         |   gates outcomes
+               v                                      v
++================================================================================+
+|  NORMATIVE ACCOUNTABILITY                                                      |
+|  "Who owes what to whom — and what happened?"                                 |
 |                                                                                |
-|   NORMATIVE LEDGER  --  MessageLedgerEntry  --  SHA-256 hash chain             |
-|                                                                                |
-|   Every speech act permanently recorded. causedByEntryId links each            |
-|   resolution (DONE/FAILURE/DECLINE) back to the COMMAND that created it.       |
-|   Tamper-evident. Queryable. The proof that an obligation existed and          |
-|   how it was resolved -- forever.                                              |
-+----------------------------------+---------------------------------------------+
-                                   |  every resolution proven here
-+-----------------------------------+--------------------------------------------+
-|  LAYER 3 -- DEFEASIBLE REASONING                                               |
-|  "Obligations can be overridden, transferred, or excused -- with reason"       |
-|                                                                                |
-|   HANDOFF  --- "I cannot do this -- agent-C can, transferring it"              |
-|   DECLINE  --- "I must refuse -- here is my stated reason"                     |
-|   FAILURE  --- "I tried and could not complete -- here is what happened"       |
-|                                                                                |
-|   The obligation does not simply vanish. It is formally resolved or            |
-|   formally transferred. Every exception has a record.                          |
-+----------------------------------+---------------------------------------------+
-                                   |  unresolved obligations surface as stalled
-+-----------------------------------+--------------------------------------------+
-|  LAYER 2 -- DEONTIC LOGIC                                                      |
-|  "What agents are obligated, permitted, and prohibited from doing"             |
-|                                                                                |
-|   COMMITMENT STORE  --  7 states  --  full lifecycle tracking                  |
-|                                                                                |
-|   OPEN --> ACKNOWLEDGED --> FULFILLED                                          |
-|              |               DECLINED                                          |
-|              |               FAILED                                            |
-|              +-----------> DELEGATED --> [continues with new agent]            |
-|                            EXPIRED   --> [deadline passed, never resolved]     |
-|                                                                                |
-|   Infrastructure tracks who owes what to whom -- not the LLM.                  |
-+----------------------------------+---------------------------------------------+
-                                   |  COMMAND creates; DONE/FAILURE/DECLINE closes
-+-----------------------------------+--------------------------------------------+
-|  LAYER 1 -- SPEECH ACT THEORY                                                  |
-|  "Every message is an illocutionary act -- doing something by saying it"       |
-|                                                                                |
-|   QUERY    -- ask for information       -- creates weak expectation            |
-|   COMMAND  -- ask for action            -- creates obligation (-> Layer 2)     |
-|   RESPONSE -- answer a QUERY            -- discharges expectation              |
-|   STATUS   -- report progress           -- extends the obligation window       |
-|   DECLINE  -- refuse a QUERY/COMMAND    -- terminates with stated reason       |
-|   HANDOFF  -- transfer obligation       -- delegates formally (-> Layer 3)     |
-|   DONE     -- successful completion     -- fulfills obligation                 |
-|   FAILURE  -- failed completion         -- terminates with explanation         |
-|   EVENT    -- telemetry/observability   -- no obligation created               |
-+--------------------------------------------------------------------------------+
+|  10-type speech act taxonomy -- every message is a performative                |
+|  7-state commitment lifecycle -- obligations tracked to resolution             |
+|  Tamper-evident ledger -- SHA-256 hash chain, causally linked                 |
+|  Bayesian trust scoring -- reputation derived from behaviour                   |
+|  Peer attestation -- independent verification of outcomes                      |
++================================================================================+
 ```
+
+### Communication Governance
+
+**Governance without perception is manual.** An agent posts "I approved this architecture
+because it handles failover." Without mechanical extraction, a human must read that message,
+determine it is an approval, identify the subject and rationale, and feed those into whatever
+governance process applies. At five agents this is tedious. At fifty agents running overnight
+across four channels, it is impossible.
+
+Communication governance solves perception. A template registry defines the vocabulary of
+governance acts — what sentence shapes the protocol expects, what variables they contain, and
+what constraints those variables carry. NLP extraction parses agent prose against those templates,
+tolerating the grammatical variation that LLMs naturally produce — verb tense, number, determiners
+— while enforcing structural and semantic constraints. The result is a structured governance
+record: not "the agent said something that looked like an approval" but
+`{template: "vote", decision: "approve", subject: "architecture", rationale: "handles failover"}`
+— with typed fields, constrained values, and deterministic extraction.
+
+The extraction is mechanical and auditable. No LLM participates in the parsing. The template
+defines the structure; the NLP pipeline handles variation; the registry produces typed fields
+or reports no match. This determinism is the point — governance acts must be identified by
+infrastructure, not inferred by another model.
+
+Templates are **bidirectional**: the same definition that extracts fields from prose also
+generates conformant prose from fields. The infrastructure can tell an agent exactly what
+sentence shape a protocol expects (schema publication), and it can produce a governance summary
+from extracted fields ("The committee approved the architecture 2-1. Security-lead voted reject,
+citing lack of tests."). Extraction and generation are inverses — a round trip preserves every
+field.
+
+The governance vocabulary is defined declaratively in YAML corpus files. A protocol author writes
+templates with variable constraints; they do not write parsers, regex patterns, or NLP pipelines.
+The registry compiles the templates, indexes them by lemmatised keywords for fast candidate
+selection, and matches at runtime.
+
+This is not NLP for convenience. It is the perception layer that makes agent governance
+mechanical rather than manual. Without it, every governance act is a prose string that someone —
+or some other model — must interpret. With it, every governance act is a typed, constrained,
+deterministic extraction that feeds directly into the enforcement pipeline.
+
+### Normative Accountability
+
+**Accountability without tracking is aspiration.** An agent performs a governance act — an
+approval, a delegation, a refusal. Without formal accountability infrastructure, that act exists
+in application state: a status field, a log entry, a message in a queue. When something goes
+wrong — the approval was unauthorised, the delegation chain went cold, the refusal was
+unwarranted — the investigation requires reconstructing what happened from disparate sources
+that were never designed to carry evidential weight.
+
+Normative accountability solves tracking. Grounded in thirty years of research at the
+intersection of speech act theory, deontic logic, defeasible reasoning, and social commitment
+semantics, it gives every agent interaction the formal status of an accountable act: recorded,
+tracked, causally linked, tamper-evidently proven, and queryable by the agents themselves at
+runtime.
+
+The 10-type message taxonomy classifies every communicative act:
+
+| Type | What it does | Obligation effect |
+|------|-------------|-------------------|
+| QUERY | Ask for information | Creates weak expectation |
+| COMMAND | Ask for action | Creates obligation |
+| RESPONSE | Answer a QUERY | Discharges expectation |
+| STATUS | Report progress | Extends obligation window |
+| DECLINE | Refuse a QUERY/COMMAND | Terminates with stated reason |
+| HANDOFF | Transfer obligation | Delegates formally |
+| DONE | Successful completion | Fulfills obligation |
+| FAILURE | Failed completion | Terminates with explanation |
+| PROPOSE | Propose an agreement | Creates negotiable commitment |
+| EVENT | Telemetry/observability | No obligation created |
+
+The CommitmentStore tracks the lifecycle of every obligation through seven states:
+`OPEN → ACKNOWLEDGED → FULFILLED / DECLINED / FAILED / DELEGATED / EXPIRED`. Infrastructure
+tracks who owes what to whom — not the LLM.
+
+The normative ledger records every speech act as a `MessageLedgerEntry` in a SHA-256 hash chain.
+`causedByEntryId` links each resolution back to the act that created it. Tamper-evident.
+Queryable. The proof that an obligation existed and how it was resolved — permanently.
+
+Bayesian Beta trust scoring computes a per-actor score from the attestation record. Peer
+attestation provides independent verification. EigenTrust propagates trust transitively across
+the mesh. Trust is computed from behaviour, not asserted by configuration. The full trust model
+— including how communication governance feeds structural conformance signals into scoring — is
+described below under "Trust derived from behaviour."
+
+### Protocol Enforcement
+
+**Governance without enforcement is advisory.** An agent produces a governance act — an approval,
+a vote, an escalation. Without enforcement, the act is recorded and nothing else happens. The
+protocol rules — who is allowed to approve, whether all participants have voted, whether a
+threshold has been reached — exist only in documentation or in the heads of the team that
+configured the system.
+
+Protocol enforcement solves rules. Channel protocols evaluate governance rules at dispatch time
+and produce advisories — structured reports of what the rules say about the message being
+dispatched. Enforcement modes determine consequence: ADVISORY (record the advisory, dispatch the
+message), BLOCKING (reject the message, record why), or QUARANTINE (pause the channel, expire
+active commitments, record the violation).
+
+The critical innovation is **handshake gating**. When a protocol requires all participants to
+weigh in before an outcome takes effect, the enforcement pipeline does not count messages — it
+evaluates template-extracted fields. A vote counts when the template extraction confirms the
+content is a structurally matched vote with a valid decision value. An approval takes effect
+when the protocol confirms all required participants have cast structurally matched approvals.
+Not "has everyone sent a message" but "has everyone voted, and do the extracted fields constitute
+agreement."
+
+This is the natural join of perception and enforcement. Without communication governance,
+protocol enforcement can only evaluate metadata — message count, sender identity, timing. With
+it, enforcement evaluates content — what was decided, by whom, with what rationale.
+
+Protocols are defined declaratively in YAML playbooks and registered per channel. Built-in
+protocols handle common patterns: `REQUEST_RESPONSE` (threshold on open queries),
+`TASK_COMPLETION` (threshold on open commands), `ROUND_ROBIN` (turn-taking),
+`CONTRIBUTION_REQUIRED` (participation gating). Custom protocols — including template-aware
+governance protocols — compose via the playbook bridge with the same enforcement pipeline.
+
+### The Composition
+
+Each capability works independently. The composition is additive and opt-in.
+
+A channel with only normative accountability tracks obligations via message types. No templates,
+no enforcement — agents declare their intent through typed messages, and the infrastructure
+records the lifecycle.
+
+A channel with communication governance and normative accountability adds perception: governance
+acts in prose are mechanically extracted, and the structured fields are recorded alongside the
+obligation lifecycle. The ledger entry carries not just "DONE" but
+`{decision: "approve", subject: "architecture", rationale: "handles failover"}`.
+
+A channel with all three adds enforcement: the extracted fields are evaluated against protocol
+rules, outcomes are gated on participant agreement, and violations produce advisories or blocks.
+The governance loop closes: prose in → structured extraction → rule evaluation → handshake
+gating → enforced outcome → auditable ledger entry.
+
+```
+Agent prose
+  → [Communication Governance]  Template extraction — structured fields (optional)
+    → [Normative Accountability]  Speech act classification + commitment lifecycle
+      → [Protocol Enforcement]  Rule evaluation + handshake gating (optional)
+        → Enforcement gate  ADVISORY / BLOCKING / QUARANTINE (optional)
+          → Normative ledger entry — tamper-evident, causally linked
+```
+
+Removing a capability reduces what is governed, not what is possible. The pipeline degrades
+gracefully in both directions: a channel with no templates processes messages by type alone; a
+channel with no normative layer can still extract governance acts from prose (without
+accountability tracking). Each combination produces value; the full composition produces
+accountability.
 
 ---
 
-## Theoretical Foundations — From Academic Tradition to Practical Implementation
+## Formal Foundations — Why Each Capability Exists
 
-The ideas behind these four layers did not originate with us. They have a 30-year academic lineage — and that lineage is precisely why they are the right foundations for enterprise agentic-AI.
+The capabilities above did not emerge from engineering convenience. Each addresses a problem that
+has a formal treatment in the academic literature — and that formal treatment is precisely why
+the capability works correctly, composes reliably, and extends without breaking.
 
-The first serious attempt to formalise inter-agent communication came from **FIPA** (Foundation for Intelligent Physical Agents), an IEEE standards body active from the late 1990s. FIPA's Agent Communication Language (FIPA-ACL) drew directly on Searle's speech act theory and defined a taxonomy of communicative acts — `inform`, `request`, `agree`, `refuse`, `failure` — grounded in the same philosophical tradition as Layer 1 above. FIPA understood that messages between agents are not just data transfers; they are *performatives* that create effects in the world by virtue of being uttered. The problem with FIPA was twofold. First, the delivery mechanism: the standards required heavyweight agent platforms and complex negotiation protocols that never made it into production systems. Second, and more fundamentally, the problem FIPA was solving did not yet exist at production scale in 1999. Cross-organisation agent interoperability between enterprise platforms — Siemens talking to British Telecom at the agent level — was not a real production requirement for most teams. The theory was right; the timing and delivery were wrong. Today both have changed. Multi-LLM deployments — Claude handling reasoning, Gemini handling structured extraction, fine-tuned specialists handling domain verification, all in the same production system — are the default assumption for enterprise resilience. The formal semantic grounding that FIPA pioneered is now solving a problem that actually exists at scale.
+### Speech act theory → Communication governance + Normative accountability
 
-Meanwhile, **deontic logic** — the formal study of obligation, permission, and prohibition — was developing independently in computer science (Meyer, 1988; Governatori et al.) as a tool for reasoning about normative systems: contracts, regulations, commitments. Defeasible deontic logic, in particular, addressed the reality that obligations in the real world are not absolute: they can be transferred, excused, or overridden. This maps directly to Layers 2 and 3 — the CommitmentStore and the formal treatment of HANDOFF, DECLINE, and FAILURE as first-class exception-handling mechanisms rather than error conditions. Separately, **social commitment semantics** (Singh, 1998; Winikoff, 2007) proposed that the right primitive for multi-agent systems was not the BDI agent's internal mental state, but the observable commitment between agents — what one agent has promised another, whether it has been fulfilled, and what evidence exists. Layer 4, the normative ledger, is a direct implementation of this idea.
+The first serious attempt to formalise inter-agent communication came from **FIPA** (Foundation
+for Intelligent Physical Agents), an IEEE standards body active from the late 1990s. FIPA's
+Agent Communication Language drew directly on Searle's speech act theory and defined a taxonomy
+of communicative acts — `inform`, `request`, `agree`, `refuse`, `failure` — grounded in the
+insight that messages between agents are not data transfers but *performatives* that create
+effects by virtue of being uttered.
 
-On the other side of the tradition, the modern wave of agentic-AI frameworks — **AutoGen**, **LangGraph**, **CrewAI**, **OpenAI Swarm**, **Letta**, and emerging protocol standards like **A2A** — arrived at similar patterns from a completely different direction: empirical engineering. They discovered, through building production systems, that you need handoff mechanisms, that agents need roles, that orchestrators need to track what subagents are doing, and that something has to handle failures gracefully. These frameworks encoded those patterns pragmatically, without reference to the academic tradition. The result is software that works but lacks formal grounding — which means it is hard to reason about correctness, impossible to audit systematically, and difficult to extend without breaking assumptions.
+The 10-type message taxonomy inherits this directly. COMMAND is a directive speech act that
+creates an obligation. DECLINE is a commissive cancellation. HANDOFF is a formal delegation.
+These are not status values — they are categorically distinct acts with different formal
+consequences.
 
-What we realised is that **these two traditions are not competing approaches — they are two perspectives on the same underlying system**, expressed at different levels of abstraction. FIPA and deontic logic describe, formally, the normative structure that modern agentic frameworks are implicitly implementing informally. They are looking at the same thing from opposite ends: one from mathematical precision, one from practical necessity. Qhorus unifies them. The 10-type message taxonomy is grounded in speech act theory, but a developer reads it as an enum. The CommitmentStore implements deontic lifecycle tracking, but a developer sees it as a state machine with a clear API. The normative ledger implements social commitment semantics, but a developer experiences it as an audit table they can query with `list_ledger_entries`. You do not need to know the theory to use it correctly — but the theory is what ensures that using it correctly is possible in the first place. The formal foundations provide three properties: *formal completeness* (the taxonomy covers all communicative act types in the academic literature — no established type is missing from the model), *consistency* (no two types mean the same thing; every type has a distinct formal definition), and *closure* (every obligation has exactly one terminal resolution path). This is completeness relative to the formal taxonomy, not completeness relative to every possible domain requirement. A practitioner whose domain requires PARTIAL_COMPLETION or DISPUTED has a principled extension point — a formally grounded system they can extend consistently — rather than an ad-hoc status field they are adding to an informal one. The foundations do not enumerate your domain for you; they ensure that whatever you build on top is coherent.
+The convergence argument extends to communication governance: **formally defined sentence schemas
+produce convergence across independently trained LLMs in the same way that formally defined
+message types produce convergence across agent frameworks.** Without formal schemas, every team
+invents its own governance vocabulary — the same Tower of Babel that KQML produced for message
+types. FIPA-ACL corrected this for communicative acts by grounding the taxonomy in Searle's
+theory. The template registry corrects it for governance vocabularies by grounding sentence
+patterns in structural linguistics — lemmatised, POS-tagged, deterministic.
 
-A reasonable objection is that formal agent frameworks have a poor track record of practitioner adoption. FIPA, OWL-S, WSMO, formal contract languages for web services — academics built them; practitioners ignored them and built simpler things that shipped. Why should this be different? Because every failed formal framework tried to be the *product*. FIPA-ACL was the interface developers wrote to. OWL-S was the contract language developers authored. The formal theory was exposed directly to practitioners who had no interest in it. Qhorus inverts this. The formal theory is invisible infrastructure. A developer calls `decline_commitment(id, reason)` — they do not need to know that DECLINE is a commissive cancellation, or that it maps to Layer 3 defeasible reasoning. The theory is the guarantee that the API is coherent and complete; it is not the API. Formal grounding as invisible foundation, not formal grounding as developer interface — that is why the adoption trajectory is different.
+### Deontic logic → Normative accountability
 
-### Why formal semantics produce convergence — and hand-rolled protocols don't
+**Deontic logic** — the formal study of obligation, permission, and prohibition (Meyer, 1988;
+Governatori et al.) — provides the theoretical foundation for the CommitmentStore. The seven-state
+lifecycle is not an arbitrary state machine; it is a formal encoding of how obligations are
+created, transferred, excused, and resolved in normative systems. Defeasible deontic logic
+addresses the reality that obligations are not absolute — they can be overridden with reason.
+HANDOFF, DECLINE, and FAILURE are first-class exception-handling mechanisms, not error conditions.
 
-There is a direct consequence of the academic lineage that matters practically: **without formal semantic grounding, independently implemented agent systems will each invent their own vocabulary for the same coordination concepts**. Ask five teams to build a multi-agent coordination protocol and you will get five different terms for decline, five different interpretations of what a handoff means, and five different answers to whether a silent agent is refusing or failing. This is not hypothetical — it is the current state of the agentic-AI landscape. AutoGen, LangGraph, CrewAI, Gastown, and Swarm each arrived at similar coordination patterns through empirical engineering and gave them incompatible names and semantics. An agent built for one framework cannot reliably compose with an agent built for another.
+### Social commitment semantics → Normative accountability
 
-This is precisely what happened with KQML in the 1990s. KQML specified a set of speech act types — `tell`, `ask-if`, `subscribe` — but left interpretation to each implementor. Different teams read the same specification and built incompatible systems. The speech acts were named but not formally grounded; the same word meant different things to different implementors. FIPA-ACL corrected this by grounding the taxonomy in Searle's speech act theory. The formal grounding removed interpretive ambiguity: `inform` meant the same thing to a Siemens agent platform as to a British Telecom one. For the first time, independently built agent systems could interoperate.
+**Social commitment semantics** (Singh, 1998; Winikoff, 2007) proposed that the right primitive
+for multi-agent systems was not the agent's internal mental state but the observable commitment
+between agents — what one agent has promised another, whether it has been fulfilled, and what
+evidence exists. The normative ledger is a direct implementation of this idea. Every commitment
+is observable, queryable, and independently verifiable.
 
-Qhorus inherits this property. The 10-type taxonomy is not a naming convention — it is a provably complete classification of communicative acts derived from formal theory. An LLM trained on speech act theory already understands what COMMAND, DECLINE, and HANDOFF mean — not because it was trained on Qhorus, but because it was trained on the same formal tradition Qhorus is built on. Two independently implemented LLM agents, given the Qhorus normative layer to work within, are more likely to interpret DECLINE consistently than they would without it — because DECLINE maps to a specific, formally defined concept with an extensive training-data footprint in the academic literature. This is a hypothesis, not a proven fact. The formal grounding provides the strongest available basis for convergence; it does not guarantee it. Engine#189 begins testing the weaker claim: that a supervising LLM can consistently reconstruct accountability from a normative record. The stronger claim — that independently trained agents converge on the protocol without explicit guidance — remains to be demonstrated empirically.
+### Structural linguistics → Communication governance
 
-**The practical consequence:** a Qhorus deployment can add a new LLM agent — from any provider, trained independently — and that agent will interact with the existing mesh without semantic negotiation. The normative layer is the shared vocabulary. Frameworks without one require semantic alignment to be achieved through convention, documentation, or repeated integration effort. At scale, with many agents from multiple providers, the cost of that alignment compounds rapidly.
+The template registry's extraction pipeline draws on a different formal tradition: structural
+linguistics. Lemmatisation reduces inflected words to their base form — "approved" → "approve",
+"these" → "this" — allowing templates to tolerate the grammatical variation LLMs produce while
+maintaining deterministic extraction. POS tagging identifies the grammatical role of each token.
+Structural matching aligns lemmatised input against compiled template patterns, extracting typed
+fields from clause positions.
 
-The empirical test of this claim is described in the final section of this document and specified in full at [engine#189](https://github.com/casehubio/engine/issues/189).
+This is not approximate matching. The extraction is deterministic: given a template and an input,
+the output is either a precise set of typed fields or a definitive no-match. The NLP pipeline
+adds tolerance, not fuzziness.
+
+### Two traditions, one system
+
+On one side: FIPA, deontic logic, and social commitment semantics — formal agent theory from the
+1990s. On the other: AutoGen, LangGraph, CrewAI, OpenAI Swarm — empirical engineering from the
+2020s. The modern frameworks arrived at the same coordination patterns through building
+production systems — handoff mechanisms, role-based routing, failure handling — without reference
+to the academic tradition. The result is software that works but lacks formal grounding, which
+means it is hard to reason about correctness, impossible to audit systematically, and difficult
+to extend without breaking assumptions.
+
+**These two traditions are not competing approaches — they are two perspectives on the same
+underlying system**, expressed at different levels of abstraction. Qhorus unifies them. The
+10-type taxonomy is grounded in speech act theory, but a developer reads it as an enum. The
+CommitmentStore implements deontic lifecycle tracking, but a developer sees it as a state machine.
+The template registry implements structural linguistic extraction, but a protocol author sees it
+as a YAML file with variable constraints. You do not need to know the theory to use it
+correctly — but the theory is what ensures that using it correctly is possible in the first place.
+
+A reasonable objection is that formal frameworks have a poor track record of practitioner
+adoption. FIPA, OWL-S, WSMO, formal contract languages for web services — academics built them;
+practitioners ignored them. Why should this be different? Because every failed formal framework
+tried to be the *product*. FIPA-ACL was the interface developers wrote to. The formal theory was
+exposed directly to practitioners who had no interest in it. Qhorus inverts this. The formal
+theory is invisible infrastructure. A developer calls `decline_commitment(id, reason)` — they do
+not need to know that DECLINE is a commissive cancellation, or that it maps to defeasible
+reasoning. A protocol author writes a YAML template — they do not need to know that the
+extraction uses lemmatised structural matching. The theory is the guarantee that the API is
+coherent and complete; it is not the API.
 
 ---
 
 ## From Status Fields to Accountability
 
-A reasonable objection to the normative layer is that its distinctions — DECLINED vs FAILED vs EXPIRED — are just status values. Any system can add status fields. What makes formally grounded speech acts different?
+A reasonable objection to the normative layer is that its distinctions — DECLINED vs FAILED vs
+EXPIRED — are just status values. Any system can add status fields. What makes formally grounded
+speech acts different?
 
-The difference is between **tracking** and **accountability**. A status field records what state a piece of work is in. A commitment records who is *accountable* for it — what they promised, to whom, under what authorisation, and whether they followed through. These answer different questions, and the difference becomes consequential when something goes wrong.
+The difference is between **tracking** and **accountability**. A status field records what state
+a piece of work is in. A commitment records who is *accountable* for it — what they promised, to
+whom, under what authorisation, and whether they followed through. These answer different
+questions, and the difference becomes consequential when something goes wrong.
 
 **The status field version of a production incident:**
-An agent does not complete its assigned work. The system sees a timeout and re-assigns. Whether the agent explicitly refused, started and failed, timed out, or silently handed to someone else — all of these look identical. The re-assignment is the same regardless of cause. The investigation, if it happens, requires reading logs that were never designed to carry evidential weight.
+An agent does not complete its assigned work. The system sees a timeout and re-assigns. Whether
+the agent explicitly refused, started and failed, timed out, or silently handed to someone
+else — all of these look identical. The re-assignment is the same regardless of cause. The
+investigation, if it happens, requires reading logs that were never designed to carry evidential
+weight.
 
 **The accountability version of the same incident:**
 The commitment state carries the distinction:
@@ -148,31 +349,78 @@ The commitment state carries the distinction:
 | Agent handed to specialist | Timeout | DELEGATED — new obligor named | Track the chain; do not re-assign |
 | Deadline passed, no response | Timeout | EXPIRED — precise timestamp | Escalate; something systemic is wrong |
 
-At five agents this barely matters — you can investigate manually. At fifty agents running overnight, these distinctions determine whether the system recovers automatically or pages someone at 3am.
+At five agents this barely matters — you can investigate manually. At fifty agents running
+overnight, these distinctions determine whether the system recovers automatically or pages
+someone at 3am.
 
-**The trust scoring argument.** If an agent can mark work complete without formally asserting "I, the named obligor, fulfilled what was asked of me," then counting completion rates for trust scoring is meaningless — you are scoring closure of work records, not quality of fulfilled obligations. With a commitment, DONE is an accountable assertion to a named party. That assertion is attached to the agent identity, timestamped, ledgered, and carries weight in the Bayesian trust model. An agent that marks work done without doing it will eventually be caught — a FLAGGED attestation decreases their trust score. Routing shifts accordingly. No human configures this. It emerges from the accountability record.
+**Adding NLP parsing is not the same as adding communication governance.** A regex that extracts
+"approve" from a string is parsing. A template registry that maps "I approved this architecture
+because it handles failover" to `{decision: approve, subject: architecture, rationale: "handles
+failover"}` with typed constraints, NLP tolerance, and schema publication is governance. The
+extraction is deterministic, the fields are typed, the schema is published, and the result feeds
+directly into the enforcement pipeline. The same distinction applies: status values are surface;
+semantics are the point.
 
-**The delegation argument.** When Agent A hands work to Agent B who hands it to Agent C, the delegation chain is a sequence of formally recorded HANDOFF acts, each with a named obligor at each step, each causally linked by `causedByEntryId`. Six months later, when accountability is demanded, the chain is in the ledger. With status fields, Agent A re-assigned a record to Agent B. The accountability question — who was responsible at each point — has no clean answer, because accountability is structural in the normative layer and inferred (imperfectly) from status fields.
+**The trust scoring argument.** If an agent can mark work complete without formally asserting "I,
+the named obligor, fulfilled what was asked of me," then counting completion rates for trust
+scoring is meaningless — you are scoring closure of work records, not quality of fulfilled
+obligations. With a commitment, DONE is an accountable assertion to a named party. That assertion
+is attached to the agent identity, timestamped, ledgered, and carries weight in the Bayesian
+trust model. An agent that marks work done without doing it will eventually be caught — a
+FLAGGED attestation decreases their trust score. Routing shifts accordingly. No human configures
+this. It emerges from the accountability record.
 
-**Adding status fields is not the same as adding accountability.** The state values are the surface. The accountability semantics — who promised what to whom, under what authorisation, with what formal consequence on failure — are what the normative layer provides. The values are incidental. The semantics are the point.
+**The delegation argument.** When Agent A hands work to Agent B who hands it to Agent C, the
+delegation chain is a sequence of formally recorded HANDOFF acts, each with a named obligor at
+each step, each causally linked by `causedByEntryId`. Six months later, when accountability is
+demanded, the chain is in the ledger. With status fields, Agent A re-assigned a record to
+Agent B. The accountability question — who was responsible at each point — has no clean answer,
+because accountability is structural in the normative layer and inferred (imperfectly) from
+status fields.
+
+**Adding status fields is not the same as adding accountability.** The state values are the
+surface. The accountability semantics — who promised what to whom, under what authorisation,
+with what formal consequence on failure — are what the normative layer provides. The values are
+incidental. The semantics are the point.
 
 ---
 
 ## Why Not a Workflow Engine?
 
-A workflow engine (Temporal, Camunda, BPMN) handles predetermined paths. You define the process upfront — step A then step B, branch on condition C, retry on failure D. The engine executes that definition.
+A workflow engine (Temporal, Camunda, BPMN) handles predetermined paths. You define the process
+upfront — step A then step B, branch on condition C, retry on failure D. The engine executes
+that definition.
 
-The normative layer is not a workflow engine. It is coordination infrastructure for agents whose outputs determine what happens next — not a configuration file written before execution.
+The normative layer is not a workflow engine. It is coordination infrastructure for agents whose
+outputs determine what happens next — not a configuration file written before execution.
 
-In the insurance claim scenario, the compliance check DECLINES because Lloyd's syndicate approval is missing. A workflow engine would need a branch defined for this case upfront. The normative layer handles it because DECLINE is a first-class speech act that the coordinator can reason about at runtime. A new agent — one not in the original design — can join the channel, see the DECLINED commitment, and offer its capabilities. The coordination structure emerges from what agents do, not from what an engineer anticipated.
+In the insurance claim scenario, the compliance check DECLINES because Lloyd's syndicate
+approval is missing. A workflow engine would need a branch defined for this case upfront. The
+normative layer handles it because DECLINE is a first-class speech act that the coordinator can
+reason about at runtime. A new agent — one not in the original design — can join the channel,
+see the DECLINED commitment, and offer its capabilities. The coordination structure emerges from
+what agents do, not from what an engineer anticipated.
 
-More precisely: workflow engines are the right tool when the process is known. The normative layer is the right infrastructure when autonomous agents are discovering the process. The two are not competing — a CaseHub case can use Quarkus Flow (a workflow worker) for the steps it knows upfront, and Qhorus channels for the coordination that emerges between agents. Workflow for the determined; normative layer for the adaptive.
+The composition model deepens this distinction. A workflow engine requires the vocabulary, the
+participants, and the decision criteria to be defined upfront. Communication governance allows
+the vocabulary to be defined declaratively and matched at runtime — agents discover what
+governance acts a protocol expects from published schemas, not from workflow step definitions.
+Protocol enforcement allows the decision criteria to evolve without redeploying the workflow —
+add a new protocol to a channel, change the enforcement mode, adjust the participant list. The
+governance structure adapts because it is infrastructure, not configuration frozen at deployment
+time.
+
+More precisely: workflow engines are the right tool when the process is known. The normative
+layer is the right infrastructure when autonomous agents are discovering the process. The two are
+not competing — a CaseHub case can use Quarkus Flow (a workflow worker) for the steps it knows
+upfront, and Qhorus channels for the coordination that emerges between agents. Workflow for the
+determined; normative layer for the adaptive.
 
 ---
 
 ## What This Enables in Practice
 
-The normative layer changes the answers to seven questions that matter in every serious agentic
+The normative layer changes the answers to eight questions that matter in every serious agentic
 deployment. Without it, these questions either have no clean answer, or require hours of
 archaeology across logs that were never designed to capture what was promised. With it, each is
 a query.
@@ -186,8 +434,17 @@ that might be wrong. With the normative layer, a single `get_obligation_chain` c
 payments channel returns the complete obligation history: sanctions screening (DONE), fraud
 scoring (DONE, risk 0.12, ENDORSED by compliance officer), compliance check (DECLINED then
 re-approved after HANDOFF to senior adjuster), payment attempt (FAILURE), CHAPS retry (DONE) —
-with timestamps, agent identities, and causal links. The ledger IS the audit trail. It was built
-as the system ran, not assembled afterwards. And the auditor does not need to trust the system's reporting: the SHA-256 hash chain provides integrity detection — any external modification to the record is cryptographically detectable. Note that this is integrity detection, not proof against insider tampering: an adversary with write access to both the application and the ledger store could reconstruct the chain. For environments requiring protection against insider tampering, the optional Ed25519 checkpoint publishing to an external transparency log removes this trust assumption entirely — the checkpoint exists outside the application's control and cannot be retroactively modified.
+with timestamps, agent identities, and causal links.
+
+With communication governance active, the approval is not an inference from the message
+content — it is a mechanical extraction with typed fields:
+`{decision: "approve", subject: "payout", rationale: "syndicate reference LLY-2026-04-789"}`.
+The auditor sees structured evidence, not prose to interpret.
+
+The ledger IS the audit trail. It was built as the system ran, not assembled afterwards. The
+SHA-256 hash chain provides integrity detection — any external modification is cryptographically
+detectable. For environments requiring protection against insider tampering, optional Ed25519
+checkpoint publishing to an external transparency log removes this trust assumption entirely.
 
 ### *"What goes in the regulatory report, and how do we know it's complete?"* — Regulatory evidence
 
@@ -258,9 +515,13 @@ ledger record of what agents have actually done.
 
 **Attestations** are peer review verdicts stamped onto ledger entries. When an agent reviews
 another's decision — a fraud score, a compliance ruling, a payment authorisation — it stamps a
-`LedgerAttestation`. Attestations can also be written automatically by the framework when commitment outcomes carry unambiguous trust signals: a FULFILLED commitment on a COMMAND writes a SOUND attestation; a FAILURE writes a FLAGGED attestation. This automatic path is implemented — `LedgerWriteService.record()` writes attestations on DONE (SOUND, configurable confidence), FAILURE and DECLINE (FLAGGED, configurable confidence). The feedback loop from obligation outcome to trust score is closed without requiring explicit peer review for every interaction. Explicit attestations carry the values `SOUND`, `ENDORSED`, `FLAGGED`, or `CHALLENGED`, with evidence text and a
-confidence score. These are not opinions in application state. They are immutable records in the
-same tamper-evident ledger that holds every obligation.
+`LedgerAttestation`. Attestations can also be written automatically by the framework when
+commitment outcomes carry unambiguous trust signals: a FULFILLED commitment on a COMMAND writes
+a SOUND attestation; a FAILURE writes a FLAGGED attestation. The feedback loop from obligation
+outcome to trust score is closed without requiring explicit peer review for every interaction.
+Explicit attestations carry the values `SOUND`, `ENDORSED`, `FLAGGED`, or `CHALLENGED`, with
+evidence text and a confidence score. These are not opinions in application state. They are
+immutable records in the same tamper-evident ledger that holds every obligation.
 
 **Bayesian Beta trust scoring** computes a per-actor score from direct attestation history.
 Alpha accumulates positive evidence; beta accumulates negative evidence. As peers endorse or
@@ -282,25 +543,53 @@ A worker introduced by a high-trust provisioner inherits a stronger initial deon
 EigenTrust propagation. Provenance is not a label someone attached — it is a chain in the
 ledger, independently verifiable.
 
+**Structural conformance as a trust signal.** When communication governance is active, the
+template registry produces a stream of match/no-match outcomes for each agent's governance acts.
+An agent that consistently produces structurally matched votes, approvals, and escalations —
+conforming to published schemas — demonstrates a different quality of governance participation
+than one that frequently triggers Unmatched results or requires NearMiss-guided rephrasing. This
+structural conformance record is a natural input to the trust model: not "did the agent fulfill
+its obligation?" (the commitment question) but "did the agent communicate its governance acts
+in a form the infrastructure could mechanically verify?" (the perception question). Both matter.
+
 The result: who to trust is derived from what agents have done and how their peers have judged
 it. Trust accretes from behaviour. It propagates through relationships. It is anchored to
 provenance. And it is queryable — the same infrastructure that surfaces obligation health
 surfaces trust scores.
 
+### *"Does what the agent said match what it claims to have done?"* — Speech act verification
+
+An agent sends `type: DONE` with content "I need more time to investigate." That is structurally
+a STATUS, not a completion. Without communication governance, the normative layer accepts the
+declared type at face value — the CommitmentStore moves to FULFILLED, the attestation fires, and
+the trust score records a successful completion that did not happen.
+
+With communication governance active, the template registry evaluates the content against the
+declared type. A DONE template expects completion language — "completed", "finished", "results
+are" — not continuation language. The mismatch produces a `DispatchAdvisory` with source
+`normative:speech-act-verification`. In ADVISORY mode, the message dispatches with a warning.
+In BLOCKING mode, it is rejected and the agent receives guidance on what a DONE should contain.
+
+This is not content moderation. It is structural verification that the performative force of
+the message — what it *does* by being uttered — matches its declared type. The same formal
+distinction that makes DECLINE categorically different from FAILURE at the type level extends
+to the content level through template matching.
+
 ### The core shift
 
 In a system without the normative layer, obligations live in workflow state that is hard to
-query and impossible to audit across agent boundaries. Regulatory reports are reconstructed
-from logs that were never designed to carry evidential weight. Trust is configuration. Delegation
+query and impossible to audit across agent boundaries. Governance acts are prose strings that
+humans must interpret. Protocol rules exist in documentation. Trust is configuration. Delegation
 trails go cold. Accountability is ambiguous by design.
 
-With the normative layer, every commitment is infrastructure. Every delegation is traceable.
-Every failure has a stated reason, formally attributed. Every agent's standing is derived from
-what it has done and how it has been judged. Regulatory evidence is built as the system runs.
-Trust is computed from behaviour, not asserted by configuration.
+With the normative layer, every commitment is infrastructure. Every governance act is a
+structured extraction. Every protocol rule is enforced at dispatch time. Every delegation is
+traceable. Every failure has a stated reason, formally attributed. Every agent's standing is
+derived from what it has done and how it has been judged. Regulatory evidence is built as the
+system runs. Trust is computed from behaviour, not asserted by configuration.
 
-**The LLM reasons. The infrastructure enforces, records, and derives.** That is not a technical
-detail. It is the difference between an AI system that is capable and one that is
+**The LLM reasons. The infrastructure perceives, enforces, records, and derives.** That is not
+a technical detail. It is the difference between an AI system that is capable and one that is
 *accountable* — and in any environment where accountability matters, only the latter is fit for
 purpose.
 
@@ -311,15 +600,22 @@ post-persistence fan-out only; they cannot bypass the normative pipeline.
 
 ---
 
-## Grounded in a Real Scenario — Insurance Claim Processing
+## Grounded in Real Scenarios
 
-The best way to understand the normative layer is to watch it work. The following scenario — a
-£180,000 commercial fire damage claim processed by a multi-agent AI system — uses every
+The best way to understand the normative layer is to watch it work. Three scenarios demonstrate
+the capabilities individually and in composition: an insurance claim (regulated industry,
+normative accountability), a production incident (software engineering, every speech act under
+pressure), and a governance protocol (communication governance + enforcement, the full
+composition loop).
+
+### Scenario 1 — Insurance Claim Processing
+
+A £180,000 commercial fire damage claim processed by a multi-agent AI system — using every
 capability the normative layer provides. It is also the reference example for the Quarkus Native
 AI Agent Ecosystem: the same claim scenario is demonstrated at each layer of the stack, with each
 library adding genuine capability to the same story.
 
-### The agents and what they do
+**The agents and what they do**
 
 Nine agents collaborate to process the claim:
 
@@ -338,16 +634,16 @@ Nine agents collaborate to process the claim:
 Four channels carry the communication: `claim-456` (main flow), `high-value-review`
 (escalation), `compliance-checks` (regulatory), `payments`.
 
-### The claim, step by step, and which layer handles it
+**The claim, step by step**
 
 **Step 1 — Is the policy valid?**
 The coordinator sends a QUERY: *"Is policy UK-2024-789 active and does it cover commercial fire
 damage?"* The policy-validator responds: *"Active, fire covered, maximum payout £500,000."*
 
-*Layer 1 in action.* A QUERY is a speech act that creates an expectation. The RESPONSE
-discharges it. No obligation was created — this is an information exchange, not a commitment.
-The 10-type taxonomy distinguishes QUERY from COMMAND precisely because asking a question and
-demanding an action are categorically different acts with different consequences.
+A QUERY is a speech act that creates an expectation. The RESPONSE discharges it. No obligation
+was created — this is an information exchange, not a commitment. The 10-type taxonomy
+distinguishes QUERY from COMMAND precisely because asking a question and demanding an action are
+categorically different acts with different consequences.
 
 ---
 
@@ -355,11 +651,12 @@ demanding an action are categorically different acts with different consequences
 COMMAND: *"Screen Acme Corp against OFAC and HMT sanctions lists."* The sanctions-screener
 sends STATUS: *"Screening in progress."* Then DONE: *"No matches found."*
 
-*Layer 2 in action.* COMMAND creates an obligation in the CommitmentStore: the
-sanctions-screener now owes a result. STATUS extends the deadline window — the obligation is
-live. DONE fulfills it and closes the commitment. If the sanctions-screener had gone silent, the
-CommitmentStore would show OPEN past the deadline, and `list_stalled_obligations` would surface
-it automatically.
+COMMAND creates an obligation in the CommitmentStore: the sanctions-screener now owes a result.
+STATUS extends the deadline window — the obligation is live. DONE fulfills it and closes the
+commitment. If the sanctions-screener had gone silent, the CommitmentStore would show OPEN past
+the deadline, and `list_stalled_obligations` would surface it automatically. Communication
+governance is not applied here — template matching is selective, used where content-level
+extraction adds governance value, not on every message in every channel.
 
 ---
 
@@ -368,11 +665,11 @@ COMMAND: *"Score this claim for fraud risk."* The fraud-detection agent invokes 
 emits an EVENT — tool `ml-fraud-score`, duration 2,341ms, 1,200 tokens — then DONE: *"Risk
 score: LOW (0.12)."*
 
-*Layers 1 and 4 in action.* The COMMAND created an obligation (Layer 2). The EVENT is a
-telemetry speech act — it carries observability data without creating a new obligation.
-`summarise_telemetry` can later aggregate all EVENT entries to show model performance,
-token consumption, and latency across the full claim. The normative ledger records both the DONE
-(the fulfillment) and the EVENT (the evidence) as immutable entries, causally linked.
+The COMMAND created an obligation. The EVENT is a telemetry speech act — it carries
+observability data without creating a new obligation. `summarise_telemetry` can later aggregate
+all EVENT entries to show model performance, token consumption, and latency across the full
+claim. The normative ledger records both the DONE (the fulfillment) and the EVENT (the evidence)
+as immutable entries, causally linked.
 
 ---
 
@@ -380,21 +677,17 @@ token consumption, and latency across the full claim. The normative ledger recor
 COMMAND: *"Assess fire damage at 42 Industrial Way — dispatch a surveyor."* The damage-assessor
 sends STATUS: *"Surveyor dispatched."* Then silence.
 
-*Layer 2 and Layer 4 in action.* The obligation remains OPEN past its deadline — state
-EXPIRED in the CommitmentStore. `list_stalled_obligations` returns this COMMAND immediately,
-flagging it as stalled for 45+ seconds. The normative ledger holds the permanent record: a
-COMMAND was issued, a STATUS was reported, and no terminal resolution ever arrived. No custom
-timeout code. No polling loop. The infrastructure surfaces the failure.
+The obligation remains OPEN past its deadline — state EXPIRED in the CommitmentStore.
+`list_stalled_obligations` returns this COMMAND immediately, flagging it as stalled for 45+
+seconds. The normative ledger holds the permanent record: a COMMAND was issued, a STATUS was
+reported, and no terminal resolution ever arrived. No custom timeout code. No polling loop. The
+infrastructure surfaces the failure.
 
 ---
 
 **Step 5 — A QUERY bridges the gap**
 Since the surveyor is unresponsive, the coordinator asks: *"Can you estimate the damage without a
 site visit?"* QUERY → RESPONSE: *"Based on photos provided: estimated £180,000."*
-
-Two information exchanges (Steps 1 and 5) and two obligations (Steps 2 and 4) have already
-shown the difference between asking and committing. The taxonomy enforces that distinction at
-the infrastructure level, not at the LLM reasoning level.
 
 ---
 
@@ -403,11 +696,12 @@ COMMAND: *"Verify this claim meets FCA disclosure requirements for commercial fi
 DECLINE: *"Non-compliant. This claim exceeds £100,000 — Lloyd's syndicate approval is required
 before settlement. Approval not on file."*
 
-*Layer 3 in action.* A DECLINE is not an error. It is a first-class speech act — a formal
-refusal with a stated reason. The CommitmentStore moves to DECLINED. The normative ledger records
-the reason verbatim. The coordinator can now act on a specific, structured response rather than
-parsing free text or catching an exception. Without Layer 3, "compliance failed" is a string.
-With it, it is a typed speech act with a causal record.
+A DECLINE is not an error. It is a first-class speech act — a formal refusal with a stated
+reason. The CommitmentStore moves to DECLINED. The normative ledger records the reason verbatim.
+With communication governance active, the template registry extracts the structured refusal:
+`{condition: "Lloyd's syndicate approval", status: "not on file", threshold: "£100,000"}` —
+turning a prose refusal into actionable fields that the coordinator can route on without parsing
+free text.
 
 ---
 
@@ -417,30 +711,28 @@ payout."* The compliance-officer sends HANDOFF to senior-adjuster: *"Exceeds my 
 am transferring this obligation to the senior adjuster."* The senior-adjuster sends STATUS:
 *"Consulting syndicate."* Then DONE: *"Syndicate approval granted. Reference: LLY-2026-04-789."*
 
-*Layer 3 in full.* The HANDOFF is defeasible reasoning in action: the original obligation is not
-abandoned, it is formally transferred. The CommitmentStore moves to DELEGATED, then — when the
-senior-adjuster resolves it — to FULFILLED. The normative ledger records three entries, each
-linked by `causedByEntryId`:
+The HANDOFF is defeasible reasoning in action: the original obligation is not abandoned, it is
+formally transferred. The template registry extracts the delegation:
+`{target: "senior adjuster", reason: "exceeds authority"}`. The CommitmentStore moves to
+DELEGATED, then — when the senior-adjuster resolves it — to FULFILLED. The normative ledger
+records three entries, each linked by `causedByEntryId`:
 ```
 seq=1  COMMAND → causedByEntryId: null           (coordinator issued it)
 seq=2  HANDOFF → causedByEntryId: <seq=1 id>     (compliance-officer transferred it)
 seq=3  DONE    → causedByEntryId: <seq=2 id>     (senior-adjuster resolved it)
 ```
-`get_causal_chain` on the DONE entry returns this complete ancestry. `get_obligation_chain`
-returns the full history plus the live CommitmentStore state. This is the proof chain a regulator
-would ask for: who was responsible, when the obligation transferred, and who discharged it.
+`get_causal_chain` on the DONE entry returns this complete ancestry. This is the proof chain a
+regulator would ask for: who was responsible, when the obligation transferred, and who discharged
+it.
 
 ---
 
 **Steps 8–9 — Re-verification and regulatory filing**
 With syndicate approval in hand, compliance re-verifies (DONE). The regulatory-reporter files
 a Solvency II pre-notification — COMMAND, then an EVENT (external API call, 450ms), then DONE.
-Reference `FCA-2026-04-001` recorded in the DONE entry's content field.
-
-The normative ledger now contains a Solvency II audit trail that was built as the system ran.
-No separate regulatory reporting system. No log scraping. The EVENT captures the API call
-latency for performance monitoring; the DONE captures the regulatory reference for compliance
-evidence.
+Reference `FCA-2026-04-001` recorded in the DONE entry's content field — and with communication
+governance, extracted as a structured reference:
+`{report_type: "pre-notification", reference: "FCA-2026-04-001"}`.
 
 ---
 
@@ -451,10 +743,9 @@ sort code 20-14-09 is not registered."*
 Then: COMMAND: *"Retry via CHAPS."* STATUS: *"CHAPS processing."* DONE: *"Payment confirmed.
 Reference: CHAPS-2026-04-001."*
 
-Two obligations: one FAILED, one FULFILLED. The normative ledger captures both, with full
-causal linkage. `get_obligation_stats` on the payments channel shows: total=2, fulfilled=1,
-failed=1, fulfillment_rate=0.5. `get_agent_history` for `payment-processor` shows both entries
-in sequence — the failure and the recovery — without any custom query.
+Two obligations: one FAILED, one FULFILLED. The template registry extracts the failure evidence:
+`{method: "BACS", error: "sort code not registered", sort_code: "20-14-09"}` — structured fields
+that feed directly into incident analysis without log parsing.
 
 ---
 
@@ -468,10 +759,9 @@ permanently visible as a gap in the audit trail.
 
 ---
 
-### What the dashboard shows
+**What the dashboard shows**
 
-The Agent Mesh Dashboard — built with Tamboui TUI, running inside Quarkus — renders this state
-in real time as the scenario advances step by step:
+The Agent Mesh Dashboard renders this state in real time:
 
 ```
 +==============================================================================+
@@ -493,17 +783,7 @@ in real time as the scenario advances step by step:
 |  corr-comp-1  COMMAND -> DECLINE  compliance-officer  Missing syndicate [o]  |
 |  corr-surv    COMMAND -> STALLED  damage-assessor     Awaiting surveyor[~~]  |
 +==============================================================================+
-|  CONSOLE                                                                     |
-|  [10:04:23] DONE -- CHAPS payment confirmed: CHAPS-2026-04-001               |
-|  [10:03:47] FAILURE -- BACS rejected: invalid sort code 20-14-09             |
-+==============================================================================+
 ```
-
-The colour of each row is determined by the message type of the terminal entry — green for DONE,
-red for FAILURE, orange for DECLINE, yellow for STALLED, magenta for HANDOFF in progress. The
-channel health column turns yellow when stalled obligations exist, red when failures are
-unrecovered. The entire display is driven by the seven ledger query tools — no custom dashboard
-queries, no bespoke reporting logic.
 
 ---
 
@@ -523,21 +803,21 @@ The insurance scenario demonstrates the normative layer in a regulated financial
 
 **Why every speech act type appears:**
 
-QUERY: Before issuing a COMMAND to diagnose the corruption, the detection agent queries: *"Who has production DB read access?"* — capability negotiation before an obligation is created. Without QUERY as a distinct speech act, this is either a COMMAND issued blind (the agent may not have access) or free text that the system cannot act on.
+QUERY: Before issuing a COMMAND to diagnose the corruption, the detection agent queries: *"Who has production DB read access?"* — capability negotiation before an obligation is created.
 
-COMMAND + ACKNOWLEDGED: The diagnosis agent receives a COMMAND and ACKNOWLEDGES it — confirming active acceptance, not just queuing. A 2-minute gap between COMMAND and ACKNOWLEDGED is informative. Silence is not.
+COMMAND + ACKNOWLEDGED: The diagnosis agent receives a COMMAND and ACKNOWLEDGES it — confirming active acceptance, not just queuing.
 
-STATUS: The rollback agent sends STATUS updates every 30 seconds: *"Schema rollback in progress — 3 of 7 tables complete."* These are assertive speech acts — truthful reports of current state — not state transitions. They extend the obligation window and allow the supervisor to distinguish "slow progress" from "silent failure."
+STATUS: The rollback agent sends STATUS updates every 30 seconds: *"Schema rollback in progress — 3 of 7 tables complete."* These are assertive speech acts — truthful reports of current state — not state transitions.
 
-DECLINE: The communication agent receives a COMMAND to notify users but cannot act yet — the scope of affected records is unknown. It sends DECLINE with reason: *"Scope not yet confirmed — will re-engage when diagnosis is complete."* This is a deliberate, reasoned refusal. The obligation is formally closed with explanation. The supervisor knows immediately that communication is waiting on diagnosis, not failed.
+DECLINE: The communication agent receives a COMMAND to notify users but cannot act yet — the scope of affected records is unknown. It sends DECLINE with reason: *"Scope not yet confirmed — will re-engage when diagnosis is complete."* With communication governance, the template extracts the structured dependency: `{wait_condition: "scope confirmed", dependency: "diagnosis"}` — the coordinator knows exactly what the communication agent is waiting for and can re-issue the COMMAND when the condition is met.
 
-FAILURE: The rollback agent attempts schema reversal and discovers the data corruption is not reversible via rollback — the migration modified records, not only schema. It sends FAILURE: *"Schema rollback not sufficient — data changes are irreversible. Escalating to recovery path."* It tried. It could not complete. This is categorically different from DECLINE.
+FAILURE: The rollback agent attempts schema reversal and discovers the corruption is not reversible — the migration modified records, not only schema. It sends FAILURE: *"Schema rollback not sufficient — data changes are irreversible. Escalating to recovery path."* The template extracts: `{attempted: "schema rollback", cause: "data changes irreversible", escalation: "recovery path"}`.
 
-HANDOFF: The rollback agent formally transfers the obligation to the recovery agent: *"Transferring recovery obligation — backup from 02:00 contains clean records."* The recovery agent's OPEN commitment is causally linked to the rollback agent's FAILURE. The full chain: `COMMAND(supervisor→rollback) → FAILURE → HANDOFF(rollback→recovery) → FULFILLED(recovery)`.
+HANDOFF: The rollback agent formally transfers the obligation to the recovery agent: *"Transferring recovery obligation — backup from 02:00 contains clean records."* The template extracts: `{target: "recovery", evidence: "backup from 02:00"}`.
 
-DONE: The recovery agent completes the work. The DONE closes the commitment chain. Trust scoring fires: rollback FAILED (review its reliability for irreversible operations), recovery FULFILLED (reinforce for data recovery tasks).
+DONE: The recovery agent completes the work. Trust scoring fires: rollback FAILED (review its reliability for irreversible operations), recovery FULFILLED (reinforce for data recovery tasks).
 
-EXPIRED: At the 30-minute mark, the user notification SLA expires. The communication agent's commitment — which was DECLINED pending scope confirmation — transitions to EXPIRED. This is not a failure of the communication agent; it is a systemic SLA breach caused by the extended diagnosis time. `list_stalled_obligations` surfaces it instantly, with the exact timestamp and cause.
+EXPIRED: At the 30-minute mark, the user notification SLA expires. The communication agent's commitment — which was DECLINED pending scope confirmation — transitions to EXPIRED. This is not a failure of the communication agent; it is a systemic SLA breach caused by the extended diagnosis time.
 
 **What the supervisor sees in one query:**
 
@@ -548,17 +828,136 @@ list_stalled_obligations(channelName: "case-p0-db-corruption/coordination")
 → corr-rollback COMMAND → FAILURE      rollback         Data irreversible, escalated [22min]
 ```
 
-Two lines. The supervisor knows: the rollback path was exhausted and correctly escalated; the notification SLA has breached. Neither requires reading a transcript or correlating logs. The obligation state is the operational picture.
+Two lines. The supervisor knows: the rollback path was exhausted and correctly escalated; the notification SLA has breached. Neither requires reading a transcript or correlating logs.
 
-**Without the normative layer**, the rollback FAILURE and the communication DECLINE both present as "agent did not complete assigned work." The system cannot distinguish them. The correct response to FAILURE (activate the recovery path immediately) and the correct response to DECLINE (wait for scope, then re-issue COMMAND) are different. During a live P0, treating them identically costs time — measured in affected users and revenue.
+**Without the normative layer**, the rollback FAILURE and the communication DECLINE both present as "agent did not complete assigned work." The correct response to FAILURE (activate the recovery path immediately) and the correct response to DECLINE (wait for scope, then re-issue COMMAND) are different. During a live P0, treating them identically costs time — measured in affected users and revenue.
 
-This scenario is the basis of a structured empirical test comparing the normative layer against LangChain4j coordination: [engine#189](https://github.com/casehubio/engine/issues/189). The experiment runs both variants five times with identical inputs and measures whether a supervising LLM can consistently distinguish FAILURE from DECLINE, attribute accountability correctly, and identify the precise SLA breach moment — from the record alone.
+This scenario is the basis of a structured empirical test comparing the normative layer against LangChain4j coordination: [engine#189](https://github.com/casehubio/engine/issues/189).
+
+---
+
+### Scenario 3 — Governed Architecture Review (Full Composition)
+
+The first two scenarios demonstrate normative accountability — commitment lifecycle, ledger,
+trust scoring — with communication governance adding structured extraction to key steps. This
+third scenario demonstrates the full composition: all three capabilities load-bearing
+simultaneously, producing an outcome that none could produce alone.
+
+**The situation:** Three agents — `architect`, `security-lead`, and `tech-lead` — must review
+and vote on a proposed architecture change. The vote is governed: all three must participate,
+each must cast a structurally valid vote, and the outcome is determined by the extracted fields,
+not by counting messages.
+
+**The governance vocabulary:**
+
+```yaml
+namespace: protocol:review
+templates:
+  vote:
+    pattern: "I ${decision} this ${subject}[ because ${rationale}]"
+    variables:
+      decision: { type: enum, values: [approve, reject, abstain] }
+      subject: { type: string }
+      rationale: { type: string, optional: true }
+  escalate:
+    pattern: "Escalating to ${target}[ due to ${reason}]"
+    variables:
+      target: { type: string }
+      reason: { type: string, optional: true }
+```
+
+**The channel configuration:**
+
+```
+channel: architecture-review
+protocols: [CONTRIBUTION_REQUIRED, protocol:review]
+protocolParticipants: [architect, security-lead, tech-lead]
+enforcementMode: BLOCKING
+```
+
+**The review, step by step:**
+
+**Step 1 — Schema publication.** The template registry publishes the sentence schemas for
+`protocol:review` to the channel. Each agent sees the expected patterns and variable constraints
+before producing its vote. Schema publication is the perception layer's answer to the conformance
+question: tell agents what shape to produce, then extract mechanically.
+
+**Step 2 — The first vote.**
+The architect writes: *"I approved this service mesh migration because the latency improvements
+justify the operational complexity."*
+
+The template registry matches this against the `vote` template. The NLP pipeline handles
+"approved" (past tense → lemma "approve") and produces a structurally matched result:
+`{template: "vote", decision: "approve", subject: "service mesh migration",
+rationale: "the latency improvements justify the operational complexity"}`.
+
+The enforcement pipeline evaluates: `CONTRIBUTION_REQUIRED` checks participation — 1 of 3
+participants have voted. The message dispatches. The normative ledger records the vote with
+the extracted fields.
+
+**Step 3 — The dissenting vote.**
+The security-lead writes: *"I reject this proposal because it exposes internal services to the
+mesh control plane without mTLS by default."*
+
+Template extraction: `{decision: "reject", subject: "proposal",
+rationale: "it exposes internal services to the mesh control plane without mTLS by default"}`.
+Participation: 2 of 3. The message dispatches.
+
+**Step 4 — An unmatched attempt.**
+The tech-lead writes: *"Looks good to me, let's go ahead."*
+
+The template registry returns `Unmatched` — this prose does not match the `vote` template
+(no "I ${decision} this ${subject}" structure). `BLOCKING` enforcement rejects the message.
+With NearMiss feedback active, the rejection advisory includes the expected pattern — guided
+rejection rather than silent failure. The tech-lead sees what shape the protocol expects and
+rephrases.
+
+**Step 5 — The conformant vote.**
+The tech-lead writes: *"I approve this migration."*
+
+Template extraction: `{decision: "approve", subject: "migration"}`. Participation: 3 of 3.
+The `CONTRIBUTION_REQUIRED` protocol confirms all participants have cast structurally matched
+votes. The handshake gate opens.
+
+**Step 6 — The governed outcome.**
+The protocol evaluates the extracted fields across all three votes:
+- architect: approve
+- security-lead: reject
+- tech-lead: approve
+
+Result: approved 2-1. The outcome is determined by the extracted `decision` fields — not by
+counting messages, not by parsing prose, not by asking another LLM to interpret the conversation.
+The enforcement pipeline records the outcome as an EVENT with the full vote tally.
+
+**Step 7 — Bidirectional generation.**
+The infrastructure generates a governance summary from the extracted fields:
+*"The service mesh migration was approved by architect and tech-lead (2-1). security-lead voted
+reject, citing exposure of internal services without mTLS."*
+
+This summary is generated from structured data, not summarised from prose. It is deterministic,
+auditable, and guaranteed to reflect the actual votes — because it was produced from the same
+extracted fields that the enforcement pipeline evaluated.
+
+**What made this possible:**
+
+Without communication governance, the protocol can only count messages — not evaluate what was
+decided. "Looks good to me" counts as a vote. Without protocol enforcement, the approval has
+no handshake gate — it takes effect without confirming all participants weighed in. Without
+normative accountability, the vote tally has no ledger trail — no causal chain, no attestation,
+no trust signal.
+
+With all three: prose is parsed into typed governance acts. The protocol gates the outcome on
+participant agreement over the extracted fields. The normative ledger records every vote, the
+collective outcome, and the causal chain — permanently, tamper-evidently, and queryable.
+
+**This is the full composition:** perception + enforcement + accountability = governed
+accountability from natural language.
 
 ---
 
 ### The layered ecosystem
 
-This same scenario is the reference example across the full Quarkus Native AI Agent Ecosystem:
+The claim scenario is the reference example across the full Quarkus Native AI Agent Ecosystem:
 
 | Layer | Library added | What changes in the scenario |
 |---|---|---|
@@ -572,7 +971,13 @@ board builders, and the ledger query tools carry through unchanged. The scenario
 only thing replaced at each layer — by an `@Alternative` CDI bean that connects to the layer's
 own data source. Extension, not duplication.
 
----
+The composition dimensions are orthogonal to this layered stack:
+
+| Composition | Without | With |
+|---|---|---|
+| Communication governance | Governance acts are prose strings | Governance acts are structured extractions |
+| Protocol enforcement | Rules are ad-hoc, metadata-only | Rules are YAML-declared, content-aware, handshake-gated |
+| Full composition | Message types tracked, prose ungoverned | Full loop: prose → extraction → enforcement → accountability |
 
 ---
 
@@ -581,8 +986,10 @@ own data source. Extension, not duplication.
 | Document | What it covers |
 |----------|---------------|
 | [normative-framework.md](normative-framework.md) | Entry point and navigation for this body of works |
-| [multi-agent-framework-comparison.md](multi-agent-framework-comparison.md) | Feature-level comparison of Qhorus against AutoGen, LangGraph, CrewAI, Gastown, and others — including normative layer capabilities |
+| [agent-mesh-framework.md](agent-mesh-framework.md) | Developer guide — message vocabulary, channel topology, template-based governance |
+| [multi-agent-framework-comparison.md](multi-agent-framework-comparison.md) | Feature-level comparison of Qhorus against AutoGen, LangGraph, CrewAI, Gastown, and others |
 | [agent-protocol-comparison.md](agent-protocol-comparison.md) | How Qhorus, A2A, and ACP are complementary rather than competing |
+| [normative-summary.md](normative-summary.md) | Critique, gaps, and what needs strengthening |
 
 *Quarkus Qhorus — the agent communication mesh for the Quarkus Native AI Agent Ecosystem.*
 *Theoretical foundation documented in ADR-0005. Empirical hypothesis at [engine#189](https://github.com/casehubio/engine/issues/189).*
