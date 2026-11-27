@@ -119,6 +119,13 @@ Activates by classpath presence.</description>
       <version>${casehub.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>io.casehub</groupId>
+      <artifactId>casehub-platform-template-registry</artifactId>
+      <version>${casehub.version}</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
