@@ -14,6 +14,7 @@ public record ProtocolContext(
         MessageType incomingType,
         String sender,
         String correlationId,
+        String incomingContent,
         List<String> protocolParticipants,
         List<MessageView> recentMessages,
         List<Commitment> activeCommitments,
@@ -24,5 +25,15 @@ public record ProtocolContext(
         recentMessages = recentMessages != null ? List.copyOf(recentMessages) : List.of();
         activeCommitments = activeCommitments != null ? List.copyOf(activeCommitments) : List.of();
         policyOverrides = policyOverrides != null ? Map.copyOf(policyOverrides) : Map.of();
+    }
+
+    public ProtocolContext(UUID channelId, String channelName, MessageType incomingType,
+                           String sender, String correlationId,
+                           List<String> protocolParticipants,
+                           List<MessageView> recentMessages,
+                           List<Commitment> activeCommitments,
+                           Map<String, String> policyOverrides) {
+        this(channelId, channelName, incomingType, sender, correlationId, null,
+                protocolParticipants, recentMessages, activeCommitments, policyOverrides);
     }
 }

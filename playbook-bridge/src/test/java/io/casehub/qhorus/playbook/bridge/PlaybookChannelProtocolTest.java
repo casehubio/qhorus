@@ -87,6 +87,40 @@ class PlaybookChannelProtocolTest {
     }
 
     @Test
+    void evaluate_passesIncomingContentToExecutor() {
+        UUID channelId = UUID.randomUUID();
+        ProtocolContext testCtx = new ProtocolContext(
+                channelId, "review-channel", MessageType.STATUS, "architect",
+                "corr-456", "I approve this design",
+                List.of("architect", "tech-lead"), List.of(), List.of(), Map.of());
+
+        PlaybookExecutor executor = (yaml, vars) -> {
+            assertThat(vars).containsEntry("incomingContent", "I approve this design");
+            return Map.of("advisories", List.of());
+        };
+
+        PlaybookChannelProtocol protocol = new PlaybookChannelProtocol(
+                "content-gate", "v: 1", executor);
+        protocol.evaluate(testCtx);
+    }
+
+    @Test
+    void evaluate_omitsIncomingContentWhenNull() {
+        ProtocolContext testCtx = new ProtocolContext(
+                UUID.randomUUID(), "ch", MessageType.STATUS, "agent",
+                null, List.of(), List.of(), List.of(), Map.of());
+
+        PlaybookExecutor executor = (yaml, vars) -> {
+            assertThat(vars).doesNotContainKey("incomingContent");
+            return Map.of("advisories", List.of());
+        };
+
+        PlaybookChannelProtocol protocol = new PlaybookChannelProtocol(
+                "null-gate", "v: 1", executor);
+        protocol.evaluate(testCtx);
+    }
+
+    @Test
     void protocolName_returnsConfiguredName() {
         PlaybookChannelProtocol protocol = new PlaybookChannelProtocol(
                 "my-protocol", "v: 1", (y, v) -> Map.of());

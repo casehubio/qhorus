@@ -56,6 +56,9 @@ public class PlaybookChannelProtocol implements ChannelProtocol {
         if (ctx.correlationId() != null) {
             vars.put("correlationId", ctx.correlationId());
         }
+        if (ctx.incomingContent() != null) {
+            vars.put("incomingContent", ctx.incomingContent());
+        }
         vars.put("participantCount", ctx.protocolParticipants().size());
         vars.put("recentMessageCount", ctx.recentMessages().size());
         vars.put("activeCommitmentCount", ctx.activeCommitments().size());
