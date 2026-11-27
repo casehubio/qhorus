@@ -3,18 +3,19 @@ package io.casehub.qhorus.runtime.ledger;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.casehub.ledger.api.model.CapabilityTag;
-import io.casehub.ledger.api.model.LedgerEntryType;
 import io.casehub.ledger.api.spi.LedgerEntryRepository;
 import io.casehub.ledger.jpa.LedgerAttestation;
 import io.casehub.ledger.runtime.config.LedgerConfig;
-import io.casehub.platform.api.identity.TenancyConstants;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
 import io.casehub.qhorus.api.spi.CommitmentAttestationPolicy;
 import io.casehub.qhorus.api.spi.CommitmentContext;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.InstanceActorIdProvider;
 import io.casehub.qhorus.runtime.config.QhorusTracingConfig;
 import io.casehub.qhorus.runtime.message.RoutingBridge;
+import io.casehub.ledger.api.model.LedgerEntryType;
+import io.casehub.platform.api.identity.TenancyConstants;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanContext;
@@ -23,6 +24,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.TraceFlags;
 import io.opentelemetry.api.trace.TraceState;
 import io.opentelemetry.api.trace.Tracer;
+import java.time.temporal.ChronoUnit;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Instance;
@@ -31,7 +33,8 @@ import jakarta.transaction.Transactional;
 import org.jboss.logging.Logger;
 
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -141,42 +144,50 @@ public class LedgerWriteService {
      */
     @Transactional(value = Transactional.TxType.REQUIRES_NEW)
     public LedgerWriteOutcome record(final MessageDispatch dispatch,
-            final Long messageId,
-            @Nullable final UUID commitmentId,
-            final Instant occurredAt) {
-        return record(dispatch, messageId, commitmentId, occurredAt, null);
+                                     final Long messageId,
+                                     @Nullable final UUID commitmentId,
+                                     final Instant occurredAt) {
+        return record(dispatch, messageId, commitmentId, occurredAt, null, List.of());
     }
 
     public LedgerWriteOutcome record(final MessageDispatch dispatch,
-            final Long messageId,
-            @Nullable final UUID commitmentId,
-            final Instant occurredAt,
-            @Nullable final RoutingBridge.RoutingOutcome routingOutcome) {
+                                     final Long messageId,
+                                     @Nullable final UUID commitmentId,
+                                     final Instant occurredAt,
+                                     @Nullable final RoutingBridge.RoutingOutcome routingOutcome) {
+        return record(dispatch, messageId, commitmentId, occurredAt, routingOutcome, List.of());
+    }
+
+    public LedgerWriteOutcome record(final MessageDispatch dispatch,
+                                     final Long messageId,
+                                     @Nullable final UUID commitmentId,
+                                     final Instant occurredAt,
+                                     @Nullable final RoutingBridge.RoutingOutcome routingOutcome,
+                                     final List<DispatchAdvisory> advisories) {
         if (!config.enabled()) {
             return LedgerWriteOutcome.DISABLED;
         }
 
         // tenancyId resolved first — needed by messageRepo queries below. Refs qhorus#260, #263.
         final String tenancyId = dispatch.tenancyId() != null
-                ? dispatch.tenancyId()
-                : TenancyConstants.DEFAULT_TENANT_ID;
+                                 ? dispatch.tenancyId()
+                                 : TenancyConstants.DEFAULT_TENANT_ID;
 
         // ── Start tracing span with cross-request link for terminal messages ─────
         Span span = null;
         if (tracingConfig.enabled() && tracingConfig.ledgerWrite() && tracerInstance.isResolvable()) {
             final Tracer tracer = tracerInstance.get();
             SpanBuilder builder = tracer.spanBuilder("qhorus.ledger.write")
-                    .setSpanKind(SpanKind.INTERNAL);
+                                        .setSpanKind(SpanKind.INTERNAL);
 
-            // Cross-request span link for terminal messages (DONE, FAILURE, DECLINE)
             if (isTerminalType(dispatch.type()) && dispatch.correlationId() != null) {
                 final MessageLedgerEntry original = messageRepo
-                        .findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
-                        .orElse(null);
+                                                            .findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
+                                                            .orElse(null);
                 if (original != null && original.traceId != null) {
                     final SpanContext linkedContext = SpanContext.createFromRemoteParent(
                             original.traceId,
-                            "0000000000000000", // spanId not available
+                            "0000000000000000",
                             TraceFlags.getDefault(),
                             TraceState.getDefault());
                     builder.addLink(linkedContext);
@@ -196,9 +207,9 @@ public class LedgerWriteService {
                 resolvedSubjectId = dispatch.subjectId();
             } else if (dispatch.correlationId() != null) {
                 resolvedSubjectId = messageRepo
-                        .findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
-                        .map(e -> e.subjectId)
-                        .orElse(dispatch.channelId());
+                                            .findEarliestWithSubjectByCorrelationId(dispatch.correlationId(), tenancyId)
+                                            .map(e -> e.subjectId)
+                                            .orElse(dispatch.channelId());
             } else {
                 resolvedSubjectId = dispatch.channelId();
             }
@@ -209,8 +220,8 @@ public class LedgerWriteService {
                 resolvedCausedByEntryId = dispatch.causedByEntryId();
             } else if (dispatch.inReplyTo() != null) {
                 resolvedCausedByEntryId = messageRepo.findByMessageId(dispatch.inReplyTo())
-                        .map(e -> e.id)
-                        .orElse(null);
+                                                     .map(e -> e.id)
+                                                     .orElse(null);
             } else {
                 resolvedCausedByEntryId = null;
             }
@@ -218,28 +229,27 @@ public class LedgerWriteService {
             final String resolvedActorId = actorIdProvider.resolve(dispatch.sender());
 
             final MessageLedgerEntry entry = new MessageLedgerEntry();
-            entry.tenancyId = tenancyId;
-            entry.subjectId = resolvedSubjectId;
-            entry.channelId = dispatch.channelId();
-            entry.messageId = messageId;
-            entry.commitmentId = commitmentId;
-            entry.causedByEntryId = resolvedCausedByEntryId;
-            entry.messageType = dispatch.type().name();
-            entry.target = dispatch.target();
-            entry.topic = dispatch.topic();
+            entry.tenancyId         = tenancyId;
+            entry.subjectId         = resolvedSubjectId;
+            entry.channelId         = dispatch.channelId();
+            entry.messageId         = messageId;
+            entry.commitmentId      = commitmentId;
+            entry.causedByEntryId   = resolvedCausedByEntryId;
+            entry.messageType       = dispatch.type().name();
+            entry.target            = dispatch.target();
+            entry.topic             = dispatch.topic();
             entry.correctsMessageId = dispatch.correctsMessageId();
             if (routingOutcome != null) {
                 entry.routingOriginalTarget = routingOutcome.originalTarget();
-                entry.routingSelectedAgent = routingOutcome.resolvedTarget();
-                entry.routingStrategy = routingOutcome.strategyName();
+                entry.routingSelectedAgent  = routingOutcome.resolvedTarget();
+                entry.routingStrategy       = routingOutcome.strategyName();
                 entry.routingCandidateCount = routingOutcome.candidateCount();
             }
             entry.correlationId = dispatch.correlationId();
-            entry.actorId = resolvedActorId;
-            entry.actorType = dispatch.actorType();
-            entry.occurredAt = occurredAt.truncatedTo(ChronoUnit.MILLIS);
-            // entry.sequenceNumber assigned by ledger.save() via LedgerSequenceAllocator. Refs #256.
-            entry.entryType = switch (dispatch.type()) {
+            entry.actorId       = resolvedActorId;
+            entry.actorType     = dispatch.actorType();
+            entry.occurredAt    = occurredAt.truncatedTo(ChronoUnit.MILLIS);
+            entry.entryType     = switch (dispatch.type()) {
                 case QUERY, COMMAND, HANDOFF -> LedgerEntryType.COMMAND;
                 default -> LedgerEntryType.EVENT;
             };
@@ -254,16 +264,18 @@ public class LedgerWriteService {
                 channelStore.find(dispatch.channelId()).ifPresent(ch -> entry.orgUnitId = ch.spaceId());
             }
 
+            populateTemplateMatch(entry, advisories);
+
             // ── Save the entry FIRST — the critical audit record ─────────────────────
             ledger.save(entry, tenancyId);
 
             // ── Attestation for terminal commitment types (non-fatal) ────────────────
             final boolean hasAttestation = ATTESTATION_TYPES.contains(dispatch.type())
-                    && resolvedCausedByEntryId != null;
+                                           && resolvedCausedByEntryId != null;
             if (hasAttestation) {
                 writeAttestation(resolvedSubjectId, resolvedCausedByEntryId, entry.id,
-                        dispatch.type(), resolvedActorId, tenancyId, commitmentId,
-                        dispatch.content(), dispatch.artefactRefs());
+                                 dispatch.type(), resolvedActorId, tenancyId, commitmentId,
+                                 dispatch.content(), dispatch.artefactRefs());
             }
 
             if (span != null) {
@@ -283,6 +295,7 @@ public class LedgerWriteService {
             }
         }
     }
+
 
     private static boolean isTerminalType(final MessageType type) {
         return type == MessageType.DONE || type == MessageType.FAILURE
@@ -461,4 +474,39 @@ public class LedgerWriteService {
                       entry.messageId);
         }
     }
+
+    private void populateTemplateMatch(final MessageLedgerEntry entry,
+                                       final List<DispatchAdvisory> advisories) {
+        if (advisories == null || advisories.isEmpty()) {
+            return;
+        }
+        for (final DispatchAdvisory advisory : advisories) {
+            final Map<String, Object> evidence = advisory.evidence();
+            if (evidence.containsKey("template_name")) {
+                final Object ns = evidence.get("template_namespace");
+                if (ns instanceof String s) {
+                    entry.templateNamespace = s;
+                }
+                final Object name = evidence.get("template_name");
+                if (name instanceof String s) {
+                    entry.templateName = s;
+                }
+                final Object fields = evidence.get("template_fields");
+                if (fields != null) {
+                    try {
+                        entry.templateFields = fields instanceof String s ? s
+                                                                          : objectMapper.writeValueAsString(fields);
+                    } catch (final Exception e) {
+                        LOG.warnf("Could not serialise template_fields for message %d", entry.messageId);
+                    }
+                }
+                final Object score = evidence.get("template_score");
+                if (score instanceof Number n) {
+                    entry.templateScore = n.doubleValue();
+                }
+                return;
+            }
+        }
+    }
+
 }

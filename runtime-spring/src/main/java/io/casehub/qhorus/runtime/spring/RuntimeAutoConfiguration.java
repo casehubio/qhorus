@@ -377,7 +377,7 @@ public class RuntimeAutoConfiguration {
                 tracerSupplier, tracingConfig, enforcementExecutor, routingBridge,
                 (channelName, channelId, tenancyId, message) -> {},
                 (channelName, channelId, tenancyId, message) -> {},
-                (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
+                (dispatch, messageId, commitmentId, occurredAt, routingOutcome, advisories) ->
                         new io.casehub.qhorus.runtime.ledger.LedgerWriteOutcome(null, null, null),
                 null, null,
                 channelMembershipStore, config.correction().maxPerMessage());

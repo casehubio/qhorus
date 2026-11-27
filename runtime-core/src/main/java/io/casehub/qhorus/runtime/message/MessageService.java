@@ -12,6 +12,7 @@ import io.casehub.qhorus.api.message.DispatchResult;
 import io.casehub.qhorus.api.message.Message;
 import io.casehub.qhorus.api.message.MessageDispatch;
 import io.casehub.qhorus.api.message.MessageType;
+import io.casehub.qhorus.api.spi.DispatchAdvisory;
 import io.casehub.qhorus.api.spi.ObligorTrustContext;
 import io.casehub.qhorus.api.spi.ObligorTrustPolicy;
 import io.casehub.qhorus.api.store.CrossTenantChannelStore;
@@ -59,7 +60,8 @@ public class MessageService implements ConsumerMessaging {
     @FunctionalInterface
     public interface LedgerRecorder {
         LedgerWriteOutcome record(MessageDispatch dispatch, Long messageId, UUID commitmentId,
-                                  Instant occurredAt, RoutingBridge.RoutingOutcome routingOutcome);
+                                  Instant occurredAt, RoutingBridge.RoutingOutcome routingOutcome,
+                                  List<DispatchAdvisory> advisories);
     }
 
     @FunctionalInterface
@@ -604,7 +606,7 @@ public class MessageService implements ConsumerMessaging {
                         dispatch.telemetry(), effectiveTenancyId, dispatch.topic(),
                         dispatch.correctsMessageId(), dispatch.retraction());
         final LedgerWriteOutcome ledgerOutcome =
-                ledgerRecorder.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt, routingOutcome);
+                ledgerRecorder.record(dispatchWithTenancy, messageId, storedCommitmentId, occurredAt, routingOutcome, advisories);
 
         observerDispatcher.dispatch(
                 ch != null ? ch.name() : null, dispatch.channelId(),

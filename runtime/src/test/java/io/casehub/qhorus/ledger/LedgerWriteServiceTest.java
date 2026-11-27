@@ -841,6 +841,146 @@ class LedgerWriteServiceTest {
 
     // ── Fixtures ──────────────────────────────────────────────────────────────
 
+
+// ── Template match fields — Refs #546 ───────────────────────────────
+
+    @Test
+    void record_withTemplateMatchAdvisory_populatesTemplateFields() {
+        ChannelEntity ch    = channel();
+        long          msgId = nextId();
+        MessageDispatch d = new MessageDispatch(ch.id, "agent:reviewer", MessageType.DONE,
+                                                "I approve the architecture", null, "corr-tpl", null, null, null, null, null,
+                                                ActorType.AGENT, null, null, null, null);
+
+        java.util.Map<String, Object> evidence = java.util.Map.of(
+                "template_namespace", "protocol:review",
+                "template_name", "vote",
+                "template_fields", java.util.Map.of("decision", "approve", "subject", "architecture"),
+                "template_score", 0.95
+                                                                 );
+        var advisory = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "review-protocol", io.casehub.qhorus.api.spi.Severity.ADVISORY,
+                "Template matched: vote", evidence, io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+
+        service.record(d, msgId, null, Instant.now(), null, java.util.List.of(advisory));
+
+        MessageLedgerEntry e = msg(0);
+        assertEquals("protocol:review", e.templateNamespace);
+        assertEquals("vote", e.templateName);
+        assertNotNull(e.templateFields);
+        assertTrue(e.templateFields.contains("approve"));
+        assertTrue(e.templateFields.contains("architecture"));
+        assertEquals(0.95, e.templateScore, 1e-9);
+    }
+
+    @Test
+    void record_withNoTemplateAdvisory_templateFieldsNull() {
+        ChannelEntity ch    = channel();
+        long          msgId = nextId();
+        MessageDispatch d = new MessageDispatch(ch.id, "agent:worker", MessageType.STATUS,
+                                                "Working on it", null, "corr-no-tpl", null, null, null, null, null,
+                                                ActorType.AGENT, null, null, null, null);
+
+        var advisory = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "some-protocol", io.casehub.qhorus.api.spi.Severity.WARNING,
+                "Some warning", java.util.Map.of("other_key", "value"),
+                io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+
+        service.record(d, msgId, null, Instant.now(), null, java.util.List.of(advisory));
+
+        MessageLedgerEntry e = msg(0);
+        assertNull(e.templateNamespace);
+        assertNull(e.templateName);
+        assertNull(e.templateFields);
+        assertNull(e.templateScore);
+    }
+
+    @Test
+    void record_withEmptyAdvisories_templateFieldsNull() {
+        record("COMMAND", "Do it", "agent:agent-a", "corr-empty", null, channel());
+
+        MessageLedgerEntry e = msg(0);
+        assertNull(e.templateNamespace);
+        assertNull(e.templateName);
+        assertNull(e.templateFields);
+        assertNull(e.templateScore);
+    }
+
+    @Test
+    void record_withTemplateFieldsAsString_preservedDirectly() {
+        ChannelEntity ch    = channel();
+        long          msgId = nextId();
+        MessageDispatch d = new MessageDispatch(ch.id, "agent:reviewer", MessageType.DONE,
+                                                "Approved", null, "corr-str", null, null, null, null, null,
+                                                ActorType.AGENT, null, null, null, null);
+
+        java.util.Map<String, Object> evidence = java.util.Map.of(
+                "template_name", "approval",
+                "template_fields", "{\"decision\":\"approve\"}"
+                                                                 );
+        var advisory = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "proto", io.casehub.qhorus.api.spi.Severity.ADVISORY,
+                "matched", evidence, io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+
+        service.record(d, msgId, null, Instant.now(), null, java.util.List.of(advisory));
+
+        MessageLedgerEntry e = msg(0);
+        assertEquals("approval", e.templateName);
+        assertEquals("{\"decision\":\"approve\"}", e.templateFields);
+        assertNull(e.templateNamespace);
+        assertNull(e.templateScore);
+    }
+
+    @Test
+    void record_withMultipleAdvisories_firstTemplateMatchWins() {
+        ChannelEntity ch    = channel();
+        long          msgId = nextId();
+        MessageDispatch d = new MessageDispatch(ch.id, "agent:a", MessageType.DONE,
+                                                "Done", null, "corr-multi", null, null, null, null, null,
+                                                ActorType.AGENT, null, null, null, null);
+
+        var nonTemplate = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "other", io.casehub.qhorus.api.spi.Severity.WARNING,
+                "unrelated", java.util.Map.of(), io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+        var template1 = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "proto1", io.casehub.qhorus.api.spi.Severity.ADVISORY,
+                "first match", java.util.Map.of("template_name", "first", "template_score", 0.8),
+                io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+        var template2 = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "proto2", io.casehub.qhorus.api.spi.Severity.ADVISORY,
+                "second match", java.util.Map.of("template_name", "second", "template_score", 0.9),
+                io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+
+        service.record(d, msgId, null, Instant.now(), null,
+                       java.util.List.of(nonTemplate, template1, template2));
+
+        MessageLedgerEntry e = msg(0);
+        assertEquals("first", e.templateName);
+        assertEquals(0.8, e.templateScore, 1e-9);
+    }
+
+    @Test
+    void record_templateNameOnly_partialPopulation() {
+        ChannelEntity ch    = channel();
+        long          msgId = nextId();
+        MessageDispatch d = new MessageDispatch(ch.id, "agent:a", MessageType.DONE,
+                                                "Approved", null, null, null, null, null, null, null,
+                                                ActorType.AGENT, null, null, null, null);
+
+        var advisory = new io.casehub.qhorus.api.spi.DispatchAdvisory(
+                "proto", io.casehub.qhorus.api.spi.Severity.ADVISORY,
+                "matched", java.util.Map.of("template_name", "vote"),
+                io.casehub.qhorus.api.spi.SuggestedAction.LOG);
+
+        service.record(d, msgId, null, Instant.now(), null, java.util.List.of(advisory));
+
+        MessageLedgerEntry e = msg(0);
+        assertEquals("vote", e.templateName);
+        assertNull(e.templateNamespace);
+        assertNull(e.templateFields);
+        assertNull(e.templateScore);
+    }
+
     private long nextIdCounter = 1L;
     private long nextId() { return nextIdCounter++; }
 

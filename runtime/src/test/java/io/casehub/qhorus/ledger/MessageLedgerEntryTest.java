@@ -1,13 +1,14 @@
 package io.casehub.qhorus.ledger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.casehub.ledger.api.model.LedgerEntry;
+import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
-import org.junit.jupiter.api.Test;
-
-import io.casehub.ledger.api.model.LedgerEntry;
-import io.casehub.qhorus.runtime.ledger.MessageLedgerEntry;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class MessageLedgerEntryTest {
 
@@ -76,5 +77,27 @@ class MessageLedgerEntryTest {
         assertEquals(1200L, e.tokenCount);
         assertEquals("[\"msg-1\"]", e.contextRefs);
         assertEquals("{\"id\":\"case-1\"}", e.sourceEntity);
+    }
+
+    @Test
+    void templateFields_defaultToNull() {
+        MessageLedgerEntry e = new MessageLedgerEntry();
+        assertNull(e.templateNamespace);
+        assertNull(e.templateName);
+        assertNull(e.templateFields);
+        assertNull(e.templateScore);
+    }
+
+    @Test
+    void templateFields_canBeSet() {
+        MessageLedgerEntry e = new MessageLedgerEntry();
+        e.templateNamespace = "protocol:review";
+        e.templateName      = "vote";
+        e.templateFields    = "{\"decision\":\"approve\"}";
+        e.templateScore     = 0.95;
+        assertEquals("protocol:review", e.templateNamespace);
+        assertEquals("vote", e.templateName);
+        assertEquals("{\"decision\":\"approve\"}", e.templateFields);
+        assertEquals(0.95, e.templateScore, 1e-9);
     }
 }

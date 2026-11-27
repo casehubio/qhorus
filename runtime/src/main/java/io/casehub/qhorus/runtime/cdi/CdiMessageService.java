@@ -75,8 +75,8 @@ public class CdiMessageService extends MessageService {
               (channelName, channelId, tenancyId, message) ->
                       MessageObserverDispatcher.dispatchClusterOnly(
                               channelName, channelId, tenancyId, message, observers.handles()),
-              (dispatch, messageId, commitmentId, occurredAt, routingOutcome) ->
-                      ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome),
+              (dispatch, messageId, commitmentId, occurredAt, routingOutcome, advisories) ->
+                      ledgerWriteService.record(dispatch, messageId, commitmentId, occurredAt, routingOutcome, advisories),
               protocolEvaluationEvents::fireAsync,
               activityEvents::fireAsync,
               channelMembershipStore,

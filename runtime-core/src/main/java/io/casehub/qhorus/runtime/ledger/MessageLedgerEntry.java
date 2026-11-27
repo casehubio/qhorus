@@ -114,6 +114,18 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
     @Column(name = "reasoning", columnDefinition = "TEXT")
     public String reasoning;
 
+    @Column(name = "template_namespace", length = 200)
+    public String templateNamespace;
+
+    @Column(name = "template_name", length = 200)
+    public String templateName;
+
+    @Column(name = "template_fields", columnDefinition = "TEXT")
+    public String templateFields;
+
+    @Column(name = "template_score")
+    public Double templateScore;
+
 
     @Override
     protected byte[] domainContentBytes() {
@@ -142,6 +154,14 @@ public class MessageLedgerEntry extends JpaLedgerEntry {
                          + (verificationOutcome != null ? verificationOutcome : "") + "|"
                          + (evidenceQuality != null ? String.valueOf(evidenceQuality) : "") + "|"
                          + (reasoning != null ? reasoning : "");
+        }
+        if (templateNamespace != null || templateName != null
+            || templateFields != null || templateScore != null) {
+            canonical += "|T:"
+                         + (templateNamespace != null ? templateNamespace : "") + "|"
+                         + (templateName != null ? templateName : "") + "|"
+                         + (templateFields != null ? templateFields : "") + "|"
+                         + (templateScore != null ? String.valueOf(templateScore) : "");
         }
         return canonical.getBytes(StandardCharsets.UTF_8);
     }
